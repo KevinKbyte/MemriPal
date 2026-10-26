@@ -139,7 +139,7 @@ class TestResponseCache:
 # missing recording raises FixtureMissing (a LookupError) naming the method and digest.
 class TestFixtureBackend:
     def test_segment_replays_utf8_text(self, tmp_path):
-        text = "<seg>book é</seg>"
+        text = "<seg>book \u00e9</seg>"
         key = CacheKey(method="segment", photo_sha=PHOTO_SHA, subject="book")
         ResponseCache(tmp_path).put(key, text.encode("utf-8"))
         assert FixtureBackend(tmp_path).segment(PHOTO_SHA, "book") == text

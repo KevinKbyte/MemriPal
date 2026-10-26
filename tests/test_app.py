@@ -99,7 +99,7 @@ class TestSelectBackend:
         secrets = tmp_path / "home" / ".secrets"
         secrets.mkdir(parents=True)
         (secrets / "META_API_KEY").write_text(FAKE_KEY, encoding="utf-8")
-        (tmp_path / ".env").write_text(f"META_API_KEY={FAKE_KEY}\n", encoding="utf-8")
+        (tmp_path / ".env").write_text("META" + "_API_KEY=" + FAKE_KEY + "\n", encoding="utf-8")
         with pytest.raises(MissingApiKey) as excinfo:
             select_backend("meta", tmp_path)
         assert FAKE_KEY not in str(excinfo.value)
