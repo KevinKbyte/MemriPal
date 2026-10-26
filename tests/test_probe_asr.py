@@ -4,7 +4,8 @@
 # with a WAV clip it transcribes it once, adds checks asr_ok, asr_transcript_nonempty and
 # asr_has_duration plus an "asr" object {transcript, audioDurationMs, latency_s, status,
 # error} and an "asr" entry in calls; a failed, malformed or empty-input ASR call is
-# recorded (asr_ok false, error set) without crashing or changing the image checks; and
+# recorded (asr_ok false, error set) without crashing or changing the image checks; a
+# boolean duration is not a duration; asr_ok agrees with the recorded asr call's ok; and
 # probe_live.py --audio <wav> passes the file's bytes to run_probe (missing file -> exit 2).
 import importlib.util
 import itertools
@@ -192,6 +193,36 @@ class TestProbeAsrFailures:
         assert r["asr"]["status"] is None
         assert r["checks"]["image_output_dims"] == [640, 480]
         json.dumps(r)
+
+
+class Asr201Meta(AsrMeta):
+    """AsrMeta whose /asr/transcribe succeeds with a non-200 2xx status."""
+
+    def __call__(self, request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/asr/transcribe"):
+            self.asr_calls.append(request.read())
+            return httpx.Response(201, json=self.asr_body)
+        return super().__call__(request)
+
+
+class TestProbeAsrResultConsistency:
+    # Covers: MEM-011
+
+    @pytest.mark.parametrize("flag", [True, False], ids=["true", "false"])
+    def test_bool_duration_is_not_a_duration(self, flag):
+        fake = AsrMeta([ALL_PHRASES[:12]], asr_body={"transcript": "hello", "audioDurationMs": flag})
+        r = probe(fake, audio_wav=WAV)
+        assert r["asr"]["audioDurationMs"] is None
+        assert r["checks"]["asr_has_duration"] is False
+        assert r["checks"]["asr_transcript_nonempty"] is True
+
+    def test_asr_ok_agrees_with_recorded_call_ok_on_2xx(self):
+        fake = Asr201Meta([ALL_PHRASES[:12]])
+        r = probe(fake, audio_wav=WAV)
+        asr_call = next(c for c in r["calls"] if c["kind"] == "asr")
+        assert asr_call["ok"] is True
+        assert r["asr"]["transcript"] == "toothbrush on the armchair"
+        assert r["checks"]["asr_ok"] is asr_call["ok"]
 
 
 def _load_script():
