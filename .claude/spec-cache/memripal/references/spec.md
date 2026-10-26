@@ -5,6 +5,8 @@
 GET /healthz -> 200 JSON {"status": "ok", "mode": "<fixture|meta>"}; GET / -> 200 text/html (static/index.html).
 App object `memripal.app:app`; factory `memripal.app.create_app(backend=None)`.
 
+Tests: tests/test_app.py::TestHealthAndStaticShell
+
 ## MEM-002 Backend mode selection
 
 `memripal.backend.select_backend(mode: str | None, fixtures_root: pathlib.Path)`.
@@ -14,6 +16,8 @@ App object `memripal.app:app`; factory `memripal.app.create_app(backend=None)`.
   a MetaBackend whose methods raise NotImplementedError("S1") for now.
 - Any other mode -> ValueError.
 - The key value never appears in repr/str of the backend or in any exception message.
+
+Tests: tests/test_app.py::TestSelectBackend
 
 ## MEM-003 Logical-key write-through cache + fixture replay
 
@@ -29,17 +33,21 @@ App object `memripal.app:app`; factory `memripal.app.create_app(backend=None)`.
 - Miss -> `FixtureMissing` (subclass of LookupError), message includes method and digest.
 - `ModelBackend` is a typing.Protocol with those three methods. Exceptions live in memripal.backend.
 
+Tests: tests/test_backend.py::TestCacheKeyDigest, ::TestResponseCache, ::TestFixtureBackend
+
 ## MEM-004 Pre-commit scan
 
 `python scripts/precommit_scan.py <paths...>` exits 1 with a stderr line naming each offending path if any file:
-- matches a secret pattern: r"sk-[A-Za-z0-9_-]{20,}", r"Bearer\s+[A-Za-z0-9._-]{20,}", r"Signature=", r"[?&]token=",
-  r"META_API_KEY\s*=\s*['\"]?[^\s'\"]{8,}";
+- matches a secret pattern: r"sk-[A-Za-z0-9_-]{20,}", r"Bearer\s+[A-Za-z0-9._-]{20,}", r"Signatur[e]=", r"[?&]token=",
+  r"META_API_KEY\s*=\s*['\"]?[^\s'\"]{8,}" (the Signature pattern is bracketed here so this doc does not trip the scan);
 - is a .jpg/.jpeg whose bytes contain an APP1 Exif segment (b"Exif\x00\x00");
 - is a .png/.webp containing b"Exif" / an eXIf chunk.
 
 Exit 0 when clean; missing path ignored. Wired by .githooks/pre-commit (runs on
 `git diff --cached --name-only --diff-filter=ACM`) + README step `git config core.hooksPath .githooks`. Test fixtures
 with planted keys are built in tmp_path at runtime, never committed.
+
+Tests: tests/test_precommit_scan.py::TestPrecommitScan
 
 ## MEM-005 Synthetic demo fixtures
 
@@ -53,3 +61,5 @@ with planted keys are built in tmp_path at runtime, never committed.
 
 Acceptance: every file under fixtures/ except MANIFEST.md appears in MANIFEST.md; FixtureBackend replays the demo
 segment for "book"; precommit_scan exits 0 over all fixtures.
+
+Tests: tests/test_fixtures_manifest.py

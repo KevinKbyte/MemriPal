@@ -9,7 +9,8 @@ API or offline from recorded fixtures.
 
 ## Built during the hackathon (Oct 26 - Nov 4 2026)
 
-All code in this repo was written during the Meta Global AI Hackathon 2026 (Indie track), starting 2026-10-26.
+Everything in this repo was created during the Meta Global AI Developer Hackathon (kickoff 2026-10-26); git history is the
+record.
 
 ## APIs called
 
@@ -36,6 +37,26 @@ uv run uvicorn memripal.app:app
 ```
 
 The pre-commit hook blocks staged files containing API keys/signed URLs or images carrying EXIF.
+
+Run all checks (ruff, pytest, node tests):
+
+```bash
+sh scripts/check.sh
+```
+
+## Live mode: Meta API key setup
+
+1. Run once in your own PowerShell (prompts for the key; nothing lands in shell history or the repo):
+
+   ```powershell
+   New-Item -ItemType Directory -Force ~/.secrets | Out-Null; Read-Host "Meta API key" -AsSecureString | ConvertFrom-SecureString | Set-Content ~/.secrets/meta-api-key.dpapi
+   ```
+
+2. The file is DPAPI-encrypted to your Windows user account. Never put the key in `.env`, the repo, or chat.
+3. Live mode (`MEMRIPAL_MODE=meta`) is started only by the developer via the S1 launcher script (coming in S1), which
+   decrypts the key into `META_API_KEY` for the app process only. Default mode is fixture replay and needs no key.
+
+The Meta Model API needs the hackathon credits claimed and a card on the Billing page before live calls work.
 
 ## Credits
 

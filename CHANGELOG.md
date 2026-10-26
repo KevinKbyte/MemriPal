@@ -11,4 +11,4 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 - Backend modes `fixture|meta` via `MEMRIPAL_MODE` (MEM-002).
 - Logical-key write-through response cache and fixture replay (MEM-003).
 - Synthetic demo fixtures with MANIFEST (MEM-005).
-- Pre-commit scan for secrets and image EXIF (MEM-004).
+- Pre-commit scan for secrets and image EXIF, wired via `.githooks/pre-commit` (MEM-004).
