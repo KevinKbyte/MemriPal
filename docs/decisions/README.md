@@ -21,6 +21,7 @@ the others that you asked about".
 - [0010](0010-cloud-run-hosting.md) GCP Cloud Run hosting (retrospective comparison vs App Engine, VM, GKE, Functions).
 - [0011](0011-s2-loci-request-shape.md) S2: one sync `POST /loci` over a `ModelRequest`-keyed backend (A-prime).
 - [0012](0012-vr-imagery-mapillary.md) VR imagery from Mapillary (over Google Earth / Street View).
+- [0013](0013-derived-request-key.md) Derived `RequestKey` from `ModelRequest` beside the unchanged MEM-003 `CacheKey`.
 
 ## Minor decisions (no ADR)
 
