@@ -53,10 +53,26 @@ sh scripts/check.sh
    ```
 
 2. The file is DPAPI-encrypted to your Windows user account. Never put the key in `.env`, the repo, or chat.
-3. Live mode (`MEMRIPAL_MODE=meta`) is started only by the developer via the S1 launcher script (coming in S1), which
-   decrypts the key into `META_API_KEY` for the app process only. Default mode is fixture replay and needs no key.
+3. Live mode (`MEMRIPAL_MODE=meta`) is started only by the developer via `scripts/run_live.ps1` (below). Default mode
+   is fixture replay and needs no key.
 
 The Meta Model API needs the hackathon credits claimed and a card on the Billing page before live calls work.
+
+## Live probe / run_live
+
+The developer runs these; Claude never runs live mode.
+
+```powershell
+powershell -File scripts/run_live.ps1 python scripts/probe_live.py --photo <demo photo>
+```
+
+- `run_live.ps1` decrypts the DPAPI key file (`-KeyFile`, default `~/.secrets/meta-api-key.dpapi`) and sets
+  `META_API_KEY` + `MEMRIPAL_MODE=meta` only in the child process env; it never writes or logs the key, and exits with
+  the child's exit code (missing key file: exit 2). With no child command it starts the app
+  (`uv run uvicorn memripal.app:app --port 8000`).
+- `probe_live.py` exercises Spark, SAM 3.1 and Muse Image on one photo and writes `report.json` (+ `tier1.webp`,
+  `tier2.webp`) to `fixtures/raw/probe/<UTC timestamp>/` (gitignored; override with `--out <dir>`). It reads the key
+  only from `META_API_KEY` (unset: exit 2) and prints the kept-loci count and the 5 plan checks.
 
 ## Credits
 
