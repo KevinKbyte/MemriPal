@@ -24,6 +24,12 @@ if ($Command.Count -eq 0) {
 
 $ErrorActionPreference = 'Stop'
 
+# cmd.exe re-parses batch-file arguments (metacharacters, %VAR% expansion), defeating the quoting below.
+if ([System.IO.Path]::GetExtension($Command[0]) -in @('.cmd', '.bat')) {
+    [Console]::Error.WriteLine("run_live: refusing .cmd/.bat child '$($Command[0])'; launch an .exe directly")
+    exit 2
+}
+
 if (-not (Test-Path -LiteralPath $KeyFile -PathType Leaf)) {
     [Console]::Error.WriteLine("run_live: key file not found: $KeyFile")
     exit 2
@@ -59,5 +65,7 @@ $psi.EnvironmentVariables['MEMRIPAL_MODE'] = 'meta'
 
 $child = [System.Diagnostics.Process]::Start($psi)
 $psi = $null
+$secure.Dispose()
+Remove-Variable secure, encrypted
 $child.WaitForExit()
 exit $child.ExitCode

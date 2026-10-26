@@ -33,7 +33,13 @@ def _parse_token(body: str) -> Box | None:
         conf = float(fields["c"]) if "c" in fields else None
     except (KeyError, ValueError):
         return None
-    return Box(**ints, confidence=conf)
+    b = Box(**ints, confidence=conf)
+    return b if _is_valid(b) else None
+
+
+def _is_valid(b: Box) -> bool:
+    # Per-axis check: a box inverted on both axes still has a positive (x2-x1)*(y2-y1).
+    return 0 <= b.x1 < b.x2 and 0 <= b.y1 < b.y2 and b.w > 0 and b.h > 0
 
 
 def parse_boxes(text: str) -> list[Box]:
@@ -72,7 +78,7 @@ def keep_loci(per_phrase: dict[str, list[Box]], img_w: int, img_h: int) -> list[
     total = img_w * img_h
     candidates = []
     for phrase, boxes in per_phrase.items():
-        best = largest(boxes)
+        best = largest([b for b in boxes if _is_valid(b)])
         # Integer comparison keeps the 0.5% / 40% bounds exactly inclusive.
         if best is not None and best.area * 1000 >= 5 * total and best.area * 10 <= 4 * total:
             candidates.append((phrase, best))

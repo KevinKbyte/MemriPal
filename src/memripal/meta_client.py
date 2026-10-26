@@ -3,6 +3,7 @@
 import base64
 import json
 import random
+import re
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -15,6 +16,10 @@ DEFAULT_BASE_URL = "https://api.meta.ai/v1"
 RETRYABLE_STATUSES = frozenset({429, 500, 503})
 RETRY_AFTER_STATUSES = frozenset({429, 503})
 RETRY_AFTER_CAP_S = 60
+MAX_RESPONSE_BYTES = 32 * 1024 * 1024
+# Only connect-phase failures are safe to retry: after that the paid request may have landed.
+RETRYABLE_TRANSPORT = (httpx.ConnectError, httpx.ConnectTimeout)
+_SAFE_CODE = re.compile(r"[A-Za-z0-9_.-]{1,64}")
 
 
 @dataclass(frozen=True)
@@ -33,7 +38,21 @@ def _error_code(body: bytes) -> str:
         code = json.loads(body)["error"]["code"]
     except (ValueError, KeyError, TypeError):
         return "http_error"
-    return code if isinstance(code, str) and code else "http_error"
+    return code if isinstance(code, str) and _SAFE_CODE.fullmatch(code) else "http_error"
+
+
+def _read_capped(response: httpx.Response) -> bytes | None:
+    """Body bytes, or None once it exceeds MAX_RESPONSE_BYTES (checked before and while reading)."""
+    length = response.headers.get("Content-Length", "")
+    if length.isdigit() and int(length) > MAX_RESPONSE_BYTES:
+        return None
+    chunks, size = [], 0
+    for chunk in response.iter_bytes():
+        size += len(chunk)
+        if size > MAX_RESPONSE_BYTES:
+            return None
+        chunks.append(chunk)
+    return b"".join(chunks)
 
 
 def _retry_after(response: httpx.Response) -> float | None:
@@ -85,20 +104,25 @@ class MetaClient:
             attempt += 1
             retry_after = None
             try:
-                response = self._http.post(url, json=payload, headers=headers)
+                with self._http.stream("POST", url, json=payload, headers=headers) as response:
+                    status = response.status_code
+                    capped = _read_capped(response)
+                    retry_after = _retry_after(response)
             except httpx.TransportError as exc:
                 status, body = None, b""
                 error = "transport: " + type(exc).__name__
-                retryable = True
+                retryable = isinstance(exc, RETRYABLE_TRANSPORT)
             else:
-                status, body = response.status_code, response.content
-                if 200 <= status < 300:
+                body = capped if capped is not None else b""
+                if capped is None:
+                    error = f"{status} response_too_large"
+                    retryable = False
+                elif 200 <= status < 300:
                     error = None
                     retryable = False
                 else:
                     error = f"{status} {_error_code(body)}"
                     retryable = status in RETRYABLE_STATUSES
-                    retry_after = _retry_after(response)
             if not retryable or attempt > self._max_retries:
                 return CallResult(
                     ok=error is None,

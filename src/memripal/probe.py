@@ -64,7 +64,9 @@ def _safe(fn: Callable, *args):
     """Live responses may be malformed; a probe records the gap instead of aborting the run."""
     try:
         return fn(*args)
-    except (ValueError, KeyError, IndexError, TypeError, AttributeError, OSError):
+    except (
+        ValueError, KeyError, IndexError, TypeError, AttributeError, OSError, Image.DecompressionBombError
+    ):
         return None
 
 
@@ -161,15 +163,18 @@ def run_probe(
                 on_image("tier1", edited)
         tier1 = {"dims": dims, "latency_s": res.latency_s, "drift": drift}
 
-        crop = crop_for_edit(photo_jpeg, box)
-        res = record("image_edit_tier2", client.image_edit(
-            image_data_url=to_data_url(crop), prompt=_edit_prompt(locus)
-        ))
-        edited2 = _safe(image_bytes, res.body) if res.ok else None
-        dims2 = _safe(_dims, edited2) if edited2 else None
-        if dims2 is not None and on_image is not None:
-            on_image("tier2", edited2)
-        tier2 = {"dims": dims2, "input_dims": _dims(crop), "latency_s": res.latency_s}
+        crop = _safe(crop_for_edit, photo_jpeg, box)
+        if crop is None:
+            tier2 = {"dims": None, "input_dims": None, "latency_s": None}
+        else:
+            res = record("image_edit_tier2", client.image_edit(
+                image_data_url=to_data_url(crop), prompt=_edit_prompt(locus)
+            ))
+            edited2 = _safe(image_bytes, res.body) if res.ok else None
+            dims2 = _safe(_dims, edited2) if edited2 else None
+            if dims2 is not None and on_image is not None:
+                on_image("tier2", edited2)
+            tier2 = {"dims": dims2, "input_dims": _safe(_dims, crop), "latency_s": res.latency_s}
     else:
         association_skipped = "no kept loci"
 
