@@ -6,7 +6,10 @@
 # only exceptions are ADRs explicitly marked "Alternatives not formally
 # evaluated"); every ADR is linked from docs/decisions/README.md, every README
 # link resolves to an existing file, and ADR numbers are unique and contiguous
-# from 0001.
+# from 0001. Every .md in docs/decisions/ other than README.md must match the
+# NNNN-slug.md name, so a misnamed ADR cannot silently escape these checks.
+# Covers: MEM-018
+# Directive source: QUAL-014 claim hash prefix cf9fea4ed55b (memripal CLAUDE.md ADR rule).
 import re
 import shutil
 from pathlib import Path
@@ -84,6 +87,14 @@ def index_errors(root):
     return errors
 
 
+def naming_errors(root):
+    return [
+        f"{p.name}: not named NNNN-slug.md"
+        for p in sorted(root.glob("*.md"))
+        if p.name != "README.md" and not ADR_NAME.match(p.name)
+    ]
+
+
 def numbering_errors(root):
     numbers = [int(ADR_NAME.match(p.name).group(1)) for p in _adr_files(root)]
     if len(numbers) != len(set(numbers)):
@@ -108,6 +119,10 @@ def test_readme_links_every_adr_and_resolves():
 
 def test_adr_numbers_unique_and_contiguous():
     assert numbering_errors(DECISIONS) == []
+
+
+def test_every_decisions_md_is_named_as_adr():
+    assert naming_errors(DECISIONS) == []
 
 
 GOOD_ADR = """# 0001: Example
@@ -220,3 +235,17 @@ def test_numbering_gap_fails(adr_dir):
 def test_duplicate_number_fails(adr_dir):
     shutil.copy(adr_dir / "0001-example.md", adr_dir / "0001-dup.md")
     assert any("duplicate" in e for e in numbering_errors(adr_dir))
+
+
+@pytest.mark.parametrize(
+    "name",
+    ["0002-Foo.md", "13-foo.md", "00002-foo.md", "0002_foo.md", "notes.md", "0002-.md"],
+)
+def test_misnamed_adr_fails(adr_dir, name):
+    shutil.copy(adr_dir / "0001-example.md", adr_dir / name)
+    assert naming_errors(adr_dir) == [f"{name}: not named NNNN-slug.md"]
+
+
+def test_readme_and_well_named_adrs_pass_naming(adr_dir):
+    (adr_dir / "notes.txt").write_text("not markdown", encoding="utf-8")
+    assert naming_errors(adr_dir) == []
