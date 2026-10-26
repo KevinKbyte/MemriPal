@@ -45,9 +45,7 @@ PHRASE_PROMPT = (
 def _reask_prompt(exclude: list[str]) -> str:
     listed = "\n".join(f"- {p}" for p in exclude)
     return (
-        PHRASE_PROMPT
-        + " Do NOT repeat any of these already-found objects; name different ones:\n"
-        + listed
+        PHRASE_PROMPT + " Do NOT repeat any of these already-found objects; name different ones:\n" + listed
     )
 
 
@@ -67,7 +65,13 @@ def _safe(fn: Callable, *args):
     try:
         return fn(*args)
     except (
-        ValueError, KeyError, IndexError, TypeError, AttributeError, OSError, Image.DecompressionBombError
+        ValueError,
+        KeyError,
+        IndexError,
+        TypeError,
+        AttributeError,
+        OSError,
+        Image.DecompressionBombError,
     ):
         return None
 
@@ -112,9 +116,12 @@ def run_probe(
     per_phrase: dict[str, list[Box]] = {}
 
     def ask_phrases(kind: str, prompt: str) -> list[str] | None:
-        res = record(kind, client.chat_json(
-            prompt=prompt, schema=PHRASE_SCHEMA, schema_name="phrases", image_data_url=photo_url
-        ))
+        res = record(
+            kind,
+            client.chat_json(
+                prompt=prompt, schema=PHRASE_SCHEMA, schema_name="phrases", image_data_url=photo_url
+            ),
+        )
         data = _safe(chat_content_json, res.body) if res.ok else None
         got = data.get("phrases") if isinstance(data, dict) else None
         if not isinstance(got, list) or not all(isinstance(p, str) for p in got):
@@ -154,14 +161,15 @@ def run_probe(
     drift = None
     if kept:
         locus, box = kept[0]
-        res = record("spark_association", client.chat_json(
-            prompt=_assoc_prompt(locus), schema=ASSOC_SCHEMA, schema_name="association"
-        ))
+        res = record(
+            "spark_association",
+            client.chat_json(prompt=_assoc_prompt(locus), schema=ASSOC_SCHEMA, schema_name="association"),
+        )
         association = _safe(chat_content_json, res.body) if res.ok else None
 
-        res = record("image_edit_tier1", client.image_edit(
-            image_data_url=photo_url, prompt=_edit_prompt(locus)
-        ))
+        res = record(
+            "image_edit_tier1", client.image_edit(image_data_url=photo_url, prompt=_edit_prompt(locus))
+        )
         edited = _safe(image_bytes, res.body) if res.ok else None
         dims = _safe(_dims, edited) if edited else None
         if dims is not None:
@@ -174,9 +182,10 @@ def run_probe(
         if crop is None:
             tier2 = {"dims": None, "input_dims": None, "latency_s": None}
         else:
-            res = record("image_edit_tier2", client.image_edit(
-                image_data_url=to_data_url(crop), prompt=_edit_prompt(locus)
-            ))
+            res = record(
+                "image_edit_tier2",
+                client.image_edit(image_data_url=to_data_url(crop), prompt=_edit_prompt(locus)),
+            )
             edited2 = _safe(image_bytes, res.body) if res.ok else None
             dims2 = _safe(_dims, edited2) if edited2 else None
             if dims2 is not None and on_image is not None:
@@ -200,7 +209,10 @@ def run_probe(
         except ValueError as exc:
             # Rejected locally (empty/oversize clip): nothing was sent, so there is no status.
             asr = {
-                "transcript": None, "audioDurationMs": None, "latency_s": None, "status": None,
+                "transcript": None,
+                "audioDurationMs": None,
+                "latency_s": None,
+                "status": None,
                 "error": str(exc),
             }
         else:
