@@ -63,3 +63,108 @@ Acceptance: every file under fixtures/ except MANIFEST.md appears in MANIFEST.md
 segment for "book"; precommit_scan exits 0 over all fixtures.
 
 Tests: tests/test_fixtures_manifest.py
+
+## MEM-006 Meta HTTP client
+
+`src/memripal/meta_client.py`; httpx is a runtime dep. API facts (dev.meta.ai/docs, fetched 2026-10-26):
+- Base https://api.meta.ai/v1, header `Authorization: Bearer <key>`.
+- Chat: POST /chat/completions {"model":"muse-spark-1.3","max_completion_tokens":N,"messages":[{"role":"user",
+  "content":[{"type":"text","text":...},{"type":"image_url","image_url":{"url":"data:image/jpeg;base64,..."}}]}],
+  "response_format":{"type":"json_schema","json_schema":{"name":...,"strict":true,"schema":{...}}}}.
+  JSON string at choices[0].message.content.
+- SAM: POST /responses {"model":"sam-3.1","input":[{"type":"message","role":"user","content":[{"type":"input_text",
+  "text":"<phrase>"},{"type":"input_image","image_url":"data:image/jpeg;base64,..."}]}],
+  "metadata":{"include_confidence":"true"}} (no stream). Text: top-level "output_text" if present, else concatenation
+  of output[*].content[*].text (path unverified). Box token `<|box;x1=353;y1=382;x2=453;y2=427;w=537;h=561|>`,
+  optionally `;c=0.91`, any key order. Zero matches = empty text.
+- Image edit: POST /images/edits {"model":"muse-image-1.0","prompt":...,"images":[{"image_url":"data:..."}],"n":1,
+  "output_format":"webp"} (+ optional "size":"WxH"). Image at data[0].b64_json.
+- Errors: {"error":{"message","type","param","code"}}. Retry 429/500/503 + transport errors/timeouts; never retry
+  400/401/402/403/404/413/504. Retry-After header (seconds) honoured on 429/503.
+
+Contract:
+- `CallResult` frozen dataclass: ok: bool, status: int | None, body: bytes, error: str | None, attempts: int,
+  latency_s: float. ok iff final status 2xx. error = "<status> <error.code or 'http_error'>" or
+  "transport: <ExcClass>"; never contains the key.
+- `MetaClient(api_key: str, *, base_url="https://api.meta.ai/v1", timeout=60.0, transport=None, sleep=time.sleep,
+  rand=random.random, max_retries=2)`. Empty api_key -> `memripal.backend.MissingApiKey`. repr/str = "MetaClient()".
+- `post(path: str, payload: dict) -> CallResult`: JSON POST with bearer header. Retryable (429, 500, 503, httpx
+  TimeoutException/TransportError): up to max_retries extra attempts (attempts <= 3). Delay before retry n (n=0,1):
+  Retry-After int seconds if present and parseable (capped at 60), else 0.5 * 2**n; plus jitter rand() * 0.5.
+  sleep called once per retry with that delay. Non-retryable status returns immediately (attempts == 1).
+- `chat_json(*, prompt: str, schema: dict, schema_name: str, image_data_url: str | None = None,
+  max_completion_tokens: int = 1024, model="muse-spark-1.3") -> CallResult`: payload exactly per API facts;
+  strict true; image part only when image_data_url given; max_completion_tokens always present.
+- `segment(*, image_data_url: str, phrase: str, model="sam-3.1") -> CallResult`: payload per API facts.
+- `image_edit(*, image_data_url: str, prompt: str, size: str | None = None, model="muse-image-1.0") -> CallResult`:
+  payload per API facts; "size" key only when given.
+- Pure helpers: `chat_content_json(body: bytes) -> dict` (json.loads of choices[0].message.content);
+  `responses_text(body: bytes) -> str` (output_text, else joined output[*].content[*].text, else "");
+  `image_bytes(body: bytes) -> bytes` (base64-decode data[0].b64_json); `to_data_url(jpeg: bytes) -> str`
+  ("data:image/jpeg;base64,...").
+- Tests offline only: httpx.MockTransport, injected sleep/rand.
+
+Tests: tests/test_meta_client.py
+
+## MEM-007 SAM box parsing + edit drift
+
+`src/memripal/probe_metrics.py`:
+- `Box` frozen dataclass(x1, y1, x2, y2: int; w, h: int; confidence: float | None); `area` property
+  (x2-x1)*(y2-y1).
+- `parse_boxes(text: str) -> list[Box]`: every `<|box;...|>` token, key=value pairs any order; c -> confidence else
+  None; token missing any of x1,y1,x2,y2,w,h is skipped; empty text -> [].
+- `largest(boxes) -> Box | None`; `iou(a: Box, b: Box) -> float`.
+- `keep_loci(per_phrase: dict[str, list[Box]], img_w: int, img_h: int) -> list[tuple[str, Box]]`: per phrase take
+  the largest box; drop if area < 0.5% or > 40% of img_w*img_h; dedupe in descending area order, dropping any with
+  IoU > 0.5 against an already-kept box. Returned in descending area order.
+- `drift_outside_bbox(orig: bytes, edited: bytes, box: Box, scale: float = 1.5) -> float`: decode both (Pillow),
+  resize edited to orig dims, mean abs diff over RGB channels (0-255, no grayscale) of pixels OUTSIDE the box scaled
+  by `scale` about its centre (clamped to image). Identical images -> 0.0. All pixels inside -> 0.0.
+- `crop_for_edit(jpeg: bytes, box: Box, min_side: int = 512) -> bytes`: JPEG crop of box + 25% margin each side,
+  grown to at least min_side per side where the image allows, clamped to image bounds.
+
+Tests: tests/test_probe_metrics.py
+
+## MEM-008 Live probe
+
+`src/memripal/probe.py` + `scripts/probe_live.py`. Claude never runs live mode; tests use a mocked MetaClient.
+`run_probe(client: MetaClient, photo_jpeg: bytes, *, clock=time.perf_counter) -> dict`, in order:
+1. Spark phrase list: chat_json with image, schema {"phrases": array of string}; prompt asks 20-25 short concrete
+   noun phrases of distinct objects/places visible in the photo.
+2. SAM per phrase (sequential), parse_boxes on responses_text.
+3. keep_loci; if < 10 kept, ONE re-ask Spark round (prompt lists kept phrases to exclude) + SAM on the new phrases,
+   merged and re-kept. Report `reask_used`.
+4. One association: chat_json (no image), schema {"item","locus","scene"} all strings, item "toothbrush", locus =
+   first kept phrase (skipped with reason if none kept).
+5. Tier-1 edit on whole photo for the first kept locus, prompt "add a giant toothbrush at the <phrase>; keep
+   everything else exactly as is"; record output dims, latency, drift_outside_bbox.
+6. Tier-2 edit on crop_for_edit of the same locus; record output dims, latency.
+
+Report:
+- Keys "phrases", "kept_loci" (list of {phrase, box}), "kept_count", "reask_used", "calls" (list of {kind, ok,
+  status, attempts, latency_s, error}), "checks" with exactly the 5 plan checks: "schema_image_ok" (bool),
+  "parser_installs" (bool: `importlib.util.find_spec("meta_sam_parser")` is not None), "score_present" (bool: any
+  parsed box has confidence), "image_output_dims" ([w,h] or null), "drift_metric" (float or null).
+- Any failed call is recorded, never raised; later steps depending on it record null.
+- Never contains the key or raw image bytes.
+
+`scripts/probe_live.py --photo <path> [--out <dir>]`: key ONLY from env META_API_KEY (missing -> stderr message +
+exit 2, no file read); default out `fixtures/raw/probe/<UTC timestamp>/` (gitignored by fixtures/raw/**); writes
+report.json + tier1.webp/tier2.webp when present; prints kept_count and checks. Exit 0 if run completed.
+
+Tests: tests/test_probe.py
+
+## MEM-009 Key launcher
+
+`scripts/run_live.ps1`:
+- Params: `-KeyFile` (default `$HOME/.secrets/meta-api-key.dpapi`), then remaining args = child command (default
+  `uv run uvicorn memripal.app:app --port 8000`).
+- Decrypts `Get-Content $KeyFile | ConvertTo-SecureString` -> plaintext via NetworkCredential, set ONLY on a
+  `System.Diagnostics.ProcessStartInfo` Environment (META_API_KEY, MEMRIPAL_MODE "meta"), UseShellExecute false;
+  waits for child, exits with child's exit code.
+- Never writes the key to a file, stdout, the parent env, or a transcript. Missing key file -> stderr message, exit 2.
+- Test (Windows only, skip elsewhere): tmp DPAPI file holding a fake key encoded like the README one-liner
+  (ConvertFrom-SecureString); child `python -c` prints len(META_API_KEY) and MEMRIPAL_MODE; asserts length + "meta",
+  key text absent from stdout/stderr, parent os.environ unchanged. Missing-file case exits 2.
+
+Tests: tests/test_run_live.py
