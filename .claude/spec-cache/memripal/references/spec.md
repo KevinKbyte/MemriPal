@@ -303,3 +303,18 @@ Tests: tests/test_seg_provider.py
   processed demo sha; FixtureBackend serves >= 10 loci for it; MANIFEST lists every fixture (MEM-005).
 
 Tests: static/app.test.mjs, tests/test_fixtures_manifest.py
+
+## MEM-018 Architecture decision log
+
+`docs/decisions/NNNN-slug.md` (NNNN = 4 digits, slug `[a-z0-9-]+`), indexed by `docs/decisions/README.md`:
+- Each ADR has `Status:` and `Date:` lines and the headings Context, Options considered, Decision, Why this over
+  the others, Consequences, exactly in that order.
+- Options considered: >= 2 options (`- ` bullets), each with a `Pros:` and a `Cons:` line. Single-option exception
+  only for ADR 0005 (key custody) and 0009 (image intake), and only when the section says "Alternatives not
+  formally evaluated"; the marker on any other ADR does not lower the minimum.
+- README links every ADR; every README link resolves to an existing file; ADR numbers unique and contiguous from
+  0001.
+- Missing heading/Status/Date, headings out of order, one option, option without Pros or Cons, unlinked ADR,
+  dangling link, numbering gap, duplicate number -> each fails.
+
+Tests: tests/test_decisions_structure.py
