@@ -63,16 +63,17 @@ The Meta Model API needs the hackathon credits claimed and a card on the Billing
 The developer runs these; Claude never runs live mode.
 
 ```powershell
-powershell -File scripts/run_live.ps1 python scripts/probe_live.py --photo <demo photo>
+powershell -File scripts/run_live.ps1 [-KeyFile <path>] uv run python scripts/probe_live.py --photo <demo photo>
 ```
 
-- `run_live.ps1` decrypts the DPAPI key file (`-KeyFile`, default `~/.secrets/meta-api-key.dpapi`) and sets
+- `run_live.ps1` decrypts the DPAPI key file (`-KeyFile <path>`, honored only as the FIRST argument; default
+  `~/.secrets/meta-api-key.dpapi`) and sets
   `META_API_KEY` + `MEMRIPAL_MODE=meta` only in the child process env; it never writes or logs the key, and exits with
   the child's exit code (missing key file: exit 2). With no child command it starts the app
   (`uv run uvicorn memripal.app:app --port 8000`).
 - `probe_live.py` exercises Spark, SAM 3.1 and Muse Image on one photo and writes `report.json` (+ `tier1.webp`,
   `tier2.webp`) to `fixtures/raw/probe/<UTC timestamp>/` (gitignored; override with `--out <dir>`). It reads the key
-  only from `META_API_KEY` (unset: exit 2) and prints the kept-loci count and the 5 plan checks.
+  only from `META_API_KEY` (unset, or photo not found: exit 2) and prints the kept-loci count and the 5 plan checks.
 
 ## Credits
 
