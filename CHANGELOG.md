@@ -7,6 +7,11 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 ### Added
 
 - Architecture decision records `docs/decisions/` (12 ADRs + index), linked from README.
+- Repo `CLAUDE.md`: every architectural decision gets an ADR in the same change.
+
+### Fixed
+
+- Deploy runbook: GCP trial credit is $299, not $300.
 
 ## [0.3.0] - 2026-10-26
 

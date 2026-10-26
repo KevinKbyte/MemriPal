@@ -7,7 +7,7 @@ target procedure (`docs/plans/2026-10-26-memripal.md` D1, D11, D12, S7). Run fro
 ## Why Cloud Run
 
 Decided in plan S7/D10. Cloud Run scales to zero, so an idle demo costs ~0. The Cloud Run free tier (2M requests/month)
-plus the GCP free-trial credit ($300, expires 90 days after signup; the plan records $299) covers a hackathon demo.
+plus the GCP free-trial credit ($299, expires 90 days after signup) covers a hackathon demo.
 GKE adds cluster management; a VM needs patching and bills while idle.
 
 ## 1. One-time project setup

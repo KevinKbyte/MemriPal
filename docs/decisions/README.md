@@ -1,7 +1,11 @@
 # Architecture decisions
 
 One file per architectural decision: `NNNN-slug.md` with Context, Options considered (Pros/Cons), Decision, Why this
-over the others, Consequences. Full history: `docs/plans/2026-10-26-memripal.md`.
+over the others, Consequences. Rule: `CLAUDE.md`. Full history: `docs/plans/2026-10-26-memripal.md`.
+
+Why this log exists, Kev (2026-10-26): "can we make sure we record all architectural decisions, pros/cons of the
+choices and why we chose one over the other in the hackathon documentation" ... "such as why we chose cloud run over
+the others that you asked about".
 
 ## ADRs
 
