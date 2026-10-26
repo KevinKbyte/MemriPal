@@ -119,3 +119,102 @@ class TestGithookPrecommit:
         assert result.returncode != 0, result.stdout + result.stderr
         assert "precommit_scan" in result.stderr
         assert "leaky.py" in result.stderr
+
+
+DECISIONS_TEST = REPO_ROOT / "tests" / "test_decisions_structure.py"
+
+VALID_ADR = """# 0001: Example
+
+Status: Accepted
+Date: 2026-10-26
+
+## Context
+
+Why.
+
+## Options considered
+
+- A.
+  Pros: fast.
+  Cons: costly.
+- B.
+  Pros: cheap.
+  Cons: slow.
+
+## Decision
+
+A.
+
+## Why this over the others
+
+Speed.
+
+## Consequences
+
+- Cost.
+"""
+
+ADR_README = "- [0001](0001-example.md) Example.\n"
+
+
+def _stage(repo: Path, env: dict, files: dict) -> None:
+    for rel, content in files.items():
+        target = repo / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content, encoding="utf-8", newline="\n")
+        assert _git(repo, env, "add", "--", rel).returncode == 0
+
+
+# Covers: MEM-018
+# Requirement: when a commit stages any docs/decisions/* file, the pre-commit hook runs
+# tests/test_decisions_structure.py (via `uv run pytest`) and rejects the commit if it
+# fails, with output naming the violated ADR rule; a valid ADR commits cleanly; commits
+# touching no docs/decisions file never run the ADR check.
+class TestGithookPrecommitAdrStructure:
+    @pytest.fixture
+    def adr_repo(self, hook_repo):
+        repo, env, log = hook_repo
+        (repo / "tests").mkdir()
+        shutil.copyfile(DECISIONS_TEST, repo / "tests" / "test_decisions_structure.py")
+        return repo, env, log
+
+    def test_staged_misnamed_adr_fails_naming_rule(self, adr_repo):
+        repo, env, log = adr_repo
+        _stage(
+            repo,
+            env,
+            {
+                "docs/decisions/README.md": ADR_README,
+                "docs/decisions/0001-example.md": VALID_ADR,
+                "docs/decisions/0002_misnamed.md": VALID_ADR,
+            },
+        )
+        result = _git(repo, env, "commit", "-q", "-m", "adr")
+        output = result.stdout + result.stderr
+        assert result.returncode != 0, output
+        assert "test_decisions_structure" in _uv_calls(log)
+        assert "0002_misnamed.md: not named NNNN-slug.md" in output
+
+    def test_staged_valid_adr_passes(self, adr_repo):
+        repo, env, log = adr_repo
+        _stage(
+            repo,
+            env,
+            {
+                "docs/decisions/README.md": ADR_README,
+                "docs/decisions/0001-example.md": VALID_ADR,
+            },
+        )
+        result = _git(repo, env, "commit", "-q", "-m", "adr")
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert "test_decisions_structure" in _uv_calls(log)
+
+    def test_commit_without_decisions_files_skips_adr_check(self, adr_repo):
+        repo, env, log = adr_repo
+        # An unstaged misnamed ADR in the working tree would fail the check if it ran.
+        stray = repo / "docs" / "decisions" / "0002_misnamed.md"
+        stray.parent.mkdir(parents=True)
+        stray.write_text(VALID_ADR, encoding="utf-8", newline="\n")
+        result = _commit(repo, env, "notes.md", "# Notes\n\nplain text\n")
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert "test_decisions_structure" not in _uv_calls(log)
