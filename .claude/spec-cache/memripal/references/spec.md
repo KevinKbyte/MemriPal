@@ -21,8 +21,9 @@ Tests: tests/test_app.py::TestSelectBackend
 
 ## MEM-003 Logical-key write-through cache + fixture replay
 
-- `CacheKey` frozen dataclass(method: str, photo_sha: str, subject: str, attempt: int = 0,
-  prompt_version: str = PROMPT_VERSION).
+- **Superseded by MEM-014:** `CacheKey` frozen dataclass(method: str, photo_sha: str, subject: str, attempt: int = 0,
+  prompt_version: str = PROMPT_VERSION). Now derived from a `ModelRequest` and also carries model id + gen-params
+  digest; photo_sha is never caller-supplied.
 - `CacheKey.digest() -> str`: sha256 hex of json.dumps(asdict(self), sort_keys=True, separators=(",", ":")).
   Equal fields -> equal digest; any field change -> different digest. No auth/request-bytes field exists.
 - `ResponseCache(root: pathlib.Path)`: `put(key, body: bytes) -> pathlib.Path`, `get(key) -> bytes | None`.
@@ -31,7 +32,10 @@ Tests: tests/test_app.py::TestSelectBackend
 - `FixtureBackend(root)`: segment(photo_sha, phrase, attempt=0) -> str (utf-8); spark_json(photo_sha, subject,
   attempt=0) -> dict (json.loads); image_edit(photo_sha, subject, attempt=0) -> bytes.
 - Miss -> `FixtureMissing` (subclass of LookupError), message includes method and digest.
-- `ModelBackend` is a typing.Protocol with those three methods. Exceptions live in memripal.backend.
+- **Superseded by MEM-014:** `ModelBackend` is a typing.Protocol with those three methods. Now the Protocol is
+  `call(req: ModelRequest)`; the three positional methods remain as shims that build a `ModelRequest`, so MEM-003
+  callers and tests are unchanged.
+- Exceptions live in memripal.backend.
 
 Tests: tests/test_backend.py::TestCacheKeyDigest, ::TestResponseCache, ::TestFixtureBackend
 
@@ -189,3 +193,113 @@ Tests: tests/test_meta_client_asr.py
 - `scripts/probe_live.py --audio <wav>` passes the file bytes as audio_wav.
 
 Tests: tests/test_probe_asr.py
+
+## MEM-012 Image intake
+
+`src/memripal/imaging.py`: MAX_UPLOAD_BYTES = 15 * 1024 * 1024, MAX_PIXELS = 40_000_000, MAX_SIDE = 8000,
+LONG_SIDE = 2048.
+- `ImageRejected(ValueError)`: str(exc) = reason code; `.status` 413 for "too_large", else 400.
+- `sniff(data) -> "jpeg" | "png" | "webp"` by magic (`FF D8 FF`, `89 50 4E 47 0D 0A 1A 0A`, `RIFF....WEBP`); anything
+  else, incl. truncated magic -> "bad_magic".
+- `process_upload(data) -> Processed` (frozen: jpeg: bytes, width, height: int, sha: str). Checks in order: "empty"
+  -> "too_large" (> MAX_UPLOAD_BYTES; exactly 15 MiB passes) -> "bad_magic" -> "pixel_bomb" (w*h > MAX_PIXELS or a
+  side > MAX_SIDE, read from the header before any decode). Then EXIF orientation applied, RGB, long side downscaled
+  to LONG_SIDE (never upscaled), JPEG q90 with no EXIF/ICC/comment; sha = sha256 hex of jpeg. Any Pillow decode
+  error -> "decode_error".
+- Orientation-6 300x100 -> 100x300, no `Exif\x00\x00` APP1 in output. 4000x3000 -> 2048x1536; 800x600 unchanged;
+  same input twice -> same sha.
+- `validate_processed(data) -> Processed`: same empty/size/magic/header checks, then "not_jpeg", "has_exif" (APP1
+  Exif), "too_big_side" (long side > LONG_SIDE). Never re-encodes: `jpeg is data`, sha = sha256(data).
+  `validate_processed(process_upload(x).jpeg)` returns identical bytes and sha. For S3/S4 re-validating the
+  client-returned photo (re-encoding is non-deterministic across rounds).
+
+Tests: tests/test_imaging.py
+
+## MEM-013 Locus selection
+
+`src/memripal/loci.py` (pure); MEM-007 `keep_loci` unchanged.
+- `Locus` frozen(n: int, label: str, phrase: str, box: Box, outline: list[tuple[int, int]]); outline = the 4 bbox
+  corners.
+- `sanitize_box(box, img_w, img_h) -> Box | None`: scaled via `scaled_to`; None unless 0 <= x1 < x2 <= img_w and
+  0 <= y1 < y2 <= img_h (out-of-frame, negative, zero-width, w=0 frame rejected).
+- `select_loci(per_phrase, img_w, img_h, *, min_loci=10, max_loci=12, spacing=0.05) -> list[tuple[str, Box]]`, in
+  order: (1) area filter 0.5%..40% inclusive (keep_loci integer math) on every box; (2) per phrase largest = primary,
+  rest = spares; (3) IoU > 0.5 dedupe over primaries, descending area; (4) centroid distance < spacing * diagonal ->
+  keep the larger; (5) only while fewer than min_loci remain, add spares largest first that pass (3) and (4);
+  (6) cap to max_loci by area.
+- One phrase with 3 valid boxes + 7 other phrases -> 10 loci incl. all 3 books; + 12 other phrases -> at most one
+  book. Centroids 3% of diagonal apart -> 1 kept (larger); 6% -> 2. 13+ survivors -> exactly 12.
+- `disambiguate(selected) -> list[tuple[label, phrase, box]]`: label = last word of phrase, lowercased; a label
+  appearing k >= 2 times is prefixed by centroid-x position: k=2 "left/right", k=3 "left/middle/right", k > 3
+  "<noun> 1..k" left to right. Phrase unchanged. S3 validates against the full label ("left book").
+- `route_order(items, img_h)`: sort by centroid y; new row when centroid y exceeds the row's first centroid y by
+  more than 10% of img_h; rows top to bottom, left to right within a row; n = 1.. in that order. 2 rows x 3 jittered
+  boxes -> n=1..6 top-left to bottom-right.
+
+Tests: tests/test_loci_select.py
+
+## MEM-014 Loci pipeline + live backend calls
+
+a) `src/memripal/backend.py`:
+- Frozen `ModelRequest(method, image_jpeg, subject, attempt, model, prompt_template_id, gen_params, schema)`;
+  `ModelBackend.call(req)`. `CacheKey` derived from it: photo_sha = sha256(image_jpeg) (always computed, matches
+  `^[0-9a-f]{64}$`, no caller-supplied sha path), model id, gen-params digest, PROMPT_VERSION derived from the prompt
+  templates incl. `PHRASE_PROMPT`, `PHRASE_SCHEMA`, `_reask_prompt`.
+- FixtureBackend replays by the derived key. MetaBackend sends the request via `MetaClient.segment` / `chat_json`
+  (MetaClient imported lazily, never at module top); request without image -> ValueError; `CallResult.ok` false ->
+  `BackendCallFailed` (error code only; str never holds body or key).
+- Write-through only for a complete, successful, schema-valid response, atomically (temp + replace); failed or
+  schema-invalid -> no file.
+- Positional MEM-003 `segment()`/`spark_json()` shims build a `ModelRequest`; MEM-003 tests stay green.
+
+b) `find_loci(backend, processed, *, workers=6, deadline_s=90.0, on_progress=None) -> LociResult` (frozen: loci,
+phrases, reask_used) in `loci.py`:
+- spark_json subject "phrases" (PHRASE_PROMPT, PHRASE_SCHEMA, image) -> phrases stripped; empty, case-fold
+  duplicate, non-string, > 40 chars or control-char entries excluded; capped at 30 -> SAM per phrase in
+  ThreadPoolExecutor(workers) -> `parse_boxes` (text > 256 KB = no boxes) -> `sanitize_box` -> `select_loci` -> if
+  < 10, ONE re-ask (subject "phrases-reask", `_reask_prompt(kept phrases)`, SAM on new phrases only) -> re-select ->
+  `disambiguate` -> `route_order`.
+- 12 good phrases -> 12 loci, no re-ask; 7 -> re-ask called once excluding the 7 kept -> >= 10.
+- One phrase's failed SAM call = no boxes for it, run continues; failed first Spark call -> `BackendCallFailed`.
+- Deadline (wall clock): phrases pending at deadline_s = no boxes; re-ask skipped when < 15 s remain.
+- `on_progress` fires once per finished phrase; None = no-op.
+- FixtureBackend replay of the synthetic demo -> identical LociResult twice.
+
+Tests: tests/test_backend.py, tests/test_loci_pipeline.py
+
+## MEM-015 POST /loci
+
+`src/memripal/app.py`. Body = raw image bytes, Content-Type image/jpeg|png|webp, else 415. Content-Length
+> 15 MiB -> 413 before reading; body read via `request.stream()` with a running cap (never `request.body()`),
+chunked body past 15 MiB -> 413. Pipeline: `process_upload` -> `find_loci`.
+- 200 JSON: {"image": "data:image/jpeg;base64,...", "width", "height", "photo_sha", "reask_used", "loci": [{"n",
+  "label", "phrase", "box": {"x1","y1","x2","y2"}, "outline": [[x,y],...]}]}; image carries no EXIF.
+- ImageRejected -> its status + {"error": code}; FixtureMissing -> 404 {"error": "fixture_missing"};
+  BackendCallFailed -> 502 {"error": "upstream"}. No model text in error bodies.
+- Demo photo on fixture backend -> >= 10 loci. `scripts/run_live.ps1` binds `--host 127.0.0.1`, never 0.0.0.0
+  (until the S7 passcode).
+
+Tests: tests/test_loci_api.py
+
+## MEM-016 Segmentation provider toggle
+
+`src/memripal/seg_provider.py`. Env MEMRIPAL_SEG_PROVIDER = "meta" (default) | "modal"; other -> ValueError at
+startup. "modal" = `ModalSegClient` (URL from MEMRIPAL_MODAL_SEG_URL, token from MODAL_SEG_TOKEN) mapping
+{"boxes": [{"x1","y1","x2","y2","score"}], "w", "h"} to SAM-style token text, so `parse_boxes` onward is unchanged.
+- 2 boxes -> 2 parsed Boxes with confidence; malformed JSON -> zero boxes, no raise. Mocked transport only.
+
+Tests: tests/test_seg_provider.py
+
+## MEM-017 Upload UI + demo fixtures
+
+`static/index.html`, `static/app.js`:
+- Meta mode (from /healthz): notice "Your photo is sent to Meta's AI APIs to find places in it" before the file
+  input. Input `<input type="file" accept="image/*" capture="environment">`.
+- Client re-encode: `createImageBitmap(file, {imageOrientation: "from-image"})` -> canvas ->
+  `toBlob("image/jpeg", 0.9)` -> POST /loci; draws the returned image + numbered rectangles; labels via
+  `textContent` only.
+- Helpers: `locusCaption(locus) -> "1. left book"`; `fitScale(imgW, imgH, maxW) -> number`.
+- `scripts/make_synthetic_fixtures.py` writes >= 12 phrases keyed by `process_upload(photo).sha`; a test pins that
+  processed demo sha; FixtureBackend serves >= 10 loci for it; MANIFEST lists every fixture (MEM-005).
+
+Tests: static/app.test.mjs, tests/test_fixtures_manifest.py
