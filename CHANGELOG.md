@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-26
+
+### Added
+
+- S2.3a `ModelRequest` + derived `RequestKey` in `src/memripal/backend.py`: photo_sha derived from image bytes, digest-compatible
+  with `CacheKey`; `MetaBackend.call()` writes through only schema-valid content; atomic `ResponseCache.put` (MEM-014).
+- ADR 0013 derived request key.
+
 ## [0.4.0] - 2026-10-26
 
 ### Added
