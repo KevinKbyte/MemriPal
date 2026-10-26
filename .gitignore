@@ -1,5 +1,6 @@
 .env
 fixtures/raw/**
+refs/private/
 .venv/
 __pycache__/
 .pytest_cache/
