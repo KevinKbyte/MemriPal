@@ -4,9 +4,9 @@
 # and the tier-1 (whole photo) and tier-2 (crop) toothbrush edits, then reports phrases,
 # kept loci, the 5 plan checks and every call's outcome; failed calls are recorded, never
 # raised, with dependent results null; malformed HTTP-200 bodies (unparseable JSON, empty
-# choices, undecodable image bytes) null only the affected report field and the run
-# continues; the report never holds the key or raw image bytes; and probe_live.py
-# refuses to run (exit 2) when META_API_KEY is absent.
+# choices, undecodable image bytes, decompression-bomb images, inverted SAM boxes) null
+# only the affected report field and the run continues; the report never holds the key
+# or raw image bytes; and probe_live.py refuses to run (exit 2) when META_API_KEY is absent.
 import base64
 import importlib.util
 import itertools
@@ -305,6 +305,56 @@ class TestRunProbeMalformedResponses:
         assert r["checks"]["image_output_dims"] is None
         assert r["checks"]["drift_metric"] is None
         assert r["association"] == {"item": "toothbrush", "locus": "x", "scene": "a scene"}
+        json.dumps(r)
+
+
+class HostileMeta(FakeMeta):
+    """FakeMeta whose SAM answers with a fixed token and/or whose edits return fixed image bytes."""
+
+    def __init__(self, rounds, *, sam_text: str | None = None, edit_image: bytes | None = None):
+        super().__init__(rounds)
+        self.sam_text = sam_text
+        self.edit_image = edit_image
+
+    def __call__(self, request: httpx.Request) -> httpx.Response:
+        path = request.url.path
+        if self.sam_text is not None and path.endswith("/responses"):
+            self.sam_calls.append(json.loads(request.content))
+            return httpx.Response(200, json={"output_text": self.sam_text})
+        if self.edit_image is not None and path.endswith("/images/edits"):
+            self.edit_calls.append(json.loads(request.content))
+            b64 = base64.b64encode(self.edit_image).decode()
+            return httpx.Response(200, json={"data": [{"b64_json": b64}]})
+        return super().__call__(request)
+
+
+class TestRunProbeHostileResponses:
+    # Covers: MEM-008
+
+    def test_only_inverted_sam_boxes_finish_with_no_kept_loci(self):
+        inverted = "<|box;x1=600;y1=600;x2=400;y2=400;w=1000;h=1000;c=0.9|>"
+        fake = HostileMeta([ALL_PHRASES[:12]], sam_text=inverted)
+        r = probe(fake)
+        assert r["kept_count"] == 0
+        assert r["kept_loci"] == []
+        assert r["association_skipped"] == "no kept loci"
+        assert fake.edit_calls == []
+        assert r["checks"]["image_output_dims"] is None
+        json.dumps(r)
+
+    def test_decompression_bomb_edit_image_gives_null_dims(self, monkeypatch):
+        # 1500x1500 = 2.25 Mpx exceeds 2 * MAX_IMAGE_PIXELS, so PIL raises DecompressionBombError;
+        # the 1000x1000 input photo (1 Mpx) stays under the limit.
+        buf = BytesIO()
+        Image.new("RGB", (1500, 1500), (10, 20, 30)).save(buf, format="WEBP")
+        monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 1_000_000)
+        fake = HostileMeta([ALL_PHRASES[:12]], edit_image=buf.getvalue())
+        r = probe(fake)
+        assert len(fake.edit_calls) == 2
+        assert r["tier1"]["dims"] is None
+        assert r["tier2"]["dims"] is None
+        assert r["checks"]["image_output_dims"] is None
+        assert r["checks"]["drift_metric"] is None
         json.dumps(r)
 
 

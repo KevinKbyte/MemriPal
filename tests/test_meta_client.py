@@ -1,9 +1,13 @@
 # Covers: MEM-006
 # Requirement: the Meta HTTP client sends the documented JSON payloads for Spark chat
 # (strict json_schema, optional image), SAM segmentation and image edits with a bearer
-# header; retries only 429/500/503 and transport errors (Retry-After honoured, capped at
-# 60s, else exponential backoff plus jitter, at most 3 attempts); returns a CallResult
-# instead of raising; never leaks the API key in errors or repr; and offers pure helpers
+# header; retries only 429/500/503 and connect-phase transport errors (ConnectError,
+# ConnectTimeout; never read/protocol errors after the request may have been sent)
+# (Retry-After honoured, capped at 60s, else exponential backoff plus jitter, at most 3
+# attempts); rejects a response body over MAX_RESPONSE_BYTES as a non-retryable error
+# without returning its content; surfaces a server error code only when it matches
+# [A-Za-z0-9_.-]{1,64}, else "http_error"; returns a CallResult instead of raising;
+# never leaks the API key in errors or repr; and offers pure helpers
 # to unpack chat JSON, SAM text, edited image bytes and to build JPEG data URLs.
 import base64
 import dataclasses
@@ -11,6 +15,9 @@ import json
 
 import httpx
 import pytest
+
+from memripal import meta_client
+from memripal.backend import MissingApiKey
 from memripal.meta_client import (
     CallResult,
     MetaClient,
@@ -19,8 +26,6 @@ from memripal.meta_client import (
     responses_text,
     to_data_url,
 )
-
-from memripal.backend import MissingApiKey
 
 # Built by concatenation so this file never matches the pre-commit secret scanner (MEM-004).
 KEY = "fake" + "-meta-" + "k" * 24
@@ -231,7 +236,7 @@ class TestRetry:
         assert len(sleeps) == 1
 
     @pytest.mark.parametrize(
-        "exc_type", [httpx.ConnectError, httpx.ReadTimeout], ids=["ConnectError", "ReadTimeout"]
+        "exc_type", [httpx.ConnectError, httpx.ConnectTimeout], ids=["ConnectError", "ConnectTimeout"]
     )
     def test_transport_error_exhausted(self, exc_type):
         rec = Recorder(exc_type("failed"))
@@ -243,12 +248,97 @@ class TestRetry:
         assert len(sleeps) == 2
         assert result.error == f"transport: {exc_type.__name__}"
 
+    @pytest.mark.parametrize(
+        "exc",
+        [httpx.ReadTimeout("slow"), httpx.RemoteProtocolError("cut"), httpx.WriteTimeout("stuck")],
+        ids=["ReadTimeout", "RemoteProtocolError", "WriteTimeout"],
+    )
+    def test_post_connect_transport_error_not_retried(self, exc):
+        # The request may already have reached the server: retrying could double-bill a paid call.
+        rec = Recorder(exc, ok())
+        client, sleeps = make_client(rec)
+        result = client.post("/x", {})
+        assert result.ok is False
+        assert result.status is None
+        assert result.attempts == 1
+        assert len(rec.requests) == 1
+        assert sleeps == []
+        assert result.error == f"transport: {type(exc).__name__}"
+
+    def test_connect_timeout_retried_then_success(self):
+        rec = Recorder(httpx.ConnectTimeout("slow dns"), ok())
+        client, sleeps = make_client(rec)
+        result = client.post("/x", {})
+        assert result.ok is True
+        assert result.attempts == 2
+        assert len(sleeps) == 1
+
+    @pytest.mark.parametrize(
+        "code",
+        [
+            "has space",
+            "x" * 65,
+            "<script>alert(1)</script>",
+            "line\nbreak",
+            "path/like",
+            "",
+        ],
+        ids=["space", "65_chars", "markup", "newline", "slash", "empty"],
+    )
+    def test_error_code_outside_safe_charset_or_length_uses_http_error(self, code):
+        rec = Recorder(err(400, code=code))
+        client, _ = make_client(rec)
+        assert client.post("/x", {}).error == "400 http_error"
+
+    @pytest.mark.parametrize("code", ["invalid_api_key", "rate.limit-exceeded_2", "x" * 64, "A"])
+    def test_error_code_in_safe_charset_up_to_64_chars_surfaced(self, code):
+        rec = Recorder(err(400, code=code))
+        client, _ = make_client(rec)
+        assert client.post("/x", {}).error == f"400 {code}"
+
+    def test_non_string_error_code_uses_http_error(self):
+        rec = Recorder(err(400, code=123))  # type: ignore[arg-type]
+        client, _ = make_client(rec)
+        assert client.post("/x", {}).error == "400 http_error"
+
     def test_max_retries_zero_means_single_attempt(self):
         rec = Recorder(err(500), ok())
         client, sleeps = make_client(rec, max_retries=0)
         result = client.post("/x", {})
         assert result.attempts == 1
         assert sleeps == []
+
+
+class TestResponseSizeCap:
+    # Covers: MEM-006
+
+    def test_cap_constant_is_a_sane_size(self):
+        cap = meta_client.MAX_RESPONSE_BYTES
+        assert isinstance(cap, int)
+        assert 8 * 1024 * 1024 <= cap <= 64 * 1024 * 1024
+
+    def test_body_at_cap_is_accepted(self):
+        cap = meta_client.MAX_RESPONSE_BYTES
+        rec = Recorder(httpx.Response(200, content=b"a" * cap))
+        client, _ = make_client(rec)
+        result = client.post("/x", {})
+        assert result.ok is True
+        assert len(result.body) == cap
+
+    @pytest.mark.parametrize("status", [200, 500])
+    def test_body_over_cap_is_non_retryable_error_without_content(self, status):
+        cap = meta_client.MAX_RESPONSE_BYTES
+        marker = b"SECRET-ECHO-"
+        rec = Recorder(httpx.Response(status, content=marker + b"a" * cap), ok())
+        client, sleeps = make_client(rec)
+        result = client.post("/x", {})
+        assert result.ok is False
+        assert result.status == status
+        assert result.attempts == 1
+        assert len(rec.requests) == 1
+        assert sleeps == []
+        assert result.body == b""
+        assert result.error == f"{status} response_too_large"
 
 
 class TestCallResultAndSecrecy:

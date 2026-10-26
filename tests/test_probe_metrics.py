@@ -1,6 +1,7 @@
 # Covers: MEM-007
 # Requirement: SAM box tokens are parsed (any key order, optional confidence, malformed
-# tokens skipped); usable memory loci are chosen as each phrase's largest box within
+# tokens and inverted, zero-area, negative-coordinate or non-positive-frame boxes
+# skipped); usable memory loci are chosen as each phrase's largest box within
 # 0.5%-40% of the image area, de-duplicated by IoU > 0.5 and ordered largest first; edit
 # drift is the mean RGB difference outside a 1.5x-scaled box (edited image resized to
 # the original); and edit crops pad the box by 25%, grow toward a minimum side and stay
@@ -8,6 +9,8 @@
 from io import BytesIO
 
 import pytest
+from PIL import Image
+
 from memripal.probe_metrics import (
     Box,
     crop_for_edit,
@@ -17,7 +20,6 @@ from memripal.probe_metrics import (
     largest,
     parse_boxes,
 )
-from PIL import Image
 
 
 def box(x1, y1, x2, y2, w=1000, h=1000, c=None) -> Box:
@@ -75,6 +77,29 @@ class TestParseBoxes:
 
     def test_area(self):
         assert box(10, 20, 40, 70).area == 30 * 50
+
+    @pytest.mark.parametrize(
+        "fields",
+        [
+            "x1=60;y1=10;x2=40;y2=50;w=100;h=100",  # x2 < x1
+            "x1=10;y1=50;x2=40;y2=20;w=100;h=100",  # y2 < y1
+            "x1=60;y1=50;x2=40;y2=20;w=100;h=100",  # both inverted (positive "area")
+            "x1=40;y1=10;x2=40;y2=50;w=100;h=100",  # zero width
+            "x1=10;y1=50;x2=40;y2=50;w=100;h=100",  # zero height
+            "x1=10;y1=10;x2=40;y2=50;w=0;h=100",  # w = 0
+            "x1=10;y1=10;x2=40;y2=50;w=100;h=-5",  # h < 0
+            "x1=-10;y1=10;x2=40;y2=50;w=100;h=100",  # negative x1
+            "x1=10;y1=-1;x2=40;y2=50;w=100;h=100",  # negative y1
+        ],
+        ids=["x_inverted", "y_inverted", "both_inverted", "zero_width", "zero_height", "w_zero",
+             "h_negative", "x1_negative", "y1_negative"],
+    )
+    def test_inverted_degenerate_or_negative_box_is_rejected(self, fields):
+        text = f"<|box;{fields}|><|box;x1=5;y1=5;x2=9;y2=9;w=10;h=10|>"
+        assert parse_boxes(text) == [box(5, 5, 9, 9, w=10, h=10)]
+
+    def test_box_touching_frame_origin_is_valid(self):
+        assert parse_boxes("<|box;x1=0;y1=0;x2=1;y2=1;w=1;h=1|>") == [box(0, 0, 1, 1, w=1, h=1)]
 
 
 class TestLargestAndIou:
@@ -144,6 +169,10 @@ class TestKeepLoci:
         }
         kept = keep_loci(per, 1000, 1000)
         assert [p for p, _ in kept] == ["l", "m", "s"]
+
+    def test_inverted_box_never_kept_even_with_in_range_area(self):
+        inverted = box(600, 600, 400, 400)  # (x2-x1)*(y2-y1) = 40000 = 4%, but not a real box
+        assert keep_loci({"ghost": [inverted]}, 1000, 1000) == []
 
     def test_empty_inputs(self):
         assert keep_loci({}, 1000, 1000) == []
