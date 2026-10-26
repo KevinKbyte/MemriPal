@@ -57,8 +57,18 @@ def _make_key_file(tmp_path: Path) -> Path:
 def _launch(key_file: Path, code: str) -> subprocess.CompletedProcess:
     return subprocess.run(
         [
-            POWERSHELL, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
-            "-File", str(LAUNCHER), "-KeyFile", str(key_file), sys.executable, "-c", code,
+            POWERSHELL,
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(LAUNCHER),
+            "-KeyFile",
+            str(key_file),
+            sys.executable,
+            "-c",
+            code,
         ],
         env=_ps_env(),
         capture_output=True,

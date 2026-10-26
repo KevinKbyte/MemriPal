@@ -30,8 +30,23 @@ PROBE_SCRIPT = REPO_ROOT / "scripts" / "probe_live.py"
 KEY = "fake" + "-probe-" + "q" * 24
 
 ALL_PHRASES = [
-    "armchair", "bookcase", "clock", "doormat", "easel", "fern", "guitar", "hat rack",
-    "ironing board", "jar", "kettle", "ladder", "mirror", "nightstand", "ottoman", "piano", "quilt",
+    "armchair",
+    "bookcase",
+    "clock",
+    "doormat",
+    "easel",
+    "fern",
+    "guitar",
+    "hat rack",
+    "ironing board",
+    "jar",
+    "kettle",
+    "ladder",
+    "mirror",
+    "nightstand",
+    "ottoman",
+    "piano",
+    "quilt",
 ]
 EXPECTED_CHECKS = {"schema_image_ok", "parser_installs", "score_present", "image_output_dims", "drift_metric"}
 CALL_KEYS = {"kind", "ok", "status", "attempts", "latency_s", "error"}

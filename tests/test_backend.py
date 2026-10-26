@@ -147,9 +147,7 @@ class TestFixtureBackend:
     def test_segment_uses_attempt_in_key(self, tmp_path):
         cache = ResponseCache(tmp_path)
         cache.put(CacheKey(method="segment", photo_sha=PHOTO_SHA, subject="book"), b"a0")
-        cache.put(
-            CacheKey(method="segment", photo_sha=PHOTO_SHA, subject="book", attempt=1), b"a1"
-        )
+        cache.put(CacheKey(method="segment", photo_sha=PHOTO_SHA, subject="book", attempt=1), b"a1")
         backend = FixtureBackend(tmp_path)
         assert backend.segment(PHOTO_SHA, "book") == "a0"
         assert backend.segment(PHOTO_SHA, "book", attempt=1) == "a1"
@@ -190,8 +188,6 @@ class TestFixtureBackend:
         assert digest in message
 
     def test_miss_for_other_attempt_raises_fixture_missing(self, tmp_path):
-        ResponseCache(tmp_path).put(
-            CacheKey(method="segment", photo_sha=PHOTO_SHA, subject="book"), b"a0"
-        )
+        ResponseCache(tmp_path).put(CacheKey(method="segment", photo_sha=PHOTO_SHA, subject="book"), b"a0")
         with pytest.raises(FixtureMissing):
             FixtureBackend(tmp_path).segment(PHOTO_SHA, "book", attempt=1)

@@ -91,8 +91,17 @@ class TestParseBoxes:
             "x1=-10;y1=10;x2=40;y2=50;w=100;h=100",  # negative x1
             "x1=10;y1=-1;x2=40;y2=50;w=100;h=100",  # negative y1
         ],
-        ids=["x_inverted", "y_inverted", "both_inverted", "zero_width", "zero_height", "w_zero",
-             "h_negative", "x1_negative", "y1_negative"],
+        ids=[
+            "x_inverted",
+            "y_inverted",
+            "both_inverted",
+            "zero_width",
+            "zero_height",
+            "w_zero",
+            "h_negative",
+            "x1_negative",
+            "y1_negative",
+        ],
     )
     def test_inverted_degenerate_or_negative_box_is_rejected(self, fields):
         text = f"<|box;{fields}|><|box;x1=5;y1=5;x2=9;y2=9;w=10;h=10|>"

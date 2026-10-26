@@ -44,7 +44,10 @@ def _wav(seconds: float = 0.1, rate: int = 16000) -> bytes:
 
 WAV = _wav()
 DEFAULT_ASR = {
-    "sessionId": "s", "transcript": "toothbrush on the armchair", "audioDurationMs": 100, "turns": []
+    "sessionId": "s",
+    "transcript": "toothbrush on the armchair",
+    "audioDurationMs": 100,
+    "turns": [],
 }
 
 
