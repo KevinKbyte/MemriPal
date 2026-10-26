@@ -3,8 +3,10 @@
 # (with exactly one Spark re-ask round when fewer than 10 loci survive), one association
 # and the tier-1 (whole photo) and tier-2 (crop) toothbrush edits, then reports phrases,
 # kept loci, the 5 plan checks and every call's outcome; failed calls are recorded, never
-# raised, with dependent results null; the report never holds the key or raw image bytes;
-# and probe_live.py refuses to run (exit 2) when META_API_KEY is absent.
+# raised, with dependent results null; malformed HTTP-200 bodies (unparseable JSON, empty
+# choices, undecodable image bytes) null only the affected report field and the run
+# continues; the report never holds the key or raw image bytes; and probe_live.py
+# refuses to run (exit 2) when META_API_KEY is absent.
 import base64
 import importlib.util
 import itertools
@@ -16,9 +18,10 @@ from io import BytesIO
 from pathlib import Path
 
 import httpx
+from PIL import Image
+
 from memripal.meta_client import MetaClient, to_data_url
 from memripal.probe import run_probe
-from PIL import Image
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PROBE_SCRIPT = REPO_ROOT / "scripts" / "probe_live.py"
@@ -243,6 +246,65 @@ class TestRunProbeFailures:
         edit_failures = [c for c in r["calls"] if c["status"] == 413]
         assert len(edit_failures) == 2
         assert all(c["ok"] is False and c["attempts"] == 1 for c in edit_failures)
+        json.dumps(r)
+
+
+class MalformedMeta(FakeMeta):
+    """FakeMeta whose chosen endpoint answers HTTP 200 with a body the parsers cannot read."""
+
+    def __init__(self, rounds, *, malformed: str):
+        super().__init__(rounds)
+        self.malformed = malformed
+
+    def __call__(self, request: httpx.Request) -> httpx.Response:
+        payload = json.loads(request.content)
+        path = request.url.path
+        is_chat = path.endswith("/chat/completions")
+        is_phrase = is_chat and '"phrases"' in json.dumps(payload["response_format"]["json_schema"]["schema"])
+        if self.malformed == "phrases" and is_phrase:
+            self.phrase_calls.append(payload)
+            return httpx.Response(200, json={"choices": []})
+        if self.malformed == "association" and is_chat and not is_phrase:
+            self.assoc_calls.append(payload)
+            return httpx.Response(200, json={"choices": [{"message": {"content": "not json {"}}]})
+        if self.malformed == "edit" and path.endswith("/images/edits"):
+            self.edit_calls.append(payload)
+            junk = base64.b64encode(b"definitely not an image").decode()
+            return httpx.Response(200, json={"data": [{"b64_json": junk}]})
+        return super().__call__(request)
+
+
+class TestRunProbeMalformedResponses:
+    # Covers: MEM-008
+
+    def test_malformed_phrase_body_nulls_schema_check_and_continues(self):
+        fake = MalformedMeta([ALL_PHRASES[:12]], malformed="phrases")
+        r = probe(fake)
+        assert r["checks"]["schema_image_ok"] is False
+        assert r["kept_count"] == 0
+        assert r["association"] is None
+        assert r["association_skipped"] == "no kept loci"
+        assert [c["ok"] for c in r["calls"] if c["kind"] == "spark_phrases"] == [True]
+        json.dumps(r)
+
+    def test_malformed_association_body_gives_null_association_and_edits_still_run(self):
+        fake = MalformedMeta([ALL_PHRASES[:12]], malformed="association")
+        r = probe(fake)
+        assert r["association"] is None
+        assert len(fake.assoc_calls) == 1
+        assert len(fake.edit_calls) == 2
+        assert r["checks"]["image_output_dims"] == [640, 480]
+        assert isinstance(r["checks"]["drift_metric"], float)
+
+    def test_undecodable_edit_image_gives_null_dims_and_drift(self):
+        fake = MalformedMeta([ALL_PHRASES[:12]], malformed="edit")
+        r = probe(fake)
+        assert len(fake.edit_calls) == 2
+        assert r["tier1"]["dims"] is None
+        assert r["tier2"]["dims"] is None
+        assert r["checks"]["image_output_dims"] is None
+        assert r["checks"]["drift_metric"] is None
+        assert r["association"] == {"item": "toothbrush", "locus": "x", "scene": "a scene"}
         json.dumps(r)
 
 
