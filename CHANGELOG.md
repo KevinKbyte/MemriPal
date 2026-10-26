@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.3.0] - 2026-10-26
+
+### Added
+
+- Meta speech-to-text client `MetaClient.transcribe` + `transcript_text` in `src/memripal/meta_client.py` (MEM-010).
+- Live probe optional `--audio <clip.wav>`, adding `asr_ok` / `asr_transcript_nonempty` / `asr_has_duration` checks
+  and an `asr` report block (MEM-011).
+
 ## [0.2.0] - 2026-10-26
 
 ### Added
