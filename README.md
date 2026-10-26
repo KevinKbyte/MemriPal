@@ -78,6 +78,10 @@ powershell -File scripts/run_live.ps1 [-KeyFile <path>] uv run python scripts/pr
   `powershell -File scripts/run_live.ps1 [-KeyFile <path>] uv run python scripts/probe_live.py --photo <demo photo>
   --audio <clip.wav>`; the report gains `asr_ok`, `asr_transcript_nonempty`, `asr_has_duration` and an `asr` block.
 
+## Deploy
+
+GCP Cloud Run with Secret Manager keys: [docs/runbooks/deploy-gcp.md](docs/runbooks/deploy-gcp.md).
+
 ## Credits
 
 The KAVE COGS association channels follow the method of Anthony Metivier (Magnetic Memory Method), paraphrased; none
