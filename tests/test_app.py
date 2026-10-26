@@ -1,0 +1,142 @@
+# Requirement: MemriPal serves a liveness endpoint reporting which backend mode is active, and serves the
+# static frontend shell at the root URL, so the demo can be opened in a browser and health-checked.
+# Covers: MEM-001
+# Requirement: MemriPal picks its model backend from an explicit mode or MEMRIPAL_MODE (default offline
+# fixture replay); live "meta" mode refuses to start without META_API_KEY and never leaks the key value.
+# Covers: MEM-002
+import pytest
+from fastapi.testclient import TestClient
+
+from memripal.app import create_app
+from memripal.backend import FixtureBackend, MissingApiKey, select_backend
+
+FAKE_KEY = "fake-test-key-0123456789abcdefXYZ"
+
+
+@pytest.fixture(autouse=True)
+def _clean_env(monkeypatch, tmp_path):
+    monkeypatch.delenv("MEMRIPAL_MODE", raising=False)
+    monkeypatch.delenv("META_API_KEY", raising=False)
+    # Isolate home so nothing under the real ~/.secrets could ever be consulted.
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "home"))
+
+
+# Covers: MEM-001
+class TestHealthAndStaticShell:
+    def test_healthz_default_reports_ok_fixture_mode(self):
+        client = TestClient(create_app())
+        resp = client.get("/healthz")
+        assert resp.status_code == 200
+        assert resp.headers["content-type"].startswith("application/json")
+        assert resp.json() == {"status": "ok", "mode": "fixture"}
+
+    def test_healthz_reports_fixture_mode_for_injected_fixture_backend(self, tmp_path):
+        client = TestClient(create_app(backend=FixtureBackend(tmp_path)))
+        resp = client.get("/healthz")
+        assert resp.status_code == 200
+        assert resp.json() == {"status": "ok", "mode": "fixture"}
+
+    def test_healthz_reports_meta_mode_without_leaking_key(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("META_API_KEY", FAKE_KEY)
+        backend = select_backend("meta", tmp_path)
+        client = TestClient(create_app(backend=backend))
+        resp = client.get("/healthz")
+        assert resp.status_code == 200
+        assert resp.json() == {"status": "ok", "mode": "meta"}
+        assert FAKE_KEY not in resp.text
+
+    def test_root_serves_html_shell(self):
+        client = TestClient(create_app())
+        resp = client.get("/")
+        assert resp.status_code == 200
+        assert resp.headers["content-type"].startswith("text/html")
+        assert "<html" in resp.text.lower()
+
+    def test_module_level_app_serves_healthz(self):
+        from memripal.app import app
+
+        resp = TestClient(app).get("/healthz")
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "ok"
+
+
+# Covers: MEM-002
+class TestSelectBackend:
+    def test_none_mode_without_env_defaults_to_fixture(self, tmp_path):
+        assert isinstance(select_backend(None, tmp_path), FixtureBackend)
+
+    def test_none_mode_reads_env_fixture(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("MEMRIPAL_MODE", "fixture")
+        assert isinstance(select_backend(None, tmp_path), FixtureBackend)
+
+    def test_none_mode_reads_env_meta(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("MEMRIPAL_MODE", "meta")
+        monkeypatch.setenv("META_API_KEY", FAKE_KEY)
+        backend = select_backend(None, tmp_path)
+        assert not isinstance(backend, FixtureBackend)
+        assert type(backend).__name__ == "MetaBackend"
+
+    def test_explicit_fixture_ignores_env_meta(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("MEMRIPAL_MODE", "meta")
+        assert isinstance(select_backend("fixture", tmp_path), FixtureBackend)
+
+    def test_explicit_meta_without_key_raises_missing_api_key(self, tmp_path):
+        with pytest.raises(MissingApiKey):
+            select_backend("meta", tmp_path)
+
+    def test_explicit_meta_with_empty_key_raises_missing_api_key(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("META_API_KEY", "")
+        with pytest.raises(MissingApiKey):
+            select_backend("meta", tmp_path)
+
+    def test_env_meta_without_key_raises_missing_api_key(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("MEMRIPAL_MODE", "meta")
+        with pytest.raises(MissingApiKey):
+            select_backend(None, tmp_path)
+
+    def test_missing_key_never_falls_back_to_secret_files(self, tmp_path):
+        secrets = tmp_path / "home" / ".secrets"
+        secrets.mkdir(parents=True)
+        (secrets / "META_API_KEY").write_text(FAKE_KEY, encoding="utf-8")
+        (tmp_path / ".env").write_text(f"META_API_KEY={FAKE_KEY}\n", encoding="utf-8")
+        with pytest.raises(MissingApiKey) as excinfo:
+            select_backend("meta", tmp_path)
+        assert FAKE_KEY not in str(excinfo.value)
+
+    def test_meta_backend_repr_and_str_never_contain_key(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("META_API_KEY", FAKE_KEY)
+        backend = select_backend("meta", tmp_path)
+        assert FAKE_KEY not in repr(backend)
+        assert FAKE_KEY not in str(backend)
+
+    @pytest.mark.parametrize(
+        ("method", "args"),
+        [
+            ("segment", ("sha", "book")),
+            ("spark_json", ("sha", "phrases")),
+            ("image_edit", ("sha", "book")),
+        ],
+    )
+    def test_meta_backend_methods_not_implemented_without_leaking_key(
+        self, monkeypatch, tmp_path, method, args
+    ):
+        monkeypatch.setenv("META_API_KEY", FAKE_KEY)
+        backend = select_backend("meta", tmp_path)
+        with pytest.raises(NotImplementedError) as excinfo:
+            getattr(backend, method)(*args)
+        assert "S1" in str(excinfo.value)
+        assert FAKE_KEY not in str(excinfo.value)
+        assert FAKE_KEY not in repr(excinfo.value)
+
+    @pytest.mark.parametrize("mode", ["live", "", "FIXTURE ", "openai"])
+    def test_unknown_explicit_mode_raises_value_error_without_key(self, monkeypatch, tmp_path, mode):
+        monkeypatch.setenv("META_API_KEY", FAKE_KEY)
+        with pytest.raises(ValueError) as excinfo:
+            select_backend(mode, tmp_path)
+        assert FAKE_KEY not in str(excinfo.value)
+
+    def test_unknown_env_mode_raises_value_error(self, monkeypatch, tmp_path):
+        monkeypatch.setenv("MEMRIPAL_MODE", "bogus")
+        with pytest.raises(ValueError):
+            select_backend(None, tmp_path)
