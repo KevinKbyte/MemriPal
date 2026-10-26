@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+
+- Architecture decision records `docs/decisions/` (12 ADRs + index), linked from README.
+
 ## [0.3.0] - 2026-10-26
 
 ### Added

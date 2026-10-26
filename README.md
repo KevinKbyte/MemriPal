@@ -82,6 +82,10 @@ powershell -File scripts/run_live.ps1 [-KeyFile <path>] uv run python scripts/pr
 
 GCP Cloud Run with Secret Manager keys: [docs/runbooks/deploy-gcp.md](docs/runbooks/deploy-gcp.md).
 
+## Architecture decisions
+
+Options, pros/cons and rationale per decision: [docs/decisions/](docs/decisions/README.md).
+
 ## Credits
 
 The KAVE COGS association channels follow the method of Anthony Metivier (Magnetic Memory Method), paraphrased; none
