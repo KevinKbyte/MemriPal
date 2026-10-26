@@ -36,7 +36,8 @@ uv run python scripts/make_synthetic_fixtures.py
 uv run uvicorn memripal.app:app
 ```
 
-The pre-commit hook blocks staged files containing API keys/signed URLs or images carrying EXIF.
+The pre-commit hook blocks staged files containing API keys/signed URLs or images carrying EXIF, and
+staged `*.py` files that fail `uv run ruff format --check`.
 
 Run all checks (ruff, pytest, node tests):
 

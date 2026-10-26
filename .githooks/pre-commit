@@ -1,5 +1,14 @@
 #!/bin/sh
-# Block staged secrets and EXIF-bearing images (MEM-004).
+# Block staged secrets and EXIF-bearing images (MEM-004), and unformatted Python.
 # Enable with: git config core.hooksPath .githooks
 cd "$(git rev-parse --show-toplevel)" || exit 1
-git diff --cached --name-only --diff-filter=ACM -z | xargs -0 python scripts/precommit_scan.py
+status=0
+git diff --cached --name-only --diff-filter=ACM -z | xargs -0 python scripts/precommit_scan.py || status=1
+
+# --quiet exits 1 when matching staged files exist; skip ruff entirely otherwise.
+# Note: ruff checks the working-tree copy, not the staged blob.
+if ! git diff --cached --quiet --diff-filter=ACM -- '*.py'; then
+    git diff --cached --name-only --diff-filter=ACM -z -- '*.py' \
+        | xargs -0 uv run ruff format --check -- || status=1
+fi
+exit $status
