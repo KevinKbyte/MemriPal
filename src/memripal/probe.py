@@ -1,6 +1,7 @@
 """One-shot live probe of the Meta Model API against the plan's 5 checks (MEM-008)."""
 
 import importlib.util
+import json
 import time
 from collections.abc import Callable
 from dataclasses import asdict
@@ -15,6 +16,7 @@ from memripal.meta_client import (
     image_bytes,
     responses_text,
     to_data_url,
+    transcript_text,
 )
 from memripal.probe_metrics import Box, crop_for_edit, drift_outside_bbox, keep_loci, parse_boxes, scaled_to
 
@@ -75,12 +77,17 @@ def _dims(data: bytes) -> list[int]:
         return [img.width, img.height]
 
 
+def _duration_ms(body: bytes):
+    return json.loads(body)["audioDurationMs"]
+
+
 def run_probe(
     client: MetaClient,
     photo_jpeg: bytes,
     *,
     clock: Callable[[], float] = time.perf_counter,
     on_image: Callable[[str, bytes], None] | None = None,
+    audio_wav: bytes | None = None,
 ) -> dict:
     """Run the probe; `on_image(name, bytes)` receives edited images so the report stays bytes-free."""
     start = clock()
@@ -179,18 +186,45 @@ def run_probe(
         association_skipped = "no kept loci"
 
     output_dims = (tier1 or {}).get("dims") or (tier2 or {}).get("dims")
+    checks = {
+        "schema_image_ok": schema_image_ok,
+        "parser_installs": importlib.util.find_spec("meta_sam_parser") is not None,
+        "score_present": any(b.confidence is not None for bs in per_phrase.values() for b in bs),
+        "image_output_dims": output_dims,
+        "drift_metric": drift,
+    }
+    extra: dict = {}
+    if audio_wav is not None:
+        try:
+            res = record("asr", client.transcribe(audio_wav))
+        except ValueError as exc:
+            # Rejected locally (empty/oversize clip): nothing was sent, so there is no status.
+            asr = {
+                "transcript": None, "audioDurationMs": None, "latency_s": None, "status": None,
+                "error": str(exc),
+            }
+        else:
+            text = _safe(transcript_text, res.body) if res.ok else None
+            duration = _safe(_duration_ms, res.body) if res.ok else None
+            asr = {
+                "transcript": text if isinstance(text, str) else None,
+                "audioDurationMs": duration if isinstance(duration, int | float) else None,
+                "latency_s": res.latency_s,
+                "status": res.status,
+                "error": res.error,
+            }
+        checks["asr_ok"] = asr["status"] == 200 and asr["error"] is None
+        checks["asr_transcript_nonempty"] = bool(asr["transcript"])
+        checks["asr_has_duration"] = asr["audioDurationMs"] is not None
+        extra["asr"] = asr
+
     return {
         "phrases": phrases,
         "kept_loci": [{"phrase": p, "box": asdict(b)} for p, b in kept],
         "kept_count": len(kept),
         "reask_used": reask_used,
-        "checks": {
-            "schema_image_ok": schema_image_ok,
-            "parser_installs": importlib.util.find_spec("meta_sam_parser") is not None,
-            "score_present": any(b.confidence is not None for bs in per_phrase.values() for b in bs),
-            "image_output_dims": output_dims,
-            "drift_metric": drift,
-        },
+        "checks": checks,
+        **extra,
         "association": association,
         "association_skipped": association_skipped,
         "tier1": tier1,

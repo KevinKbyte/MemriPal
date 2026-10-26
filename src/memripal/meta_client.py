@@ -1,4 +1,4 @@
-"""Meta Model API HTTP client: Spark chat, SAM segmentation, image edits (MEM-006)."""
+"""Meta Model API HTTP client: Spark chat, SAM segmentation, image edits, ASR (MEM-006, MEM-010)."""
 
 import base64
 import json
@@ -96,6 +96,9 @@ class MetaClient:
         return text.replace(self._api_key, "***")
 
     def post(self, path: str, payload: dict) -> CallResult:
+        return self._send(path, json=payload)
+
+    def _send(self, path: str, **content) -> CallResult:
         url = self._base_url + path
         headers = {"Authorization": "Bearer " + self._api_key}
         start = time.perf_counter()
@@ -104,7 +107,7 @@ class MetaClient:
             attempt += 1
             retry_after = None
             try:
-                with self._http.stream("POST", url, json=payload, headers=headers) as response:
+                with self._http.stream("POST", url, headers=headers, **content) as response:
                     status = response.status_code
                     capped = _read_capped(response)
                     retry_after = _retry_after(response)
@@ -184,6 +187,35 @@ class MetaClient:
         if size is not None:
             payload["size"] = size
         return self.post("/images/edits", payload)
+
+    def transcribe(
+        self,
+        wav_bytes: bytes,
+        *,
+        mode: str = "PUSH_TO_TALK",
+        model: str = "muse-voice-transcribe-1.0",
+        keywords: list[str] | None = None,
+        language_bias: str | None = None,
+    ) -> CallResult:
+        """Speech-to-text; the API accepts only mono 16-bit WAV at 16 or 24 kHz."""
+        if not wav_bytes:
+            raise ValueError("transcribe requires non-empty WAV bytes")
+        if len(wav_bytes) > MAX_RESPONSE_BYTES:
+            raise ValueError("WAV audio exceeds the 32 MiB limit")
+        request: dict = {"mode": mode, "model": model, "audioEncoding": "WAV"}
+        if keywords is not None:
+            request["keywords"] = keywords
+        if language_bias is not None:
+            request["languageBias"] = language_bias
+        files = {
+            "request": (None, json.dumps(request).encode(), "application/json"),
+            "audio": ("audio.wav", wav_bytes, "audio/wav"),
+        }
+        return self._send("/asr/transcribe", files=files)
+
+
+def transcript_text(body: bytes) -> str:
+    return json.loads(body)["transcript"]
 
 
 def chat_content_json(body: bytes) -> dict:
