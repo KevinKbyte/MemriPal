@@ -4,10 +4,17 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-26
+
 ### Added
 
-- Architecture decision records `docs/decisions/` (12 ADRs + index), linked from README.
+- Architecture decision records `docs/decisions/` (12 ADRs + index), linked from README; structure enforced by
+  `tests/test_decisions_structure.py` (MEM-018).
 - Repo `CLAUDE.md`: every architectural decision gets an ADR in the same change.
+- S2.1 image intake `src/memripal/imaging.py`: validation, pixel-bomb guard, no re-encode of processed JPEGs (MEM-012).
+- S2.2 locus selection (MEM-013).
+- Spec IDs MEM-012..MEM-018 for S2 Loci; MEM-003 CacheKey/ModelBackend bullets superseded by MEM-014.
+- Pre-commit hook also runs `ruff format --check` on staged Python files, with an integration test.
 
 ### Fixed
 
