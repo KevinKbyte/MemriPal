@@ -1,10 +1,12 @@
 """Meta Model API HTTP client: Spark chat, SAM segmentation, image edits, ASR (MEM-006, MEM-010)."""
 
 import base64
+import io
 import json
 import random
 import re
 import time
+import wave
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -17,6 +19,7 @@ RETRYABLE_STATUSES = frozenset({429, 500, 503})
 RETRY_AFTER_STATUSES = frozenset({429, 503})
 RETRY_AFTER_CAP_S = 60
 MAX_RESPONSE_BYTES = 32 * 1024 * 1024
+MAX_AUDIO_BYTES = 32 * 1024 * 1024
 # Only connect-phase failures are safe to retry: after that the paid request may have landed.
 RETRYABLE_TRANSPORT = (httpx.ConnectError, httpx.ConnectTimeout)
 _SAFE_CODE = re.compile(r"[A-Za-z0-9_.-]{1,64}")
@@ -53,6 +56,20 @@ def _read_capped(response: httpx.Response) -> bytes | None:
             return None
         chunks.append(chunk)
     return b"".join(chunks)
+
+
+def _check_wav_format(wav_bytes: bytes) -> None:
+    """Raise ValueError unless the header is mono 16-bit WAV at 16 or 24 kHz (header only, no frames)."""
+    try:
+        with wave.open(io.BytesIO(wav_bytes), "rb") as wav:
+            channels, sampwidth, rate = wav.getnchannels(), wav.getsampwidth(), wav.getframerate()
+    except (wave.Error, EOFError) as exc:
+        raise ValueError("transcribe requires RIFF WAV audio") from exc
+    if channels != 1 or sampwidth != 2 or rate not in (16000, 24000):
+        raise ValueError(
+            f"transcribe requires mono 16-bit WAV at 16 or 24 kHz, got "
+            f"{channels} ch, {sampwidth * 8}-bit, {rate} Hz"
+        )
 
 
 def _retry_after(response: httpx.Response) -> float | None:
@@ -200,8 +217,9 @@ class MetaClient:
         """Speech-to-text; the API accepts only mono 16-bit WAV at 16 or 24 kHz."""
         if not wav_bytes:
             raise ValueError("transcribe requires non-empty WAV bytes")
-        if len(wav_bytes) > MAX_RESPONSE_BYTES:
+        if len(wav_bytes) > MAX_AUDIO_BYTES:
             raise ValueError("WAV audio exceeds the 32 MiB limit")
+        _check_wav_format(wav_bytes)
         request: dict = {"mode": mode, "model": model, "audioEncoding": "WAV"}
         if keywords is not None:
             request["keywords"] = keywords
