@@ -5,7 +5,8 @@
 # "languageBias" only when given, and an `audio` part holding the exact WAV bytes; it shares
 # post()'s retry semantics (429/500/503 and connect-phase errors retried, at most 3 attempts,
 # never a 4xx) and the MAX_RESPONSE_BYTES response cap; it rejects None, empty or over-32-MiB
-# audio with ValueError before any request is sent; and transcript_text(body) returns the
+# audio, and anything that is not a mono 16-bit PCM WAV at 16 or 24 kHz (non-RIFF bytes,
+# stereo, 8-bit, 44.1 kHz), with ValueError before any request is sent; and transcript_text(body) returns the
 # response's "transcript" string, raising a clear error when the field is missing.
 import json
 import struct
@@ -26,13 +27,25 @@ ASR_URL = "https://api.meta.ai/v1/asr/transcribe"
 CAP = 32 * 1024 * 1024
 
 
-def _wav(seconds: float = 0.1, rate: int = 16000) -> bytes:
+def _wav(seconds: float = 0.1, rate: int = 16000, channels: int = 1, sampwidth: int = 2) -> bytes:
+    buf = BytesIO()
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(channels)
+        w.setsampwidth(sampwidth)
+        w.setframerate(rate)
+        w.writeframes(b"\x00" * (sampwidth * channels * int(rate * seconds)))
+    return buf.getvalue()
+
+
+def _wav_of_size(total: int, rate: int = 16000) -> bytes:
+    """A valid mono 16-bit WAV whose total encoded length is exactly `total` bytes."""
+    header = len(_wav(seconds=0, rate=rate))
     buf = BytesIO()
     with wave.open(buf, "wb") as w:
         w.setnchannels(1)
         w.setsampwidth(2)
         w.setframerate(rate)
-        w.writeframes(struct.pack("<h", 0) * int(rate * seconds))
+        w.writeframes(struct.pack("<h", 0) * ((total - header) // 2))
     return buf.getvalue()
 
 
@@ -178,8 +191,40 @@ class TestTranscribeInputValidation:
     def test_audio_exactly_32_mib_is_sent(self):
         rec = Recorder(ok())
         client, _ = make_client(rec)
-        assert client.transcribe(b"\x00" * CAP).ok is True
+        audio = _wav_of_size(CAP)
+        assert len(audio) == CAP
+        assert client.transcribe(audio).ok is True
         assert len(rec.requests) == 1
+
+
+class TestTranscribeWavFormatValidation:
+    # Covers: MEM-010
+
+    @pytest.mark.parametrize(
+        "audio",
+        [
+            b"not a wav",
+            _wav(rate=24000, channels=2, sampwidth=2),
+            _wav(rate=24000, channels=1, sampwidth=1),
+            _wav(rate=44100, channels=1, sampwidth=2),
+        ],
+        ids=["non_riff", "stereo_16bit_24k", "mono_8bit_24k", "mono_16bit_44100"],
+    )
+    def test_unsupported_audio_rejected_before_sending(self, audio):
+        rec = Recorder(ok())
+        client, _ = make_client(rec)
+        with pytest.raises(ValueError):
+            client.transcribe(audio)
+        assert rec.requests == []
+
+    @pytest.mark.parametrize("rate", [16000, 24000])
+    def test_mono_16bit_supported_rate_is_sent_once(self, rate):
+        rec = Recorder(ok())
+        client, _ = make_client(rec)
+        audio = _wav(rate=rate)
+        assert client.transcribe(audio).ok is True
+        assert len(rec.requests) == 1
+        assert parts(rec.requests[0])["audio"][1] == audio
 
 
 class TestTranscribeRetryAndCap:
