@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.2.0] - 2026-10-26
+
+### Added
+
+- Meta Model API client `src/memripal/meta_client.py`: Spark chat, SAM segmentation, image edits (MEM-006).
+- SAM box parsing, locus selection and image-edit drift metrics `src/memripal/probe_metrics.py` (MEM-007).
+- Live probe `src/memripal/probe.py` + `scripts/probe_live.py`, writing `report.json` and `tier1.webp`/`tier2.webp`
+  (MEM-008).
+- Key-custody launcher `scripts/run_live.ps1`: DPAPI key file decrypted into the child process env only (MEM-009).
+
+### Changed
+
+- `httpx` is now a runtime dependency.
+
 ## [0.1.0] - 2026-10-26
 
 ### Added
