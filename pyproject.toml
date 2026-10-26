@@ -9,12 +9,12 @@ dependencies = [
     "fastapi",
     "uvicorn",
     "pillow",
+    "httpx",
 ]
 
 [dependency-groups]
 dev = [
     "pytest",
-    "httpx",
     "ruff",
 ]
 
