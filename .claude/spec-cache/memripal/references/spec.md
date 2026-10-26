@@ -128,7 +128,8 @@ Tests: tests/test_probe_metrics.py
 ## MEM-008 Live probe
 
 `src/memripal/probe.py` + `scripts/probe_live.py`. Claude never runs live mode; tests use a mocked MetaClient.
-`run_probe(client: MetaClient, photo_jpeg: bytes, *, clock=time.perf_counter) -> dict`, in order:
+`run_probe(client: MetaClient, photo_jpeg: bytes, *, clock=time.perf_counter, audio_wav: bytes | None = None) -> dict`
+(audio_wav: optional ASR check, MEM-011), in order:
 1. Spark phrase list: chat_json with image, schema {"phrases": array of string}; prompt asks 20-25 short concrete
    noun phrases of distinct objects/places visible in the photo.
 2. SAM per phrase (sequential), parse_boxes on responses_text.
@@ -148,7 +149,7 @@ Report:
 - Any failed call is recorded, never raised; later steps depending on it record null.
 - Never contains the key or raw image bytes.
 
-`scripts/probe_live.py --photo <path> [--out <dir>]`: key ONLY from env META_API_KEY (missing -> stderr message +
+`scripts/probe_live.py --photo <path> [--out <dir>] [--audio <wav>]`: key ONLY from env META_API_KEY (missing -> stderr message +
 exit 2, no file read); default out `fixtures/raw/probe/<UTC timestamp>/` (gitignored by fixtures/raw/**); writes
 report.json + tier1.webp/tier2.webp when present; prints kept_count and checks. Exit 0 if run completed.
 
@@ -168,3 +169,23 @@ Tests: tests/test_probe.py
   key text absent from stdout/stderr, parent os.environ unchanged. Missing-file case exits 2.
 
 Tests: tests/test_run_live.py
+
+## MEM-010 Meta speech-to-text client
+
+`MetaClient.transcribe(wav_bytes, mode, model, keywords, language_bias) -> CallResult`:
+- Multipart POST https://api.meta.ai/v1/asr/transcribe: part `request` (JSON, application/json) + part `audio` (the
+  wav). Reuses the `post()` retry loop (MEM-006).
+- Input: WAV mono 16-bit, 16 or 24 kHz only. Empty wav or > 32 MiB (MAX_RESPONSE_BYTES) -> rejected before any request.
+- Pure helper `transcript_text(body_bytes: bytes) -> str` extracts the transcript.
+
+Tests: tests/test_meta_client_asr.py
+
+## MEM-011 Live probe ASR check
+
+`run_probe(..., audio_wav=None)` (MEM-008):
+- audio_wav absent -> the existing 5 checks, report unchanged.
+- present -> transcribe; adds checks "asr_ok", "asr_transcript_nonempty", "asr_has_duration" and report key "asr"
+  {transcript, audioDurationMs, latency_s, status, error}.
+- `scripts/probe_live.py --audio <wav>` passes the file bytes as audio_wav.
+
+Tests: tests/test_probe_asr.py
