@@ -1,9 +1,10 @@
 """Contract (MEM-025, ADR 0022): POST /associate accepts an optional confirmed place.
 
 - Body: exactly {image, item, locus} as today, or {image, item, locus, place} where place is exactly
-  {"title": non-blank str, "extract": str of <= 400 chars} (a typed place may have an empty extract).
-  An extract over 400 chars -> 400 {"error": "place_too_long"}; any other bad place (non-object, missing or
-  unknown key such as coords, non-string, blank title) -> 400. No model call on any rejection.
+  {"title": non-blank str of <= 255 chars, "extract": str of <= 400 chars} (a typed place may have an
+  empty extract). A title over 255 or an extract over 400 chars -> 400 {"error": "place_too_long"}; any
+  other bad place (non-object, missing or unknown key such as coords, non-string, blank title) -> 400.
+  No model call on any rejection.
 - With place: `gen_params[PROMPT_ARGS]` carries it, so it is part of the cache key, and a place template
   ("use only PLACE FACTS") is appended after today's prompt, like ASSOCIATION_RETRY.
 - Without place: prompt args, prompt text and cache key are byte-identical to before MEM-025, so every
@@ -173,6 +174,12 @@ class TestAssociateWithPlace:
         assert resp.status_code == 200, resp.text
         assert len(backend.requests) == 1
 
+    def test_title_of_exactly_255_chars_is_accepted(self):
+        backend = RecordingBackend()
+        resp = _post(backend, _body(place={"title": "t" * 255, "extract": EXTRACT}))
+        assert resp.status_code == 200, resp.text
+        assert len(backend.requests) == 1
+
 
 # Covers: MEM-025
 # Requirement: without a place, /associate is unchanged: prompt args are exactly {item, locus}, the prompt
@@ -199,13 +206,20 @@ class TestAssociateWithoutPlaceUnchanged:
 
 
 # Covers: MEM-025
-# Requirement: the place is validated at the boundary before any model call: an extract over 400 chars is
-# 400 place_too_long, and a malformed place (wrong type, missing or extra key such as raw coords, non-string
-# or blank title) is 400, so coords can never ride /associate to Meta.
+# Requirement: the place is validated at the boundary before any model call: a title over 255 chars or an
+# extract over 400 chars is 400 place_too_long, and a malformed place (wrong type, missing or extra key
+# such as raw coords, non-string or blank title) is 400, so coords can never ride /associate to Meta.
 class TestAssociatePlaceRejections:
     def test_extract_over_400_chars_is_400_place_too_long(self):
         backend = RecordingBackend()
         resp = _post(backend, _body(place={"title": "Big Ben", "extract": "x" * 401}))
+        assert resp.status_code == 400, resp.text
+        assert resp.json() == {"error": "place_too_long"}
+        assert backend.requests == []
+
+    def test_title_over_255_chars_is_400_place_too_long(self):
+        backend = RecordingBackend()
+        resp = _post(backend, _body(place={"title": "t" * 256, "extract": EXTRACT}))
         assert resp.status_code == 400, resp.text
         assert resp.json() == {"error": "place_too_long"}
         assert backend.requests == []
