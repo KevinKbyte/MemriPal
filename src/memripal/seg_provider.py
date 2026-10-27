@@ -2,6 +2,7 @@
 
 import json
 import os
+import sys
 
 import httpx
 
@@ -21,6 +22,10 @@ def select_seg_provider() -> str:
 def _number(value: object) -> float | None:
     # bool is an int subclass; a JSON true must not become coordinate 1.
     if isinstance(value, bool) or not isinstance(value, int | float):
+        return None
+    # json.loads accepts NaN/Infinity and unbounded ints, which round()/float() would raise on;
+    # the comparison is False for NaN/inf and exact (no overflow) for huge ints.
+    if not abs(value) <= sys.float_info.max:
         return None
     return float(value)
 
