@@ -241,13 +241,19 @@ def _schema_valid(value: Any, schema: dict) -> bool:
     return True
 
 
-def _prompt_for(template_id: str) -> str:
-    from memripal.probe import PHRASE_PROMPT
+# Reserved gen_params key for template arguments: ModelRequest's field set is pinned, and riding in
+# gen_params folds the arguments into gen_params_digest, so they change the derived key.
+PROMPT_ARGS = "prompt_args"
 
-    prompts = {"phrase": PHRASE_PROMPT}
-    if template_id not in prompts:
-        raise ValueError(f"unknown prompt template: {template_id!r}")
-    return prompts[template_id]
+
+def _prompt_for(template_id: str, args: dict) -> str:
+    from memripal.probe import PHRASE_PROMPT, _reask_prompt
+
+    if template_id == "phrase":
+        return PHRASE_PROMPT
+    if template_id == "phrase-reask":
+        return _reask_prompt(list(args["exclude"]))
+    raise ValueError(f"unknown prompt template: {template_id!r}")
 
 
 class MetaBackend:
@@ -279,13 +285,16 @@ class MetaBackend:
             )
             parse, valid = responses_text, lambda v: isinstance(v, str)
         elif req.method == "spark_json":
+            # Popped so MetaClient.chat_json, which takes only its own kwargs, never sees the template args.
+            gen_params = dict(req.gen_params)
+            prompt_args = gen_params.pop(PROMPT_ARGS, {})
             result = self._client.chat_json(
-                prompt=_prompt_for(req.prompt_template_id),
+                prompt=_prompt_for(req.prompt_template_id, prompt_args),
                 schema=req.schema,
                 schema_name=req.subject,
                 image_data_url=image_url,
                 model=req.model,
-                **req.gen_params,
+                **gen_params,
             )
             parse = chat_content_json
 
