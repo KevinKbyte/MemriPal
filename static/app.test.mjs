@@ -94,7 +94,8 @@ describe("upload UI markup", () => {
 // those bytes to /loci as image/jpeg with no client re-encode, so the offline fixture replay keyed
 // by the processed demo sha always matches (a browser re-encode would change the bytes and answer
 // "Upload failed: fixture_missing"). demoUpload(fetchFn) takes fetch as an argument, resolves to
-// the /loci response, and when the demo GET fails it rejects with "http_<status>" without POSTing.
+// the /loci response, and when the demo GET fails it rejects with "HTTP <status>" (never the
+// internal "http_<status>" code) without POSTing.
 describe("Load demo raw-bytes upload", () => {
   // Every byte value, so any text decode or image re-encode would change the payload.
   const DEMO_BYTES = Uint8Array.from({ length: 512 }, (_, i) => (i * 7 + 0xff) % 256);
@@ -140,10 +141,14 @@ describe("Load demo raw-bytes upload", () => {
     assert.equal(result, postResponse);
   });
 
-  test("a non-ok demo GET rejects with http_<status> and never POSTs", async () => {
+  test("a non-ok demo GET rejects with HTTP <status> and never POSTs", async () => {
     for (const status of [404, 500]) {
       const { calls, fetchFn } = stubFetch(() => new Response("nope", { status }));
-      await assert.rejects(app.demoUpload(fetchFn), new RegExp(`http_${status}`));
+      await assert.rejects(app.demoUpload(fetchFn), (err) => {
+        assert.match(String(err && err.message), new RegExp(`\\bHTTP ${status}\\b`));
+        assert.doesNotMatch(String(err && err.message), /http_/);
+        return true;
+      });
       assert.deepEqual(calls.map((c) => c[0]), ["/demo/photo.jpg"]);
     }
   });
