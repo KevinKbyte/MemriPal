@@ -12,13 +12,64 @@ API or offline from recorded fixtures.
 Everything in this repo was created during the Meta Global AI Developer Hackathon (kickoff 2026-10-26); git history is the
 record.
 
-## APIs called
+## Pipeline
 
-Via the Meta Model API (not original work):
+Status per node: **built** = module in `src/memripal/` with tests; **probe** = call implemented in
+`meta_client.py` and exercised end to end by `scripts/probe_live.py`, not yet wired into the app; **planned** = no
+code yet. The app's HTTP surface today is `/healthz` plus the static shell; `POST /loci` is planned
+([ADR 0011](docs/decisions/0011-s2-loci-request-shape.md)).
 
-- SAM 3.1: segments the photo into ordered loci.
-- Muse Spark: splits the list, writes associations, runs the quiz.
-- Muse Image: renders each mnemonic scene onto the photo.
+```mermaid
+flowchart LR
+  photo["Photo upload"] --> intake["imaging.py: re-encode, strip EXIF (built)"]
+  intake --> phrases["Muse Spark: name visible objects, re-ask if under 10 loci (built)"]
+  phrases --> sam["SAM 3.1: boxes per object phrase (built)"]
+  sam --> loci["loci.py: select 10-12 loci, route order; no LLM (built)"]
+  loci --> assoc["Muse Spark: item-to-locus association (probe)"]
+  assoc --> scene["Muse Image: scene edited onto photo (probe)"]
+  scene --> asr["Muse Voice Transcribe: spoken recall (probe)"]
+  asr --> match["Deterministic matcher; no LLM (planned)"]
+  match -- "missed loci" --> review["Re-review missed loci (planned)"]
+```
+
+Every model call goes through `backend.py`: `fixture` mode replays recorded responses, `meta` mode calls the live API
+and writes through to the replay cache ([ADR 0002](docs/decisions/0002-backend-modes-and-replay-cache.md)).
+
+## Meta models
+
+All via the Meta Model API (not original work); client in `src/memripal/meta_client.py`.
+
+| Model (API id) | Job | Status |
+| --- | --- | --- |
+| Muse Spark (`muse-spark-1.3`) | Names objects in the photo; writes the KAVE COGS association per item | phrases built; associations probe |
+| SAM 3.1 (`sam-3.1`) | Segments each object phrase into boxes that become loci | built |
+| Muse Image (`muse-image-1.0`) | Renders each mnemonic scene onto the photo | probe |
+| Muse Voice Transcribe (`muse-voice-transcribe-1.0`) | Speech-to-text for eyes-closed spoken recall | probe |
+
+Locus selection and recall matching are deterministic code, no LLM
+([ADR 0008](docs/decisions/0008-spoken-recall-deterministic-matcher.md)).
+
+## Architecture decisions
+
+Options, pros/cons and rationale per decision ([index](docs/decisions/README.md)):
+
+- [0001](docs/decisions/0001-python-fastapi-stack.md) Python 3.13 + FastAPI backend, vanilla ES-module frontend
+- [0002](docs/decisions/0002-backend-modes-and-replay-cache.md) `meta|fixture` backend modes with a logical-key replay
+  cache
+- [0003](docs/decisions/0003-stateless-backend-client-state.md) Stateless backend; palace state in browser IndexedDB
+- [0004](docs/decisions/0004-public-deploy-spend-guard.md) Public deploy defaults to fixture mode; live mode behind a
+  passcode and per-instance budget
+- [0005](docs/decisions/0005-api-key-custody.md) API key custody: DPAPI file locally, Secret Manager on GCP
+- [0006](docs/decisions/0006-provider-toggles.md) Meta as the default provider; others only behind env flags
+- [0007](docs/decisions/0007-scene-render-tiers.md) Scene rendering in three measured tiers
+- [0008](docs/decisions/0008-spoken-recall-deterministic-matcher.md) Spoken recall via Muse Voice Transcribe relay;
+  deterministic matcher, no LLM
+- [0009](docs/decisions/0009-image-intake-and-photo-privacy.md) Image intake: client canvas re-encode plus server
+  re-validation
+- [0010](docs/decisions/0010-cloud-run-hosting.md) Host on GCP Cloud Run
+- [0011](docs/decisions/0011-s2-loci-request-shape.md) S2 loci request shape: one sync `POST /loci`
+- [0012](docs/decisions/0012-vr-imagery-mapillary.md) Street-level VR imagery from Mapillary, not Google Earth
+- [0013](docs/decisions/0013-derived-request-key.md) Derived `RequestKey` beside the MEM-003 `CacheKey`
 
 ## Modes
 
@@ -82,10 +133,6 @@ powershell -File scripts/run_live.ps1 [-KeyFile <path>] uv run python scripts/pr
 ## Deploy
 
 GCP Cloud Run with Secret Manager keys: [docs/runbooks/deploy-gcp.md](docs/runbooks/deploy-gcp.md).
-
-## Architecture decisions
-
-Options, pros/cons and rationale per decision: [docs/decisions/](docs/decisions/README.md).
 
 ## Credits
 
