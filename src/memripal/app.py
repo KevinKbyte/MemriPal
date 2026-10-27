@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -72,7 +72,9 @@ def create_app(backend: ModelBackend | None = None) -> FastAPI:
 
     # Fixed path, no user-supplied component: only the committed demo photo is exposed.
     @app.get("/demo/photo.jpg", include_in_schema=False)
-    def demo_photo() -> FileResponse:
+    def demo_photo() -> Response:
+        if not DEMO_PHOTO.is_file():
+            return _error(404, "demo_missing")
         return FileResponse(DEMO_PHOTO, media_type="image/jpeg")
 
     @app.post("/loci")

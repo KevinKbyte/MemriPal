@@ -110,17 +110,37 @@ async function reencodeJpeg(file) {
 }
 
 /**
+ * @param {string} src
+ * @returns {Promise<HTMLImageElement>} the image once decoded
+ */
+async function loadImage(src) {
+  const img = new Image();
+  img.src = src;
+  await img.decode();
+  return img;
+}
+
+/**
+ * Page seams the upload flow uses; injected so node --test can drive the real flow.
+ * @typedef {{
+ *   doc: Pick<Document, "getElementById" | "createElement">,
+ *   loadImage: (src: string) => Promise<CanvasImageSource>,
+ *   fetch: typeof fetch,
+ *   encode: (file: File) => Promise<BodyInit>,
+ * }} UploadDeps
+ */
+
+/**
  * @param {LociResponse} payload
  * @param {() => boolean} isCurrent re-checked after the async decode, so a newer upload wins
+ * @param {UploadDeps} deps
  * @returns {Promise<boolean>} whether the result was drawn
  */
-async function drawResult(payload, isCurrent) {
-  const canvas = /** @type {HTMLCanvasElement | null} */ (byId("scene"));
-  const list = byId("loci");
+async function drawResult(payload, isCurrent, deps) {
+  const canvas = /** @type {HTMLCanvasElement | null} */ (deps.doc.getElementById("scene"));
+  const list = deps.doc.getElementById("loci");
   if (!canvas || !list) return false;
-  const img = new Image();
-  img.src = payload.image;
-  await img.decode();
+  const img = await deps.loadImage(payload.image);
   if (!isCurrent()) return false;
   const maxW = canvas.parentElement ? canvas.parentElement.clientWidth : payload.width;
   const scale = fitScale(payload.width, payload.height, maxW);
@@ -143,7 +163,7 @@ async function drawResult(payload, isCurrent) {
       ctx.fillStyle = "#ffffff";
       ctx.fillText(String(locus.n), x1 * scale + 4, y1 * scale + 3);
     }
-    const item = document.createElement("li");
+    const item = deps.doc.createElement("li");
     item.textContent = locusCaption(locus);
     list.append(item);
   }
@@ -156,13 +176,22 @@ const uploads = latestOnly();
 /**
  * @param {() => Promise<Response>} send
  * @param {string} failure status text when the photo cannot be read or sent
+ * @param {UploadDeps} deps
  */
-async function showUpload(send, failure) {
-  const status = byId("upload-status");
+export async function showUpload(send, failure, deps) {
+  const status = deps.doc.getElementById("upload-status");
   if (!status) return;
   const token = uploads.next();
   const isCurrent = () => uploads.isCurrent(token);
   status.textContent = "Finding places in your photo...";
+  // Clear the previous result up front, so a failed upload never leaves the old photo on screen.
+  const canvas = /** @type {HTMLCanvasElement | null} */ (deps.doc.getElementById("scene"));
+  if (canvas) {
+    canvas.width = 0;
+    canvas.height = 0;
+  }
+  const list = deps.doc.getElementById("loci");
+  if (list) list.replaceChildren();
   try {
     const resp = await send();
     const payload = await resp.json().catch(() => null);
@@ -172,31 +201,46 @@ async function showUpload(send, failure) {
       status.textContent = `Upload failed: ${code}`;
       return;
     }
-    if (await drawResult(payload, isCurrent)) status.textContent = `Found ${payload.loci.length} places`;
+    if (await drawResult(payload, isCurrent, deps)) status.textContent = `Found ${payload.loci.length} places`;
   } catch {
     if (isCurrent()) status.textContent = `Upload failed: ${failure}`;
   }
 }
 
 /**
- * @param {File} file
+ * Photo input change handler.
+ * @param {{files: ArrayLike<File> | null, value: string}} input
+ * @param {UploadDeps} deps
+ * @returns {Promise<void> | undefined}
  */
-function upload(file) {
-  return showUpload(async () => postLoci(fetch, await reencodeJpeg(file)), "could not read or send the photo");
+export function onPhotoChange(input, deps) {
+  const file = input.files && input.files[0];
+  // Clear the value so re-picking the same photo fires change again.
+  input.value = "";
+  if (!file) return undefined;
+  return showUpload(
+    async () => postLoci(deps.fetch, await deps.encode(file)),
+    "could not read or send the photo",
+    deps,
+  );
+}
+
+/**
+ * "Load demo" click handler.
+ * @param {UploadDeps} deps
+ */
+export function onLoadDemo(deps) {
+  return showUpload(() => demoUpload(deps.fetch), "could not load the demo photo", deps);
 }
 
 function wireUpload() {
+  // Bound: an unbound window.fetch called as deps.fetch throws "Illegal invocation".
+  /** @type {UploadDeps} */
+  const deps = { doc: document, loadImage, fetch: fetch.bind(globalThis), encode: reencodeJpeg };
   const input = /** @type {HTMLInputElement | null} */ (byId("photo"));
-  if (input) {
-    input.addEventListener("change", () => {
-      const file = input.files && input.files[0];
-      // Clear the value so re-picking the same photo fires change again.
-      input.value = "";
-      if (file) upload(file);
-    });
-  }
+  if (input) input.addEventListener("change", () => onPhotoChange(input, deps));
   const demo = byId("load-demo");
-  if (demo) demo.addEventListener("click", () => showUpload(() => demoUpload(fetch), "could not load the demo photo"));
+  if (demo) demo.addEventListener("click", () => onLoadDemo(deps));
 }
 
 // Guard keeps the module importable under node --test.
