@@ -38,6 +38,14 @@ function postLoci(fetchFn, body) {
   return fetchFn("/loci", { method: "POST", headers: { "Content-Type": "image/jpeg" }, body });
 }
 
+/** A non-ok HTTP answer; its message ("HTTP 503") is user-facing, unlike other send errors. */
+class HttpStatusError extends Error {}
+
+/** @param {number} status */
+function httpStatusText(status) {
+  return `HTTP ${status}`;
+}
+
 /**
  * Upload the server's demo photo byte-for-byte: a browser re-encode would change the processed
  * sha and miss the fixture replay ("fixture_missing").
@@ -46,7 +54,7 @@ function postLoci(fetchFn, body) {
  */
 export async function demoUpload(fetchFn) {
   const demo = await fetchFn("/demo/photo.jpg");
-  if (!demo.ok) throw new Error(`http_${demo.status}`);
+  if (!demo.ok) throw new HttpStatusError(httpStatusText(demo.status));
   return postLoci(fetchFn, await demo.arrayBuffer());
 }
 
@@ -190,13 +198,17 @@ export async function showUpload(send, failure, deps) {
     const payload = await resp.json().catch(() => null);
     if (!isCurrent()) return;
     if (!resp.ok) {
-      const code = payload && typeof payload.error === "string" ? payload.error : `http_${resp.status}`;
+      const code = payload && typeof payload.error === "string" ? payload.error : httpStatusText(resp.status);
       status.textContent = `Upload failed: ${code}`;
       return;
     }
+    if (payload === null) {
+      status.textContent = "Upload failed: unreadable response from the server";
+      return;
+    }
     if (await drawResult(payload, isCurrent, deps)) status.textContent = `Found ${payload.loci.length} places`;
-  } catch {
-    if (isCurrent()) status.textContent = `Upload failed: ${failure}`;
+  } catch (err) {
+    if (isCurrent()) status.textContent = `Upload failed: ${err instanceof HttpStatusError ? err.message : failure}`;
   }
 }
 
