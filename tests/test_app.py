@@ -11,6 +11,8 @@ from memripal.app import create_app
 from memripal.backend import FixtureBackend, MissingApiKey, select_backend
 
 FAKE_KEY = "fake-test-key-0123456789abcdefXYZ"
+# The app refuses non-loopback Host headers (MEM-015 host guard); TestClient defaults to "testserver".
+LOOPBACK_URL = "http://127.0.0.1"
 
 
 @pytest.fixture(autouse=True)
@@ -25,14 +27,14 @@ def _clean_env(monkeypatch, tmp_path):
 # Covers: MEM-001
 class TestHealthAndStaticShell:
     def test_healthz_default_reports_ok_fixture_mode(self):
-        client = TestClient(create_app())
+        client = TestClient(create_app(), base_url=LOOPBACK_URL)
         resp = client.get("/healthz")
         assert resp.status_code == 200
         assert resp.headers["content-type"].startswith("application/json")
         assert resp.json() == {"status": "ok", "mode": "fixture"}
 
     def test_healthz_reports_fixture_mode_for_injected_fixture_backend(self, tmp_path):
-        client = TestClient(create_app(backend=FixtureBackend(tmp_path)))
+        client = TestClient(create_app(backend=FixtureBackend(tmp_path)), base_url=LOOPBACK_URL)
         resp = client.get("/healthz")
         assert resp.status_code == 200
         assert resp.json() == {"status": "ok", "mode": "fixture"}
@@ -40,14 +42,14 @@ class TestHealthAndStaticShell:
     def test_healthz_reports_meta_mode_without_leaking_key(self, monkeypatch, tmp_path):
         monkeypatch.setenv("META_API_KEY", FAKE_KEY)
         backend = select_backend("meta", tmp_path)
-        client = TestClient(create_app(backend=backend))
+        client = TestClient(create_app(backend=backend), base_url=LOOPBACK_URL)
         resp = client.get("/healthz")
         assert resp.status_code == 200
         assert resp.json() == {"status": "ok", "mode": "meta"}
         assert FAKE_KEY not in resp.text
 
     def test_root_serves_html_shell(self):
-        client = TestClient(create_app())
+        client = TestClient(create_app(), base_url=LOOPBACK_URL)
         resp = client.get("/")
         assert resp.status_code == 200
         assert resp.headers["content-type"].startswith("text/html")
@@ -56,7 +58,7 @@ class TestHealthAndStaticShell:
     def test_module_level_app_serves_healthz(self):
         from memripal.app import app
 
-        resp = TestClient(app).get("/healthz")
+        resp = TestClient(app, base_url=LOOPBACK_URL).get("/healthz")
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
 
