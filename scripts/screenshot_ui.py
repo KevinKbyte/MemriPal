@@ -40,6 +40,9 @@ def run(url: str, outdir: str) -> list[Error]:
             page.on("console", on_console)
             page.goto(url)
             page.screenshot(path=str(out / "initial.png"), full_page=True)
+            # MEM-025: the demo only shows place chips when the place toggle is on.
+            assert page.query_selector("#place-toggle"), "missing #place-toggle"
+            page.check("#place-toggle")
             page.click("#load-demo")
             page.wait_for_timeout(DEMO_WAIT_MS)
             page.screenshot(path=str(out / "load_demo.png"), full_page=True)
