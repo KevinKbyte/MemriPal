@@ -1,4 +1,5 @@
 import ast
+import dataclasses
 import json
 from pathlib import Path
 from unittest import mock
@@ -6,7 +7,13 @@ from unittest import mock
 import httpx
 import pytest
 
-from memripal.backend import ModelRequest, select_backend
+from memripal.backend import (
+    BackendCallFailed,
+    FixtureBackend,
+    ModelRequest,
+    ResponseCache,
+    select_backend,
+)
 from memripal.meta_client import to_data_url
 from memripal.probe_metrics import Box, parse_boxes
 
@@ -36,12 +43,14 @@ class _Net:
         self.meta_segment: list[httpx.Request] = []
         self.meta_chat: list[httpx.Request] = []
         self.other: list[httpx.Request] = []
+        # Replaceable per test: return a Response or raise an httpx transport error.
+        self.modal_answer = lambda: httpx.Response(200, json=MODAL_BOXES)
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
         request.read()
         if request.url.host == "seg.example.test":
             self.modal.append(request)
-            return httpx.Response(200, json=MODAL_BOXES)
+            return self.modal_answer()
         if request.url.path.endswith("/responses"):
             self.meta_segment.append(request)
             return httpx.Response(200, json={"output_text": META_SAM_TEXT})
@@ -206,3 +215,68 @@ def _seg_provider_call_sites() -> list[str]:
 class TestSegProviderSingleCallSite:
     def test_exactly_one_call_site_in_backend(self):
         assert _seg_provider_call_sites() == ["backend.py"]
+
+
+def _live_backend(tmp_path):
+    live = tmp_path / "live"
+    return select_backend("meta", tmp_path / "fx" / "fixtures", live), live
+
+
+def _files_under(path: Path) -> list[Path]:
+    return sorted(p for p in path.rglob("*") if p.is_file()) if path.exists() else []
+
+
+# Covers: MEM-016
+# Requirement: fixture mode never reads the segmentation provider settings (a bogus provider, or
+# "modal" without its URL/token, still yields the offline FixtureBackend). In meta mode with the
+# "modal" provider, a failed Modal call (non-2xx status or a transport error) raises
+# BackendCallFailed whose message holds neither the Modal token nor its URL, and caches nothing;
+# a successful Modal answer is cached under a provider-distinct key (model "modal/<model>"), so a
+# Modal result can never be replayed as a Meta SAM result for the same request.
+class TestSegProviderFailureAndCache:
+    @pytest.mark.parametrize("modal_only", [False, True], ids=["bogus", "modal-without-config"])
+    def test_fixture_mode_ignores_seg_provider(self, monkeypatch, tmp_path, modal_only):
+        monkeypatch.setenv("MEMRIPAL_SEG_PROVIDER", "modal" if modal_only else "bogus")
+
+        backend = select_backend("fixture", tmp_path)
+
+        assert isinstance(backend, FixtureBackend)
+
+    @pytest.mark.parametrize("failure", ["http-503", "connect-error"])
+    def test_modal_http_error_raises_backend_call_failed_and_caches_nothing(
+        self, monkeypatch, tmp_path, net, failure
+    ):
+        _modal_env(monkeypatch)
+        if failure == "http-503":
+            net.modal_answer = lambda: httpx.Response(503, text="down " + MODAL_TOKEN + " " + MODAL_URL)
+        else:
+
+            def _raise():
+                raise httpx.ConnectError("cannot reach " + MODAL_URL + " with " + MODAL_TOKEN)
+
+            net.modal_answer = _raise
+        backend, live = _live_backend(tmp_path)
+
+        with pytest.raises(BackendCallFailed) as excinfo:
+            backend.call(_segment_request())
+
+        message = str(excinfo.value)
+        assert MODAL_TOKEN not in message
+        assert MODAL_URL not in message
+        assert "seg.example.test" not in message
+        assert FAKE_KEY not in message
+        assert _files_under(live / "segment") == []
+
+    def test_modal_segment_cached_under_provider_distinct_key(self, monkeypatch, tmp_path, net):
+        _modal_env(monkeypatch)
+        backend, live = _live_backend(tmp_path)
+        req = _segment_request()
+
+        text = backend.call(req)
+
+        cache = ResponseCache(live)
+        modal_path = cache.path_for(dataclasses.replace(req, model="modal/" + req.model).cache_key())
+        assert modal_path.is_file()
+        assert modal_path.read_text(encoding="utf-8") == text
+        assert not cache.path_for(req.cache_key()).exists()
+        assert _files_under(live / "segment") == [modal_path]
