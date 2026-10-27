@@ -1,5 +1,5 @@
 """FastAPI app: health, static shell (MEM-001), POST /loci (MEM-015), demo photo (MEM-017),
-POST /split (MEM-020), POST /associate (MEM-021)."""
+POST /split (MEM-020), POST /associate (MEM-021), demo notes (MEM-023)."""
 
 import base64
 import json
@@ -24,6 +24,7 @@ REPLAY_DIR = REPO_ROOT / "fixtures" / "replay"
 # Gitignored: live (meta) responses and photos land here, never in the committed REPLAY_DIR.
 LIVE_CACHE_DIR = REPO_ROOT / "refs" / "private" / "live-cache"
 DEMO_PHOTO = REPO_ROOT / "fixtures" / "demo" / "photo.jpg"
+DEMO_NOTES = REPO_ROOT / "fixtures" / "demo" / "notes.txt"
 
 UPLOAD_TYPES = {"image/jpeg", "image/png", "image/webp"}
 # Base64 of a max-size photo plus room for 20 KB of notes even when JSON-escaped as \uXXXX.
@@ -135,6 +136,13 @@ def create_app(backend: ModelBackend | None = None) -> FastAPI:
         if not DEMO_PHOTO.is_file():
             return _error(404, "demo_missing")
         return FileResponse(DEMO_PHOTO, media_type="image/jpeg")
+
+    # Served as stored bytes: the notes text is part of the split replay key (MEM-023).
+    @app.get("/demo/notes.txt", include_in_schema=False)
+    def demo_notes() -> Response:
+        if not DEMO_NOTES.is_file():
+            return _error(404, "demo_missing")
+        return FileResponse(DEMO_NOTES, media_type="text/plain")
 
     @app.post("/loci")
     async def post_loci(request: Request) -> JSONResponse:

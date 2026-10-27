@@ -1,0 +1,2 @@
+# The demo notes text is part of the split replay key: a CRLF checkout would miss the replay (MEM-023).
+fixtures/demo/notes.txt text eol=lf
