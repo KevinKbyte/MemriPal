@@ -1,4 +1,4 @@
-# Covers: (spec ID pending: merge_branch script)
+# Covers: MEM-024
 # Requirement: `sh scripts/merge_branch.sh <worktree>` merges a branch in one command: it
 # refuses a dirty worktree (naming the dirty paths), rebases onto main (aborting cleanly on
 # conflict), runs the worktree's scripts/check.sh and enqueues only if it passes, propagates
