@@ -101,10 +101,20 @@ def _atomic_write(path: Path, body: bytes) -> Path:
 @functools.cache
 def _templates_digest() -> str:
     # Lazy: probe imports meta_client, which imports this module (cycle at module top).
+    from memripal.associate import ASSOCIATION_PROMPT, ASSOCIATION_RETRY, ASSOCIATION_SCHEMA
     from memripal.probe import PHRASE_PROMPT, PHRASE_SCHEMA, _reask_prompt
     from memripal.split import SPLIT_PROMPT, SPLIT_SCHEMA
 
-    templates = [PHRASE_PROMPT, PHRASE_SCHEMA, _reask_prompt(["{exclude}"]), SPLIT_PROMPT, SPLIT_SCHEMA]
+    templates = [
+        PHRASE_PROMPT,
+        PHRASE_SCHEMA,
+        _reask_prompt(["{exclude}"]),
+        SPLIT_PROMPT,
+        SPLIT_SCHEMA,
+        ASSOCIATION_PROMPT,
+        ASSOCIATION_RETRY,
+        ASSOCIATION_SCHEMA,
+    ]
     return _sha256_json(templates)
 
 
@@ -271,9 +281,12 @@ SEND_IMAGE = "send_image"
 
 
 def _prompt_for(template_id: str, args: dict) -> str:
+    from memripal.associate import association_prompt
     from memripal.probe import PHRASE_PROMPT, _reask_prompt
     from memripal.split import split_prompt
 
+    if template_id == "association":
+        return association_prompt(args["item"], args["locus"], args.get("reason"))
     if template_id == "phrase":
         return PHRASE_PROMPT
     if template_id == "phrase-reask":

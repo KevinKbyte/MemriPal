@@ -1,5 +1,5 @@
 """FastAPI app: health, static shell (MEM-001), POST /loci (MEM-015), demo photo (MEM-017),
-POST /split (MEM-020)."""
+POST /split (MEM-020), POST /associate (MEM-021)."""
 
 import base64
 import json
@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from memripal.associate import AssociateRejected, associate, check_inputs
 from memripal.backend import BackendCallFailed, FixtureMissing, ModelBackend, select_backend
 from memripal.imaging import MAX_UPLOAD_BYTES, ImageRejected, process_upload, validate_processed
 from memripal.loci import Locus, find_loci
@@ -27,6 +28,10 @@ DEMO_PHOTO = REPO_ROOT / "fixtures" / "demo" / "photo.jpg"
 UPLOAD_TYPES = {"image/jpeg", "image/png", "image/webp"}
 # Base64 of a max-size photo plus room for 20 KB of notes even when JSON-escaped as \uXXXX.
 SPLIT_BODY_CAP = 4 * -(-MAX_UPLOAD_BYTES // 3) + 256 * 1024
+JPEG_DATA_URL = "data:image/jpeg;base64,"
+# A max-size photo as a data URL plus room for item and locus even when JSON-escaped.
+ASSOCIATE_BODY_CAP = 4 * -(-MAX_UPLOAD_BYTES // 3) + 64 * 1024
+ASSOCIATE_KEYS = {"image", "item", "locus"}
 
 # DNS-rebinding guard for the loopback-only server.
 # S7 (public Cloud Run deploy, ADR 0010) must extend this list with the deploy host.
@@ -83,6 +88,32 @@ def _split_body(raw: bytes) -> dict | None:
     return body
 
 
+def _associate_body(raw: bytes) -> dict | None:
+    """The parsed /associate body, or None unless it is exactly {image, item, locus}, all strings."""
+    try:
+        body = json.loads(raw)
+    except ValueError:
+        return None
+    if not isinstance(body, dict) or set(body) != ASSOCIATE_KEYS:
+        return None
+    if not all(isinstance(v, str) for v in body.values()):
+        return None
+    return body
+
+
+def _length_error(request: Request, cap: int) -> JSONResponse | None:
+    """An error for a malformed or over-cap Content-Length header, else None (absent is fine)."""
+    length = request.headers.get("content-length")
+    if length is None:
+        return None
+    # str.isdigit() accepts e.g. U+00B2, which int() rejects; require plain ASCII digits.
+    if not (length.isascii() and length.isdigit()):
+        return _error(400, "bad_content_length")
+    if int(length) > cap:
+        return _error(413, "too_large")
+    return None
+
+
 def create_app(backend: ModelBackend | None = None) -> FastAPI:
     if backend is None:
         backend = select_backend(None, fixtures_root=REPLAY_DIR, live_cache_root=LIVE_CACHE_DIR)
@@ -110,13 +141,8 @@ def create_app(backend: ModelBackend | None = None) -> FastAPI:
         media_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
         if media_type not in UPLOAD_TYPES:
             return _error(415, "unsupported_media_type")
-        length = request.headers.get("content-length")
-        if length is not None:
-            # str.isdigit() accepts e.g. U+00B2, which int() rejects; require plain ASCII digits.
-            if not (length.isascii() and length.isdigit()):
-                return _error(400, "bad_content_length")
-            if int(length) > MAX_UPLOAD_BYTES:
-                return _error(413, "too_large")
+        if (length_error := _length_error(request, MAX_UPLOAD_BYTES)) is not None:
+            return length_error
         data = await _read_capped(request)
         if data is None:
             return _error(413, "too_large")
@@ -179,6 +205,53 @@ def create_app(backend: ModelBackend | None = None) -> FastAPI:
         except BackendCallFailed:
             return _error(502, "upstream")
         return JSONResponse({"points": points})
+
+    @app.post("/associate")
+    async def post_associate(request: Request) -> JSONResponse:
+        media_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
+        if media_type != "application/json":
+            return _error(415, "unsupported_media_type")
+        if (length_error := _length_error(request, ASSOCIATE_BODY_CAP)) is not None:
+            return length_error
+        raw = await _read_capped(request, ASSOCIATE_BODY_CAP)
+        if raw is None:
+            return _error(413, "too_large")
+        body = _associate_body(raw)
+        if body is None:
+            return _error(400, "bad_request")
+        item, locus, image = body["item"], body["locus"], body["image"]
+        try:
+            # Caps first: bad input is refused before the photo is decoded or any model call.
+            check_inputs(item, locus)
+            if not image.startswith(JPEG_DATA_URL):
+                return _error(400, "bad_data_url")
+            try:
+                photo = base64.b64decode(image[len(JPEG_DATA_URL) :], validate=True)
+            except ValueError:  # binascii.Error, or a non-ASCII str
+                return _error(400, "bad_base64")
+            # Never re-encoded: the bytes key the fixture/cache entries.
+            processed = await run_in_threadpool(validate_processed, photo)
+            result = await run_in_threadpool(associate, backend, processed, item, locus)
+        except AssociateRejected as exc:
+            return _error(400, str(exc))
+        except ImageRejected as exc:
+            return _error(exc.status, str(exc))
+        except FixtureMissing:
+            return _error(404, "fixture_missing")
+        except BackendCallFailed:
+            return _error(502, "upstream")
+        except Exception:
+            logger.exception("POST /associate failed")
+            return _error(500, "internal")
+        return JSONResponse(
+            {
+                "item": result.item,
+                "locus": result.locus,
+                "status": result.status,
+                "attempts": result.attempts,
+                "record": result.record,
+            }
+        )
 
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     return app
