@@ -2,6 +2,35 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.0] - 2026-10-27
+
+### Added
+
+- S2.3b `find_loci` with deadline and `on_progress`; ADR 0014 loci prompt args + progress semantics (MEM-014).
+- S2.4 `POST /loci` endpoint with host guard, ASCII content-length check and internal error mapping (MEM-015).
+- S2.5 seg provider toggle `src/memripal/seg_provider.py` + Modal SAM adapter, wired into the backend: Modal segment
+  failures raise `BackendCallFailed`, cache key is provider-distinct; ADR 0018 (MEM-016).
+- S2.6 upload UI + demo fixtures; Load demo uploads raw bytes (ADR 0016), shared upload-flow stale-response gate,
+  clear on new upload, `demo_missing` 404 (MEM-017).
+- Live-mode response cache in gitignored `refs/private` with photo save; ADR 0017 (MEM-014).
+- Local Whisper STT provider toggle `src/memripal/stt_provider.py`; ADR 0015 (MEM-019).
+- Pre-commit runs the ADR structure test when `docs/decisions/` is staged (MEM-018).
+- README pipeline diagram, Meta model table, ADR links.
+
+### Changed
+
+- README: re-recite of misses marked planned, user-driven; intro describes spoken recall per ADR 0008.
+- Ruff pins `memripal` as first-party for deterministic import sort.
+
+### Fixed
+
+- Live cache: best-effort cache writes, photo-first, two-way containment; an existing photo counts as success so the
+  response is cached (MEM-014).
+- UI: single list numbering, label-only list items (MEM-017).
+- Secret scan: word boundary before `sk-` (MEM-004).
+- Modal box parsing drops non-finite and overflowing numbers (MEM-016).
+- Live probe rejects a bool ASR duration; `asr_ok` follows `CallResult.ok`.
+
 ## [0.5.0] - 2026-10-26
 
 ### Added
