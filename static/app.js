@@ -18,14 +18,6 @@ export function formatHealth(health) {
 }
 
 /**
- * @param {{n: number, label: string}} locus
- * @returns {string}
- */
-export function locusCaption({ n, label }) {
-  return `${n}. ${label}`;
-}
-
-/**
  * Scale that fits an imgW-wide image into maxW without ever upscaling; 1 for any unusable argument.
  * @param {number} imgW
  * @param {number} imgH
@@ -163,8 +155,9 @@ async function drawResult(payload, isCurrent, deps) {
       ctx.fillStyle = "#ffffff";
       ctx.fillText(String(locus.n), x1 * scale + 4, y1 * scale + 3);
     }
+    // Label only: the <ol id="loci"> marker supplies the number, matching the canvas badge.
     const item = deps.doc.createElement("li");
-    item.textContent = locusCaption(locus);
+    item.textContent = locus.label;
     list.append(item);
   }
   return true;
