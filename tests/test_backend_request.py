@@ -307,7 +307,10 @@ class TestMetaBackendWriteThrough:
             _meta(tmp_path, _ok(_chat_envelope({"phrases": ["book"]}))).call(req)
         dsts = [os.fspath(c.args[1]) for c in replace.call_args_list]
         assert os.fspath(target) in dsts
-        assert _files_under(tmp_path) == [target]
+        # The processed photo is also saved under photos/ (MEM-014 live cache); no temp files remain.
+        files = _files_under(tmp_path)
+        assert target in files
+        assert not [p for p in files if p.name.endswith(".tmp")]
 
     def test_failed_replace_leaves_no_partial_or_temp_file(self, tmp_path):
         with (
