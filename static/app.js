@@ -3,6 +3,7 @@
 // Served as a raw ES module (no build step). Model-derived text is only ever set via textContent.
 
 import { associationKey } from "./palace_store.js";
+import { browserGeolocate, createPlaceState, lookupPlace, readGps, wirePlace } from "./place.js";
 
 /**
  * @typedef {{x1: number, y1: number, x2: number, y2: number}} LocusBox
@@ -129,6 +130,8 @@ async function loadImage(src) {
  *   loadImage: (src: string) => Promise<CanvasImageSource>,
  *   fetch: typeof fetch,
  *   encode: (file: File) => Promise<BodyInit>,
+ *   place?: ReturnType<typeof createPlaceState>,
+ *   geolocate?: () => Promise<{lat: number, lon: number} | null>,
  * }} UploadDeps
  */
 
@@ -225,6 +228,15 @@ export function onPhotoChange(input, deps) {
   // Clear the value so re-picking the same photo fires change again.
   input.value = "";
   if (!file) return undefined;
+  const place = deps.place;
+  // Opt-in only (MEM-025): with the toggle off neither the GPS nor the location is ever read.
+  if (place && place.enabled()) {
+    const geolocate = deps.geolocate;
+    // GPS from the ORIGINAL bytes: the re-encode below strips EXIF (ADR 0009, 0022).
+    const coords = async () =>
+      readGps(new Uint8Array(await file.arrayBuffer())) ?? (geolocate ? await geolocate() : null);
+    void lookupPlace(coords, { doc: deps.doc, fetch: deps.fetch, place });
+  }
   return showUpload(
     async () => postLoci(deps.fetch, await deps.encode(file)),
     "could not read or send the photo",
@@ -237,6 +249,15 @@ export function onPhotoChange(input, deps) {
  * @param {UploadDeps} deps
  */
 export function onLoadDemo(deps) {
+  const place = deps.place;
+  if (place && place.enabled()) {
+    // The demo photo is EXIF-free (MEM-005), so a sidecar stands in for its GPS.
+    const coords = async () => {
+      const resp = await deps.fetch("/demo/place.json");
+      return resp.ok ? resp.json() : null;
+    };
+    void lookupPlace(coords, { doc: deps.doc, fetch: deps.fetch, place });
+  }
   return showUpload(() => demoUpload(deps.fetch), "could not load the demo photo", deps);
 }
 
@@ -260,21 +281,27 @@ export const KAVE_CHANNELS = Object.freeze([
  *   fetch: typeof fetch,
  *   store: ReturnType<typeof import("./palace_store.js").createPalaceStore>,
  *   image?: string,
+ *   place?: ReturnType<typeof createPlaceState>,
  * }} AssocDeps
  */
 
 /**
- * One POST /associate (S3b contract: body exactly {image, item, locus}; locus is the short label).
+ * One POST /associate (S3b contract: body {image, item, locus}; locus is the short label), plus
+ * `place` {title, extract} only when one is typed or confirmed (MEM-025); coords never ride here.
  * Throws on a network error or non-2xx, so the caller stores nothing for that pair.
  * @param {AssocPair} pair
  * @param {AssocDeps} deps
  * @returns {Promise<AssocEntry>}
  */
 async function requestAssociation(pair, deps) {
+  /** @type {{image?: string, item: string, locus: string, place?: {title: string, extract: string}}} */
+  const body = { image: deps.image, item: pair.item, locus: pair.locus.label };
+  const place = deps.place ? deps.place.current() : null;
+  if (place) body.place = place;
   const resp = await deps.fetch("/associate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ image: deps.image, item: pair.item, locus: pair.locus.label }),
+    body: JSON.stringify(body),
   });
   const payload = await resp.json().catch(() => null);
   if (!resp.ok) {
@@ -365,7 +392,20 @@ export async function runAssociations(pairs, deps) {
 function wireUpload() {
   // Bound: an unbound window.fetch called as deps.fetch throws "Illegal invocation".
   /** @type {UploadDeps} */
-  const deps = { doc: document, loadImage, fetch: fetch.bind(globalThis), encode: reencodeJpeg };
+  const place = createPlaceState({
+    // Lazy: merely touching window.localStorage throws where storage is disabled.
+    getItem: (k) => localStorage.getItem(k),
+    setItem: (k, v) => localStorage.setItem(k, v),
+  });
+  wirePlace(document, place);
+  const deps = {
+    doc: document,
+    loadImage,
+    fetch: fetch.bind(globalThis),
+    encode: reencodeJpeg,
+    place,
+    geolocate: browserGeolocate,
+  };
   const input = /** @type {HTMLInputElement | null} */ (byId("photo"));
   if (input) input.addEventListener("change", () => onPhotoChange(input, deps));
   const demo = byId("load-demo");

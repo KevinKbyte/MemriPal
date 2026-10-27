@@ -13,6 +13,13 @@
       <label for="photo">Take or choose a photo of a room</label>
       <input id="photo" type="file" accept="image/*" capture="environment">
       <button id="load-demo" type="button">Load demo</button>
+      <fieldset id="place-settings">
+        <legend>Place history (optional)</legend>
+        <label><input id="place-toggle" type="checkbox"> Use my location for place history</label>
+        <label for="place-typed">Or type a place</label>
+        <input id="place-typed" type="text" maxlength="255" autocomplete="off">
+        <div id="places"></div>
+      </fieldset>
       <p id="upload-status" role="status"></p>
       <div id="scene-wrap">
         <canvas id="scene" width="0" height="0"></canvas>

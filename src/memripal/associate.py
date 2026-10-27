@@ -57,6 +57,8 @@ ASSOCIATION_PLACE = (
     "PLACE: {title}\n"
     "PLACE FACTS: {extract}"
 )
+# A typed title is free user text bound for the prompt, so it is capped like item and locus; 255 is the
+# longest Wikipedia title, so no looked-up place is ever refused.
 MAX_PLACE_TITLE_LEN = 255
 MAX_PLACE_EXTRACT_LEN = 400
 PLACE_KEYS = {"title", "extract"}
