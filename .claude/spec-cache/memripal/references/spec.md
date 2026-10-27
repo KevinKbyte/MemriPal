@@ -462,3 +462,35 @@ b) POST /associate (`app.py`, MEM-015 idiom), checks before any model call:
   applies.
 
 Tests: tests/test_associate.py, tests/test_associate_regen.py, tests/test_associate_api.py
+
+## MEM-022 Association client store + generate flow
+
+ADR [0021](../../../../docs/decisions/0021-client-palace-store-injected-kv.md). Plan S3 (D3, D16).
+
+`static/palace_store.js`:
+- `createPalaceStore(adapter)` -> `{get(key), put(key, entry), list()}`, all async; `adapter` = async
+  `{get, put, list}` (IndexedDB-backed in the browser, in-memory Map in node tests). `put` settles only after
+  `adapter.put` settles (durable before ack); empty or non-string key -> rejects, nothing stored. Unknown key ->
+  `get` null/undefined; `list()` returns every entry, order unpinned. A new store over the same adapter sees
+  earlier records (reload).
+- `associationKey(item, locusLabel)` -> deterministic non-empty string including the locus short label (D3);
+  distinct (item, label) pairs never collide, even with separator chars (`|`, `:`, `/`, whitespace, NUL, quote,
+  backslash, comma) inside a field.
+
+`static/app.js`, `static/index.html`:
+- `KAVE_CHANNELS` = kinesthetic, auditory, visual, emotional, conceptual, olfactory, gustatory, spatial, in order.
+- `runAssociations(pairs, {doc, fetch, store, image})`, pairs = `[{item, locus: {n, label}}]`, image = uploaded photo
+  data URL. Missing image -> no request, error in `#assoc-status`. One POST /associate (MEM-021) per pair needing
+  generation, body exactly `{image, item, locus: locus.label}`; entry `{record, status}` stored under
+  `associationKey(item, locus.label)` before the next request resolves; `invalid` status stored as returned.
+  Non-2xx (e.g. 502) or network error -> nothing stored for that pair, earlier records kept; a stored `invalid`
+  record stays shown when its regeneration fails. Empty list -> no requests, empty panel.
+- Resume: stored `valid` entries reused without a request; only missing or `invalid` ones regenerate. A record
+  under another locus label is not reused. Re-run with all valid -> no requests, panel not duplicated.
+- `#assoc-status` shows "<done> of <total>" (done = pairs with a stored record). `#associations` holds one child
+  per pair: item, locus label, the 8 channels in `KAVE_CHANNELS` order (name + text), then the D16 question and
+  answer.
+- Model text set via textContent only: hostile markup renders as literal text, never an element; `app.js` and
+  `palace_store.js` contain no `innerHTML`/`outerHTML`/`insertAdjacentHTML`/`document.write`.
+
+Tests: static/palace_store.test.mjs, static/app_associations.test.mjs

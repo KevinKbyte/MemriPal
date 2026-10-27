@@ -37,6 +37,8 @@ the others that you asked about".
 - [0020](0020-association-validate-and-regenerate.md) Associations: deterministic 4-rule validator, <= 2
   reason-carrying regenerations, then `invalid` for UI edit (over LLM self-check, unbounded retries or one
   attempt); locus label in the key (D3).
+- [0021](0021-client-palace-store-injected-kv.md) Palace store: IndexedDB behind an injected KV adapter, keyed by
+  item + locus label (over direct IndexedDB, localStorage, or server storage).
 
 ## Minor decisions (no ADR)
 
