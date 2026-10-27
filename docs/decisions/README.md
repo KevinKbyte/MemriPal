@@ -26,6 +26,8 @@ the others that you asked about".
   field); `find_loci` progress, deadline and re-ask failure semantics.
 - [0015](0015-local-whisper-stt-toggle.md) Muse STT default; loopback local Whisper behind `MEMRIPAL_STT_PROVIDER` (over
   OpenWhispr).
+- [0016](0016-load-demo-bypasses-reencode.md) Load demo posts the demo photo's raw bytes, no client re-encode (over
+  EXIF-free skip or fuzzy fixture match).
 
 ## Minor decisions (no ADR)
 

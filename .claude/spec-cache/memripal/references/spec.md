@@ -303,7 +303,18 @@ Tests: tests/test_seg_provider.py
 - `#meta-notice` "Your photo is sent to Meta's AI APIs to find places in it." precedes the single file input
   `<input id="photo" type="file" accept="image/*" capture="environment">`; hidden unless /healthz mode is "meta".
 - Client re-encode (drops EXIF, bakes orientation): `createImageBitmap(file, {imageOrientation: "from-image"})`
-  -> canvas -> `toBlob("image/jpeg", 0.9)` -> POST /loci as image/jpeg.
+  -> canvas -> `toBlob("image/jpeg", 0.9)` -> POST /loci as image/jpeg. Input value cleared on change, so
+  re-picking the same photo re-uploads.
+- `button#load-demo` "Load demo": `demoUpload(fetchFn)` GETs /demo/photo.jpg and POSTs those exact bytes to /loci,
+  no re-encode (browser JPEG encoders differ, so a re-encoded demo misses the replay with `fixture_missing`;
+  ADR 0016). Demo GET non-2xx -> throws `http_<status>`.
+- GET /demo/photo.jpg: fixed path, no user-supplied component, serves `fixtures/demo/photo.jpg` byte-identical as
+  image/jpeg, behind TrustedHostMiddleware; `/demo/` traversal paths are not served.
+- Stale-response gate: `latestOnly()` -> `{next, isCurrent}`; one gate shared by photo pick and Load demo; a
+  response or `drawResult` whose token is no longer the latest renders nothing.
+- Demo processed sha pinned: `process_upload(fixtures/demo/photo.jpg)` -> sha
+  `7af10a4e9efede5539af090a5c61550d34c8828cd1cbd956023fff088ca05206`, 1024x768; changing it requires
+  regenerating the replay fixtures.
 - Canvas `#scene` draws the returned image + numbered boxes scaled by `fitScale(imgW, imgH, maxW)` =
   min(1, maxW / imgW), never upscales; 1 if any arg is 0, negative, NaN or Infinity.
 - Captions `locusCaption(locus) -> "1. left book"` in `<ol id="loci">`, set via `textContent` only (no HTML
@@ -312,7 +323,8 @@ Tests: tests/test_seg_provider.py
   phrases + 12 SAM boxes -> 12 loci first round, no re-ask; legacy MEM-005 raw-sha fixtures retained; MANIFEST
   lists every fixture. FixtureBackend replay of the demo -> >= 10 loci, numbered 1..n.
 
-Tests: static/app.test.mjs, tests/test_fixtures_manifest.py::TestDemoReplayForLoci
+Tests: static/app.test.mjs, tests/test_fixtures_manifest.py::TestDemoReplayForLoci,
+tests/test_app.py::TestDemoPhotoRoute, tests/test_fixtures_manifest.py::TestDemoProcessedShaPin
 
 ## MEM-018 Architecture decision log
 
