@@ -1,4 +1,4 @@
-"""One-shot live probe of the Meta Model API against the plan's 5 checks (MEM-008)."""
+"""One-shot live probe of the Meta Model API against the plan's 5 checks (MEM-008) + ASR checks (MEM-011)."""
 
 import importlib.util
 import json
@@ -215,17 +215,22 @@ def run_probe(
                 "status": None,
                 "error": str(exc),
             }
+            asr_ok = False
         else:
             text = _safe(transcript_text, res.body) if res.ok else None
             duration = _safe(_duration_ms, res.body) if res.ok else None
             asr = {
                 "transcript": text if isinstance(text, str) else None,
-                "audioDurationMs": duration if isinstance(duration, int | float) else None,
+                # bool subclasses int, so True/False would otherwise pass as a duration.
+                "audioDurationMs": duration
+                if isinstance(duration, int | float) and not isinstance(duration, bool)
+                else None,
                 "latency_s": res.latency_s,
                 "status": res.status,
                 "error": res.error,
             }
-        checks["asr_ok"] = asr["status"] == 200 and asr["error"] is None
+            asr_ok = res.ok
+        checks["asr_ok"] = asr_ok
         checks["asr_transcript_nonempty"] = bool(asr["transcript"])
         checks["asr_has_duration"] = asr["audioDurationMs"] is not None
         extra["asr"] = asr
