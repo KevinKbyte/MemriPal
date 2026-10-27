@@ -42,7 +42,8 @@ Tests: tests/test_backend.py::TestCacheKeyDigest, ::TestResponseCache, ::TestFix
 ## MEM-004 Pre-commit scan
 
 `python scripts/precommit_scan.py <paths...>` exits 1 with a stderr line naming each offending path if any file:
-- matches a secret pattern: r"sk-[A-Za-z0-9_-]{20,}", r"Bearer\s+[A-Za-z0-9._-]{20,}", r"Signatur[e]=", r"[?&]token=",
+- matches a secret pattern: r"\bsk-[A-Za-z0-9_-]{20,}" (word boundary: in-word sk- such as reask-... is not a key),
+  r"Bearer\s+[A-Za-z0-9._-]{20,}", r"Signatur[e]=", r"[?&]token=",
   r"META_API_KEY\s*=\s*['\"]?[^\s'\"]{8,}" (the Signature pattern is bracketed here so this doc does not trip the scan);
 - is a .jpg/.jpeg whose bytes contain an APP1 Exif segment (b"Exif\x00\x00");
 - is a .png/.webp containing b"Exif" / an eXIf chunk.
