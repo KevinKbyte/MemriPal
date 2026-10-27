@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 
 import * as app from "./app.js";
 
-const { fitScale, formatHealth, locusCaption } = app;
+const { fitScale, formatHealth } = app;
 
 test("formatHealth reports the active backend mode", () => {
   assert.equal(formatHealth({ status: "ok", mode: "fixture" }), "Backend ok (fixture mode)");
@@ -18,16 +18,12 @@ test("formatHealth reports unavailable for missing or non-ok health", () => {
 });
 
 // Covers: MEM-017
-// Requirement: each returned locus is captioned "<n>. <label>" (e.g. "1. left book"), and
-// the returned photo is drawn scaled to fit the available width without ever being upscaled:
-// fitScale(imgW, imgH, maxW) is min(1, maxW / imgW), and any non-positive or non-finite
-// argument yields 1 (identity) so a bad dimension never produces 0, NaN or Infinity.
+// Requirement: the returned photo is drawn scaled to fit the available width without ever being
+// upscaled: fitScale(imgW, imgH, maxW) is min(1, maxW / imgW), and any non-positive or non-finite
+// argument yields 1 (identity) so a bad dimension never produces 0, NaN or Infinity. (The loci
+// list text contract -- label only, the <ol> supplies the number -- lives in
+// app_upload_flow.test.mjs "loci list shows each number once".)
 describe("upload UI helpers", () => {
-  test("locusCaption joins the locus number and label", () => {
-    assert.equal(locusCaption({ n: 1, label: "left book" }), "1. left book");
-    assert.equal(locusCaption({ n: 12, label: "lamp" }), "12. lamp");
-  });
-
   test("fitScale shrinks an image wider than maxW to fit it exactly", () => {
     assert.equal(fitScale(2048, 1536, 1024), 0.5);
     assert.equal(fitScale(1000, 3000, 250), 0.25);

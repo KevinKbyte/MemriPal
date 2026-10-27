@@ -11,6 +11,7 @@
 // upload never draws, never sets the status, and never clears, even when it answers last.
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import * as app from "./app.js";
 
@@ -38,13 +39,16 @@ async function until(cond, label) {
 /** Fake page: the #upload-status, #scene canvas and #loci list the upload flow writes to. */
 function fakePage() {
   const drawn = [];
+  const badges = [];
   const ctx = {
     drawImage(img) {
       drawn.push(img.src);
     },
     strokeRect() {},
     fillRect() {},
-    fillText() {},
+    fillText(text) {
+      badges.push(String(text));
+    },
     clearRect() {},
   };
   const canvas = { width: 300, height: 150, parentElement: { clientWidth: 1000 }, getContext: () => ctx };
@@ -68,6 +72,8 @@ function fakePage() {
     canvas,
     status,
     drawn,
+    badges,
+    list,
     captions: () => list.children.map((c) => c.textContent),
   };
 }
@@ -103,7 +109,7 @@ function depsFor(page, extra = {}) {
 
 function assertShowsB(page) {
   assert.deepEqual(page.drawn, [IMG("B")], "only the latest upload's photo may be drawn");
-  assert.deepEqual(page.captions(), ["1. lamp", "2. door"]);
+  assert.deepEqual(page.captions(), ["lamp", "door"]);
   assert.equal(page.status.textContent, "Found 2 places");
   assert.equal(page.canvas.width, 800);
   assert.equal(page.canvas.height, 600);
@@ -331,7 +337,7 @@ describe("upload start clears the previous result", () => {
     assertCleared(page, "while the new upload is in flight");
     d.resolve(jsonResponse(payload("C", ["sofa"])));
     await p;
-    assert.deepEqual(page.captions(), ["1. sofa"]);
+    assert.deepEqual(page.captions(), ["sofa"]);
   });
 
   test("an upload that answers with an error leaves the canvas cleared and the list empty", async () => {
@@ -352,5 +358,69 @@ describe("upload start clears the previous result", () => {
     }, "could not send", deps);
     assert.equal(page.status.textContent, "Upload failed: could not send");
     assertCleared(page, "after a rejected send");
+  });
+});
+
+// Covers: MEM-017
+// Requirement: the loci list shows each place's number exactly once. index.html renders the list
+// as <ol id="loci">, whose own marker supplies the number, so each rendered <li> text is the
+// locus label only ("frame", never "1. frame" -- the bug rendered "1. 1. frame" after Load demo).
+// Labels are shown verbatim (a label that starts with a digit is not altered). Canvas box badges
+// keep their locus numbers, and list position i (marker i+1) is locus n = i+1, so every badge
+// number names the same place as the list item with that marker; a locus without a box gets no
+// badge but still keeps its list slot.
+describe("loci list shows each number once", () => {
+  const html = readFileSync(new URL("./index.html", import.meta.url), "utf8");
+  const LEADING_NUMBER = /^\s*\d+\s*[.):-]/;
+
+  function demoFetch(body) {
+    return async (url) => {
+      if (String(url) === "/demo/photo.jpg") {
+        return new Response(new Uint8Array([0x44]), { status: 200, headers: { "content-type": "image/jpeg" } });
+      }
+      if (String(url) === "/loci") return jsonResponse(body);
+      throw new Error(`unexpected url ${url}`);
+    };
+  }
+
+  test("index.html renders the loci as an ordered list <ol id=\"loci\">", () => {
+    assert.match(html, /<ol\b[^>]*\bid="loci"/);
+  });
+
+  test("after Load demo each list item's text is the label only", async () => {
+    const page = fakePage();
+    const labels = ["frame", "clock", "lamp", "door"];
+    await app.onLoadDemo(depsFor(page, { fetch: demoFetch(payload("D", labels)) }));
+    assert.equal(page.status.textContent, "Found 4 places");
+    assert.deepEqual(page.list.children.map((c) => c.tagName), ["LI", "LI", "LI", "LI"]);
+    assert.deepEqual(page.captions(), labels);
+    for (const text of page.captions()) {
+      assert.doesNotMatch(text, LEADING_NUMBER, `list item "${text}" repeats the <ol> number`);
+    }
+  });
+
+  test("a label that itself starts with a digit is shown verbatim", async () => {
+    const page = fakePage();
+    const labels = ["2 chairs", "frame", "10 books"];
+    await app.showUpload(async () => jsonResponse(payload("E", labels)), "could not send", depsFor(page));
+    assert.deepEqual(page.captions(), labels);
+  });
+
+  test("canvas badges keep their numbers and match the list order", async () => {
+    const page = fakePage();
+    const labels = ["frame", "clock", "lamp", "door"];
+    await app.onLoadDemo(depsFor(page, { fetch: demoFetch(payload("D", labels)) }));
+    assert.deepEqual(page.badges, ["1", "2", "3", "4"], "each boxed locus keeps its number badge");
+    // List position i carries <ol> marker i+1, which must be the badge number of the same label.
+    assert.deepEqual(page.captions(), labels);
+  });
+
+  test("a locus without a box gets no badge but keeps its list slot", async () => {
+    const page = fakePage();
+    const body = payload("F", ["frame", "clock", "lamp"]);
+    delete body.loci[1].box;
+    await app.showUpload(async () => jsonResponse(body), "could not send", depsFor(page));
+    assert.deepEqual(page.badges, ["1", "3"]);
+    assert.deepEqual(page.captions(), ["frame", "clock", "lamp"]);
   });
 });
