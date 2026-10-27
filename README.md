@@ -3,9 +3,10 @@
 MemriPal turns any place you know into a memory palace for whatever you need to memorize: exam facts, a speech,
 vocabulary. Photograph a familiar space (a room, a library aisle, a campus walk); SAM 3.1 segments distinct objects
 into an ordered walking route of loci; Muse Spark splits your study list into items and writes a validated KAVE COGS
-association tying each item to its locus; Muse Image renders each scene onto your photo. Spark then quizzes you by
-walking the route and re-reviews the loci you miss. The full encode-and-recall loop runs live against the Meta Model
-API or offline from recorded fixtures.
+association tying each item to its locus; Muse Image renders each scene onto your photo. You then walk the route
+eyes closed and recall aloud; a deterministic matcher (no LLM) checks the Muse Voice Transcribe transcript, lights
+each locus you recall, and re-reviews the ones you miss. The full encode-and-recall loop runs live against the Meta
+Model API or offline from recorded fixtures.
 
 ## Built during the hackathon (Oct 26 - Nov 4 2026)
 
