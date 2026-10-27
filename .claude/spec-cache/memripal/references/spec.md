@@ -318,7 +318,7 @@ Tests: tests/test_seg_provider.py, tests/test_seg_provider_wiring.py
   re-picking the same photo re-uploads.
 - `button#load-demo` "Load demo": `demoUpload(fetchFn)` GETs /demo/photo.jpg and POSTs those exact bytes to /loci,
   no re-encode (browser JPEG encoders differ, so a re-encoded demo misses the replay with `fixture_missing`;
-  ADR 0016). Demo GET non-2xx -> throws `http_<status>`.
+  ADR 0016). Demo GET non-2xx -> "Upload failed: HTTP <status>".
 - GET /demo/photo.jpg: fixed path, no user-supplied component, serves `fixtures/demo/photo.jpg` byte-identical as
   image/jpeg, behind TrustedHostMiddleware; `/demo/` traversal paths are not served.
 - Stale-response gate: `latestOnly()` -> `{next, isCurrent}`; one gate shared by photo pick and Load demo; a
@@ -330,7 +330,8 @@ Tests: tests/test_seg_provider.py, tests/test_seg_provider_wiring.py
   min(1, maxW / imgW), never upscales; 1 if any arg is 0, negative, NaN or Infinity.
 - `<ol id="loci">` items are label-only (`textContent = locus.label`, no HTML string assignment); the `<ol>`
   marker is the only number. List slot i matches canvas badge `String(i+1)`; a locus without a box draws no
-  badge but keeps its slot. Non-2xx -> "Upload failed: <code>" (body `error`, else `http_<status>`).
+  badge but keeps its slot. Non-2xx -> "Upload failed: <code>" (string body `error`, else `HTTP <status>`);
+  2xx with non-JSON body -> "Upload failed: unreadable response from the server".
 - `scripts/make_synthetic_fixtures.py`: replays keyed by the processed sha (`process_upload(photo)`), 12 Spark
   phrases + 12 SAM boxes -> 12 loci first round, no re-ask; legacy MEM-005 raw-sha fixtures retained; MANIFEST
   lists every fixture. FixtureBackend replay of the demo -> >= 10 loci, numbered 1..n.
