@@ -329,6 +329,11 @@ export async function runAssociations(pairs, deps) {
   const panel = deps.doc.getElementById("associations");
   if (!status || !panel) return;
   panel.replaceChildren();
+  // The server rejects every request without a photo, so fail fast instead of N doomed POSTs.
+  if (!deps.image) {
+    status.textContent = "Upload a photo before generating associations.";
+    return;
+  }
   let done = 0;
   let failed = 0;
   const showProgress = () => {
