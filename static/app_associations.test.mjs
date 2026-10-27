@@ -7,15 +7,16 @@
 //     KAVE_CHANNELS -- ["kinesthetic", "auditory", "visual", "emotional", "conceptual",
 //                       "olfactory", "gustatory", "spatial"], in that order
 //     runAssociations(pairs, deps) -> Promise; pairs = [{item, locus: {n, label}}]
-//       deps = {doc, fetch, store}: doc offers getElementById/createElement(/createTextNode),
-//       fetch is the fetch function, store is a palace_store.js createPalaceStore(adapter).
+//       deps = {doc, fetch, store, image}: doc offers getElementById/createElement(/createTextNode),
+//       fetch is the fetch function, store is a palace_store.js createPalaceStore(adapter),
+//       image is the uploaded photo as a data URL (missing -> error in #assoc-status, no POST).
 //       Writes progress "<done> of <total>" to #assoc-status (done counts items with a stored
 //       record) and renders one #associations child per pair: item, locus label, the 8 channels
 //       in KAVE_CHANNELS order (name + text), then the D16 question and answer.
 //       Stored entry per pair under associationKey(item, locus.label): {record, status}.
 //       A failed request (non-2xx or network error) stores nothing for that pair.
-// ASSUMPTION (POST /associate is defined in parallel by slice S3b; GREEN reconciles):
-//   request  = POST "/associate", JSON body carrying at least `item` (the item string);
+// POST /associate (slice S3b contract; the server answers 400 when image is missing):
+//   request  = POST "/associate", JSON body exactly {image, item, locus: <locus label>};
 //   response = 200 JSON {record: {item, locus, <8 channels>, question, answer},
 //                        status: "valid" | "invalid"}.
 // These tests drive runAssociations (the page's path), never the endpoint directly
@@ -26,6 +27,8 @@ import { readFileSync } from "node:fs";
 
 import * as app from "./app.js";
 import { associationKey, createPalaceStore } from "./palace_store.js";
+
+const IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ==";
 
 const CHANNELS = ["kinesthetic", "auditory", "visual", "emotional", "conceptual", "olfactory", "gustatory", "spatial"];
 
@@ -198,7 +201,40 @@ describe("association channels", () => {
 // Covers: MEM-022
 // Requirement: each item gets one POST /associate and its record is saved to the palace store as
 // soon as it arrives -- before the next item's request is answered -- with per-item progress.
+// Each POST body is exactly {image, item, locus: <label>} (S3b); without a photo the run cannot
+// succeed, so it fails fast: no request, an error in #assoc-status, nothing stored.
 describe("runAssociations: per-item save and progress", () => {
+  test("each POST /associate body is exactly {image, item, locus: label}", async () => {
+    const { page, store } = setup();
+    const bodies = [];
+    const fetch = async (url, init) => {
+      assert.equal(String(url), "/associate");
+      assert.equal(init.method, "POST");
+      const body = JSON.parse(init.body);
+      bodies.push(body);
+      return jsonResponse({ record: record(body.item, labelFor(body.item)), status: "valid" });
+    };
+    await app.runAssociations(pairsOf(2), { doc: page.doc, fetch, store, image: IMAGE });
+    assert.deepEqual(bodies, [
+      { image: IMAGE, item: "milk", locus: "lamp" },
+      { image: IMAGE, item: "eggs", locus: "door" },
+    ]);
+  });
+
+  for (const [name, image] of [
+    ["missing", undefined],
+    ["empty", ""],
+  ]) {
+    test(`${name} image: no POST, error shown in #assoc-status, nothing stored`, async () => {
+      const { page, adapter, store } = setup();
+      const { fn, items } = answeringFetch();
+      await app.runAssociations(pairsOf(2), { doc: page.doc, fetch: fn, store, image }).catch(() => {});
+      assert.deepEqual(items, [], "no request may be sent without an image");
+      assert.match(page.status.textContent, /photo|image/i, `got "${page.status.textContent}"`);
+      assert.deepEqual(adapter.puts, [], "nothing stored");
+    });
+  }
+
   test("each record is stored before the next request resolves", async () => {
     const { page, adapter, store } = setup();
     const calls = [];
@@ -207,7 +243,7 @@ describe("runAssociations: per-item save and progress", () => {
       calls.push({ url: String(url), item: JSON.parse(init.body).item, d });
       return d.promise;
     };
-    const run = app.runAssociations(pairsOf(3), { doc: page.doc, fetch, store });
+    const run = app.runAssociations(pairsOf(3), { doc: page.doc, fetch, store, image: IMAGE });
     for (let i = 0; i < 3; i++) {
       await until(() => calls.length > i, `request ${i + 1} sent`);
       const c = calls[i];
@@ -233,7 +269,7 @@ describe("runAssociations: per-item save and progress", () => {
       calls.push({ item: JSON.parse(init.body).item, d });
       return d.promise;
     };
-    const run = app.runAssociations(pairsOf(3), { doc: page.doc, fetch, store });
+    const run = app.runAssociations(pairsOf(3), { doc: page.doc, fetch, store, image: IMAGE });
     await until(() => calls.length > 0, "first request sent");
     calls[0].d.resolve(jsonResponse({ record: record(calls[0].item, labelFor(calls[0].item)), status: "valid" }));
     await until(() => /\b1 of 3\b/.test(page.status.textContent), `"1 of 3" shown; got "${page.status.textContent}"`);
@@ -248,7 +284,7 @@ describe("runAssociations: per-item save and progress", () => {
   test("an invalid response is stored with status invalid", async () => {
     const { page, store } = setup();
     const { fn } = answeringFetch((item) => (item === "eggs" ? "invalid" : "valid"));
-    await app.runAssociations(pairsOf(2), { doc: page.doc, fetch: fn, store });
+    await app.runAssociations(pairsOf(2), { doc: page.doc, fetch: fn, store, image: IMAGE });
     assert.equal((await stored(store, "milk")).status, "valid");
     assert.equal((await stored(store, "eggs")).status, "invalid");
   });
@@ -261,7 +297,7 @@ describe("runAssociations: per-item save and progress", () => {
       if (item === "bread") throw new TypeError("network down");
       return jsonResponse({ record: record(item, labelFor(item)), status: "valid" });
     };
-    await app.runAssociations(pairsOf(3), { doc: page.doc, fetch, store }).catch(() => {});
+    await app.runAssociations(pairsOf(3), { doc: page.doc, fetch, store, image: IMAGE }).catch(() => {});
     assert.equal((await stored(store, "milk")).status, "valid");
     assert.ok((await stored(store, "eggs")) == null, "502 must not store a record");
     assert.ok((await stored(store, "bread")) == null, "network error must not store a record");
@@ -270,7 +306,7 @@ describe("runAssociations: per-item save and progress", () => {
   test("an empty list sends no requests", async () => {
     const { page, store } = setup();
     const { fn, items } = answeringFetch();
-    await app.runAssociations([], { doc: page.doc, fetch: fn, store });
+    await app.runAssociations([], { doc: page.doc, fetch: fn, store, image: IMAGE });
     assert.deepEqual(items, []);
     assert.equal(page.panel.children.length, 0);
   });
@@ -290,7 +326,7 @@ describe("runAssociations: resume", () => {
       status: "invalid",
     });
     const { fn, items } = answeringFetch();
-    await app.runAssociations(pairsOf(5), { doc: page.doc, fetch: fn, store });
+    await app.runAssociations(pairsOf(5), { doc: page.doc, fetch: fn, store, image: IMAGE });
     assert.deepEqual([...items].sort(), ["apples", "cheese"]);
     for (const item of ITEMS) assert.equal((await stored(store, item)).status, "valid", item);
     assert.equal(page.panel.children.length, 5);
@@ -301,17 +337,17 @@ describe("runAssociations: resume", () => {
     const { page, store } = setup();
     await store.put(associationKey("milk", "garage"), { record: record("milk", "garage"), status: "valid" });
     const { fn, items } = answeringFetch();
-    await app.runAssociations(pairsOf(1), { doc: page.doc, fetch: fn, store });
+    await app.runAssociations(pairsOf(1), { doc: page.doc, fetch: fn, store, image: IMAGE });
     assert.deepEqual(items, ["milk"]);
   });
 
   test("running again when everything is valid sends no requests and does not duplicate the panel", async () => {
     const { page, store } = setup();
     const first = answeringFetch();
-    await app.runAssociations(pairsOf(2), { doc: page.doc, fetch: first.fn, store });
+    await app.runAssociations(pairsOf(2), { doc: page.doc, fetch: first.fn, store, image: IMAGE });
     assert.equal(first.items.length, 2);
     const second = answeringFetch();
-    await app.runAssociations(pairsOf(2), { doc: page.doc, fetch: second.fn, store });
+    await app.runAssociations(pairsOf(2), { doc: page.doc, fetch: second.fn, store, image: IMAGE });
     assert.deepEqual(second.items, []);
     assert.equal(page.panel.children.length, 2);
   });
@@ -325,7 +361,7 @@ describe("association panel rendering", () => {
   test("panel shows item, locus, 8 channels in KAVE order, then question and answer", async () => {
     const { page, store } = setup();
     const { fn } = answeringFetch();
-    await app.runAssociations(pairsOf(1), { doc: page.doc, fetch: fn, store });
+    await app.runAssociations(pairsOf(1), { doc: page.doc, fetch: fn, store, image: IMAGE });
     assert.equal(page.panel.children.length, 1);
     const text = page.panel.textContent;
     const rec = record("milk", "lamp");
@@ -352,7 +388,7 @@ describe("association panel rendering", () => {
       const rec = record(item, labelFor(item), { visual: hostile, answer: `${hostile}<script>alert(2)</script>` });
       return jsonResponse({ record: rec, status: "valid" });
     };
-    await app.runAssociations(pairsOf(1), { doc: page.doc, fetch, store });
+    await app.runAssociations(pairsOf(1), { doc: page.doc, fetch, store, image: IMAGE });
     assert.deepEqual(page.htmlWrites, [], "model text must never go through innerHTML/outerHTML/insertAdjacentHTML");
     const tags = page.created.map((e) => e.tagName);
     assert.ok(!tags.includes("IMG") && !tags.includes("SCRIPT"), `hostile markup became elements: ${tags}`);
