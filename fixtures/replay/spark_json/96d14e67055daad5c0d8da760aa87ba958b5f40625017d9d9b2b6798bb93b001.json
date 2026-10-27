@@ -1,0 +1,17 @@
+{
+  "item": "Review after a day, then after a week",
+  "locus": "mug",
+  "kinesthetic": "You lift the mug and feel it grow heavy with the idea: Review after a day, then after a week.",
+  "auditory": "The mug speaks in a booming voice: Review after a day, then after a week!",
+  "visual": "A glowing gold banner is wrapped around the mug, painted with bright letters.",
+  "emotional": "A jolt of surprise and delight hits you as the mug comes alive.",
+  "conceptual": "The mug is the anchor for the point: Review after a day, then after a week.",
+  "olfactory": "A sharp smell of fresh ink drifts up from the mug.",
+  "gustatory": "A sweet taste of honey fills your mouth as you touch the mug.",
+  "spatial": "The mug is stop 8 on your walk, set here at Little Round Top.",
+  "scene_prompt_details": "The mug on a wooden shelf, wrapped in a glowing gold banner.",
+  "walk_cue": "Stop 8: look at the mug.",
+  "reencode_hint": "Say the point aloud while you picture the banner on the mug.",
+  "question": "Why does this point matter: Review after a day, then after a week?",
+  "answer": "As the talk puts it: Walk the palace again after a day, then after a week"
+}

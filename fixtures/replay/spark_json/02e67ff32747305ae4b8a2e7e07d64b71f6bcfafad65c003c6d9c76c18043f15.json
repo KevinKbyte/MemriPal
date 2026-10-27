@@ -1,0 +1,17 @@
+{
+  "item": "Walking the route keeps the order",
+  "locus": "plant",
+  "kinesthetic": "You lift the plant and feel it grow heavy with the idea: Walking the route keeps the order.",
+  "auditory": "The plant speaks in a booming voice: Walking the route keeps the order!",
+  "visual": "A glowing gold banner is wrapped around the plant, painted with bright letters.",
+  "emotional": "A jolt of surprise and delight hits you as the plant comes alive.",
+  "conceptual": "The plant is the anchor for the point: Walking the route keeps the order.",
+  "olfactory": "A sharp smell of fresh ink drifts up from the plant.",
+  "gustatory": "A sweet taste of honey fills your mouth as you touch the plant.",
+  "spatial": "The plant is stop 6 on your walk, set here at Little Round Top.",
+  "scene_prompt_details": "The plant on a wooden shelf, wrapped in a glowing gold banner.",
+  "walk_cue": "Stop 6: look at the plant.",
+  "reencode_hint": "Say the point aloud while you picture the banner on the plant.",
+  "question": "Why does this point matter: Walking the route keeps the order?",
+  "answer": "As the talk puts it: Walking the route in the same direction every time"
+}

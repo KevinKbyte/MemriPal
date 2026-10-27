@@ -1,0 +1,17 @@
+{
+  "item": "Speakers can drop their slides",
+  "locus": "vase",
+  "kinesthetic": "You lift the vase and feel it grow heavy with the idea: Speakers can drop their slides.",
+  "auditory": "The vase speaks in a booming voice: Speakers can drop their slides!",
+  "visual": "A glowing gold banner is wrapped around the vase, painted with bright letters.",
+  "emotional": "A jolt of surprise and delight hits you as the vase comes alive.",
+  "conceptual": "The vase is the anchor for the point: Speakers can drop their slides.",
+  "olfactory": "A sharp smell of fresh ink drifts up from the vase.",
+  "gustatory": "A sweet taste of honey fills your mouth as you touch the vase.",
+  "spatial": "The vase is stop 11 on your walk, set here at Round Top, Pennsylvania.",
+  "scene_prompt_details": "The vase on a wooden shelf, wrapped in a glowing gold banner.",
+  "walk_cue": "Stop 11: look at the vase.",
+  "reencode_hint": "Say the point aloud while you picture the banner on the vase.",
+  "question": "Why does this point matter: Speakers can drop their slides?",
+  "answer": "As the talk puts it: speakers can use it to drop their slides"
+}
