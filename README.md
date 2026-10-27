@@ -88,8 +88,18 @@ replay in fixture mode -> 404 `fixture_missing`.
 | `GET /healthz` | - | `{"status": "ok", "mode"}` |
 | `POST /loci` | photo bytes (`image/jpeg`, `image/png`, `image/webp`) | `{"image": "data:image/jpeg;base64,...", "width", "height", "photo_sha", "reask_used", "loci"}` ([ADR 0011](docs/decisions/0011-s2-loci-request-shape.md)) |
 | `POST /split` | JSON `{"photo": <plain base64 of the processed JPEG>, "mode": "list" \| "notes", "text", "loci_count": 1..12}` | `{"points": [{"label", "source_quote"}]}`; list mode = one point per line, no model call; notes mode = one Spark call, one regeneration, then 422 `split_invalid` ([ADR 0019](docs/decisions/0019-split-endpoint-contract.md)) |
-| `POST /associate` | JSON `{"image": "data:image/jpeg;base64,<processed JPEG>", "item": <1..100 chars>, "locus": <label>}` | `{"item", "locus", "status": "valid" \| "invalid", "attempts", "record"}`; up to 2 regenerations ([ADR 0020](docs/decisions/0020-association-validate-and-regenerate.md)) |
+| `POST /associate` | JSON `{"image": "data:image/jpeg;base64,<processed JPEG>", "item": <1..100 chars>, "locus": <label>}`, optional `"place": {"title", "extract"}` | `{"item", "locus", "status": "valid" \| "invalid", "attempts", "record"}`; up to 2 regenerations ([ADR 0020](docs/decisions/0020-association-validate-and-regenerate.md)) |
+| `POST /place` | JSON `{"lat", "lon"}` (opt-in, below) | `{"places": [{"title", "distance_m", "extract"}]}`, up to 3; upstream failure -> empty list ([ADR 0022](docs/decisions/0022-opt-in-place-context-server-lookup.md)) |
 | `GET /demo/photo.jpg`, `GET /demo/notes.txt` | - | committed demo fixtures; missing -> 404 `demo_missing` |
+
+## Place history (opt-in)
+
+Settings toggle "Use my location for place history", OFF by default; one tap turns it off. When on, the browser reads
+the photo's own GPS (else asks for your location, else you type a place) and sends coords rounded to 4 decimals to
+`POST /place`, which asks Wikipedia for nearby articles and returns up to 3 chips "Near: <title>, <m> m". The place
+you confirm (title + short extract) grounds the association; coords are never logged, stored, or sent to Meta.
+Wikipedia does see the coords. Turning the toggle off stops lookups and discards the confirmed place. Offline demo:
+a recorded lookup at Little Round Top. Details: [ADR 0022](docs/decisions/0022-opt-in-place-context-server-lookup.md).
 
 ## Setup
 
@@ -170,6 +180,10 @@ GCP Cloud Run with Secret Manager keys: [docs/runbooks/deploy-gcp.md](docs/runbo
 
 The KAVE COGS association channels follow the method of Anthony Metivier (Magnetic Memory Method), paraphrased; none
 of his material is copied.
+
+Place facts are Wikipedia article summaries, licensed CC BY-SA 4.0
+(https://creativecommons.org/licenses/by-sa/4.0/); each chip names its source article, and the text is Wikipedia
+contributors' work, not ours.
 
 ## License
 

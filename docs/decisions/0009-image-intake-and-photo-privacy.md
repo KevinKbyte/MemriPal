@@ -1,6 +1,7 @@
 # 0009: Image intake: client canvas re-encode plus server re-validation
 
-Status: Accepted (amended by [0016](0016-load-demo-bypasses-reencode.md): Load demo posts the demo photo's raw bytes)
+Status: Accepted (amended by [0016](0016-load-demo-bypasses-reencode.md): Load demo posts the demo photo's raw bytes;
+amended by [0022](0022-opt-in-place-context-server-lookup.md): opted-in GPS read client-side, never sent to Meta)
 Date: 2026-10-26
 Source: `docs/plans/2026-10-26-memripal.md` S2, D5, "Ledger" (C2 EXIF orientation, S3 decompression bomb, F-corr
 HEIC, S4 fixture privacy/rights, S5 client-side privacy).

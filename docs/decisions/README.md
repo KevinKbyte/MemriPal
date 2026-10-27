@@ -39,6 +39,8 @@ the others that you asked about".
   attempt); locus label in the key (D3).
 - [0021](0021-client-palace-store-injected-kv.md) Palace store: IndexedDB behind an injected KV adapter, keyed by
   item + locus label (over direct IndexedDB, localStorage, or server storage).
+- [0022](0022-opt-in-place-context-server-lookup.md) Opt-in place context: client reads original-file GPS, stateless
+  server Wikipedia lookup, user-confirmed place in /associate (over browser-direct lookup or EXIF-only); amends 0009.
 
 ## Minor decisions (no ADR)
 

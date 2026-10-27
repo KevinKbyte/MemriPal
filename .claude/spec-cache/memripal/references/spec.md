@@ -1,4 +1,5 @@
 # MemriPal spec
+Continued in [spec-2.md](spec-2.md) (MEM-023, MEM-025 onward; this file is at the 500-line cap).
 
 ## MEM-001 Health + static shell
 
