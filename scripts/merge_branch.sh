@@ -2,7 +2,8 @@
 # One-command memripal merge: refuse dirty tree, rebase onto main, run the
 # worktree gate, enqueue, then re-run the gate in the primary checkout.
 # Usage: sh scripts/merge_branch.sh <worktree-path>
-# Env: MEMRIPAL_REQUEST_MERGE_CMD overrides the enqueue command (tests use a stub).
+# Env: MEMRIPAL_REQUEST_MERGE_CMD overrides the enqueue command (tests use a stub);
+# else AGENT_WORKFLOW_DIR/scripts/request_merge.py if present; else `git merge --ff-only`.
 set -u
 
 usage() {
@@ -29,13 +30,19 @@ fi
 
 sh "$wt/scripts/check.sh" || exit $?
 
+primary=$(git -C "$wt" worktree list --porcelain | sed -n '1s/^worktree //p')
+request_merge="${AGENT_WORKFLOW_DIR:-}/scripts/request_merge.py"
+
 if [ -n "${MEMRIPAL_REQUEST_MERGE_CMD:-}" ]; then
   $MEMRIPAL_REQUEST_MERGE_CMD
+elif [ -n "${AGENT_WORKFLOW_DIR:-}" ] && [ -f "$request_merge" ]; then
+  uv run --directory "$wt" python "$request_merge" --repo "$wt" --wait
 else
-  uv run --directory "$wt" python C:/Users/Kev/projects/agent-workflow/scripts/request_merge.py --repo "$wt" --wait
+  # No merge queue available: fast-forward main directly; a non-ff (main moved) is refused.
+  branch=$(git -C "$wt" rev-parse --abbrev-ref HEAD) || exit 1
+  git -C "$primary" merge --ff-only -q "$branch"
 fi
 rc=$?
 [ "$rc" -eq 0 ] || exit "$rc"
 
-primary=$(git -C "$wt" worktree list --porcelain | sed -n '1s/^worktree //p')
 sh "$primary/scripts/check.sh"
