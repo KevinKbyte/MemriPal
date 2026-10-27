@@ -5,7 +5,8 @@ Launch a command with the DPAPI-protected Meta API key in ITS environment only (
 .DESCRIPTION
 Usage: run_live.ps1 [-KeyFile <path>] [command args...]
 Default key file: $HOME/.secrets/meta-api-key.dpapi
-Default command:  uv run uvicorn memripal.app:app --port 8000
+Default command:  uv run uvicorn memripal.app:app --host 127.0.0.1 --port 8000
+Loopback only until the S7 passcode gate lands: never bind a public interface.
 The key is set only on the child's ProcessStartInfo (META_API_KEY, MEMRIPAL_MODE=meta); it is
 never written to a file, stdout, the parent environment or a transcript. Exit code = child's.
 #>
@@ -19,7 +20,7 @@ if ($Command.Count -ge 2 -and $Command[0] -eq '-KeyFile') {
     $Command = @($Command | Select-Object -Skip 2)
 }
 if ($Command.Count -eq 0) {
-    $Command = @('uv', 'run', 'uvicorn', 'memripal.app:app', '--port', '8000')
+    $Command = @('uv', 'run', 'uvicorn', 'memripal.app:app', '--host', '127.0.0.1', '--port', '8000')
 }
 
 $ErrorActionPreference = 'Stop'
