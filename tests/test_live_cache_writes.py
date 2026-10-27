@@ -160,3 +160,59 @@ class TestPhotoWrittenBeforeResponse:
             assert backend.call(req) == {"phrases": ["book", "mug"]}
 
         assert _files_under(tmp_path) == []
+
+
+def _replace_losing_race_for(predicate):
+    """os.replace stand-in: a concurrent winner lands dst first, then this replace hits PermissionError."""
+
+    def replace(src, dst):
+        if predicate(os.fspath(dst)):
+            with open(dst, "wb") as f:
+                f.write(IMAGE)  # the winner's identical, content-addressed bytes
+            raise PermissionError(13, "The process cannot access the file", os.fspath(dst))
+        return _REAL_REPLACE(src, dst)
+
+    return replace
+
+
+# Covers: MEM-014
+# Requirement: photos/<sha>.jpg is content-addressed, so a photo write that fails because a
+# concurrent same-image call already landed that file counts as success: put_photo returns the
+# path without raising, and MetaBackend.call still writes its response cache entry (a lost race
+# must not make the next live run re-pay the call). A photo write failing while the target is
+# still missing is a real failure: put_photo raises and no response entry is written.
+class TestExistingPhotoCountsAsSuccess:
+    def test_put_photo_returns_path_when_a_concurrent_winner_landed_it(self, tmp_path):
+        cache = ResponseCache(tmp_path)
+        with mock.patch("os.replace", side_effect=_replace_losing_race_for(_is_photo)):
+            photo = cache.put_photo(IMAGE)
+
+        assert photo == tmp_path / "photos" / PHOTO_NAME
+        assert photo.read_bytes() == IMAGE
+        assert not [p for p in _files_under(tmp_path) if p.name.endswith(".tmp")]
+
+    def test_put_photo_still_raises_when_the_target_is_missing(self, tmp_path):
+        cache = ResponseCache(tmp_path)
+        with mock.patch("os.replace", side_effect=_replace_failing_for(_is_photo)):
+            with pytest.raises(PermissionError):
+                cache.put_photo(IMAGE)
+
+        assert _files_under(tmp_path) == []
+
+    @pytest.mark.parametrize(
+        ("req_factory", "result", "expected"),
+        [
+            (_request, VALID_SPARK, {"phrases": ["book", "mug"]}),
+            (_segment_request, VALID_SEGMENT, "<box>1 2 3 4</box>"),
+        ],
+        ids=["spark_json", "segment"],
+    )
+    def test_lost_photo_race_still_caches_the_response(self, tmp_path, req_factory, result, expected):
+        req = req_factory()
+        backend = MetaBackend(FAKE_KEY, cache_root=tmp_path, client=_FakeClient(result))
+        with mock.patch("os.replace", side_effect=_replace_losing_race_for(_is_photo)):
+            assert backend.call(req) == expected
+
+        assert ResponseCache(tmp_path).get(req.cache_key()) is not None
+        assert (tmp_path / "photos" / PHOTO_NAME).read_bytes() == IMAGE
+        assert not [p for p in _files_under(tmp_path) if p.name.endswith(".tmp")]
