@@ -1,0 +1,17 @@
+{
+  "item": "The method is over two thousand years old",
+  "locus": "frame",
+  "kinesthetic": "You lift the frame and feel it grow heavy with the idea: The method is over two thousand years old.",
+  "auditory": "The frame speaks in a booming voice: The method is over two thousand years old!",
+  "visual": "A glowing gold banner is wrapped around the frame, painted with bright letters.",
+  "emotional": "A jolt of surprise and delight hits you as the frame comes alive.",
+  "conceptual": "The frame is the anchor for the point: The method is over two thousand years old.",
+  "olfactory": "A sharp smell of fresh ink drifts up from the frame.",
+  "gustatory": "A sweet taste of honey fills your mouth as you touch the frame.",
+  "spatial": "The frame is stop 1 on your walk along the shelf.",
+  "scene_prompt_details": "The frame on a wooden shelf, wrapped in a glowing gold banner.",
+  "walk_cue": "Stop 1: look at the frame.",
+  "reencode_hint": "Say the point aloud while you picture the banner on the frame.",
+  "question": "Why does this point matter: The method is over two thousand years old?",
+  "answer": "As the talk puts it: The method of loci is more than two thousand years"
+}

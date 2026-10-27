@@ -1,0 +1,17 @@
+{
+  "item": "Try it on your next shopping list",
+  "locus": "bear",
+  "kinesthetic": "You lift the bear and feel it grow heavy with the idea: Try it on your next shopping list.",
+  "auditory": "The bear speaks in a booming voice: Try it on your next shopping list!",
+  "visual": "A glowing gold banner is wrapped around the bear, painted with bright letters.",
+  "emotional": "A jolt of surprise and delight hits you as the bear comes alive.",
+  "conceptual": "The bear is the anchor for the point: Try it on your next shopping list.",
+  "olfactory": "A sharp smell of fresh ink drifts up from the bear.",
+  "gustatory": "A sweet taste of honey fills your mouth as you touch the bear.",
+  "spatial": "The bear is stop 12 on your walk along the shelf.",
+  "scene_prompt_details": "The bear on a wooden shelf, wrapped in a glowing gold banner.",
+  "walk_cue": "Stop 12: look at the bear.",
+  "reencode_hint": "Say the point aloud while you picture the banner on the bear.",
+  "question": "Why does this point matter: Try it on your next shopping list?",
+  "answer": "As the talk puts it: try it on your next shopping list"
+}

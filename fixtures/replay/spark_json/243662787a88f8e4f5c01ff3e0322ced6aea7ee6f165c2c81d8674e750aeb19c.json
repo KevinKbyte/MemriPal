@@ -1,0 +1,17 @@
+{
+  "item": "Students can use it for exams",
+  "locus": "radio",
+  "kinesthetic": "You lift the radio and feel it grow heavy with the idea: Students can use it for exams.",
+  "auditory": "The radio speaks in a booming voice: Students can use it for exams!",
+  "visual": "A glowing gold banner is wrapped around the radio, painted with bright letters.",
+  "emotional": "A jolt of surprise and delight hits you as the radio comes alive.",
+  "conceptual": "The radio is the anchor for the point: Students can use it for exams.",
+  "olfactory": "A sharp smell of fresh ink drifts up from the radio.",
+  "gustatory": "A sweet taste of honey fills your mouth as you touch the radio.",
+  "spatial": "The radio is stop 10 on your walk along the shelf.",
+  "scene_prompt_details": "The radio on a wooden shelf, wrapped in a glowing gold banner.",
+  "walk_cue": "Stop 10: look at the radio.",
+  "reencode_hint": "Say the point aloud while you picture the banner on the radio.",
+  "question": "Why does this point matter: Students can use it for exams?",
+  "answer": "As the talk puts it: Students can use it for exams"
+}

@@ -1,0 +1,17 @@
+{
+  "item": "Place each item at a familiar spot",
+  "locus": "clock",
+  "kinesthetic": "You lift the clock and feel it grow heavy with the idea: Place each item at a familiar spot.",
+  "auditory": "The clock speaks in a booming voice: Place each item at a familiar spot!",
+  "visual": "A glowing gold banner is wrapped around the clock, painted with bright letters.",
+  "emotional": "A jolt of surprise and delight hits you as the clock comes alive.",
+  "conceptual": "The clock is the anchor for the point: Place each item at a familiar spot.",
+  "olfactory": "A sharp smell of fresh ink drifts up from the clock.",
+  "gustatory": "A sweet taste of honey fills your mouth as you touch the clock.",
+  "spatial": "The clock is stop 2 on your walk along the shelf.",
+  "scene_prompt_details": "The clock on a wooden shelf, wrapped in a glowing gold banner.",
+  "walk_cue": "Stop 2: look at the clock.",
+  "reencode_hint": "Say the point aloud while you picture the banner on the clock.",
+  "question": "Why does this point matter: Place each item at a familiar spot?",
+  "answer": "As the talk puts it: place each thing you want to remember at a familiar spot"
+}
