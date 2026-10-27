@@ -321,13 +321,14 @@ Tests: tests/test_seg_provider.py
   regenerating the replay fixtures.
 - Canvas `#scene` draws the returned image + numbered boxes scaled by `fitScale(imgW, imgH, maxW)` =
   min(1, maxW / imgW), never upscales; 1 if any arg is 0, negative, NaN or Infinity.
-- Captions `locusCaption(locus) -> "1. left book"` in `<ol id="loci">`, set via `textContent` only (no HTML
-  string assignment). Non-2xx -> "Upload failed: <code>" (body `error`, else `http_<status>`).
+- `<ol id="loci">` items are label-only (`textContent = locus.label`, no HTML string assignment); the `<ol>`
+  marker is the only number. List slot i matches canvas badge `String(i+1)`; a locus without a box draws no
+  badge but keeps its slot. Non-2xx -> "Upload failed: <code>" (body `error`, else `http_<status>`).
 - `scripts/make_synthetic_fixtures.py`: replays keyed by the processed sha (`process_upload(photo)`), 12 Spark
   phrases + 12 SAM boxes -> 12 loci first round, no re-ask; legacy MEM-005 raw-sha fixtures retained; MANIFEST
   lists every fixture. FixtureBackend replay of the demo -> >= 10 loci, numbered 1..n.
 
-Tests: static/app.test.mjs, tests/test_fixtures_manifest.py::TestDemoReplayForLoci,
+Tests: static/app.test.mjs, static/app_upload_flow.test.mjs, tests/test_fixtures_manifest.py::TestDemoReplayForLoci,
 tests/test_app.py::TestDemoPhotoRoute, tests/test_fixtures_manifest.py::TestDemoProcessedShaPin
 
 ## MEM-018 Architecture decision log
