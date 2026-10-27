@@ -1,4 +1,4 @@
-"""FastAPI app: health endpoint, static frontend shell (MEM-001) and POST /loci (MEM-015)."""
+"""FastAPI app: health, static shell (MEM-001), POST /loci (MEM-015), demo photo (MEM-017)."""
 
 import base64
 import logging
@@ -17,6 +17,7 @@ from memripal.loci import Locus, find_loci
 REPO_ROOT = Path(__file__).resolve().parents[2]
 STATIC_DIR = REPO_ROOT / "static"
 REPLAY_DIR = REPO_ROOT / "fixtures" / "replay"
+DEMO_PHOTO = REPO_ROOT / "fixtures" / "demo" / "photo.jpg"
 
 UPLOAD_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
@@ -68,6 +69,11 @@ def create_app(backend: ModelBackend | None = None) -> FastAPI:
     @app.get("/", include_in_schema=False)
     def index() -> FileResponse:
         return FileResponse(STATIC_DIR / "index.html", media_type="text/html")
+
+    # Fixed path, no user-supplied component: only the committed demo photo is exposed.
+    @app.get("/demo/photo.jpg", include_in_schema=False)
+    def demo_photo() -> FileResponse:
+        return FileResponse(DEMO_PHOTO, media_type="image/jpeg")
 
     @app.post("/loci")
     async def post_loci(request: Request) -> JSONResponse:

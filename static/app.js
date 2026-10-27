@@ -37,6 +37,39 @@ export function fitScale(imgW, imgH, maxW) {
   return usable ? Math.min(1, maxW / imgW) : 1;
 }
 
+/**
+ * @param {typeof fetch} fetchFn
+ * @param {BodyInit} body
+ * @returns {Promise<Response>}
+ */
+function postLoci(fetchFn, body) {
+  return fetchFn("/loci", { method: "POST", headers: { "Content-Type": "image/jpeg" }, body });
+}
+
+/**
+ * Upload the server's demo photo byte-for-byte: a browser re-encode would change the processed
+ * sha and miss the fixture replay ("fixture_missing").
+ * @param {typeof fetch} fetchFn
+ * @returns {Promise<Response>} the /loci response
+ */
+export async function demoUpload(fetchFn) {
+  const demo = await fetchFn("/demo/photo.jpg");
+  if (!demo.ok) throw new Error(`http_${demo.status}`);
+  return postLoci(fetchFn, await demo.arrayBuffer());
+}
+
+/**
+ * Stale-response gate: only the most recently issued token is current.
+ * @returns {{next: () => number, isCurrent: (token: number) => boolean}}
+ */
+export function latestOnly() {
+  let latest = 0;
+  return {
+    next: () => ++latest,
+    isCurrent: (token) => token === latest,
+  };
+}
+
 /** @param {string} id */
 function byId(id) {
   return document.getElementById(id);
@@ -78,20 +111,23 @@ async function reencodeJpeg(file) {
 
 /**
  * @param {LociResponse} payload
+ * @param {() => boolean} isCurrent re-checked after the async decode, so a newer upload wins
+ * @returns {Promise<boolean>} whether the result was drawn
  */
-async function drawResult(payload) {
+async function drawResult(payload, isCurrent) {
   const canvas = /** @type {HTMLCanvasElement | null} */ (byId("scene"));
   const list = byId("loci");
-  if (!canvas || !list) return;
+  if (!canvas || !list) return false;
   const img = new Image();
   img.src = payload.image;
   await img.decode();
+  if (!isCurrent()) return false;
   const maxW = canvas.parentElement ? canvas.parentElement.clientWidth : payload.width;
   const scale = fitScale(payload.width, payload.height, maxW);
   canvas.width = Math.round(payload.width * scale);
   canvas.height = Math.round(payload.height * scale);
   const ctx = canvas.getContext("2d");
-  if (!ctx) return;
+  if (!ctx) return false;
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
   ctx.lineWidth = 3;
   ctx.font = "bold 18px sans-serif";
@@ -111,38 +147,56 @@ async function drawResult(payload) {
     item.textContent = locusCaption(locus);
     list.append(item);
   }
+  return true;
 }
 
+// One gate for every upload source, so a photo pick and "Load demo" never race each other.
+const uploads = latestOnly();
+
 /**
- * @param {File} file
+ * @param {() => Promise<Response>} send
+ * @param {string} failure status text when the photo cannot be read or sent
  */
-async function upload(file) {
+async function showUpload(send, failure) {
   const status = byId("upload-status");
   if (!status) return;
+  const token = uploads.next();
+  const isCurrent = () => uploads.isCurrent(token);
   status.textContent = "Finding places in your photo...";
   try {
-    const body = await reencodeJpeg(file);
-    const resp = await fetch("/loci", { method: "POST", headers: { "Content-Type": "image/jpeg" }, body });
+    const resp = await send();
     const payload = await resp.json().catch(() => null);
+    if (!isCurrent()) return;
     if (!resp.ok) {
       const code = payload && typeof payload.error === "string" ? payload.error : `http_${resp.status}`;
       status.textContent = `Upload failed: ${code}`;
       return;
     }
-    await drawResult(payload);
-    status.textContent = `Found ${payload.loci.length} places`;
+    if (await drawResult(payload, isCurrent)) status.textContent = `Found ${payload.loci.length} places`;
   } catch {
-    status.textContent = "Upload failed: could not read or send the photo";
+    if (isCurrent()) status.textContent = `Upload failed: ${failure}`;
   }
+}
+
+/**
+ * @param {File} file
+ */
+function upload(file) {
+  return showUpload(async () => postLoci(fetch, await reencodeJpeg(file)), "could not read or send the photo");
 }
 
 function wireUpload() {
   const input = /** @type {HTMLInputElement | null} */ (byId("photo"));
-  if (!input) return;
-  input.addEventListener("change", () => {
-    const file = input.files && input.files[0];
-    if (file) upload(file);
-  });
+  if (input) {
+    input.addEventListener("change", () => {
+      const file = input.files && input.files[0];
+      // Clear the value so re-picking the same photo fires change again.
+      input.value = "";
+      if (file) upload(file);
+    });
+  }
+  const demo = byId("load-demo");
+  if (demo) demo.addEventListener("click", () => showUpload(() => demoUpload(fetch), "could not load the demo photo"));
 }
 
 // Guard keeps the module importable under node --test.
