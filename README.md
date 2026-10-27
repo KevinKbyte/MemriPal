@@ -30,7 +30,7 @@ flowchart LR
   assoc --> scene["Muse Image: scene edited onto photo (probe)"]
   scene --> asr["Muse Voice Transcribe: spoken recall (probe)"]
   asr --> match["Deterministic matcher; no LLM (planned)"]
-  match -- "missed loci" --> review["Re-review missed loci (planned)"]
+  match -- "missed loci" --> review["User re-recites missed loci"]
 ```
 
 Every model call goes through `backend.py`: `fixture` mode replays recorded responses, `meta` mode calls the live API
