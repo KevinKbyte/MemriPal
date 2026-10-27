@@ -6,6 +6,7 @@
 # scripts/check.sh and exits with its code; a missing or invalid argument prints usage and
 # exits 2.
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -261,7 +262,7 @@ def _install_request_merge_stub(aw: Path) -> None:
 # exists; otherwise it fast-forwards main to the branch with `git merge --ff-only` in the
 # primary checkout, refusing a non-fast-forward with a nonzero exit and main untouched.
 # MEMRIPAL_REQUEST_MERGE_CMD keeps top precedence, and the script hardcodes no
-# user-specific path (no "C:/Users/Kev").
+# user-specific home path (no Windows user-profile directory).
 class TestMergeFallback:
     def test_no_env_fast_forwards_main_in_primary_and_exits_0(self, fallback, tmp_path):
         primary, wt, env, log, _aw = fallback
@@ -326,5 +327,4 @@ class TestMergeFallback:
     def test_script_has_no_hardcoded_user_path(self):
         text = MERGE_SCRIPT.read_text(encoding="utf-8").lower()
 
-        assert "c:/users/kev" not in text
-        assert "c:\\users\\kev" not in text
+        assert re.search(r"[a-z]:[/\\]+users[/\\]+[^/\\\s]+", text) is None
