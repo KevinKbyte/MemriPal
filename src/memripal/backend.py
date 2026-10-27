@@ -286,7 +286,7 @@ def _prompt_for(template_id: str, args: dict) -> str:
     from memripal.split import split_prompt
 
     if template_id == "association":
-        return association_prompt(args["item"], args["locus"], args.get("reason"))
+        return association_prompt(args["item"], args["locus"], args.get("reason"), args.get("place"))
     if template_id == "phrase":
         return PHRASE_PROMPT
     if template_id == "phrase-reask":

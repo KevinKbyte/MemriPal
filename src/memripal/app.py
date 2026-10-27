@@ -12,10 +12,11 @@ from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from memripal.associate import AssociateRejected, associate, check_inputs
+from memripal.associate import AssociateRejected, associate, check_inputs, check_place
 from memripal.backend import BackendCallFailed, FixtureMissing, ModelBackend, select_backend
 from memripal.imaging import MAX_UPLOAD_BYTES, ImageRejected, process_upload, validate_processed
 from memripal.loci import Locus, find_loci
+from memripal.place import FixturePlaceProvider, PlaceProvider, valid_coords
 from memripal.split import MAX_POINTS, SplitRejected, check_notes, split_list, split_notes
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -25,6 +26,8 @@ REPLAY_DIR = REPO_ROOT / "fixtures" / "replay"
 LIVE_CACHE_DIR = REPO_ROOT / "refs" / "private" / "live-cache"
 DEMO_PHOTO = REPO_ROOT / "fixtures" / "demo" / "photo.jpg"
 DEMO_NOTES = REPO_ROOT / "fixtures" / "demo" / "notes.txt"
+# Stands in for EXIF GPS: the synthetic demo photo must stay EXIF-free (MEM-005, MEM-025).
+DEMO_PLACE = REPO_ROOT / "fixtures" / "demo" / "place.json"
 
 UPLOAD_TYPES = {"image/jpeg", "image/png", "image/webp"}
 # Base64 of a max-size photo plus room for 20 KB of notes even when JSON-escaped as \uXXXX.
@@ -33,6 +36,8 @@ JPEG_DATA_URL = "data:image/jpeg;base64,"
 # A max-size photo as a data URL plus room for item and locus even when JSON-escaped.
 ASSOCIATE_BODY_CAP = 4 * -(-MAX_UPLOAD_BYTES // 3) + 64 * 1024
 ASSOCIATE_KEYS = {"image", "item", "locus"}
+PLACE_BODY_CAP = 1024
+PLACE_KEYS = {"lat", "lon"}
 
 # DNS-rebinding guard for the loopback-only server.
 # S7 (public Cloud Run deploy, ADR 0010) must extend this list with the deploy host.
@@ -90,16 +95,27 @@ def _split_body(raw: bytes) -> dict | None:
 
 
 def _associate_body(raw: bytes) -> dict | None:
-    """The parsed /associate body, or None unless it is exactly {image, item, locus}, all strings."""
+    """The parsed /associate body, or None unless it is {image, item, locus} strings plus optional place."""
     try:
         body = json.loads(raw)
     except ValueError:
         return None
-    if not isinstance(body, dict) or set(body) != ASSOCIATE_KEYS:
+    if not isinstance(body, dict) or set(body) - {"place"} != ASSOCIATE_KEYS:
         return None
-    if not all(isinstance(v, str) for v in body.values()):
+    if not all(isinstance(body[k], str) for k in ASSOCIATE_KEYS):
         return None
     return body
+
+
+def _place_body(raw: bytes) -> tuple[float, float] | None:
+    """(lat, lon) when the body is exactly {lat, lon} as finite in-range numbers, else None."""
+    try:
+        body = json.loads(raw)
+    except ValueError:
+        return None
+    if not isinstance(body, dict) or set(body) != PLACE_KEYS or not valid_coords(body["lat"], body["lon"]):
+        return None
+    return body["lat"], body["lon"]
 
 
 def _length_error(request: Request, cap: int) -> JSONResponse | None:
@@ -115,9 +131,12 @@ def _length_error(request: Request, cap: int) -> JSONResponse | None:
     return None
 
 
-def create_app(backend: ModelBackend | None = None) -> FastAPI:
+def create_app(backend: ModelBackend | None = None, place_provider=None) -> FastAPI:
     if backend is None:
         backend = select_backend(None, fixtures_root=REPLAY_DIR, live_cache_root=LIVE_CACHE_DIR)
+    if place_provider is None:
+        # Fixture mode stays offline end to end, so the demo place replays like every other answer.
+        place_provider = FixturePlaceProvider(REPLAY_DIR) if backend.mode == "fixture" else PlaceProvider()
 
     app = FastAPI(title="MemriPal")
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(ALLOWED_HOSTS))
@@ -143,6 +162,29 @@ def create_app(backend: ModelBackend | None = None) -> FastAPI:
         if not DEMO_NOTES.is_file():
             return _error(404, "demo_missing")
         return FileResponse(DEMO_NOTES, media_type="text/plain")
+
+    @app.get("/demo/place.json", include_in_schema=False)
+    def demo_place() -> Response:
+        if not DEMO_PLACE.is_file():
+            return _error(404, "demo_missing")
+        return FileResponse(DEMO_PLACE, media_type="application/json")
+
+    # Stateless: the coords are used for one lookup and never stored or logged (MEM-025).
+    @app.post("/place")
+    async def post_place(request: Request) -> JSONResponse:
+        media_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
+        if media_type != "application/json":
+            return _error(415, "unsupported_media_type")
+        if (length_error := _length_error(request, PLACE_BODY_CAP)) is not None:
+            return length_error
+        raw = await _read_capped(request, PLACE_BODY_CAP)
+        if raw is None:
+            return _error(413, "too_large")
+        coords = _place_body(raw)
+        if coords is None:
+            return _error(400, "bad_request")
+        places = await run_in_threadpool(place_provider.lookup, *coords)
+        return JSONResponse({"places": places})
 
     @app.post("/loci")
     async def post_loci(request: Request) -> JSONResponse:
@@ -227,10 +269,12 @@ def create_app(backend: ModelBackend | None = None) -> FastAPI:
         body = _associate_body(raw)
         if body is None:
             return _error(400, "bad_request")
-        item, locus, image = body["item"], body["locus"], body["image"]
+        item, locus, image, place = body["item"], body["locus"], body["image"], body.get("place")
         try:
             # Caps first: bad input is refused before the photo is decoded or any model call.
             check_inputs(item, locus)
+            if "place" in body:
+                check_place(place)
             if not image.startswith(JPEG_DATA_URL):
                 return _error(400, "bad_data_url")
             try:
@@ -239,7 +283,7 @@ def create_app(backend: ModelBackend | None = None) -> FastAPI:
                 return _error(400, "bad_base64")
             # Never re-encoded: the bytes key the fixture/cache entries.
             processed = await run_in_threadpool(validate_processed, photo)
-            result = await run_in_threadpool(associate, backend, processed, item, locus)
+            result = await run_in_threadpool(associate, backend, processed, item, locus, place)
         except AssociateRejected as exc:
             return _error(400, str(exc))
         except ImageRejected as exc:
