@@ -1,6 +1,7 @@
 # 0008: Spoken recall via Muse Voice Transcribe relay; deterministic matcher, no LLM
 
-Status: Accepted (Q1 rewrite 2026-10-26; supersedes the typed walk quiz and live Spark grading)
+Status: Accepted (Q1 rewrite 2026-10-26; supersedes the typed walk quiz and live Spark grading; local Whisper dev
+toggle added by [0015](0015-local-whisper-stt-toggle.md))
 Date: 2026-10-26
 Source: `docs/plans/2026-10-26-memripal.md` D4, D17, R7, R8, "Rejected alternatives" (model-graded quiz, Web Speech
 API, MediaRecorder webm), "Ledger" (P5/F4 live quiz calls).

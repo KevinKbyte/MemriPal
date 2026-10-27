@@ -24,6 +24,8 @@ the others that you asked about".
 - [0013](0013-derived-request-key.md) Derived `RequestKey` from `ModelRequest` beside the unchanged MEM-003 `CacheKey`.
 - [0014](0014-loci-prompt-args-and-progress.md) Re-ask exclude list in `gen_params["prompt_args"]` (over a new
   field); `find_loci` progress, deadline and re-ask failure semantics.
+- [0015](0015-local-whisper-stt-toggle.md) Muse STT default; loopback local Whisper behind `MEMRIPAL_STT_PROVIDER` (over
+  OpenWhispr).
 
 ## Minor decisions (no ADR)
 

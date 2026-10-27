@@ -318,3 +318,14 @@ Tests: static/app.test.mjs, tests/test_fixtures_manifest.py
   dangling link, numbering gap, duplicate number -> each fails.
 
 Tests: tests/test_decisions_structure.py
+
+## MEM-019 Local Whisper STT provider toggle
+
+ADR [0015](../../../../docs/decisions/0015-local-whisper-stt-toggle.md). Dev/offline only; judged path stays Muse
+(MEM-011, ADR 0008).
+- `select_stt_provider()`: env MEMRIPAL_STT_PROVIDER = "meta" (default) | "local"; other -> error.
+- `LocalWhisperClient`: URL host must be loopback, else rejected; multipart POST `/v1/audio/transcriptions`
+  (OpenAI-compatible, faster-whisper server); `SttCallFailed` message omits the response body.
+- `local_stt_client_from_env()`: URL from MEMRIPAL_LOCAL_STT_URL. Mocked transport only.
+
+Tests: tests/test_stt_provider.py (planned)

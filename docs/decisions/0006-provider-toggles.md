@@ -39,3 +39,4 @@ costs ruled it out of the main path.
 - Each non-meta adapter must map to the same domain types.
 - Q1: the local-LLM quiz fallback slot is superseded by [0008](0008-spoken-recall-deterministic-matcher.md);
   `local` stays a chat provider for encode-time calls.
+- STT toggle `MEMRIPAL_STT_PROVIDER=meta|local` added by [0015](0015-local-whisper-stt-toggle.md).
