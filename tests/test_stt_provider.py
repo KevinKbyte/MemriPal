@@ -8,8 +8,9 @@
 import json
 
 import httpx
-import memripal.stt_provider as stt_provider
 import pytest
+
+import memripal.stt_provider as stt_provider
 
 LocalWhisperClient = stt_provider.LocalWhisperClient
 SttCallFailed = stt_provider.SttCallFailed
