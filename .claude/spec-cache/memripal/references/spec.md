@@ -299,8 +299,14 @@ Tests: tests/test_loci_api.py
 startup. "modal" = `ModalSegClient` (URL from MEMRIPAL_MODAL_SEG_URL, token from MODAL_SEG_TOKEN) mapping
 {"boxes": [{"x1","y1","x2","y2","score"}], "w", "h"} to SAM-style token text, so `parse_boxes` onward is unchanged.
 - 2 boxes -> 2 parsed Boxes with confidence; malformed JSON -> zero boxes, no raise. Mocked transport only.
+- Wiring (ADR 0018): exactly one `select_seg_provider` call, in `backend.py` `select_backend("meta")`. Unknown
+  MEMRIPAL_SEG_PROVIDER, or "modal" missing MEMRIPAL_MODAL_SEG_URL / MODAL_SEG_TOKEN -> ValueError at startup, no
+  secret in the message. Fixture mode ignores MEMRIPAL_SEG_PROVIDER. "modal" routes segment calls to the Modal URL
+  (Bearer token, `{image, phrase}`); Spark stays on Meta. Modal cache key =
+  `dataclasses.replace(req, model="modal/" + req.model).cache_key()` (RequestKey fields unchanged). Modal non-2xx or
+  `httpx.HTTPError` -> `BackendCallFailed("segment call failed")`, nothing cached; malformed 2xx JSON -> "".
 
-Tests: tests/test_seg_provider.py
+Tests: tests/test_seg_provider.py, tests/test_seg_provider_wiring.py
 
 ## MEM-017 Upload UI + demo fixtures
 

@@ -30,6 +30,8 @@ the others that you asked about".
   EXIF-free skip or fuzzy fixture match).
 - [0017](0017-live-cache-in-refs-private.md) Live-mode cache in gitignored `refs/private/live-cache` (over
   write-through into `fixtures/replay`).
+- [0018](0018-modal-segment-cache-key-and-failures.md) Modal segment key `modal/<model>`; Modal failures raise
+  `BackendCallFailed`, uncached (over a new RequestKey field or returning "").
 
 ## Minor decisions (no ADR)
 
