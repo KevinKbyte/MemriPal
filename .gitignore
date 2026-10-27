@@ -5,3 +5,6 @@ refs/private/
 __pycache__/
 .pytest_cache/
 .ruff_cache/
+.claude/supervisor/
+.claude/worktrees/
+docs/sdlc-runs/
