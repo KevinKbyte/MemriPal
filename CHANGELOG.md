@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.7.0] - 2026-10-27
+
+### Added
+
+- S3a `POST /split` + shared text normalizer `src/memripal/textnorm.py`: list mode without a model call, notes mode
+  via one image-less Spark call and one regeneration; ADR 0019 (MEM-020).
+- S3b `src/memripal/associate.py` + `POST /associate`: KAVE COGS association per (item, locus), validated in code,
+  up to 2 regenerations; ADR 0020 (MEM-021).
+- S3c client palace store `static/palace_store.js` + `runAssociations` generate/resume flow; ADR 0021 (MEM-022).
+- S3d demo notes `fixtures/demo/notes.txt` served at `GET /demo/notes.txt`, with replayed split and associations so
+  the whole demo runs offline (MEM-023).
+- `scripts/merge_branch.sh` one-command branch merge (MEM-024); `scripts/screenshot_ui.py` visual-verify helper.
+- README HTTP API table.
+
+### Fixed
+
+- UI: demo/upload status names the HTTP status and an unreadable response (MEM-017).
+
 ## [0.6.1] - 2026-10-27
 
 ### Fixed

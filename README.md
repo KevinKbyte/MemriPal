@@ -17,8 +17,7 @@ record.
 
 Status per node: **built** = module in `src/memripal/` with tests; **probe** = call implemented in
 `meta_client.py` and exercised end to end by `scripts/probe_live.py`, not yet wired into the app; **planned** = no
-code yet. The app's HTTP surface today is `/healthz` plus the static shell; `POST /loci` is planned
-([ADR 0011](docs/decisions/0011-s2-loci-request-shape.md)).
+code yet. Endpoints: [HTTP API](#http-api).
 
 ```mermaid
 flowchart LR
@@ -26,7 +25,7 @@ flowchart LR
   intake --> phrases["Muse Spark: name visible objects, re-ask if under 10 loci (built)"]
   phrases --> sam["SAM 3.1: boxes per object phrase (built)"]
   sam --> loci["loci.py: select 10-12 loci, route order; no LLM (built)"]
-  loci --> assoc["Muse Spark: item-to-locus association (probe)"]
+  loci --> assoc["Muse Spark: split notes into items, item-to-locus association (built)"]
   assoc --> scene["Muse Image: scene edited onto photo (probe)"]
   scene --> asr["Muse Voice Transcribe: spoken recall (probe)"]
   asr --> match["Deterministic matcher; no LLM (planned)"]
@@ -42,7 +41,7 @@ All via the Meta Model API (not original work); client in `src/memripal/meta_cli
 
 | Model (API id) | Job | Status |
 | --- | --- | --- |
-| Muse Spark (`muse-spark-1.3`) | Names objects in the photo; writes the KAVE COGS association per item | phrases built; associations probe |
+| Muse Spark (`muse-spark-1.3`) | Names objects in the photo; splits notes into items; writes the KAVE COGS association per item | built |
 | SAM 3.1 (`sam-3.1`) | Segments each object phrase into boxes that become loci | built |
 | Muse Image (`muse-image-1.0`) | Renders each mnemonic scene onto the photo | probe |
 | Muse Voice Transcribe (`muse-voice-transcribe-1.0`) | Speech-to-text for eyes-closed spoken recall | probe |
@@ -78,6 +77,19 @@ Set `MEMRIPAL_MODE`:
 
 - `fixture` (default): offline replay of recorded responses under `fixtures/`; no network, no key.
 - `meta`: live Meta Model API calls; requires `META_API_KEY` in the environment.
+
+## HTTP API
+
+Errors are always `{"error": "<code>"}`, never model or exception text. Upstream failure -> 502 `upstream`; no
+replay in fixture mode -> 404 `fixture_missing`.
+
+| Endpoint | Request | 200 response |
+| --- | --- | --- |
+| `GET /healthz` | - | `{"status": "ok", "mode"}` |
+| `POST /loci` | photo bytes (`image/jpeg`, `image/png`, `image/webp`) | `{"image": "data:image/jpeg;base64,...", "width", "height", "photo_sha", "reask_used", "loci"}` ([ADR 0011](docs/decisions/0011-s2-loci-request-shape.md)) |
+| `POST /split` | JSON `{"photo": <plain base64 of the processed JPEG>, "mode": "list" \| "notes", "text", "loci_count": 1..12}` | `{"points": [{"label", "source_quote"}]}`; list mode = one point per line, no model call; notes mode = one Spark call, one regeneration, then 422 `split_invalid` ([ADR 0019](docs/decisions/0019-split-endpoint-contract.md)) |
+| `POST /associate` | JSON `{"image": "data:image/jpeg;base64,<processed JPEG>", "item": <1..100 chars>, "locus": <label>}` | `{"item", "locus", "status": "valid" \| "invalid", "attempts", "record"}`; up to 2 regenerations ([ADR 0020](docs/decisions/0020-association-validate-and-regenerate.md)) |
+| `GET /demo/photo.jpg`, `GET /demo/notes.txt` | - | committed demo fixtures; missing -> 404 `demo_missing` |
 
 ## Setup
 
