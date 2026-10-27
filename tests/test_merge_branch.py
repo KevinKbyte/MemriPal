@@ -24,6 +24,9 @@ pytestmark = pytest.mark.skipif(not (SH and GIT), reason="merge_branch.sh test n
 FAKE_CHECK = """#!/bin/sh
 branch=$(git -C "$(dirname "$0")" rev-parse --abbrev-ref HEAD)
 echo "check:$branch" >> "$MERGE_TEST_LOG"
+if [ "$branch" != main ] && [ -n "${FAKE_RACE_MAIN_IN:-}" ]; then
+  git -C "$FAKE_RACE_MAIN_IN" commit --allow-empty -q -m race || exit 90
+fi
 case "$branch" in
   main) exit "${FAKE_MAIN_CHECK_RC:-0}" ;;
   *) exit "${FAKE_WT_CHECK_RC:-0}" ;;
@@ -200,3 +203,128 @@ class TestMergeBranch:
         assert result.returncode == 2
         assert "usage" in (result.stdout + result.stderr).lower()
         assert _calls(log) == []
+
+
+# Fake `uv`: strips `run` and its options, then execs the command only when it targets a
+# script under $FAKE_ALLOWED_ROOT; anything else (e.g. a real request_merge.py) is blocked.
+FAKE_UV = """#!/bin/sh
+[ "${1:-}" = run ] && shift
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --directory|--project|--with) shift 2 ;;
+    -*) shift ;;
+    *) break ;;
+  esac
+done
+for a in "$@"; do
+  case "$a" in
+    "$FAKE_ALLOWED_ROOT"/*) exec "$@" ;;
+  esac
+done
+echo "uv-blocked" >> "$MERGE_TEST_LOG"
+exit 97
+"""
+
+# Stub agent-workflow request_merge.py: logs that it ran, exits with a configurable code.
+FAKE_REQUEST_MERGE = """import os
+import sys
+
+with open(os.environ["MERGE_TEST_LOG"], "a", encoding="ascii") as log:
+    log.write("request_merge\\n")
+sys.exit(int(os.environ.get("FAKE_ENQUEUE_RC", "0")))
+"""
+
+
+@pytest.fixture
+def fallback(repos, tmp_path):
+    """`repos` with no enqueue override, AGENT_WORKFLOW_DIR unset, and a guarded fake uv."""
+    primary, wt, env, log = repos
+    env.pop("MEMRIPAL_REQUEST_MERGE_CMD", None)
+    env.pop("AGENT_WORKFLOW_DIR", None)
+    aw = tmp_path / "agent-workflow"
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    (bin_dir / "uv").write_text(FAKE_UV, encoding="ascii", newline="\n")
+    env["PATH"] = str(bin_dir) + os.pathsep + env.get("PATH", "")
+    env["FAKE_ALLOWED_ROOT"] = aw.as_posix()
+    return primary, wt, env, log, aw
+
+
+def _install_request_merge_stub(aw: Path) -> None:
+    (aw / "scripts").mkdir(parents=True, exist_ok=True)
+    (aw / "scripts" / "request_merge.py").write_text(FAKE_REQUEST_MERGE, encoding="ascii", newline="\n")
+
+
+# Covers: MEM-024
+# Requirement: with MEMRIPAL_REQUEST_MERGE_CMD unset, merge_branch.sh enqueues via
+# "$AGENT_WORKFLOW_DIR/scripts/request_merge.py" when AGENT_WORKFLOW_DIR is set and that file
+# exists; otherwise it fast-forwards main to the branch with `git merge --ff-only` in the
+# primary checkout, refusing a non-fast-forward with a nonzero exit and main untouched.
+# MEMRIPAL_REQUEST_MERGE_CMD keeps top precedence, and the script hardcodes no
+# user-specific path (no "C:/Users/Kev").
+class TestMergeFallback:
+    def test_no_env_fast_forwards_main_in_primary_and_exits_0(self, fallback, tmp_path):
+        primary, wt, env, log, _aw = fallback
+        _commit_file(primary, env, "main_only.txt", "advance\n", "main advances")
+
+        result = _run([wt.as_posix()], env, tmp_path)
+
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert _head(primary, env) == _head(wt, env)
+        assert _ok(_git(primary, env, "rev-parse", "--abbrev-ref", "HEAD")) == "main"
+        assert _calls(log) == ["check:feature", "check:main"]
+
+    def test_no_env_non_ff_refused_nonzero_and_main_unchanged(self, fallback, tmp_path):
+        primary, wt, env, log, _aw = fallback
+        env["FAKE_RACE_MAIN_IN"] = primary.as_posix()
+
+        result = _run([wt.as_posix()], env, tmp_path)
+
+        assert result.returncode != 0, result.stdout + result.stderr
+        assert _ok(_git(primary, env, "log", "-1", "--format=%s", "main")) == "race"
+        feature_tip = _head(wt, env)
+        assert _git(primary, env, "merge-base", "--is-ancestor", feature_tip, "main").returncode != 0
+        assert _ok(_git(primary, env, "status", "--porcelain")) == ""
+        assert _calls(log) == ["check:feature"]
+
+    def test_agent_workflow_dir_with_request_merge_invokes_it(self, fallback, tmp_path):
+        primary, wt, env, log, aw = fallback
+        _install_request_merge_stub(aw)
+        env["AGENT_WORKFLOW_DIR"] = aw.as_posix()
+        main_before = _head(primary, env)
+
+        result = _run([wt.as_posix()], env, tmp_path)
+
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert _calls(log) == ["check:feature", "request_merge", "check:main"]
+        assert _head(primary, env) == main_before
+
+    def test_agent_workflow_dir_without_request_merge_falls_back_to_ff(self, fallback, tmp_path):
+        primary, wt, env, log, aw = fallback
+        aw.mkdir()
+        env["AGENT_WORKFLOW_DIR"] = aw.as_posix()
+
+        result = _run([wt.as_posix()], env, tmp_path)
+
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert _head(primary, env) == _head(wt, env)
+        assert _calls(log) == ["check:feature", "check:main"]
+
+    def test_override_cmd_takes_precedence_over_agent_workflow_dir(self, fallback, tmp_path):
+        primary, wt, env, log, aw = fallback
+        _install_request_merge_stub(aw)
+        env["AGENT_WORKFLOW_DIR"] = aw.as_posix()
+        env["MEMRIPAL_REQUEST_MERGE_CMD"] = f"sh {(tmp_path / 'enqueue_stub.sh').as_posix()}"
+        main_before = _head(primary, env)
+
+        result = _run([wt.as_posix()], env, tmp_path)
+
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert _calls(log) == ["check:feature", "enqueue", "check:main"]
+        assert _head(primary, env) == main_before
+
+    def test_script_has_no_hardcoded_user_path(self):
+        text = MERGE_SCRIPT.read_text(encoding="utf-8").lower()
+
+        assert "c:/users/kev" not in text
+        assert "c:\\users\\kev" not in text
