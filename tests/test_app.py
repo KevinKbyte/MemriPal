@@ -4,6 +4,8 @@
 # Requirement: MemriPal picks its model backend from an explicit mode or MEMRIPAL_MODE (default offline
 # fixture replay); live "meta" mode refuses to start without META_API_KEY and never leaks the key value.
 # Covers: MEM-002
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -13,6 +15,9 @@ from memripal.backend import FixtureBackend, MissingApiKey, select_backend
 FAKE_KEY = "fake-test-key-0123456789abcdefXYZ"
 # The app refuses non-loopback Host headers (MEM-015 host guard); TestClient defaults to "testserver".
 LOOPBACK_URL = "http://127.0.0.1"
+REPO = Path(__file__).resolve().parents[1]
+DEMO_PHOTO = REPO / "fixtures" / "demo" / "photo.jpg"
+DEMO_REPLAY_DIR = REPO / "fixtures" / "replay"
 
 
 @pytest.fixture(autouse=True)
@@ -142,3 +147,38 @@ class TestSelectBackend:
         monkeypatch.setenv("MEMRIPAL_MODE", "bogus")
         with pytest.raises(ValueError):
             select_backend(None, tmp_path)
+
+
+# Covers: MEM-017
+# Requirement: the "Load demo" control works end to end in fixture mode. The server serves the
+# committed demo photo at GET /demo/photo.jpg (200, image/jpeg, byte-identical to
+# fixtures/demo/photo.jpg), and POSTing exactly those served bytes to /loci yields >= 10 loci,
+# because no client re-encode sits between the served asset and the upload (browser JPEG
+# encoders differ, so re-encoded bytes could never match a replay fixture). Only the demo photo
+# is exposed: a traversal attempt out of /demo/ is never served.
+class TestDemoPhotoRoute:
+    @staticmethod
+    def _client():
+        return TestClient(create_app(backend=FixtureBackend(DEMO_REPLAY_DIR)), base_url=LOOPBACK_URL)
+
+    def test_demo_photo_is_served_byte_identical_as_jpeg(self):
+        resp = self._client().get("/demo/photo.jpg")
+        assert resp.status_code == 200, resp.text[:200]
+        assert resp.headers["content-type"].split(";")[0].strip() == "image/jpeg"
+        assert resp.content == DEMO_PHOTO.read_bytes()
+
+    def test_served_demo_bytes_posted_to_loci_yield_at_least_ten_loci(self):
+        client = self._client()
+        served = client.get("/demo/photo.jpg")
+        assert served.status_code == 200, served.text[:200]
+        resp = client.post("/loci", content=served.content, headers={"Content-Type": "image/jpeg"})
+        assert resp.status_code == 200, resp.text[:200]
+        loci = resp.json()["loci"]
+        assert len(loci) >= 10
+        assert [lc["n"] for lc in loci] == list(range(1, len(loci) + 1))
+
+    @pytest.mark.parametrize("path", ["/demo/%2e%2e/MANIFEST.md", "/demo/..%2fMANIFEST.md"])
+    def test_traversal_out_of_demo_is_not_served(self, path):
+        resp = self._client().get(path)
+        assert resp.status_code != 200
+        assert "synthetic" not in resp.text

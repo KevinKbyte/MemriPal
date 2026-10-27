@@ -10,7 +10,7 @@
 # scripts/run_live.ps1 binds uvicorn to 127.0.0.1, never 0.0.0.0, until the S7 passcode.
 # Hardening: a Host header other than 127.0.0.1 / localhost (any port) is refused with 400
 # (DNS-rebinding guard, every route); a Content-Length that is not plain ASCII digits never
-# 500s (400/413 + {"error": ...}); any unexpected pipeline exception answers 500
+# 500s (400 {"error": "bad_content_length"}); any unexpected pipeline exception answers 500
 # {"error": "internal"} with no exception text.
 import asyncio
 import base64
@@ -419,7 +419,8 @@ class TestHostGuard:
 
 # Covers: MEM-015
 # Requirement: a Content-Length made of non-ASCII digit characters (str.isdigit() is True for
-# U+00B2 superscript two, but int() rejects it) is a client error, never a 500.
+# U+00B2 superscript two, but int() rejects it) answers 400 {"error": "bad_content_length"},
+# never a 500 or a 413.
 class TestNonAsciiContentLength:
     @pytest.mark.parametrize("length", ["\u00b2", "\u00b3", "1\u00b9"], ids=["sup2", "sup3", "one-sup1"])
     def test_non_ascii_digit_content_length_is_a_json_client_error(self, length):
@@ -427,11 +428,9 @@ class TestNonAsciiContentLength:
         upload = _jpeg()
         headers = [(b"content-type", b"image/jpeg"), (b"content-length", length.encode("latin-1"))]
         status, payload, escaped = _asgi_post(create_app(backend=backend), headers, upload)
-        assert status in (400, 413), (status, payload)
+        assert status == 400, (status, payload)
         assert escaped is None, repr(escaped)
-        body = json.loads(payload)
-        assert set(body) == {"error"}
-        assert isinstance(body["error"], str)
+        assert json.loads(payload) == {"error": "bad_content_length"}
         assert backend.calls == 0
 
 

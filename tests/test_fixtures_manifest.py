@@ -203,3 +203,20 @@ class TestDemoReplayForLoci:
         assert missing == []
         segments = [k for k in files if k.startswith("replay/segment/")]
         assert len(segments) >= 12
+
+
+# Covers: MEM-017
+# Requirement: the demo replay fixtures are keyed by the sha256 of process_upload(photo.jpg), so
+# that processed sha is pinned to a literal: a regenerated demo photo or an imaging/Pillow change
+# that alters the processed bytes fails here loudly instead of surfacing as a silent
+# "fixture_missing" at demo time. Changing the pin requires regenerating the replay fixtures.
+DEMO_PROCESSED_SHA = "7af10a4e9efede5539af090a5c61550d34c8828cd1cbd956023fff088ca05206"
+
+
+class TestDemoProcessedShaPin:
+    def test_committed_demo_photo_processed_sha_is_pinned(self):
+        from memripal.imaging import process_upload
+
+        processed = process_upload((COMMITTED / "demo" / "photo.jpg").read_bytes())
+        assert processed.sha == DEMO_PROCESSED_SHA
+        assert (processed.width, processed.height) == (1024, 768)
