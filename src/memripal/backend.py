@@ -102,8 +102,10 @@ def _atomic_write(path: Path, body: bytes) -> Path:
 def _templates_digest() -> str:
     # Lazy: probe imports meta_client, which imports this module (cycle at module top).
     from memripal.probe import PHRASE_PROMPT, PHRASE_SCHEMA, _reask_prompt
+    from memripal.split import SPLIT_PROMPT, SPLIT_SCHEMA
 
-    return _sha256_json([PHRASE_PROMPT, PHRASE_SCHEMA, _reask_prompt(["{exclude}"])])
+    templates = [PHRASE_PROMPT, PHRASE_SCHEMA, _reask_prompt(["{exclude}"]), SPLIT_PROMPT, SPLIT_SCHEMA]
+    return _sha256_json(templates)
 
 
 @dataclass(frozen=True)
@@ -263,15 +265,21 @@ def _schema_valid(value: Any, schema: dict) -> bool:
 # Reserved gen_params key for template arguments: ModelRequest's field set is pinned, and riding in
 # gen_params folds the arguments into gen_params_digest, so they change the derived key.
 PROMPT_ARGS = "prompt_args"
+# Reserved gen_params key: False keeps the photo out of a spark_json call (POST /split, ADR 0019) while
+# the photo still keys the cache; absent means the image is sent.
+SEND_IMAGE = "send_image"
 
 
 def _prompt_for(template_id: str, args: dict) -> str:
     from memripal.probe import PHRASE_PROMPT, _reask_prompt
+    from memripal.split import split_prompt
 
     if template_id == "phrase":
         return PHRASE_PROMPT
     if template_id == "phrase-reask":
         return _reask_prompt(list(args["exclude"]))
+    if template_id == "split":
+        return split_prompt(args["notes"], args["max_points"])
     raise ValueError(f"unknown prompt template: {template_id!r}")
 
 
@@ -321,11 +329,12 @@ class MetaBackend:
             # Popped so MetaClient.chat_json, which takes only its own kwargs, never sees the template args.
             gen_params = dict(req.gen_params)
             prompt_args = gen_params.pop(PROMPT_ARGS, {})
+            send_image = gen_params.pop(SEND_IMAGE, True)
             result = self._client.chat_json(
                 prompt=_prompt_for(req.prompt_template_id, prompt_args),
                 schema=req.schema,
                 schema_name=req.subject,
-                image_data_url=image_url,
+                image_data_url=image_url if send_image else None,
                 model=req.model,
                 **gen_params,
             )
