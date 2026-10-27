@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 SECRET_PATTERNS = [
-    re.compile(rb"sk-[A-Za-z0-9_-]{20,}"),
+    re.compile(rb"\bsk-[A-Za-z0-9_-]{20,}"),
     re.compile(rb"Bearer\s+[A-Za-z0-9._-]{20,}"),
     # Character class keeps this source file from matching its own pattern.
     re.compile(rb"Signatur[e]="),
