@@ -411,3 +411,54 @@ ADR [0019](../../../../docs/decisions/0019-split-endpoint-contract.md). Plan S3 
   are only {"error": code}: no model or exception text.
 
 Tests: tests/test_textnorm.py, tests/test_split_api.py, tests/test_split_notes.py
+
+## MEM-021 Associations (associate.py + POST /associate)
+
+ADR [0020](../../../../docs/decisions/0020-association-validate-and-regenerate.md). One Spark association record per
+(item, locus) pair; plan S3, D3, D16.
+
+a) `src/memripal/associate.py`:
+- `CHANNELS` = ("kinesthetic", "auditory", "visual", "emotional", "conceptual", "olfactory", "gustatory",
+  "spatial") (KAVE COGS, in order). `MAX_ITEM_LEN` = 100.
+- `ASSOCIATION_SCHEMA`: strict flat json_schema, 15 required string properties: item, locus, the 8 channels,
+  scene_prompt_details, walk_cue, reencode_hint, question, answer (D16 why/apply question + model answer, every
+  point, same call); additionalProperties false. No maxLength (backend `_schema_valid` refuses it): length caps live
+  in the validator.
+- `validate_association(value, item, locus) -> str | None`: None = valid, else a short non-empty reason. After
+  `textnorm.normalize` (MEM-020): (1) all 8 channels non-empty; (2) item verbatim in >= 1 channel;
+  (3) locus short label in >= 1 channel; (4) echoed `item` and `locus` match the request. Also rejected: non-dict,
+  missing, unknown or blank field (question, answer included), non-string value, oversized field (a 64 KiB channel
+  fails; ~250-char fields pass).
+- `associate(backend, processed, item, locus) -> Association` (frozen: item, locus, status "valid" | "invalid",
+  attempts = calls made, record = reply when valid, reason = None when valid). Empty/blank or > MAX_ITEM_LEN item,
+  or empty/blank locus -> ValueError before any call; exactly 100 chars passes.
+- Each attempt = one `spark_json` call: ASSOCIATION_SCHEMA, the processed image, `gen_params[PROMPT_ARGS]`
+  {"item", "locus"}, so the D3 key includes the locus label: labels differing only -> different keys; same pair ->
+  same key; reordered replay returns the record naming the requested locus.
+- Invalid reply -> up to 2 regenerations (attempt 0, 1, 2), each re-prompt carrying the previous reason in prompt
+  args. bad,bad,good -> "valid", attempts 3; 3 bad -> "invalid", reason = last failure, never a 4th call. An
+  unknown reply field never reaches `record`.
+- BackendCallFailed / FixtureMissing propagate after one call, no regeneration. MetaClient retries pre-send
+  connect errors only; a read timeout after send -> BackendCallFailed.
+- MetaBackend renders the association template (item, label and reason in the prompt text), sends
+  ASSOCIATION_SCHEMA under a json_schema-safe name (`[A-Za-z0-9_-]{1,64}`). Schema-invalid reply (unknown field,
+  wrong type, non-object, missing question, non-JSON) -> BackendCallFailed, uncached. Schema-valid oversized reply
+  -> validator reason -> regenerated -> "invalid" after 3 calls. Write-through replays identically from fixtures.
+
+b) POST /associate (`app.py`, MEM-015 idiom), checks before any model call:
+- Content-Type not application/json -> 415 {"error": "unsupported_media_type"}; Content-Length or streamed body
+  past the cap -> 413 {"error": "too_large"}.
+- Body exactly {"image": "data:image/jpeg;base64,<processed JPEG from POST /loci>", "item": str, "locus": str}.
+  Item 1..100 chars after strip; 101 -> 400 {"error": "item_too_long"}. Malformed JSON, non-object, missing or
+  unknown key, non-string value, empty/blank item, empty or oversized locus -> 400 {"error": <code>}.
+- Image: no data-URL prefix, non-jpeg prefix, bad or empty base64 -> 400 (S3a POST /split takes plain base64:
+  known divergence, ADR 0019). Bytes checked by `validate_processed`,
+  never re-encoded (replay keys hold): ImageRejected -> its status + code (PNG bytes -> 400 "not_jpeg"; side > 2048
+  -> 400).
+- 200 exactly {"item", "locus", "status", "attempts", "record"}, also when "invalid" (UI offers
+  edit/regenerate); an unknown reply field is never echoed.
+- FixtureMissing -> 404 {"error": "fixture_missing"}; BackendCallFailed -> 502 {"error": "upstream"}; other
+  exception -> 500 {"error": "internal"}. Error bodies only {"error": code}, no model or exception text. Host guard
+  applies.
+
+Tests: tests/test_associate.py, tests/test_associate_regen.py, tests/test_associate_api.py

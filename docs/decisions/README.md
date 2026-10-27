@@ -34,6 +34,9 @@ the others that you asked about".
   `BackendCallFailed`, uncached (over a new RequestKey field or returning "").
 - [0019](0019-split-endpoint-contract.md) `POST /split`: list used as-is, notes via one image-less Spark call, one
   regeneration then `split_invalid` (over schema-enforced caps or two regenerations).
+- [0020](0020-association-validate-and-regenerate.md) Associations: deterministic 4-rule validator, <= 2
+  reason-carrying regenerations, then `invalid` for UI edit (over LLM self-check, unbounded retries or one
+  attempt); locus label in the key (D3).
 
 ## Minor decisions (no ADR)
 
