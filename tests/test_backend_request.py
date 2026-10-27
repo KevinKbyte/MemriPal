@@ -252,9 +252,10 @@ def _meta(tmp_path, result):
 # Covers: MEM-003, MEM-014
 # Requirement: in meta mode a live response is written through to the cache only when the
 # call succeeded and the response is complete and schema-valid, and the write is atomic
-# (temp file + os.replace): a failed or invalid response leaves no file, a failed write
-# leaves no partial or temp file and never clobbers an existing good entry, and a failed
-# call raises BackendCallFailed whose message never contains the API key or response body.
+# (temp file + os.replace): a failed or invalid response leaves no file, a failed write is
+# best-effort (the call still returns the valid value) and leaves no partial or temp file and
+# never clobbers an existing good entry, and a failed call raises BackendCallFailed whose
+# message never contains the API key or response body.
 class TestMetaBackendWriteThrough:
     def test_valid_spark_response_written_and_replayable(self, tmp_path):
         req = _request()
@@ -307,27 +308,22 @@ class TestMetaBackendWriteThrough:
             _meta(tmp_path, _ok(_chat_envelope({"phrases": ["book"]}))).call(req)
         dsts = [os.fspath(c.args[1]) for c in replace.call_args_list]
         assert os.fspath(target) in dsts
-        # The processed photo is also saved under photos/ (MEM-014 live cache); no temp files remain.
-        files = _files_under(tmp_path)
-        assert target in files
-        assert not [p for p in files if p.name.endswith(".tmp")]
+        # Exactly the response entry plus the processed photo (MEM-014 live cache); no temp files.
+        sha = hashlib.sha256(req.image_jpeg).hexdigest()
+        assert _files_under(tmp_path) == sorted([target, tmp_path / "photos" / f"{sha}.jpg"])
 
     def test_failed_replace_leaves_no_partial_or_temp_file(self, tmp_path):
-        with (
-            mock.patch("os.replace", side_effect=OSError("disk full")),
-            pytest.raises((OSError, BackendCallFailed)),
-        ):
-            _meta(tmp_path, _ok(_chat_envelope({"phrases": ["book"]}))).call(_request())
+        with mock.patch("os.replace", side_effect=OSError("disk full")):
+            got = _meta(tmp_path, _ok(_chat_envelope({"phrases": ["book"]}))).call(_request())
+        assert got == {"phrases": ["book"]}
         assert _files_under(tmp_path) == []
 
     def test_failed_replace_keeps_existing_entry_intact(self, tmp_path):
         req = _request()
         target = ResponseCache(tmp_path).put(req.cache_key(), b'{"phrases": ["old"]}')
-        with (
-            mock.patch("os.replace", side_effect=OSError("disk full")),
-            pytest.raises((OSError, BackendCallFailed)),
-        ):
-            _meta(tmp_path, _ok(_chat_envelope({"phrases": ["new"]}))).call(req)
+        with mock.patch("os.replace", side_effect=OSError("disk full")):
+            got = _meta(tmp_path, _ok(_chat_envelope({"phrases": ["new"]}))).call(req)
+        assert got == {"phrases": ["new"]}
         assert target.read_bytes() == b'{"phrases": ["old"]}'
         assert _files_under(tmp_path) == [target]
 

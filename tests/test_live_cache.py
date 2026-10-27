@@ -4,6 +4,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 from unittest import mock
 
 import pytest
@@ -293,3 +294,67 @@ class TestAppLiveCacheDir:
         bound = inspect.signature(real).bind(*call.args, **call.kwargs).arguments
         assert bound.get("live_cache_root") == app_module.REPO_ROOT / "refs" / "private" / "live-cache"
         assert bound.get("fixtures_root") == app_module.REPLAY_DIR
+
+
+def _make_dir_link(request, link, target):
+    """Directory symlink, else a Windows junction; skips only when neither can be created."""
+    link.parent.mkdir(parents=True, exist_ok=True)
+    kind = None
+    try:
+        os.symlink(target, link, target_is_directory=True)
+        kind = "symlink"
+    except (OSError, NotImplementedError):
+        if sys.platform == "win32":
+            proc = subprocess.run(
+                ["cmd", "/c", "mklink", "/J", str(link), str(target)], capture_output=True, check=False
+            )
+            if proc.returncode == 0 and link.is_junction():
+                kind = "junction"
+    if kind is None:
+        pytest.skip("neither a directory symlink nor a junction could be created")
+    request.addfinalizer(lambda: os.rmdir(link) if sys.platform == "win32" else os.unlink(link))
+    print(f"dir-link kind: {kind}")
+    return kind
+
+
+# Covers: MEM-014
+# Requirement: the live cache and the fixtures tree never nest in either direction.
+# select_backend raises ValueError when live_cache_root resolves inside fixtures/ (including
+# through a directory symlink or junction, so resolution follows links rather than comparing
+# lexical paths) and also when fixtures/ (fixtures_root.parent) resolves inside
+# live_cache_root, e.g. live_cache_root=<repo> with fixtures_root=<repo>/fixtures/replay. The
+# real layout, refs/private/live-cache next to fixtures/, is allowed.
+class TestLiveRootContainmentTwoWay:
+    @pytest.mark.parametrize(
+        "relative", [".", "refs/..", "fixtures-sibling/.."], ids=["root", "refs-dotdot", "sibling-dotdot"]
+    )
+    def test_live_root_containing_fixtures_dir_rejected(self, tmp_path, layout, fake_client, relative):
+        fixtures_root, _ = layout
+        with pytest.raises(ValueError) as excinfo:
+            select_backend("meta", fixtures_root, live_cache_root=tmp_path / relative)
+        assert FAKE_KEY not in str(excinfo.value)
+
+    def test_live_root_above_repo_rejected(self, tmp_path, layout, fake_client):
+        fixtures_root, _ = layout
+        with pytest.raises(ValueError):
+            select_backend("meta", fixtures_root, live_cache_root=tmp_path.parent)
+
+    def test_refs_private_live_cache_next_to_fixtures_allowed(self, layout, fake_client):
+        fixtures_root, live_root = layout
+        assert isinstance(select_backend("meta", fixtures_root, live_cache_root=live_root), MetaBackend)
+
+    @pytest.mark.parametrize("child", [None, "live-cache"], ids=["link-itself", "under-link"])
+    def test_live_root_through_dir_link_into_fixtures_rejected(
+        self, request, tmp_path, layout, fake_client, child
+    ):
+        fixtures_root, _ = layout
+        target = tmp_path / "fixtures" / "live-target"
+        target.mkdir()
+        link = tmp_path / "refs" / "private" / "linked"
+        _make_dir_link(request, link, target)
+        live_root = link if child is None else link / child
+        # Lexically outside fixtures/: only link resolution can catch it.
+        assert not os.path.abspath(live_root).startswith(os.path.abspath(tmp_path / "fixtures"))
+
+        with pytest.raises(ValueError):
+            select_backend("meta", fixtures_root, live_cache_root=live_root)
