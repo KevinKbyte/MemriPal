@@ -269,13 +269,20 @@ Tests: tests/test_backend.py, tests/test_loci_pipeline.py
 
 ## MEM-015 POST /loci
 
-`src/memripal/app.py`. Body = raw image bytes, Content-Type image/jpeg|png|webp, else 415. Content-Length
-> 15 MiB -> 413 before reading; body read via `request.stream()` with a running cap (never `request.body()`),
-chunked body past 15 MiB -> 413. Pipeline: `process_upload` -> `find_loci`.
+`src/memripal/app.py`. Body = raw image bytes. Checks in order, before any body read:
+- Content-Type not image/jpeg|png|webp -> 415 {"error": "unsupported_media_type"}.
+- Content-Length empty or not all ASCII digits (e.g. U+00B2) -> 400 {"error": "bad_content_length"};
+  > 15 MiB -> 413 {"error": "too_large"} (exactly 15 MiB passes); absent -> streaming cap only.
+- Body read via `request.stream()` with a running cap (never `request.body()`); chunked past 15 MiB -> 413
+  {"error": "too_large"}. Pipeline: `process_upload` -> `find_loci`, both via `run_in_threadpool`.
+- Host guard: `TrustedHostMiddleware`, `ALLOWED_HOSTS = ("127.0.0.1", "localhost")`, all routes; other Host
+  -> 400. S7 public Cloud Run deploy (ADR 0010) MUST extend ALLOWED_HOSTS with the deploy host, or every
+  request returns 400.
 - 200 JSON: {"image": "data:image/jpeg;base64,...", "width", "height", "photo_sha", "reask_used", "loci": [{"n",
   "label", "phrase", "box": {"x1","y1","x2","y2"}, "outline": [[x,y],...]}]}; image carries no EXIF.
 - ImageRejected -> its status + {"error": code}; FixtureMissing -> 404 {"error": "fixture_missing"};
-  BackendCallFailed -> 502 {"error": "upstream"}. No model text in error bodies.
+  BackendCallFailed -> 502 {"error": "upstream"}; any other exception -> 500 {"error": "internal"}, logged
+  server-side. Error bodies are only {"error": code}: no model or exception text.
 - Demo photo on fixture backend -> >= 10 loci. `scripts/run_live.ps1` binds `--host 127.0.0.1`, never 0.0.0.0
   (until the S7 passcode).
 
@@ -292,17 +299,20 @@ Tests: tests/test_seg_provider.py
 
 ## MEM-017 Upload UI + demo fixtures
 
-`static/index.html`, `static/app.js`:
-- Meta mode (from /healthz): notice "Your photo is sent to Meta's AI APIs to find places in it" before the file
-  input. Input `<input type="file" accept="image/*" capture="environment">`.
-- Client re-encode: `createImageBitmap(file, {imageOrientation: "from-image"})` -> canvas ->
-  `toBlob("image/jpeg", 0.9)` -> POST /loci; draws the returned image + numbered rectangles; labels via
-  `textContent` only.
-- Helpers: `locusCaption(locus) -> "1. left book"`; `fitScale(imgW, imgH, maxW) -> number`.
-- `scripts/make_synthetic_fixtures.py` writes >= 12 phrases keyed by `process_upload(photo).sha`; a test pins that
-  processed demo sha; FixtureBackend serves >= 10 loci for it; MANIFEST lists every fixture (MEM-005).
+`static/index.html`, `static/app.js` (S2.6):
+- `#meta-notice` "Your photo is sent to Meta's AI APIs to find places in it." precedes the single file input
+  `<input id="photo" type="file" accept="image/*" capture="environment">`; hidden unless /healthz mode is "meta".
+- Client re-encode (drops EXIF, bakes orientation): `createImageBitmap(file, {imageOrientation: "from-image"})`
+  -> canvas -> `toBlob("image/jpeg", 0.9)` -> POST /loci as image/jpeg.
+- Canvas `#scene` draws the returned image + numbered boxes scaled by `fitScale(imgW, imgH, maxW)` =
+  min(1, maxW / imgW), never upscales; 1 if any arg is 0, negative, NaN or Infinity.
+- Captions `locusCaption(locus) -> "1. left book"` in `<ol id="loci">`, set via `textContent` only (no HTML
+  string assignment). Non-2xx -> "Upload failed: <code>" (body `error`, else `http_<status>`).
+- `scripts/make_synthetic_fixtures.py`: replays keyed by the processed sha (`process_upload(photo)`), 12 Spark
+  phrases + 12 SAM boxes -> 12 loci first round, no re-ask; legacy MEM-005 raw-sha fixtures retained; MANIFEST
+  lists every fixture. FixtureBackend replay of the demo -> >= 10 loci, numbered 1..n.
 
-Tests: static/app.test.mjs, tests/test_fixtures_manifest.py
+Tests: static/app.test.mjs, tests/test_fixtures_manifest.py::TestDemoReplayForLoci
 
 ## MEM-018 Architecture decision log
 
@@ -328,4 +338,4 @@ ADR [0015](../../../../docs/decisions/0015-local-whisper-stt-toggle.md). Dev/off
   (OpenAI-compatible, faster-whisper server); `SttCallFailed` message omits the response body.
 - `local_stt_client_from_env()`: URL from MEMRIPAL_LOCAL_STT_URL. Mocked transport only.
 
-Tests: tests/test_stt_provider.py (planned)
+Tests: tests/test_stt_provider.py
