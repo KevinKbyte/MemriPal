@@ -11,4 +11,9 @@ if ! git diff --cached --quiet --diff-filter=ACM -- '*.py'; then
     git diff --cached --name-only --diff-filter=ACM -z -- '*.py' \
         | xargs -0 uv run ruff format --check -- || status=1
 fi
+
+# MEM-018: any staged ADR change re-runs the ADR structure test before commit.
+if ! git diff --cached --quiet --diff-filter=ACMRD -- 'docs/decisions/*'; then
+    uv run pytest -q tests/test_decisions_structure.py || status=1
+fi
 exit $status
