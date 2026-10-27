@@ -88,3 +88,45 @@ class TestModalSegClient:
 
         assert isinstance(text, str)
         assert parse_boxes(text) == []
+
+
+# Covers: MEM-016
+# Requirement: json.loads accepts NaN, Infinity, -Infinity and arbitrarily large ints; a Modal
+# reply carrying any of them in a box coordinate or score drops just that box (the good boxes
+# survive), and one in the frame size w/h yields zero boxes; parsing never raises.
+class TestModalNonFiniteNumbers:
+    GOOD = '{"x1": 10, "y1": 20, "x2": 110, "y2": 220, "score": 0.91}'
+    HUGE = str(10**400)
+
+    @staticmethod
+    def _segment(body: bytes) -> str:
+        def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, content=body, headers={"Content-Type": "application/json"})
+
+        return _client(handler).segment(JPEG, "book")
+
+    @pytest.mark.parametrize("bad", ["NaN", "Infinity", "-Infinity", HUGE, "-" + HUGE])
+    @pytest.mark.parametrize("field", ["x1", "y2", "score"])
+    def test_non_finite_or_overflowing_box_number_drops_only_that_box(self, bad, field):
+        values = {"x1": "300", "y1": "40", "x2": "420", "y2": "160", "score": "0.42"}
+        values[field] = bad
+        bad_box = "{" + ", ".join(f'"{k}": {v}' for k, v in values.items()) + "}"
+        body = f'{{"boxes": [{self.GOOD}, {bad_box}], "w": 640, "h": 480}}'.encode()
+
+        text = self._segment(body)
+
+        assert parse_boxes(text) == [
+            Box(x1=10, y1=20, x2=110, y2=220, w=640, h=480, confidence=0.91),
+        ]
+
+    @pytest.mark.parametrize("bad", ["NaN", "Infinity", "-Infinity", HUGE])
+    @pytest.mark.parametrize("dim", ["w", "h"])
+    def test_non_finite_or_overflowing_frame_size_gives_zero_boxes(self, bad, dim):
+        size = {"w": "640", "h": "480"}
+        size[dim] = bad
+        body = f'{{"boxes": [{self.GOOD}], "w": {size["w"]}, "h": {size["h"]}}}'.encode()
+
+        text = self._segment(body)
+
+        assert isinstance(text, str)
+        assert parse_boxes(text) == []

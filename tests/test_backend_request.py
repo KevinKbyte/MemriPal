@@ -338,3 +338,65 @@ class TestResponseCacheAtomicPut:
         with mock.patch("os.replace", side_effect=OSError("disk full")), pytest.raises(OSError):
             ResponseCache(tmp_path).put(key, b"payload")
         assert _files_under(tmp_path) == []
+
+
+class _RecordingClient:
+    def __init__(self, result):
+        self.result = result
+        self.chat_calls = []
+
+    def chat_json(self, **kwargs):
+        self.chat_calls.append(kwargs)
+        return self.result
+
+
+def _reask_request(exclude, **gen):
+    return _request(
+        subject="phrases-reask",
+        prompt_template_id="phrase-reask",
+        gen_params={**GEN_PARAMS, **gen, "prompt_args": {"exclude": list(exclude)}},
+    )
+
+
+# Covers: MEM-014
+# Requirement: ModelRequest's field set stays pinned, so the re-ask exclude list rides in
+# gen_params["prompt_args"] (ADR 0014): it is folded into gen_params_digest (same list -> same
+# key, different list -> different key), and MetaBackend.call strips it before chat_json so the
+# transport never receives prompt_args while the other gen params still pass through and the
+# excluded phrases reach the prompt.
+class TestPromptArgsContract:
+    def test_same_exclude_list_gives_same_key(self):
+        a = _reask_request(["book", "mug"]).cache_key()
+        b = _reask_request(["book", "mug"]).cache_key()
+        assert a.gen_params_digest == b.gen_params_digest
+        assert a.digest() == b.digest()
+
+    @pytest.mark.parametrize("other", [["book"], ["book", "lamp"], [], ["mug", "book"]])
+    def test_different_exclude_list_gives_different_key(self, other):
+        base = _reask_request(["book", "mug"]).cache_key()
+        changed = _reask_request(other).cache_key()
+        assert changed.gen_params_digest != base.gen_params_digest
+        assert changed.digest() != base.digest()
+
+    def test_meta_call_strips_prompt_args_before_chat_json(self, tmp_path):
+        client = _RecordingClient(_ok(_chat_envelope({"phrases": ["lamp"]})))
+        req = _reask_request(["book", "mug"])
+
+        got = MetaBackend(FAKE_KEY, cache_root=tmp_path, client=client).call(req)
+
+        assert got == {"phrases": ["lamp"]}
+        [kwargs] = client.chat_calls
+        assert "prompt_args" not in kwargs
+        assert kwargs["max_completion_tokens"] == GEN_PARAMS["max_completion_tokens"]
+        assert kwargs["temperature"] == GEN_PARAMS["temperature"]
+        assert "book" in kwargs["prompt"] and "mug" in kwargs["prompt"]
+
+    def test_meta_call_leaves_request_gen_params_untouched(self, tmp_path):
+        client = _RecordingClient(_ok(_chat_envelope({"phrases": ["lamp"]})))
+        req = _reask_request(["book"])
+        key_before = req.cache_key().digest()
+
+        MetaBackend(FAKE_KEY, cache_root=tmp_path, client=client).call(req)
+
+        assert req.gen_params["prompt_args"] == {"exclude": ["book"]}
+        assert req.cache_key().digest() == key_before
