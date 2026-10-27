@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.1] - 2026-10-27
+
+### Fixed
+
+- `scripts/merge_branch.sh` resolves `request_merge.py` via `AGENT_WORKFLOW_DIR` instead of a hardcoded path; unset
+  falls back to a solo `git merge --ff-only` that skips the merge queue (MEM-024).
+
 ## [0.6.0] - 2026-10-27
 
 ### Added

@@ -373,7 +373,10 @@ Tests: tests/test_stt_provider.py
 - `git rebase main`; conflict -> `rebase --abort`, exit 1.
 - Worktree `scripts/check.sh`; failure -> exit with its code, nothing enqueued.
 - Enqueue: agent-workflow `request_merge.py --repo <worktree> --wait` (env MEMRIPAL_REQUEST_MERGE_CMD overrides;
-  tests stub it); non-zero -> exit with that code.
+  tests stub it); non-zero -> exit with that code. Resolution order: MEMRIPAL_REQUEST_MERGE_CMD; else
+  `$AGENT_WORKFLOW_DIR/scripts/request_merge.py` if AGENT_WORKFLOW_DIR is set and the file exists; else solo
+  fallback, no queue: primary checkout `git merge --ff-only <branch>`; non-ff (main moved) -> exit with git's code.
+  No hardcoded agent-workflow path.
 - Primary checkout's `scripts/check.sh` (primary = first `git worktree list` entry); script exits with its code.
 
 Tests: tests/test_merge_branch.py
