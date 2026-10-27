@@ -22,6 +22,8 @@ the others that you asked about".
 - [0011](0011-s2-loci-request-shape.md) S2: one sync `POST /loci` over a `ModelRequest`-keyed backend (A-prime).
 - [0012](0012-vr-imagery-mapillary.md) VR imagery from Mapillary (over Google Earth / Street View).
 - [0013](0013-derived-request-key.md) Derived `RequestKey` from `ModelRequest` beside the unchanged MEM-003 `CacheKey`.
+- [0014](0014-loci-prompt-args-and-progress.md) Re-ask exclude list in `gen_params["prompt_args"]` (over a new
+  field); `find_loci` progress, deadline and re-ask failure semantics.
 
 ## Minor decisions (no ADR)
 
