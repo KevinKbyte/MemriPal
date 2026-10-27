@@ -182,3 +182,22 @@ class TestDemoPhotoRoute:
         resp = self._client().get(path)
         assert resp.status_code != 200
         assert "synthetic" not in resp.text
+
+
+# Covers: MEM-017
+# Requirement: when the committed demo photo is missing, GET /demo/photo.jpg answers 404 with the
+# app's standard JSON error body {"error": "demo_missing"}, never a plain-text 500.
+class TestDemoPhotoMissing:
+    def test_missing_demo_photo_is_404_demo_missing_json(self, monkeypatch, tmp_path):
+        import memripal.app as app_module
+
+        monkeypatch.setattr(app_module, "DEMO_PHOTO", tmp_path / "absent" / "photo.jpg")
+        client = TestClient(
+            create_app(backend=FixtureBackend(tmp_path)),
+            base_url=LOOPBACK_URL,
+            raise_server_exceptions=False,
+        )
+        resp = client.get("/demo/photo.jpg")
+        assert resp.status_code == 404, resp.text[:200]
+        assert resp.headers["content-type"].startswith("application/json")
+        assert resp.json() == {"error": "demo_missing"}
