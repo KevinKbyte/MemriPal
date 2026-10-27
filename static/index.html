@@ -9,6 +9,14 @@
     <main>
       <h1>MemriPal</h1>
       <p id="status">Checking backend...</p>
+      <p id="meta-notice" hidden>Your photo is sent to Meta's AI APIs to find places in it.</p>
+      <label for="photo">Take or choose a photo of a room</label>
+      <input id="photo" type="file" accept="image/*" capture="environment">
+      <p id="upload-status" role="status"></p>
+      <div id="scene-wrap">
+        <canvas id="scene" width="0" height="0"></canvas>
+      </div>
+      <ol id="loci"></ol>
     </main>
     <script type="module" src="/static/app.js"></script>
   </body>
