@@ -1,12 +1,14 @@
 """FastAPI app: health endpoint, static frontend shell (MEM-001) and POST /loci (MEM-015)."""
 
 import base64
+import logging
 from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from memripal.backend import BackendCallFailed, FixtureMissing, ModelBackend, select_backend
 from memripal.imaging import MAX_UPLOAD_BYTES, ImageRejected, process_upload
@@ -17,6 +19,12 @@ STATIC_DIR = REPO_ROOT / "static"
 REPLAY_DIR = REPO_ROOT / "fixtures" / "replay"
 
 UPLOAD_TYPES = {"image/jpeg", "image/png", "image/webp"}
+
+# DNS-rebinding guard for the loopback-only server.
+# S7 (public Cloud Run deploy, ADR 0010) must extend this list with the deploy host.
+ALLOWED_HOSTS = ("127.0.0.1", "localhost")
+
+logger = logging.getLogger(__name__)
 
 
 def _error(status: int, code: str) -> JSONResponse:
@@ -51,6 +59,7 @@ def create_app(backend: ModelBackend | None = None) -> FastAPI:
         backend = select_backend(None, REPLAY_DIR)
 
     app = FastAPI(title="MemriPal")
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(ALLOWED_HOSTS))
 
     @app.get("/healthz")
     def healthz() -> dict[str, str]:
@@ -65,9 +74,13 @@ def create_app(backend: ModelBackend | None = None) -> FastAPI:
         media_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
         if media_type not in UPLOAD_TYPES:
             return _error(415, "unsupported_media_type")
-        length = request.headers.get("content-length", "")
-        if length.isdigit() and int(length) > MAX_UPLOAD_BYTES:
-            return _error(413, "too_large")
+        length = request.headers.get("content-length")
+        if length is not None:
+            # str.isdigit() accepts e.g. U+00B2, which int() rejects; require plain ASCII digits.
+            if not (length.isascii() and length.isdigit()):
+                return _error(400, "bad_content_length")
+            if int(length) > MAX_UPLOAD_BYTES:
+                return _error(413, "too_large")
         data = await _read_capped(request)
         if data is None:
             return _error(413, "too_large")
@@ -81,6 +94,9 @@ def create_app(backend: ModelBackend | None = None) -> FastAPI:
             return _error(404, "fixture_missing")
         except BackendCallFailed:
             return _error(502, "upstream")
+        except Exception:
+            logger.exception("POST /loci failed")
+            return _error(500, "internal")
         return JSONResponse(
             {
                 "image": "data:image/jpeg;base64," + base64.b64encode(processed.jpeg).decode("ascii"),
