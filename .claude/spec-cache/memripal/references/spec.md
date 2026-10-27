@@ -363,3 +363,16 @@ ADR [0015](../../../../docs/decisions/0015-local-whisper-stt-toggle.md). Dev/off
 - `local_stt_client_from_env()`: URL from MEMRIPAL_LOCAL_STT_URL. Mocked transport only.
 
 Tests: tests/test_stt_provider.py
+
+## MEM-024 One-command branch merge
+
+`sh scripts/merge_branch.sh <worktree>`, steps in order, first failure stops:
+- Arg count != 1 or not a directory -> usage, exit 2.
+- Dirty worktree (`git status --porcelain` non-empty) -> stderr lists the dirty paths, exit 1.
+- `git rebase main`; conflict -> `rebase --abort`, exit 1.
+- Worktree `scripts/check.sh`; failure -> exit with its code, nothing enqueued.
+- Enqueue: agent-workflow `request_merge.py --repo <worktree> --wait` (env MEMRIPAL_REQUEST_MERGE_CMD overrides;
+  tests stub it); non-zero -> exit with that code.
+- Primary checkout's `scripts/check.sh` (primary = first `git worktree list` entry); script exits with its code.
+
+Tests: tests/test_merge_branch.py

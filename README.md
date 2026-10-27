@@ -105,6 +105,14 @@ Load demo, `load_demo.png` into `<outdir>`; prints the loci items. Exit 0 clean,
 uv run --no-project --with playwright python scripts/screenshot_ui.py <url> <outdir>
 ```
 
+Merge a worktree branch in one command: refuses a dirty tree, rebases onto `main`, runs the worktree's
+`scripts/check.sh`, enqueues via the merge queue (`request_merge.py --wait`), then re-runs `scripts/check.sh` in the
+primary checkout. Exit 2 on bad usage; otherwise the first failing step's code.
+
+```bash
+sh scripts/merge_branch.sh <worktree>
+```
+
 ## Live mode: Meta API key setup
 
 1. Run once in your own PowerShell (prompts for the key; nothing lands in shell history or the repo):
