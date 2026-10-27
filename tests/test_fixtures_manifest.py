@@ -157,3 +157,49 @@ def test_precommit_scan_passes_over_all_fixtures(generated, fixtures_dir):
     paths = [str(fixtures_dir / k) for k in snap1]
     result = _run_script("precommit_scan.py", *paths)
     assert result.returncode == 0, result.stderr
+
+
+# Covers: MEM-017
+# Requirement: the regenerated demo replays end to end through the real upload path. The
+# generator records >= 12 Spark phrases plus one SAM response per phrase, all keyed by the
+# requests find_loci derives from process_upload(photo.jpg) -- i.e. by the PROCESSED photo's
+# sha, not the raw file's -- so FixtureBackend serves >= 10 loci for the demo offline, and
+# the committed fixtures/MANIFEST.md lists every committed fixture file, one segment replay
+# per phrase included.
+@pytest.fixture(scope="module")
+def demo_result(fixtures_dir):
+    from memripal.backend import FixtureBackend
+    from memripal.imaging import process_upload
+    from memripal.loci import find_loci
+
+    processed = process_upload((fixtures_dir / "demo" / "photo.jpg").read_bytes())
+    progressed: list[str] = []
+    # A frozen clock keeps the deadline out of play: replay is judged on keys alone.
+    result = find_loci(
+        FixtureBackend(fixtures_dir / "replay"),
+        processed,
+        on_progress=progressed.append,
+        clock=lambda: 0.0,
+    )
+    return result, progressed
+
+
+class TestDemoReplayForLoci:
+    def test_replay_keyed_by_processed_sha_covers_at_least_12_phrases(self, demo_result):
+        result, progressed = demo_result
+        assert len(result.phrases) >= 12
+        assert sorted(progressed) == sorted(result.phrases)
+
+    def test_fixture_backend_serves_at_least_ten_loci_for_demo(self, demo_result):
+        result, _ = demo_result
+        assert len(result.loci) >= 10
+        assert [lc.n for lc in result.loci] == list(range(1, len(result.loci) + 1))
+        assert all(lc.label for lc in result.loci)
+
+    def test_committed_manifest_lists_every_fixture_and_12_segment_replays(self):
+        text = (COMMITTED / "MANIFEST.md").read_text(encoding="utf-8")
+        files = [k for k in _snapshot(COMMITTED) if k != "MANIFEST.md"]
+        missing = [k for k in files if f"`{k}`" not in text]
+        assert missing == []
+        segments = [k for k in files if k.startswith("replay/segment/")]
+        assert len(segments) >= 12
