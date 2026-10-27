@@ -17,6 +17,8 @@ from memripal.loci import Locus, find_loci
 REPO_ROOT = Path(__file__).resolve().parents[2]
 STATIC_DIR = REPO_ROOT / "static"
 REPLAY_DIR = REPO_ROOT / "fixtures" / "replay"
+# Gitignored: live (meta) responses and photos land here, never in the committed REPLAY_DIR.
+LIVE_CACHE_DIR = REPO_ROOT / "refs" / "private" / "live-cache"
 DEMO_PHOTO = REPO_ROOT / "fixtures" / "demo" / "photo.jpg"
 
 UPLOAD_TYPES = {"image/jpeg", "image/png", "image/webp"}
@@ -53,9 +55,6 @@ async def _read_capped(request: Request) -> bytes | None:
             return None
         chunks.append(chunk)
     return b"".join(chunks)
-
-# Gitignored: live (meta) responses and photos land here, never in the committed REPLAY_DIR.
-LIVE_CACHE_DIR = REPO_ROOT / "refs" / "private" / "live-cache"
 
 
 def create_app(backend: ModelBackend | None = None) -> FastAPI:

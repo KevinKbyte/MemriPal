@@ -163,7 +163,15 @@ class ResponseCache:
     def put_photo(self, image_jpeg: bytes) -> Path:
         """Content-addressed (photos/<sha256>.jpg): an existing file already holds these bytes, so keep it."""
         path = self.root / "photos" / f"{hashlib.sha256(image_jpeg).hexdigest()}.jpg"
-        return path if path.is_file() else _atomic_write(path, image_jpeg)
+        if path.is_file():
+            return path
+        try:
+            return _atomic_write(path, image_jpeg)
+        except OSError:
+            # Windows os.replace fails when a concurrent writer landed the same bytes first.
+            if path.is_file():
+                return path
+            raise
 
     def get(self, key: CacheKey | RequestKey) -> bytes | None:
         path = self.path_for(key)
