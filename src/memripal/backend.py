@@ -8,7 +8,7 @@ import logging
 import os
 import re
 import tempfile
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -280,7 +280,14 @@ class MetaBackend:
 
     mode = "meta"
 
-    def __init__(self, api_key: str, *, cache_root: Path | None = None, client: Any = None) -> None:
+    def __init__(
+        self,
+        api_key: str,
+        *,
+        cache_root: Path | None = None,
+        client: Any = None,
+        seg_client: Any = None,
+    ) -> None:
         self._api_key = api_key
         self.cache = ResponseCache(cache_root) if cache_root is not None else None
         if client is None:
@@ -289,12 +296,19 @@ class MetaBackend:
 
             client = MetaClient(api_key)
         self._client = client
+        # None keeps segment calls on Meta SAM; a ModalSegClient takes them over (MEM-016).
+        self._seg_client = seg_client
 
     # Explicit so the key can never surface through a default dataclass/object repr.
     def __repr__(self) -> str:
         return "MetaBackend()"
 
     def call(self, req: ModelRequest) -> Any:
+        if req.method == "segment" and self._seg_client is not None:
+            text = self._seg_client.segment(req.image_jpeg, req.subject)
+            # Provider-distinct key: Modal answers never overwrite or replay as Meta SAM entries (ADR 0018).
+            return self._store(replace(req, model="modal/" + req.model), text)
+
         from memripal.meta_client import chat_content_json, responses_text, to_data_url
 
         image_url = to_data_url(req.image_jpeg)
@@ -330,6 +344,9 @@ class MetaBackend:
             raise BackendCallFailed(f"{req.method} response incomplete or malformed") from exc
         if not valid(value):
             raise BackendCallFailed(f"{req.method} response does not match its schema")
+        return self._store(req, value)
+
+    def _store(self, req: ModelRequest, value: Any) -> Any:
         if self.cache is not None:
             body = value.encode("utf-8") if isinstance(value, str) else json.dumps(value).encode("utf-8")
             try:
@@ -371,5 +388,10 @@ def select_backend(
         api_key = os.environ.get("META_API_KEY", "")
         if not api_key:
             raise MissingApiKey("meta mode requires META_API_KEY in the environment")
-        return MetaBackend(api_key, cache_root=live_cache_root)
+        # Lazy: seg_provider imports meta_client, which imports this module (cycle at module top).
+        from memripal.seg_provider import modal_seg_client_from_env, select_seg_provider
+
+        # Meta branch only, like META_API_KEY: fixture mode never reads the provider settings.
+        seg_client = modal_seg_client_from_env() if select_seg_provider() == "modal" else None
+        return MetaBackend(api_key, cache_root=live_cache_root, seg_client=seg_client)
     raise ValueError(f"unknown MEMRIPAL_MODE {mode!r}; expected 'fixture' or 'meta'")

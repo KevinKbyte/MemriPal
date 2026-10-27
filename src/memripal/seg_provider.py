@@ -6,6 +6,7 @@ import sys
 
 import httpx
 
+from memripal.backend import BackendCallFailed
 from memripal.meta_client import to_data_url
 
 SEG_PROVIDERS = ("meta", "modal")
@@ -77,13 +78,17 @@ class ModalSegClient:
     __str__ = __repr__
 
     def segment(self, image_jpeg: bytes, phrase: str) -> str:
-        response = self._http.post(
-            self._url,
-            headers={"Authorization": "Bearer " + self._token},
-            json={"image": to_data_url(image_jpeg), "phrase": phrase},
-        )
-        if not response.is_success:
-            return ""
+        try:
+            response = self._http.post(
+                self._url,
+                headers={"Authorization": "Bearer " + self._token},
+                json={"image": to_data_url(image_jpeg), "phrase": phrase},
+            )
+            response.raise_for_status()
+        except httpx.HTTPError:
+            # Raised, not "", so a failure is never cached as zero boxes (ADR 0018); from None
+            # because httpx error text can carry the URL and the response body.
+            raise BackendCallFailed("segment call failed") from None
         return boxes_json_to_tokens(response.content)
 
 
