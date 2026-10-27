@@ -377,3 +377,37 @@ Tests: tests/test_stt_provider.py
 - Primary checkout's `scripts/check.sh` (primary = first `git worktree list` entry); script exits with its code.
 
 Tests: tests/test_merge_branch.py
+
+## MEM-020 POST /split + text normalizer
+
+ADR [0019](../../../../docs/decisions/0019-split-endpoint-contract.md). Plan S3 + D15. `src/memripal/textnorm.py`,
+`src/memripal/app.py`.
+- `normalize(s)`: `str.casefold()` (sharp s -> "ss"); every Unicode punctuation char (category P*) -> a
+  space, never glued ("a,b" -> "a b", "don't" -> "don t"); whitespace runs (tab, CRLF, NBSP) -> one ASCII space;
+  ends stripped; digits kept; idempotent. The ONE normalizer for the split quote check and the S3 association
+  validator.
+- Content-Type not application/json -> 415 {"error": "unsupported_media_type"}. Body {"photo": standard base64 of
+  the processed JPEG, "mode": "list" | "notes", "text": str, "loci_count": int 1..12}. Not JSON, not an object,
+  missing/ill-typed field, unknown mode, loci_count outside 1..12 (bool, float, str included) -> 422
+  {"error": "bad_request"}.
+- `photo` is plain base64: undecodable or `data:`-prefixed -> 400 {"error": "bad_base64"} (S3b POST /associate
+  takes a data URL: known divergence, ADR 0019). Decoded bytes re-checked by `imaging.validate_processed`;
+  ImageRejected -> its status + {"error": code} (400 empty/bad_magic/decode_error/not_jpeg/too_big_side/has_exif,
+  413 too_large).
+- Caps, 422, before any model call (the limit itself passes): list text > 4096 UTF-8 bytes -> "list_too_large";
+  notes > 20480 UTF-8 bytes -> "notes_too_large"; list line > 100 chars -> "item_too_long"; list items >
+  loci_count -> "too_many_items"; no non-blank list line, or blank notes -> "no_items".
+- List mode: split on \n / \r\n, lines stripped, blanks dropped, order kept, no model call -> 200
+  {"points": [{"label": item, "source_quote": item}, ...]}.
+- Notes mode: one `spark_json` ModelRequest per attempt (attempt 0, regeneration 1); `gen_params["send_image"]` =
+  False (MetaBackend strips it and calls `chat_json(image_data_url=None)`; requests without the key still send the
+  image); notes in `gen_params["prompt_args"]`, so different notes -> different cache key. Schema stays in the
+  `backend._schema_valid` subset; caps live in the split validator.
+- Valid reply: exactly {"points": [{"label": str, "source_quote": str}]}, no extra keys; 1 <= len <=
+  min(12, loci_count); label non-blank, <= 100 chars; `normalize(source_quote)` non-blank and in
+  `normalize(notes)`; serialized JSON <= 65536 bytes. Invalid (e.g. 13+ points) -> exactly one regeneration; second
+  invalid -> 422 {"error": "split_invalid"}. 200 points ordered by quote position in the notes (speech order).
+- FixtureMissing -> 404 {"error": "fixture_missing"}; BackendCallFailed -> 502 {"error": "upstream"}. Error bodies
+  are only {"error": code}: no model or exception text.
+
+Tests: tests/test_textnorm.py, tests/test_split_api.py, tests/test_split_notes.py

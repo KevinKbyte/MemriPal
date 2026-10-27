@@ -32,6 +32,8 @@ the others that you asked about".
   write-through into `fixtures/replay`).
 - [0018](0018-modal-segment-cache-key-and-failures.md) Modal segment key `modal/<model>`; Modal failures raise
   `BackendCallFailed`, uncached (over a new RequestKey field or returning "").
+- [0019](0019-split-endpoint-contract.md) `POST /split`: list used as-is, notes via one image-less Spark call, one
+  regeneration then `split_invalid` (over schema-enforced caps or two regenerations).
 
 ## Minor decisions (no ADR)
 
