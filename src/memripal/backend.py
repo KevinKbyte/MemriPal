@@ -80,6 +80,21 @@ class RequestKey:
         return _sha256_json(asdict(self))
 
 
+def _atomic_write(path: Path, body: bytes) -> Path:
+    """Temp file in the target dir, then os.replace: a failure keeps the old file and leaves no temp."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(body)
+        os.replace(tmp, path)
+    except BaseException:
+        with contextlib.suppress(FileNotFoundError):
+            os.unlink(tmp)
+        raise
+    return path
+
+
 @functools.cache
 def _templates_digest() -> str:
     # Lazy: probe imports meta_client, which imports this module (cycle at module top).
@@ -140,19 +155,12 @@ class ResponseCache:
         return self.root / key.method / f"{key.digest()}{EXT[key.method]}"
 
     def put(self, key: CacheKey | RequestKey, body: bytes) -> Path:
-        """Atomic (temp file in the target dir, then os.replace): a failure keeps the old entry, no temp."""
-        path = self.path_for(key)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".", suffix=".tmp")
-        try:
-            with os.fdopen(fd, "wb") as f:
-                f.write(body)
-            os.replace(tmp, path)
-        except BaseException:
-            with contextlib.suppress(FileNotFoundError):
-                os.unlink(tmp)
-            raise
-        return path
+        return _atomic_write(self.path_for(key), body)
+
+    def put_photo(self, image_jpeg: bytes) -> Path:
+        """Content-addressed (photos/<sha256>.jpg), so re-saving the same image is idempotent."""
+        photo_sha = hashlib.sha256(image_jpeg).hexdigest()
+        return _atomic_write(self.root / "photos" / f"{photo_sha}.jpg", image_jpeg)
 
     def get(self, key: CacheKey | RequestKey) -> bytes | None:
         path = self.path_for(key)
@@ -314,6 +322,8 @@ class MetaBackend:
         if self.cache is not None:
             body = value.encode("utf-8") if isinstance(value, str) else json.dumps(value).encode("utf-8")
             self.cache.put(req.cache_key(), body)
+            # Kept for a later promote step into the committed fixtures.
+            self.cache.put_photo(req.image_jpeg)
         return value
 
     def segment(self, photo_sha: str, phrase: str, attempt: int = 0) -> str:
@@ -326,7 +336,14 @@ class MetaBackend:
         raise NotImplementedError("S1")
 
 
-def select_backend(mode: str | None, fixtures_root: Path) -> ModelBackend:
+def select_backend(
+    mode: str | None, fixtures_root: Path, live_cache_root: Path | None = None
+) -> ModelBackend:
+    # Live responses must never land in the git-tracked fixtures tree (MEM-014).
+    if live_cache_root is not None and Path(live_cache_root).resolve().is_relative_to(
+        Path(fixtures_root).parent.resolve()
+    ):
+        raise ValueError("live_cache_root must be outside the fixtures directory")
     if mode is None:
         mode = os.environ.get("MEMRIPAL_MODE", "fixture")
     if mode == "fixture":
@@ -336,5 +353,5 @@ def select_backend(mode: str | None, fixtures_root: Path) -> ModelBackend:
         api_key = os.environ.get("META_API_KEY", "")
         if not api_key:
             raise MissingApiKey("meta mode requires META_API_KEY in the environment")
-        return MetaBackend(api_key, cache_root=fixtures_root)
+        return MetaBackend(api_key, cache_root=live_cache_root)
     raise ValueError(f"unknown MEMRIPAL_MODE {mode!r}; expected 'fixture' or 'meta'")

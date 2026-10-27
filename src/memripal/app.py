@@ -54,10 +54,13 @@ async def _read_capped(request: Request) -> bytes | None:
         chunks.append(chunk)
     return b"".join(chunks)
 
+# Gitignored: live (meta) responses and photos land here, never in the committed REPLAY_DIR.
+LIVE_CACHE_DIR = REPO_ROOT / "refs" / "private" / "live-cache"
+
 
 def create_app(backend: ModelBackend | None = None) -> FastAPI:
     if backend is None:
-        backend = select_backend(None, REPLAY_DIR)
+        backend = select_backend(None, fixtures_root=REPLAY_DIR, live_cache_root=LIVE_CACHE_DIR)
 
     app = FastAPI(title="MemriPal")
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(ALLOWED_HOSTS))
