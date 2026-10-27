@@ -4,6 +4,7 @@ import contextlib
 import functools
 import hashlib
 import json
+import logging
 import os
 import re
 import tempfile
@@ -17,6 +18,8 @@ PROMPT_VERSION = "v1"
 EXT = {"segment": ".txt", "spark_json": ".json", "image_edit": ".webp"}
 
 _PHOTO_SHA = re.compile(r"[0-9a-f]{64}")
+
+_log = logging.getLogger(__name__)
 
 
 class MissingApiKey(RuntimeError):
@@ -158,9 +161,9 @@ class ResponseCache:
         return _atomic_write(self.path_for(key), body)
 
     def put_photo(self, image_jpeg: bytes) -> Path:
-        """Content-addressed (photos/<sha256>.jpg), so re-saving the same image is idempotent."""
-        photo_sha = hashlib.sha256(image_jpeg).hexdigest()
-        return _atomic_write(self.root / "photos" / f"{photo_sha}.jpg", image_jpeg)
+        """Content-addressed (photos/<sha256>.jpg): an existing file already holds these bytes, so keep it."""
+        path = self.root / "photos" / f"{hashlib.sha256(image_jpeg).hexdigest()}.jpg"
+        return path if path.is_file() else _atomic_write(path, image_jpeg)
 
     def get(self, key: CacheKey | RequestKey) -> bytes | None:
         path = self.path_for(key)
@@ -321,9 +324,14 @@ class MetaBackend:
             raise BackendCallFailed(f"{req.method} response does not match its schema")
         if self.cache is not None:
             body = value.encode("utf-8") if isinstance(value, str) else json.dumps(value).encode("utf-8")
-            self.cache.put(req.cache_key(), body)
-            # Kept for a later promote step into the committed fixtures.
-            self.cache.put_photo(req.image_jpeg)
+            try:
+                # Photo first (kept for a later promote step), so no response entry lacks its photo.
+                self.cache.put_photo(req.image_jpeg)
+                self.cache.put(req.cache_key(), body)
+            except OSError as exc:
+                # Best-effort: the value is valid, so a cache write failure (e.g. a Windows sharing
+                # violation from concurrent calls) never fails the request. Logs no key, path, or bytes.
+                _log.warning("live cache write skipped: %s (errno %s)", type(exc).__name__, exc.errno)
         return value
 
     def segment(self, photo_sha: str, phrase: str, attempt: int = 0) -> str:
@@ -339,11 +347,13 @@ class MetaBackend:
 def select_backend(
     mode: str | None, fixtures_root: Path, live_cache_root: Path | None = None
 ) -> ModelBackend:
-    # Live responses must never land in the git-tracked fixtures tree (MEM-014).
-    if live_cache_root is not None and Path(live_cache_root).resolve().is_relative_to(
-        Path(fixtures_root).parent.resolve()
-    ):
-        raise ValueError("live_cache_root must be outside the fixtures directory")
+    # Live cache and the git-tracked fixtures tree must never nest either way (MEM-014); resolve()
+    # follows symlinks/junctions so a link cannot hide the nesting.
+    if live_cache_root is not None:
+        live = Path(live_cache_root).resolve()
+        fixtures_dir = Path(fixtures_root).parent.resolve()
+        if live.is_relative_to(fixtures_dir) or fixtures_dir.is_relative_to(live):
+            raise ValueError("live_cache_root and the fixtures directory must not contain each other")
     if mode is None:
         mode = os.environ.get("MEMRIPAL_MODE", "fixture")
     if mode == "fixture":
