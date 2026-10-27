@@ -2,6 +2,8 @@
 // MemriPal frontend: backend health plus photo upload -> numbered memory loci (MEM-017).
 // Served as a raw ES module (no build step). Model-derived text is only ever set via textContent.
 
+import { associationKey } from "./palace_store.js";
+
 /**
  * @typedef {{x1: number, y1: number, x2: number, y2: number}} LocusBox
  * @typedef {{n: number, label: string, phrase?: string, box?: LocusBox}} Locus
@@ -236,6 +238,123 @@ export function onPhotoChange(input, deps) {
  */
 export function onLoadDemo(deps) {
   return showUpload(() => demoUpload(deps.fetch), "could not load the demo photo", deps);
+}
+
+/** KAVE COGS channels, in the order the association panel shows them (MEM-022). */
+export const KAVE_CHANNELS = Object.freeze([
+  "kinesthetic",
+  "auditory",
+  "visual",
+  "emotional",
+  "conceptual",
+  "olfactory",
+  "gustatory",
+  "spatial",
+]);
+
+/**
+ * @typedef {{item: string, locus: {n: number, label: string}}} AssocPair
+ * @typedef {{record: Record<string, string>, status: "valid" | "invalid"}} AssocEntry
+ * @typedef {{
+ *   doc: Pick<Document, "getElementById" | "createElement">,
+ *   fetch: typeof fetch,
+ *   store: ReturnType<typeof import("./palace_store.js").createPalaceStore>,
+ *   image?: string,
+ * }} AssocDeps
+ */
+
+/**
+ * One POST /associate (S3b contract: body exactly {image, item, locus}; locus is the short label).
+ * Throws on a network error or non-2xx, so the caller stores nothing for that pair.
+ * @param {AssocPair} pair
+ * @param {AssocDeps} deps
+ * @returns {Promise<AssocEntry>}
+ */
+async function requestAssociation(pair, deps) {
+  const resp = await deps.fetch("/associate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ image: deps.image, item: pair.item, locus: pair.locus.label }),
+  });
+  const payload = await resp.json().catch(() => null);
+  if (!resp.ok) {
+    throw new Error(payload && typeof payload.error === "string" ? payload.error : `http_${resp.status}`);
+  }
+  if (!payload || typeof payload.record !== "object" || payload.record === null) throw new Error("bad_response");
+  return { record: payload.record, status: payload.status === "valid" ? "valid" : "invalid" };
+}
+
+/**
+ * @param {AssocDeps["doc"]} doc
+ * @param {string} tag
+ * @param {unknown} text
+ */
+function textEl(doc, tag, text) {
+  const e = doc.createElement(tag);
+  e.textContent = text == null ? "" : String(text);
+  return e;
+}
+
+/**
+ * Panel card: item and locus, the 8 channels in KAVE order, then the D16 question and answer.
+ * @param {AssocPair} pair
+ * @param {AssocEntry | null} entry null when generation failed
+ * @param {string} failure
+ * @param {AssocDeps["doc"]} doc
+ */
+function associationCard(pair, entry, failure, doc) {
+  const card = doc.createElement("section");
+  card.append(textEl(doc, "h3", `${pair.locus.n}. ${pair.item} at ${pair.locus.label}`));
+  if (!entry) {
+    card.append(textEl(doc, "p", `Could not generate: ${failure}`));
+    return card;
+  }
+  if (entry.status !== "valid") card.append(textEl(doc, "p", "Needs regeneration"));
+  const list = doc.createElement("dl");
+  for (const channel of KAVE_CHANNELS) {
+    list.append(textEl(doc, "dt", channel), textEl(doc, "dd", entry.record[channel]));
+  }
+  card.append(list, textEl(doc, "p", entry.record.question), textEl(doc, "p", entry.record.answer));
+  return card;
+}
+
+/**
+ * Generate associations one pair at a time, saving each record the moment it arrives. A resume
+ * reuses valid stored records and regenerates only missing or invalid ones.
+ * @param {AssocPair[]} pairs
+ * @param {AssocDeps} deps
+ */
+export async function runAssociations(pairs, deps) {
+  const status = deps.doc.getElementById("assoc-status");
+  const panel = deps.doc.getElementById("associations");
+  if (!status || !panel) return;
+  panel.replaceChildren();
+  let done = 0;
+  let failed = 0;
+  const showProgress = () => {
+    status.textContent = `${done} of ${pairs.length}` + (failed ? ` (${failed} failed)` : "");
+  };
+  showProgress();
+  for (const pair of pairs) {
+    const key = associationKey(pair.item, pair.locus.label);
+    /** @type {AssocEntry | null} */
+    let entry = await deps.store.get(key);
+    let failure = "";
+    if (!entry || entry.status !== "valid") {
+      try {
+        const fresh = await requestAssociation(pair, deps);
+        await deps.store.put(key, fresh);
+        entry = fresh;
+      } catch (err) {
+        // Keep a stored invalid record visible; a failed regeneration must not hide it.
+        failure = err instanceof Error ? err.message : "unknown";
+        if (!entry) failed += 1;
+      }
+    }
+    if (entry) done += 1;
+    panel.append(associationCard(pair, entry, failure, deps.doc));
+    showProgress();
+  }
 }
 
 function wireUpload() {
