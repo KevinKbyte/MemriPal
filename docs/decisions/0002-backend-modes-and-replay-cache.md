@@ -1,6 +1,7 @@
 # 0002: `meta|fixture` backend modes with a logical-key replay cache
 
-Status: Accepted (association key amended Q1 2026-10-26; seam reshaped by [0011](0011-s2-loci-request-shape.md))
+Status: Accepted (association key amended Q1 2026-10-26; seam reshaped by [0011](0011-s2-loci-request-shape.md);
+write-through location and record-mode rationale superseded by [0017](0017-live-cache-in-refs-private.md))
 Date: 2026-10-26
 Source: `docs/plans/2026-10-26-memripal.md` D3, A1, "Ledger" (F2 fixture key fragility, P4 record mode, C1/F1
 fixtures unavailable).
@@ -39,3 +40,6 @@ separate record mode; synthetic fixtures in S0 unblocked S2-S6 before the key.
   association key adds the locus short label (lands in S3).
 - The original seam had no channel for image bytes/prompt/schema; [0011](0011-s2-loci-request-shape.md) replaces
   it with a `ModelRequest`-derived key.
+- Superseded by [0017](0017-live-cache-in-refs-private.md): "write-through removed the need for a separate record
+  mode" no longer holds. Live write-through goes to gitignored `refs/private/live-cache`, never `fixtures/`; demo
+  fixtures come from a later promote step.

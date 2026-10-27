@@ -28,6 +28,8 @@ the others that you asked about".
   OpenWhispr).
 - [0016](0016-load-demo-bypasses-reencode.md) Load demo posts the demo photo's raw bytes, no client re-encode (over
   EXIF-free skip or fuzzy fixture match).
+- [0017](0017-live-cache-in-refs-private.md) Live-mode cache in gitignored `refs/private/live-cache` (over
+  write-through into `fixtures/replay`).
 
 ## Minor decisions (no ADR)
 

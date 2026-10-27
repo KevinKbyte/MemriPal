@@ -250,6 +250,10 @@ a) `src/memripal/backend.py`:
   `BackendCallFailed` (error code only; str never holds body or key).
 - Write-through only for a complete, successful, schema-valid response, atomically (temp + replace); failed or
   schema-invalid -> no file.
+- Live cache root (ADR 0017): `select_backend(mode, fixtures_root, live_cache_root=None)`; meta writes under
+  `live_cache_root` only, `None` -> no disk writes; `live_cache_root` resolving inside `fixtures/` -> ValueError.
+  `app.LIVE_CACHE_DIR` = `refs/private/live-cache` (gitignored). On a write-through, MetaBackend also saves the
+  processed photo atomically at `photos/<sha256>.jpg` (content-addressed: same image -> one file).
 - Positional MEM-003 `segment()`/`spark_json()` shims build a `ModelRequest`; MEM-003 tests stay green.
 
 b) `find_loci(backend, processed, *, workers=6, deadline_s=90.0, on_progress=None) -> LociResult` (frozen: loci,
@@ -265,7 +269,7 @@ phrases, reask_used) in `loci.py`:
 - `on_progress` fires once per finished phrase; None = no-op.
 - FixtureBackend replay of the synthetic demo -> identical LociResult twice.
 
-Tests: tests/test_backend.py, tests/test_loci_pipeline.py
+Tests: tests/test_backend.py, tests/test_loci_pipeline.py, tests/test_live_cache.py
 
 ## MEM-015 POST /loci
 
