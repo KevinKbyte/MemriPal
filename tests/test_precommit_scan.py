@@ -163,3 +163,43 @@ class TestPrecommitScan:
         assert "leaky.txt" in result.stderr
         assert "gps.jpg" in result.stderr
         assert "innocent.txt" not in result.stderr
+
+
+# Covers: MEM-004
+# Requirement: the sk- key pattern only matches at a word boundary, so ordinary
+# words that end in "sk" followed by a hyphen (e.g. "reask-prompt-...") pass,
+# while a standalone sk- key token still blocks the commit.
+class TestSecretScanSkWordBoundary:
+    # "rea" + "sk-" + 23 key-charset chars: long enough to hit the {20,} threshold.
+    REASK_WORD = "rea" + "sk" + "-" + "prompt-template-variant"
+    KEY_TOKEN = "sk" + "-" + "abc123DEF456ghi789JKL0"
+
+    def test_sk_inside_word_passes(self, tmp_path):
+        target = tmp_path / "prompts.md"
+        target.write_text("Use the " + self.REASK_WORD + " helper.\n", encoding="utf-8")
+        result = run_scan(target)
+        assert result.returncode == 0, result.stderr
+
+    @pytest.mark.parametrize(
+        "line",
+        [
+            "{key}",
+            "OPENAI_KEY='{key}'",
+            "key: {key}",
+            "(" + "{key}" + ")",
+        ],
+        ids=["line_start", "quoted", "after_space", "parenthesized"],
+    )
+    def test_standalone_sk_key_still_blocks(self, tmp_path, line):
+        target = tmp_path / "config.txt"
+        target.write_text(line.format(key=self.KEY_TOKEN) + "\n", encoding="utf-8")
+        result = run_scan(target)
+        assert result.returncode == 1, result.stderr
+        assert "config.txt" in result.stderr
+
+    def test_word_and_key_on_same_line_blocks(self, tmp_path):
+        target = tmp_path / "mixed.txt"
+        target.write_text(self.REASK_WORD + " " + self.KEY_TOKEN + "\n", encoding="utf-8")
+        result = run_scan(target)
+        assert result.returncode == 1, result.stderr
+        assert "mixed.txt" in result.stderr
