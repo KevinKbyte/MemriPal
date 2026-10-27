@@ -97,6 +97,14 @@ Run all checks (ruff, pytest, node tests):
 sh scripts/check.sh
 ```
 
+Visual-verify the upload UI against a running app (needs local Chrome): screenshots `initial.png` and, after clicking
+Load demo, `load_demo.png` into `<outdir>`; prints the loci items. Exit 0 clean, 1 on any page/console error (a
+`/favicon.ico` 404 is ignored), 2 on bad usage.
+
+```bash
+uv run --no-project --with playwright python scripts/screenshot_ui.py <url> <outdir>
+```
+
 ## Live mode: Meta API key setup
 
 1. Run once in your own PowerShell (prompts for the key; nothing lands in shell history or the repo):
