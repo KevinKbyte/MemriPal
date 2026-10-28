@@ -208,10 +208,10 @@ describe("latestOnly stale-response gate", () => {
 
 // Covers: MEM-017
 // Requirement: the page has exactly one "Load demo" button (<button id="load-demo">) alongside the
-// still-single photo file input, and app.js wires that button.
+// still-single photo file input, and flow.js wires that button (the handler moved out of app.js).
 describe("Load demo markup", () => {
   const html = readFileSync(new URL("./index.html", import.meta.url), "utf8");
-  const js = readFileSync(new URL("./app.js", import.meta.url), "utf8");
+  const flowJs = readFileSync(new URL("./flow.js", import.meta.url), "utf8");
 
   test("index.html has exactly one <button id=\"load-demo\">", () => {
     const buttons = [...html.matchAll(/<button\b[^>]*>/g)].filter((m) => /\bid="load-demo"/.test(m[0]));
@@ -224,7 +224,7 @@ describe("Load demo markup", () => {
     assert.equal(inputs.length, 1, "expected exactly one file input");
   });
 
-  test("app.js wires the load-demo button", () => {
-    assert.match(js, /["']load-demo["']/);
+  test("flow.js wires the load-demo button", () => {
+    assert.match(flowJs, /["']load-demo["']/);
   });
 });
