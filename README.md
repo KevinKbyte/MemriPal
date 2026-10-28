@@ -70,6 +70,23 @@ Options, pros/cons and rationale per decision ([index](docs/decisions/README.md)
 - [0011](docs/decisions/0011-s2-loci-request-shape.md) S2 loci request shape: one sync `POST /loci`
 - [0012](docs/decisions/0012-vr-imagery-mapillary.md) Street-level VR imagery from Mapillary, not Google Earth
 - [0013](docs/decisions/0013-derived-request-key.md) Derived `RequestKey` beside the MEM-003 `CacheKey`
+- [0014](docs/decisions/0014-loci-prompt-args-and-progress.md) Loci re-ask exclude list via
+  `gen_params["prompt_args"]`; `find_loci` progress semantics
+- [0015](docs/decisions/0015-local-whisper-stt-toggle.md) Muse STT default; local Whisper behind an env toggle (over
+  replacing Muse with OpenWhispr)
+- [0016](docs/decisions/0016-load-demo-bypasses-reencode.md) Load demo uploads the demo photo's raw bytes, bypassing
+  the client re-encode
+- [0017](docs/decisions/0017-live-cache-in-refs-private.md) Live-mode cache goes to gitignored
+  `refs/private/live-cache` (over write-through into `fixtures/replay`)
+- [0018](docs/decisions/0018-modal-segment-cache-key-and-failures.md) Modal segment cache key is provider-distinct;
+  Modal failures raise
+- [0019](docs/decisions/0019-split-endpoint-contract.md) POST /split: list used as-is, notes via one image-less Spark
+  call, one regeneration
+- [0020](docs/decisions/0020-association-validate-and-regenerate.md) Associations: deterministic validator, bounded
+  regeneration, `invalid` terminal state
+- [0021](docs/decisions/0021-client-palace-store-injected-kv.md) Client palace store is IndexedDB behind an injected KV
+  adapter, keyed by item + locus label
+- [0022](docs/decisions/0022-opt-in-place-context-server-lookup.md) Opt-in place context via server lookup
 
 ## Modes
 

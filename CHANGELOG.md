@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.8.0] - 2026-10-27
+
+### Added
+
+- S3e opt-in place context, server side: `POST /place` lookup; optional `place` on `POST /associate`, rejected with
+  400 `place_too_long` (title over 255 or extract over 400 chars) or `bad_place`; ADR 0022 amends ADR 0009 (MEM-025).
+- S3e client: place toggle, EXIF GPS read, typed place, "Near:" chips, CC BY-SA attribution (MEM-025).
+- Demo place fixtures plus place-keyed association replays, so the demo runs offline with place on (MEM-025).
+
+### Fixed
+
+- `src/memripal/__init__.py` `__version__` synced to the package version.
+
 ## [0.7.0] - 2026-10-27
 
 ### Added
