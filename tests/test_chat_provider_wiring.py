@@ -1,3 +1,4 @@
+import dataclasses
 import json
 import logging
 from pathlib import Path
@@ -370,3 +371,57 @@ class TestChatProviderCache:
 
         assert not ResponseCache(live).path_for(req.cache_key()).exists()
         assert len(_files_under(live / "spark_json")) == 1
+
+
+def _answer_names_model(net: _Net):
+    """Chat answer naming the model the request asked for, so entries from two models differ."""
+
+    def _answer():
+        model = json.loads(net.requests[-1].content)["model"]
+        content = json.dumps({"phrases": [model]})
+        return httpx.Response(200, json={"choices": [{"message": {"content": content}}]})
+
+    return _answer
+
+
+# Covers: MEM-026
+# Requirement: a non-meta chat answer is cached under model "<provider>/<provider model>" (e.g.
+# "baseten/meta-models/muse-spark-open-1026", "local/<MEMRIPAL_LOCAL_CHAT_MODEL>"), never
+# "<provider>/muse-spark-1.3": two local runs with different MEMRIPAL_LOCAL_CHAT_MODEL values write
+# two distinct entries, each holding its own model's answer, so one model's answer can never be
+# served for another model.
+class TestChatProviderCacheKeyNamesProviderModel:
+    @pytest.mark.parametrize("provider", ["baseten", "fireworks", "local"])
+    def test_cached_under_provider_slash_provider_model(self, monkeypatch, tmp_path, net, provider):
+        _provider_env(monkeypatch, provider)
+        model = LOCAL_MODEL if provider == "local" else KEYED[provider][1]
+        net.chat_answer = _answer_names_model(net)
+        live = tmp_path / "live"
+        req = _spark_request()
+
+        select_backend("meta", tmp_path / "fx" / "fixtures", live).call(req)
+
+        cache = ResponseCache(live)
+        path = cache.path_for(dataclasses.replace(req, model=provider + "/" + model).cache_key())
+        assert path.is_file()
+        assert json.loads(path.read_bytes()) == {"phrases": [model]}
+        stale = cache.path_for(dataclasses.replace(req, model=provider + "/" + req.model).cache_key())
+        assert not stale.exists()
+
+    def test_two_local_models_never_share_an_entry(self, monkeypatch, tmp_path, net):
+        net.chat_answer = _answer_names_model(net)
+        live = tmp_path / "live"
+        req = _spark_request()
+        models = ("llama3.2", "qwen2.5")
+        for model in models:
+            _provider_env(monkeypatch, "local")
+            monkeypatch.setenv("MEMRIPAL_LOCAL_CHAT_MODEL", model)
+            backend = select_backend("meta", tmp_path / "fx" / "fixtures", live)
+            assert backend.call(req) == {"phrases": [model]}
+
+        cache = ResponseCache(live)
+        paths = [cache.path_for(dataclasses.replace(req, model="local/" + m).cache_key()) for m in models]
+        assert paths[0] != paths[1]
+        for model, path in zip(models, paths, strict=True):
+            assert json.loads(path.read_bytes()) == {"phrases": [model]}
+        assert len(_files_under(live / "spark_json")) == 2
