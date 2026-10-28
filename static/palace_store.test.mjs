@@ -214,3 +214,89 @@ describe("palace store: associationKey", () => {
     }
   });
 });
+
+/** In-memory Web Storage stand-in: getItem -> null when missing, values stored as strings. */
+function fakeStorage(seed = {}) {
+  const map = new Map(Object.entries(seed));
+  return {
+    map,
+    get length() {
+      return map.size;
+    },
+    key: (i) => [...map.keys()][i] ?? null,
+    getItem: (k) => (map.has(k) ? map.get(k) : null),
+    setItem: (k, v) => void map.set(k, String(v)),
+    removeItem: (k) => void map.delete(k),
+    clear: () => map.clear(),
+  };
+}
+
+// Covers: MEM-033
+// Requirement: palace and rehearsal records persist in the browser's localStorage until the
+// IndexedDB adapter lands. localStorageAdapter(prefix, storage?) -> {get, put, delete, list}, all
+// async: values are JSON-encoded under prefix + key, a missing key reads back undefined, list()
+// returns only this prefix's values (two prefixes on one origin never see each other; order
+// unpinned), and storage is only touched on use, so a page with storage disabled still loads.
+describe("palace store: localStorageAdapter", () => {
+  test("get of a key never put returns undefined", async () => {
+    const s = fakeStorage();
+    const a = palace.localStorageAdapter("p:", () => s);
+    assert.equal(await a.get("missing"), undefined);
+  });
+
+  test("put then get round-trips JSON values, across a new adapter on the same storage", async () => {
+    const s = fakeStorage();
+    const a = palace.localStorageAdapter("p:", () => s);
+    const values = { obj: entry("milk", "valid"), arr: [1, "two", { three: 3 }], str: "lamp", num: 0, nul: null, f: false };
+    for (const [k, v] of Object.entries(values)) await a.put(k, v);
+    const reloaded = palace.localStorageAdapter("p:", () => s);
+    for (const [k, v] of Object.entries(values)) assert.deepEqual(await reloaded.get(k), v, k);
+    assert.equal(s.getItem("p:obj"), JSON.stringify(values.obj), "stored JSON-encoded under prefix + key");
+  });
+
+  test("put on an existing key overwrites it", async () => {
+    const s = fakeStorage();
+    const a = palace.localStorageAdapter("p:", () => s);
+    await a.put("k", entry("milk", "invalid"));
+    await a.put("k", entry("milk", "valid"));
+    assert.deepEqual(await a.get("k"), entry("milk", "valid"));
+    assert.equal((await a.list()).length, 1);
+  });
+
+  test("delete removes only that key", async () => {
+    const s = fakeStorage();
+    const a = palace.localStorageAdapter("p:", () => s);
+    await a.put("gone", entry("milk", "valid"));
+    await a.put("kept", entry("eggs", "valid"));
+    await a.delete("gone");
+    assert.equal(await a.get("gone"), undefined);
+    assert.deepEqual(await a.get("kept"), entry("eggs", "valid"));
+    assert.deepEqual(await a.list(), [entry("eggs", "valid")]);
+  });
+
+  test("list returns only this prefix's values; two prefixes are isolated", async () => {
+    const s = fakeStorage({ unrelated: JSON.stringify("other app"), "q": JSON.stringify("bare prefix") });
+    const palaceA = palace.localStorageAdapter("memripal.palace:", () => s);
+    const rehearsalA = palace.localStorageAdapter("memripal.rehearsal:", () => s);
+    assert.deepEqual(await palaceA.list(), []);
+    await palaceA.put("b", "palace-b");
+    await rehearsalA.put("a", "rehearsal-a");
+    await palaceA.put("a", "palace-a");
+    assert.deepEqual((await palaceA.list()).sort(), ["palace-a", "palace-b"]);
+    assert.deepEqual(await rehearsalA.list(), ["rehearsal-a"]);
+    assert.equal(await rehearsalA.get("b"), undefined, "a key put under one prefix is invisible to the other");
+  });
+
+  test("constructing touches no storage; use surfaces a storage failure as a rejection", async () => {
+    let touched = 0;
+    const broken = () => {
+      touched++;
+      throw new Error("storage disabled");
+    };
+    const a = palace.localStorageAdapter("p:", broken);
+    assert.equal(touched, 0, "storage touched at construction");
+    assert.doesNotThrow(() => palace.localStorageAdapter("p:"));
+    await assert.rejects(a.get("k"), /storage disabled/);
+    await assert.rejects(a.list(), /storage disabled/);
+  });
+});
