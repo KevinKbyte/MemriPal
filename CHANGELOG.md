@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.15.0] - 2026-10-28
+
+### Added
+
+- Generated assets wired into the page (MEM-040): `manifest.webmanifest` keeps `icon.svg` first and adds
+  `/static/assets/icon-192.png` (192x192) and `icon-512.png` (512x512), `image/png`, purpose `any`. `index.html`
+  shows a decorative `<img id="empty-state">` (`/static/assets/empty-state.webp`) before `#scene-wrap`: centered,
+  `max-width: min(100%, 360px)`; hidden once a palace's places are drawn (photo upload or Load demo) and never shown
+  again that session.
+
 ## [0.14.0] - 2026-10-28
 
 ### Added
