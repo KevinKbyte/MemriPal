@@ -294,6 +294,9 @@ Plan S6 (D18). `static/rehearsals.js`, `static/idb_adapter.js`, `static/flow.js`
   migrated.
 - Page: history for palace id "demo", one row per run "<timestamp>: <got>/<n> recalled" + Delete (confirm "Delete
   this rehearsal?", then `#rehearsal-undo`); `#hit-rates` rows "<label>: <hits>/<runs>", " (chronic miss)" appended.
+  History rows + hit rates render on start with no Load demo when >= 1 run is stored (order = `list()`, oldest
+  first); 0 runs -> the history stays hidden. Each row has a "View" button showing that run's said-vs-palace from
+  the stored record (no request).
 - `createRehearsalStore(adapter, {now, newId})`, adapter = async `{get, put, delete, list}`. `save(palaceId, {transcript,
   results})` -> record `{id, palace_id, timestamp (ISO), transcript, points}`, stored as a JSON string; points
   whitelist `{label, source_quote, got, override, span}`, so no audio or other field is stored. `get(id)` (unknown
