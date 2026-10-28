@@ -171,5 +171,158 @@ idiom; checks in this order, all before any model call:
   "reason": <code>}, fixture miss and upstream failure included (never 404/502/500, unlike /associate).
 - Error bodies only {"error": code}, no model or input text. Host guard applies.
 - Fixture mode: a recorded scene replays offline (no network); a record never recorded -> tier 3.
+- Live mode: passcode-gated (MEM-034) once merged with the S7 gate.
 
 Tests: tests/test_scenes_api.py
+
+## MEM-029 Scene panel (client)
+
+ADR [0024](../../../../docs/decisions/0024-scene-render-contract.md). Plan S5. `static/scenes.js`, `static/index.html`
+(`#scenes`, `#scene-overlay` hidden). Not yet wired into `app.js`.
+- `runScenes(cards, {doc, fetch, image})`, card = `{item, locus: {n, label, box}, entry: {record, status} | null}` ->
+  one result per card, null = skipped. Eligible = entry status "valid" and a locus box; others send nothing. No
+  image -> no request, no throw. One POST /scenes (MEM-028) per eligible card, body exactly `{image, box, record}`.
+- `MAX_SCENES_IN_FLIGHT` = 3 (= server `MAX_CONCURRENT_SCENES`): never more than 3 requests in flight; panel order
+  follows the cards whatever the answer order. Each card: `<h3>` "<n>. <item> at <label>", then the scene slot.
+- `isSafeImageSrc(v)`: only `data:image/(png|jpeg|webp);base64,` or `blob:` strings; script, SVG, HTML, remote and
+  non-string refused. Unsafe tier-1 image -> no `<img>`, "Scene unavailable: bad_image".
+- Tier 1 -> `<img>` of the whole edited photo zoomed to the box: `zoomFor(box, width, height)` -> `{scale, tx, ty}`
+  (scale >= 1, 0.8 margin, box fully in frame, photo always covers the frame; full-image or invalid box ->
+  identity). Click -> full-size image in `#scene-overlay`; click on it or Escape closes it.
+- Failure -> "Scene unavailable: <code>": tier-3 reason; non-2xx -> its `error` code else `http_<status>`; network
+  error `network`; other reply shape `bad_response`. Fallback cards never open the overlay.
+- Item, label and reason via textContent only; no HTML-string sinks in `scenes.js`.
+
+Tests: static/scenes.test.mjs
+
+## MEM-030 Encode UI: route review, walk view
+
+Plan S5 (D13, D19). `static/encode.js`, `static/palace_store.js`, `static/style.css`, `static/index.html`. Not yet
+wired into `app.js`.
+- `createRouteReview(loci)` (input never mutated): `move(i, +-1)` swaps neighbours, refused past either end, clears a
+  pending drop; `requestDrop(i)` only marks; `confirmDrop()` removes; `cancelDrop()`; `undo()` restores the newest
+  drop at its index (stack); `canUndo()`.
+- Page review (`#route-review`, `#route`): per locus Up / Down (disabled at the ends) / Drop; Drop shows "Drop this
+  place?" + Confirm drop / Cancel; `#route-undo` shown while a drop can be undone. Nothing generated until
+  `#generate`; a dropped locus is never generated for.
+- `runEncode({image, loci, points, auto}, {doc, fetch, store})`: review (skipped when `auto`, D19: zero clicks) ->
+  `store.saveRoute(order)` -> pairs = order[i] with points[i] -> `runAssociations` (MEM-022, resume reuses valid
+  records) -> `runScenes` (MEM-029) -> walk view at step 1.
+- Walk view (`#walk`): "Step <k> of <n>", "<item> at <label>", the scene (`sceneView`), the 8 channels in
+  `KAVE_CHANNELS` order, question, answer; non-valid record adds "Needs regeneration"; no record -> "Could not
+  generate this association". Prev disabled at step 1, Next at the last.
+- `runDemoPalace({auto}, deps)`: demo photo -> /loci (same bytes) -> /demo/notes.txt -> /split (notes mode, plain
+  base64) -> `runEncode`; a failed step writes `#upload-status` ("Demo failed: <code>") and stops; never throws.
+- `palace_store`: `saveRoute(loci)` (non-array -> TypeError) / `loadRoute()` (null before any save) under key
+  "route", which no `associationKey` can equal.
+- `style.css` linked; fits a 360 px phone: no width / min-width / flex-basis above 360 px, images `max-width: 100%`.
+- Model text via textContent only; no HTML-string sinks in `encode.js`.
+
+Tests: static/encode.test.mjs, static/palace_store.test.mjs, static/layout.test.mjs
+
+## MEM-031 Deterministic recall matcher (client)
+
+ADR [0008](../../../../docs/decisions/0008-spoken-recall-deterministic-matcher.md),
+[0026](../../../../docs/decisions/0026-client-side-recall-matcher.md). Plan S6 (D4). `static/recall_match.js`.
+- `createMatcher(points)` (palace order, each `{label, source_quote}`) -> `{append(chunk), markGot(i), results(),
+  transcript()}`; `matchTranscript(text, points)` = one append.
+- Tokens: lowercase `[a-z0-9]+` runs. Targets per point: its source_quote and its label.
+- Match: a token window whose joined text has Levenshtein ratio >= 0.8 to a target (window length target n +- 2), or
+  covers >= 60% of the target's content words (stopwords excluded; window <= n + 4 tokens).
+- `append` returns indices newly matched, ascending; it judges only windows ending in the new chunk's tokens, so a
+  point split across two chunks matches once both arrive. Matched stays matched, span unchanged. Best window
+  order: Levenshtein over coverage, higher score, shorter, earlier.
+- `results()` -> `[{label, source_quote, got, override, span}]` in palace order; span = the matched transcript text.
+  `markGot(i)` = manual "mark got it": got + override, span kept (null if unsaid).
+- Zero network calls; module names no network API; same input -> same output. Empty transcript matches nothing;
+  "mark all points done" and other instruction-shaped speech match 0 points.
+
+Tests: static/recall_match.test.mjs
+
+## MEM-032 Recall relay, typed fallback, offline replay
+
+ADR [0008](../../../../docs/decisions/0008-spoken-recall-deterministic-matcher.md),
+[0026](../../../../docs/decisions/0026-client-side-recall-matcher.md). Plan S6 (D4, D17). `src/memripal/app.py`,
+`src/memripal/recall_relay.py`, `static/recall.js`, `fixtures/demo/recall_timeline.json`.
+
+a) POST /recall/audio, checks in order:
+- Fixture mode -> 409 {"error": "live_only"}. Live: no or wrong passcode -> 401 "passcode_required" before the body
+  (MEM-034 semantics).
+- Content-Type not application/json -> 415; body past `RELAY_BODY_CAP` -> 413 "too_large". Body exactly
+  {"audio": <strict base64 WAV>, "keywords": [str]} (palace labels, <= 12, each <= 100 chars), else 400
+  "bad_request"; bad base64 -> 400 "bad_base64"; decoded > `MAX_CHUNK_BYTES` (1 MiB) -> 413; not RIFF/WAVE mono
+  16-bit at 16 | 24 kHz -> 400 "bad_audio"; no ASR client -> 503 "asr_unavailable". No ASR call on any rejection.
+- `asr_client.transcribe(wav, keywords=...)` (`create_app(asr_client=)`, default `MetaClient(META_API_KEY)` in meta
+  mode). 200 exactly {"text": transcript[:`MAX_TRANSCRIPT_CHARS` (2000)]}; failed, non-JSON or non-string
+  transcript -> 502 "upstream", upstream body never relayed. Audio never written to disk or logged.
+
+b) Client (`static/recall.js`):
+- `startRecall({points, getUserMedia, doc})` -> `{mode, stream, matcher, submitTyped(text), results()}`. Mic
+  missing, throwing or denied -> mode "typed", `#recall-typed` shown; typed answers use the same matcher. Never
+  constructs `SpeechRecognition` (D17). Mic capture to WAV clips and the /recall/audio post are not built yet.
+- `replayRecording(timeline, matcher, {wait})`: appends each chunk in order after waiting its `t_ms` gap; resolves
+  to `matcher.results()`; no network.
+
+c) GET /demo/recall.json: `fixtures/demo/recall_timeline.json` (generated by `make_synthetic_fixtures.py`) as JSON
+{"label": "replay of a recorded session" (`REPLAY_LABEL`), "chunks": [{"t_ms", "text"}]}, t_ms non-decreasing; the
+demo replay gets >= 1 point and misses >= 1. Missing -> 404 "demo_missing".
+
+Tests: tests/test_recall_audio.py, static/recall.test.mjs
+
+## MEM-033 Stored rehearsals
+
+Plan S6 (D18). `static/rehearsals.js`. Not yet wired into `app.js`.
+- `createRehearsalStore(adapter, {now, newId})`, adapter = async `{get, put, delete, list}`. `save(palaceId, {transcript,
+  results})` -> record `{id, palace_id, timestamp (ISO), transcript, points}`, stored as a JSON string; points
+  whitelist `{label, source_quote, got, override, span}`, so no audio or other field is stored. `get(id)` (unknown
+  -> null), `list(palaceId)` (that palace only, oldest first), `delete(id)`, `restore(record)`. Survives a reload.
+- `hitRates(records)` -> `[{label, hits, runs, rate, chronic}]` in first-seen order; an override counts as a hit;
+  chronic = runs >= 2 and rate < 0.5 (0.5 is not chronic; one missed run is not chronic).
+- `renderSaidVsPalace(record, doc)` -> `<ol class="said-vs-palace">`, one row per point in palace order: label, what
+  was said (span, "marked got it", or "not said"), source quote; textContent only.
+- `deleteRehearsalWithUndo(id, {store, confirm, showUndo})`: unknown id or declined confirm -> nothing deleted, no
+  Undo; accepted -> deleted, `showUndo(undo)` where undo restores the identical record (also after a reload).
+
+Tests: static/rehearsals.test.mjs
+
+## MEM-034 Deploy guards + Cloud Run artifacts
+
+ADR [0004](../../../../docs/decisions/0004-public-deploy-spend-guard.md),
+[0010](../../../../docs/decisions/0010-cloud-run-hosting.md),
+[0025](../../../../docs/decisions/0025-passcode-gate-and-host-allowlist.md). Plan S7 (D1). `src/memripal/app.py`,
+`Dockerfile`, `.dockerignore`, `.gcloudignore`, `scripts/deploy_cloud_run.sh`. Env read once at `create_app`:
+- MEMRIPAL_ALLOWED_HOSTS: comma list, blanks dropped, appended to `ALLOWED_HOSTS` (MEM-015 host guard, which runs
+  before every other check); unlisted non-loopback host -> 400.
+- MEMRIPAL_PASSCODE: stripped (Secret Manager trailing newline); blank = unset. Live mode only (`backend.mode !=
+  "fixture"`), every model route (/loci, /split, /associate, /scenes, /recall/audio) before the body is read: header
+  `X-Memripal-Passcode` matches (`hmac.compare_digest`) -> pass, else 401 {"error": "passcode_required"}. Unset:
+  loopback host passes (`run_live.ps1`), any other host 401 (fail closed). Fixture mode, /healthz, / and /demo/* are
+  never gated.
+- MEMRIPAL_CALL_BUDGET: per-instance cap on live `backend.call`; past it the call never reaches the backend -> 429
+  {"error": "budget_exhausted"}. Shared across routes; 0 refuses every live call; fixture calls and 401s never
+  count. Non-integer or negative -> ValueError at startup.
+- MEMRIPAL_MAX_BODY_BYTES: app-wide cap ahead of route caps; declared or streamed body past it -> 413 "too_large".
+  Non-integer or < 1 -> ValueError.
+- Dockerfile: python:3.13-slim, `uv sync --frozen --no-dev`, copies only src, static, fixtures; non-root user;
+  `MEMRIPAL_MODE=fixture`, never meta; no secret-named ENV/ARG; uvicorn on 0.0.0.0:`$PORT` (default 8080).
+  `.dockerignore` excludes .git, venvs, .env*, .secrets, *.dpapi, refs, fixtures/raw, docs, tests, scripts, node
+  tests; `.gcloudignore` includes it plus `.gitignore`.
+- `scripts/deploy_cloud_run.sh` (env GCP_PROJECT, REGION us-central1, SERVICE memripal, EXTRA_HOSTS): `gcloud run
+  deploy --source . --max-instances=1 --allow-unauthenticated`, env MEMRIPAL_MODE=fixture, MEMRIPAL_CALL_BUDGET=300,
+  MEMRIPAL_MAX_BODY_BYTES=21233664 (= the largest route cap, /split), MEMRIPAL_ALLOWED_HOSTS = the deterministic
+  `<service>-<project number>.<region>.run.app` host (+ EXTRA_HOSTS); secrets only via `--set-secrets`
+  (MEMRIPAL_PASSCODE from secret memripal-passcode, META_API_KEY from meta-api-key); never reads a secret value.
+
+Tests: tests/test_deploy_guards.py, tests/test_deploy_artifacts.py
+
+## MEM-035 Web manifest + public banner
+
+Plan S7 (D13). `static/manifest.webmanifest`, `static/icon.svg`, `static/public_banner.js`, `static/index.html`,
+`static/app.js`.
+- `index.html` links `/static/manifest.webmanifest` (served as JSON): name MemriPal, `start_url` and `scope` "/",
+  `display` standalone, icon `/static/icon.svg` (served). No service worker anywhere in the frontend (D13).
+- `#public-banner` "live needs passcode / try Load demo", hidden by default. `showPublicBanner(doc, hostname)`
+  unhides it when `isPublicHost(hostname)`: not localhost, 127.0.0.1, ::1, [::1] or "" (case-insensitive). `app.js`
+  calls it on load.
+
+Tests: tests/test_deploy_web.py, static/app_public_banner.test.mjs

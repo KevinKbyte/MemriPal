@@ -46,6 +46,11 @@ the others that you asked about".
   `<provider>/<req.model>`).
 - [0024](0024-scene-render-contract.md) Scenes: one whole-photo edit re-encoded to JPEG, keyed by the whole record (box,
   timeout and template unkeyed), every failure tier 3 (over pass-through bytes, box keys, or /associate's statuses).
+- [0025](0025-passcode-gate-and-host-allowlist.md) Passcode gate: unset -> loopback open, public 401; per-route
+  before body; deploy host via `MEMRIPAL_ALLOWED_HOSTS`; budget counts live `backend.call` (over always-required,
+  global middleware, `*` hosts, or per-request counting).
+- [0026](0026-client-side-recall-matcher.md) Recall matcher client-side (Levenshtein 0.8 or 60% coverage window),
+  server relays one WAV clip to ASR (over a server matcher, embeddings, WebSocket relay, or Web Speech).
 
 ## Minor decisions (no ADR)
 
