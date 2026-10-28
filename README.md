@@ -66,8 +66,8 @@ All via the Meta Model API (not original work); client in `src/memripal/meta_cli
 Locus selection and recall matching are deterministic code, no LLM
 ([ADR 0008](docs/decisions/0008-spoken-recall-deterministic-matcher.md)).
 
-Calls that hit the Meta API (`meta` mode, default providers; `MEMRIPAL_CHAT_PROVIDER`, `MEMRIPAL_SEG_PROVIDER`,
-`MEMRIPAL_STT_PROVIDER` other than `meta` move that call off Meta):
+Calls that hit the Meta API (`meta` mode, default providers; `MEMRIPAL_CHAT_PROVIDER` or `MEMRIPAL_SEG_PROVIDER`
+other than `meta` moves that call off Meta, see [Modes](#modes)):
 
 | Route | Meta calls |
 | --- | --- |
@@ -136,8 +136,8 @@ Set `MEMRIPAL_MODE`:
 - `meta`: live Meta Model API calls; requires `META_API_KEY` in the environment.
 
 In `meta` mode only, `MEMRIPAL_CHAT_PROVIDER` moves Spark chat to another OpenAI-compatible host (exact match; any
-other value fails startup). Segmentation stays on Meta, so `META_API_KEY` is still required; fixture mode ignores
-all of these ([ADR 0023](docs/decisions/0023-chat-provider-adapter-reuses-meta-client.md)).
+other value fails startup). `META_API_KEY` is still required; fixture mode ignores all of these
+([ADR 0023](docs/decisions/0023-chat-provider-adapter-reuses-meta-client.md)).
 
 | `MEMRIPAL_CHAT_PROVIDER` | Base URL | Model | Key env |
 | --- | --- | --- | --- |
@@ -148,6 +148,15 @@ all of these ([ADR 0023](docs/decisions/0023-chat-provider-adapter-reuses-meta-c
 
 Missing provider key or local model -> startup error. Strict `json_schema` structured output on the non-Meta hosts is
 not yet verified live.
+
+Other provider toggles (exact match; any other value raises):
+
+- `MEMRIPAL_SEG_PROVIDER`: `meta` (default, SAM 3.1) or `modal` (own Modal-hosted SAM endpoint; requires
+  `MEMRIPAL_MODAL_SEG_URL` and `MODAL_SEG_TOKEN`, else startup error). Read in `meta` mode only
+  ([ADR 0018](docs/decisions/0018-modal-segment-cache-key-and-failures.md)).
+- `MEMRIPAL_STT_PROVIDER`: `meta` (default) or `local` (OpenAI-compatible Whisper server at `MEMRIPAL_LOCAL_STT_URL`,
+  loopback hosts only). Not yet wired: the app never reads it, and `POST /recall/audio` always uses Muse Voice
+  Transcribe ([ADR 0015](docs/decisions/0015-local-whisper-stt-toggle.md)).
 
 `MEMRIPAL_RECORD_KEY` (any mode) is the HMAC key for association-record signatures; unset or blank -> a random
 per-process key, so signatures die with the process. Multi-instance deploys must set it

@@ -1,7 +1,7 @@
 # MemriPal submission and compliance checklist
 
-Deadline: hard **Wed Nov 4, 9:00 PM ET** (`hackathon.md:191`, `rules.md:21`); internal target **Tue Nov 3, 8:00 PM
-ET**, Nov 4 is buffer (plan S8). Submit at https://cerebralvalley.ai/e/meta-ai-developer-hackathon/hackathon/submit
+Deadline: official hard deadline **Wed Nov 4, 9:00 PM ET** (`hackathon.md:191`, `rules.md:21`); internal target
+**Tue Nov 3, 8:00 PM ET**, Nov 4 is buffer (plan S8). Submit at https://cerebralvalley.ai/e/meta-ai-developer-hackathon/hackathon/submit
 (one submission, by the Representative). "Kev" = only Kev can do it; checked = verified in this repo.
 
 ## Rules compliance
@@ -25,8 +25,8 @@ ET**, Nov 4 is buffer (plan S8). Submit at https://cerebralvalley.ai/e/meta-ai-d
 
 - [x] Script written, each beat mapped to the rubric: [demo-script.md](demo-script.md).
 - [x] Framing beat: "place-based recall coach for speeches, not a study chatbot" (script 0:00, README intro).
-- [ ] Build gap: hero beat needs points lighting up during speech, or falls back to the end screen (see
-  [demo-script.md](demo-script.md#hero-beat-notes)).
+- [x] Hero beat matches the build: end-of-run got/missed after Done, no live lighting (plan cut ladder item 4;
+  [demo-script.md](demo-script.md#hero-beat-notes)). Re-shoot if live loci lighting lands.
 - [ ] Kev: record in LIVE `meta` mode; >= 10/12 points recalled, 0 false positives on unrelated speech.
 - [ ] Kev: hero take <= 60 s; total video <= 3:00.
 - [ ] Kev: every fixture/replay segment captioned "recorded replay"; 5 s fixture-mode-offline cut included.
@@ -43,8 +43,8 @@ ET**, Nov 4 is buffer (plan S8). Submit at https://cerebralvalley.ai/e/meta-ai-d
 
 ## Submission form
 
-- [ ] Kev: confirm the "four things" the form asks for on the live form (not enumerated in local rules). Known
-  required: 3-min demo video link, public repo link, every contributor's name (`rules.md:22`, `rules.md:101`).
+- [ ] Required per rules: 3-min demo video link, public repo link, every contributor's name (`rules.md:22`,
+  `rules.md:101`). TODO(Kev): confirm the live form's actual fields (may differ from or exceed these three).
 - [ ] Kev: contributor list complete (solo: Kev).
 - [ ] Kev: deployed GCP URL in the submission (judges assess the live product, `hackathon.md:199`).
 - [ ] Kev: live-mode passcode shared only in the submission notes (plan D1), never in the repo.
