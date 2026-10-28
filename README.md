@@ -1,7 +1,8 @@
 # MemriPal
 
-MemriPal turns any place you know into a memory palace for whatever you need to memorize: exam facts, a speech,
-vocabulary. Photograph a familiar space (a room, a library aisle, a campus walk); SAM 3.1 segments distinct objects
+MemriPal is a place-based recall coach for speeches, not a study chatbot. It turns any place you know into a memory
+palace for a talk you must deliver (or exam facts, vocabulary). Photograph a familiar space (a room, a library aisle,
+a campus walk); SAM 3.1 segments distinct objects
 into an ordered walking route of loci; Muse Spark splits your study list into items and writes a validated KAVE COGS
 association tying each item to its locus; Muse Image renders each scene onto your photo. You then walk the route
 eyes closed and recall aloud; a deterministic matcher (no LLM) checks the Muse Voice Transcribe transcript, marks
@@ -17,8 +18,17 @@ and hit rates show on page load in a history section; each row's "View" opens th
 
 ## Built during the hackathon (Oct 26 - Nov 4 2026)
 
-Everything in this repo was created during the Meta Global AI Developer Hackathon (kickoff 2026-10-26); git history is the
-record.
+Everything in this repo was created during the Meta Global AI Developer Hackathon; git history is the record. Hacking
+started 2026-10-26 12:24 PM ET per the official Discord announcement, after the 12:00 PM kickoff; the first commit
+`f59adc0` is 12:57 PM ET. Nothing is pre-existing.
+
+Not ours: the Meta models (below), Wikipedia place text and the KAVE COGS method ([Credits](#credits)).
+`refs/public/image_8586e3ad.jpeg` is an AI-generated reference image (commit `763a15a`), used by no code or fixture;
+demo fixtures are synthetic (`fixtures/MANIFEST.md`). Scene images are generated at runtime by Muse Image.
+
+- Demo video: TODO(Kev) video URL ([script](docs/submission/demo-script.md))
+- Live app: TODO(Kev) deployed Cloud Run URL (fixture mode; Load demo needs no key)
+- Submission checklist: [docs/submission/checklist.md](docs/submission/checklist.md)
 
 ## Pipeline
 
@@ -55,6 +65,19 @@ All via the Meta Model API (not original work); client in `src/memripal/meta_cli
 
 Locus selection and recall matching are deterministic code, no LLM
 ([ADR 0008](docs/decisions/0008-spoken-recall-deterministic-matcher.md)).
+
+Calls that hit the Meta API (`meta` mode, default providers; `MEMRIPAL_CHAT_PROVIDER`, `MEMRIPAL_SEG_PROVIDER`,
+`MEMRIPAL_STT_PROVIDER` other than `meta` move that call off Meta):
+
+| Route | Meta calls |
+| --- | --- |
+| `POST /loci` | Muse Spark object phrases (+ one re-ask round), SAM 3.1 one call per phrase |
+| `POST /split` | notes mode: one Muse Spark call (+ one regeneration); list mode: none |
+| `POST /associate` | Muse Spark, up to 2 regenerations |
+| `POST /scenes` | one Muse Image edit |
+| `POST /recall/audio` | Muse Voice Transcribe per WAV chunk |
+
+Never Meta: `POST /place` (Wikipedia), the `GET /demo/*` fixtures, and everything in `fixture` mode.
 
 ## Architecture decisions
 
