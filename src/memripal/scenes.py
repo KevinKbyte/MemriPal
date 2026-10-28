@@ -22,6 +22,8 @@ IMAGE_MODEL = "muse-image-1.0"
 # Server-wide: every POST /scenes runs in the threadpool, so the cap must hold across threads (ADR 0007).
 MAX_CONCURRENT_SCENES = 3
 _SLOTS = threading.BoundedSemaphore(MAX_CONCURRENT_SCENES)
+# Bounded so a stalled upstream cannot pile requests up behind the cap; past it the scene is tier 3 "busy".
+SLOT_WAIT_S = 10
 
 # str.format fills only these fields from a validated record; braces inside the field text are never
 # interpreted, and scene_prompt flattens new lines so no field can add a line of framing.
@@ -73,6 +75,8 @@ def _fit(reply: Any, width: int, height: int) -> bytes:
         except _DECODE_ERRORS as exc:
             raise ImageRejected("decode_error") from exc
     # Always re-encoded, never passed through: no model-supplied metadata or container survives.
+    # resize() copies .info and Pillow re-emits its comment on save, so clear it.
+    out.info = {}
     buf = BytesIO()
     out.save(buf, "JPEG", quality=JPEG_QUALITY)
     return buf.getvalue()
@@ -100,14 +104,19 @@ def render_scene(backend: ModelBackend, processed: Processed, box: dict, record:
             gen_params={PROMPT_ARGS: {"record": record}},
             schema=None,
         )
-        with _SLOTS:
+        if not _SLOTS.acquire(timeout=SLOT_WAIT_S):
+            return _fallback("busy")
+        try:
             reply = backend.call(req)
+        finally:
+            _SLOTS.release()
     except FixtureMissing:
         return _fallback("fixture_missing")
-    except BackendCallFailed:
-        return _fallback("upstream")
+    # Ahead of BackendCallFailed: a live timeout is a BackendTimeout, which is both.
     except TimeoutError:
         return _fallback("timeout")
+    except BackendCallFailed:
+        return _fallback("upstream")
     except Exception as exc:
         # Type name only: exception text may carry model output.
         _log.warning("scene call failed unexpectedly: %s", type(exc).__name__)

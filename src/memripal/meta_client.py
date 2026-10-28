@@ -22,6 +22,11 @@ MAX_RESPONSE_BYTES = 32 * 1024 * 1024
 MAX_AUDIO_BYTES = 32 * 1024 * 1024
 # Only connect-phase failures are safe to retry: after that the paid request may have landed.
 RETRYABLE_TRANSPORT = (httpx.ConnectError, httpx.ConnectTimeout)
+# CallResult.error values for transport timeouts (the "transport: <name>" form _send builds).
+TIMEOUT_ERRORS = frozenset(
+    "transport: " + exc.__name__
+    for exc in (httpx.ConnectTimeout, httpx.ReadTimeout, httpx.WriteTimeout, httpx.PoolTimeout)
+)
 _SAFE_CODE = re.compile(r"[A-Za-z0-9_.-]{1,64}")
 
 
@@ -116,7 +121,9 @@ class MetaClient:
     def post(self, path: str, payload: dict) -> CallResult:
         return self._send(path, json=payload)
 
-    def _send(self, path: str, **content) -> CallResult:
+    def _send(self, path: str, *, retries: int | None = None, **content) -> CallResult:
+        """`retries` overrides max_retries for this request only; None keeps the client's."""
+        max_retries = self._max_retries if retries is None else retries
         url = self._base_url + path
         headers = {"Authorization": "Bearer " + self._api_key} if self._api_key else {}
         start = time.perf_counter()
@@ -144,7 +151,7 @@ class MetaClient:
                 else:
                     error = f"{status} {_error_code(body)}"
                     retryable = status in RETRYABLE_STATUSES
-            if not retryable or attempt > self._max_retries:
+            if not retryable or attempt > max_retries:
                 return CallResult(
                     ok=error is None,
                     status=status,
@@ -213,7 +220,8 @@ class MetaClient:
             payload["size"] = size
         # Omitted rather than None: httpx reads timeout=None as "no timeout at all".
         per_request = {} if timeout is None else {"timeout": timeout}
-        return self._send("/images/edits", json=payload, **per_request)
+        # Never retried: an edit is slow and paid, and the scene slot is held for the whole call.
+        return self._send("/images/edits", json=payload, retries=0, **per_request)
 
     def transcribe(
         self,
