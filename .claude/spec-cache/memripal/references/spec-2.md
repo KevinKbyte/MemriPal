@@ -467,4 +467,4 @@ and a `/demo/recall.json` failure in `#recall-replay` (`flow.js`) was unhandled.
   demo_missing"); 2xx body not JSON or `chunks` not an array -> "Replay failed: bad_response"; any other error ->
   "Replay failed: unexpected error". Mirrors Load demo's "Demo failed: <code>".
 
-Tests: static/storage_migrate.test.mjs, static/app_flow.test.mjs
+Tests: static/storage_migrate.test.mjs, static/app_flow_replay.test.mjs
