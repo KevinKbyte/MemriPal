@@ -8,6 +8,9 @@ export const TARGET_SAMPLE_RATE = 16000;
 export const MAX_CHUNK_BYTES = 1024 * 1024;
 const WAV_HEADER_BYTES = 44;
 export const MAX_CHUNK_SAMPLES = (MAX_CHUNK_BYTES - WAV_HEADER_BYTES) / 2;
+// Each live slice re-includes this much audio before its mark, so a word cut at a slice edge is heard whole
+// in the next slice (MEM-037).
+export const LIVE_OVERLAP_MS = 1000;
 // meta_client.py::_check_wav_format accepts only these framerates.
 const SERVER_RATES = [16000, 24000];
 
@@ -95,14 +98,17 @@ export function chunkSamples(samples, maxBytes = MAX_CHUNK_BYTES) {
 }
 
 /**
- * Record the stream until stop(), keeping at most maxMs of audio.
+ * Record the stream until stop(), keeping at most maxMs of audio. take() slices off what is new since the
+ * previous take (plus LIVE_OVERLAP_MS before it) while recording continues; stop() then yields only the
+ * untaken remainder, or null when nothing is new since the last take.
  * @param {{ stream: MediaStream, AudioContext: typeof AudioContext, maxMs: number }} opts
- * @returns {Promise<{ stop: () => Promise<Uint8Array> }>}
+ * @returns {Promise<{ take: () => Promise<Uint8Array | null>, stop: () => Promise<Uint8Array | null> }>}
  */
 export async function recordClip({ stream, AudioContext, maxMs }) {
   const ctx = new AudioContext();
   const rate = ctx.sampleRate;
   const maxSamples = Math.floor((maxMs * rate) / 1000);
+  const overlap = Math.floor((LIVE_OVERLAP_MS * rate) / 1000);
   const source = ctx.createMediaStreamSource(stream);
   const node = ctx.createScriptProcessor(4096, 1, 1);
   /** @type {Float32Array[]} */
@@ -118,22 +124,35 @@ export async function recordClip({ stream, AudioContext, maxMs }) {
   source.connect(node);
   // A ScriptProcessor only fires while connected to the destination; its output buffer stays silent.
   node.connect(ctx.destination);
-  /** @type {Promise<Uint8Array> | null} */
+  // Samples before the mark were handed out by take(); 0 until the first non-empty take.
+  let mark = 0;
+  /** WAV of the kept samples from `from` on. @param {number} from */
+  const wavFrom = (from) => {
+    const pcm = new Float32Array(kept - from);
+    let pos = 0;
+    for (const f of frames) {
+      const end = pos + f.length;
+      if (end > from) pcm.set(pos >= from ? f : f.subarray(from - pos), Math.max(0, pos - from));
+      pos = end;
+    }
+    return encodeWav(downsample(pcm, rate, TARGET_SAMPLE_RATE), TARGET_SAMPLE_RATE);
+  };
+  const slice = () => {
+    const wav = wavFrom(Math.max(0, mark - overlap));
+    mark = kept;
+    return wav;
+  };
+  /** @type {Promise<Uint8Array | null> | null} */
   let done = null;
   const finish = async () => {
     node.onaudioprocess = null;
     source.disconnect();
     node.disconnect();
     await ctx.close();
-    const pcm = new Float32Array(kept);
-    let off = 0;
-    for (const f of frames) {
-      pcm.set(f, off);
-      off += f.length;
-    }
-    return encodeWav(downsample(pcm, rate, TARGET_SAMPLE_RATE), TARGET_SAMPLE_RATE);
+    return mark > 0 && kept === mark ? null : slice();
   };
   return {
+    take: async () => (done || kept === mark ? null : slice()),
     stop: () => (done ??= finish()),
   };
 }

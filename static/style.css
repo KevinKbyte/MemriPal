@@ -80,3 +80,9 @@ button {
 #walk dd {
   margin: 0 0 0.5rem;
 }
+
+/* MEM-037: a recalled point lights on the live board. */
+.live-board li.lit {
+  font-weight: bold;
+  background: #fff3b0;
+}

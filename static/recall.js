@@ -60,17 +60,18 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * Offline fixture-mode replay: feeds a recorded transcript timeline through the matcher at its
- * recorded pace. Purely local; no network call.
+ * recorded pace. Purely local; no network call. onMatch gets each chunk's newly matched indices (MEM-037).
  * @param {RecallTimeline} timeline
  * @param {Pick<Matcher, "append" | "results">} matcher
- * @param {{ wait?: (ms: number) => Promise<unknown> }} [opts]
+ * @param {{ wait?: (ms: number) => Promise<unknown>, onMatch?: (indices: number[]) => void }} [opts]
  */
-export async function replayRecording(timeline, matcher, { wait = sleep } = {}) {
+export async function replayRecording(timeline, matcher, { wait = sleep, onMatch } = {}) {
   let prev = 0;
   for (const chunk of timeline.chunks) {
     await wait(chunk.t_ms - prev);
     prev = chunk.t_ms;
-    matcher.append(chunk.text);
+    const got = matcher.append(chunk.text);
+    if (onMatch) onMatch(got);
   }
   return matcher.results();
 }

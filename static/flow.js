@@ -14,6 +14,7 @@ import { showPublicBanner } from "./public_banner.js";
 import { REPLAY_LABEL, replayRecording, startRecall } from "./recall.js";
 import { createMatcher } from "./recall_match.js";
 import { markPointGot, renderEndScreen } from "./recall_end.js";
+import { createLiveRelay, renderLiveBoard } from "./recall_live.js";
 
 // The model routes the live server gates on the passcode (MEM-034); /demo/* fixtures stay open.
 const PASSCODE_ROUTES = new Set(["/loci", "/split", "/associate", "/scenes", "/recall/audio"]);
@@ -37,6 +38,8 @@ const MAX_RECALL_MS = 3 * 60 * 1000;
  *   confirm: () => boolean | Promise<boolean>,
  *   wait?: (ms: number) => Promise<unknown>,
  *   place?: ReturnType<typeof import("./place.js").createPlaceState>,
+ *   setInterval?: (fn: () => void, ms: number) => unknown,
+ *   clearInterval?: (handle: any) => void,
  * }} AppDeps
  */
 
@@ -135,6 +138,22 @@ export function wireApp(deps) {
   let session = null;
   /** @type {Awaited<ReturnType<typeof recordClip>> | null} */
   let clip = null;
+  // The spoken run's live relay and board (MEM-037); `failure` keeps a relay failure that lands during Done.
+  /**
+   * @typedef {{
+   *   relay: ReturnType<typeof createLiveRelay>,
+   *   board: ReturnType<typeof renderLiveBoard>,
+   *   failure: { err: unknown } | null,
+   * }} LiveRun
+   */
+  /** @type {LiveRun | null} */
+  let live = null;
+  const timers = {
+    /** @type {(fn: () => void, ms: number) => unknown} */
+    setInterval: deps.setInterval ?? ((fn, ms) => globalThis.setInterval(fn, ms)),
+    /** @type {(handle: any) => void} */
+    clearInterval: deps.clearInterval ?? ((handle) => globalThis.clearInterval(handle)),
+  };
 
   /** @param {MediaStream} stream */
   const releaseMic = (stream) => {
@@ -144,12 +163,34 @@ export function wireApp(deps) {
     const box = byId("recall-typed");
     if (box) box.hidden = false;
   };
-  // Ends any recording in progress and releases the mic; resolves to its WAV, or null if none.
+  /** @param {string} label */
+  const showBoard = (label) => {
+    const board = renderLiveBoard(points, doc, { label });
+    byId("recall-live")?.replaceChildren(board.el);
+    return board;
+  };
+  // Ends any recording in progress, its live relay and the mic; resolves to the untaken WAV, or null if none.
   const stopSpeaking = () => {
+    if (live) void live.relay.stop();
+    live = null;
     const wav = clip ? clip.stop() : null;
     clip = null;
     if (session && session.stream) releaseMic(session.stream);
     return wav;
+  };
+  /**
+   * Budget spent, fixture-only server or network down: the run continues typed; lit points stay lit.
+   * @param {NonNullable<typeof session>} current
+   * @param {unknown} err
+   */
+  const fallBackTyped = (current, err) => {
+    session = current;
+    void stopSpeaking();
+    showTyped();
+    const code = /** @type {{ code?: unknown } | null | undefined} */ (err)?.code;
+    byId("recall-results")?.replaceChildren(
+      textEl(doc, "p", `Speech relay failed (${typeof code === "string" ? code : "unexpected"}): type what you remember instead.`),
+    );
   };
 
   const renderHistory = createHistory({ doc, rehearsals, confirm: deps.confirm, palaceId: DEMO_PALACE_ID });
@@ -194,10 +235,33 @@ export function wireApp(deps) {
   // The mic is only ever asked for here, on the user's click (MEM-032).
   onClick("recall-start", async () => {
     void stopSpeaking();
+    byId("recall-live")?.replaceChildren();
     session = await startRecall({ points, getUserMedia: deps.getUserMedia, doc });
     if (!session.stream) return;
     if (deps.AudioContext) {
-      clip = await recordClip({ stream: session.stream, AudioContext: deps.AudioContext, maxMs: MAX_RECALL_MS });
+      const current = session;
+      const recording = await recordClip({ stream: session.stream, AudioContext: deps.AudioContext, maxMs: MAX_RECALL_MS });
+      clip = recording;
+      const board = showBoard("LIVE");
+      const keywords = points.map((p) => p.label);
+      /** @type {LiveRun} */
+      const run = {
+        board,
+        failure: null,
+        relay: createLiveRelay({
+          clip: recording,
+          post: (wav) => postRecallAudio({ fetch: fetchFn, wav, keywords }),
+          matcher: current.matcher,
+          onMatch: board.light,
+          onFail: (err) => {
+            run.failure = { err };
+            // Once Done has detached the run, Done owns the fallback.
+            if (live === run) fallBackTyped(current, err);
+          },
+          ...timers,
+        }),
+      };
+      live = run;
       return;
     }
     // No Web Audio to record with: release the mic and take typed answers.
@@ -209,23 +273,33 @@ export function wireApp(deps) {
     const box = /** @type {HTMLInputElement | null} */ (byId("recall-typed"));
     if (!session || !box) return;
     const current = session;
+    const run = live;
+    if (run) {
+      // Detached while relaying, so a second Done cannot end the same run twice; a slice still in the air
+      // finishes first, and its failure is this Done's failure.
+      live = null;
+      session = null;
+      await run.relay.stop();
+      if (run.failure) {
+        fallBackTyped(current, run.failure.err);
+        return;
+      }
+      // Re-attached only so stopSpeaking releases this run's mic; detached again just below.
+      session = current;
+    }
     const wav = stopSpeaking();
     if (wav) {
-      // Detached while relaying, so a second Done cannot end the same run twice.
       session = null;
       try {
-        for (const chunk of wavChunks(await wav)) {
+        const remainder = await wav;
+        for (const chunk of remainder ? wavChunks(remainder) : []) {
           const { text } = await postRecallAudio({ fetch: fetchFn, wav: chunk, keywords: points.map((p) => p.label) });
-          current.matcher.append(text);
+          const got = current.matcher.append(text);
+          if (run) run.board.light(got);
         }
       } catch (err) {
         if (!(err instanceof RecallAudioError)) throw err;
-        // Budget spent, fixture-only server or network down: the run continues typed.
-        session = current;
-        showTyped();
-        byId("recall-results")?.replaceChildren(
-          textEl(doc, "p", `Speech relay failed (${err.code}): type what you remember instead.`),
-        );
+        fallBackTyped(current, err);
         return;
       }
     } else {
@@ -241,7 +315,8 @@ export function wireApp(deps) {
     const resp = await fetchFn("/demo/recall.json");
     const timeline = await resp.json();
     const matcher = createMatcher(points);
-    const results = await replayRecording(timeline, matcher, { wait: deps.wait });
+    const board = showBoard("recorded replay");
+    const results = await replayRecording(timeline, matcher, { wait: deps.wait, onMatch: board.light });
     await endRun(matcher.transcript(), results, true);
   });
 }
