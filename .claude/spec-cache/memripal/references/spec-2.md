@@ -379,7 +379,8 @@ Tests: tests/test_record_sign.py, static/app_record_sign.test.mjs
 
 Plan item 65 (Kev: "sure live point lighting"). Points light while Kev speaks: 5 s ASR slices with 1 s overlap
 through the unchanged MEM-032 relay, not streaming. `static/mic_wav.js`, `static/recall_live.js`, `static/recall.js`,
-`static/flow.js`, `static/index.html`. Server unchanged; <= 36 ASR calls per 3-min run (MEMRIPAL_CALL_BUDGET, Q17).
+`static/flow.js`, `static/index.html`. Server unchanged; <= 37 ASR calls per 3-min run (36 slices + the Done
+remainder; MEMRIPAL_CALL_BUDGET, Q17).
 - `recordClip(...)` gains `take()` -> Promise<Uint8Array | null>: 16 kHz mono WAV of the samples since the previous
   take's mark, starting `LIVE_OVERLAP_MS` (1000) before that mark (clamped at 0); null when no new sample since the
   mark. `stop()` returns the untaken remainder with the same overlap, or null when a take() ran and nothing is new
