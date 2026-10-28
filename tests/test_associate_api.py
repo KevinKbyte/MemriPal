@@ -7,7 +7,8 @@
   and short; malformed JSON, a non-object, a missing/unknown key or a non-string value -> 400 {"error":
   <code>}. The image is checked with `validate_processed` (never re-encoded, so replay keys hold);
   ImageRejected -> its status + code. No model call on any rejection.
-- 200: exactly {"item", "locus", "status" ("valid" | "invalid"), "attempts", "record"}; an "invalid" result
+- 200: exactly {"item", "locus", "status" ("valid" | "invalid"), "attempts", "record"}, plus "sig" when a
+  record is returned (MEM-036, test_record_sign.py); an "invalid" result
   is still 200 (UI offers edit/regenerate) and never echoes an unknown reply field.
 - FixtureMissing -> 404 {"error": "fixture_missing"}; BackendCallFailed -> 502 {"error": "upstream"}; other
   exceptions -> 500 {"error": "internal"}; error bodies carry no model or exception text. Host guard
@@ -22,6 +23,7 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
+from test_record_sign import KEY, KEY_ENV, _sign
 
 from memripal.app import create_app
 from memripal.backend import PROMPT_ARGS, BackendCallFailed, FixtureBackend, FixtureMissing, ResponseCache
@@ -129,19 +131,21 @@ def _assert_error(resp, status, code=None):
 
 
 # Covers: MEM-021
-# Requirement: POST /associate returns {item, locus, status, attempts, record} for one item/locus pair on
+# Requirement: POST /associate returns {item, locus, status, attempts, record, sig} for one item/locus pair on
 # the client-returned processed photo; a fixture replay hits the same key, so the photo is never re-encoded.
 class TestAssociateSuccess:
-    def test_exact_response_shape(self):
+    def test_exact_response_shape(self, monkeypatch):
+        monkeypatch.setenv(KEY_ENV, KEY)
         backend = FakeBackend()
         resp = _post(_client(backend), _body())
         assert resp.status_code == 200, resp.text
         assert resp.headers["content-type"].startswith("application/json")
         payload = resp.json()
-        assert set(payload) == RESPONSE_KEYS
+        assert set(payload) == RESPONSE_KEYS | {"sig"}
         assert (payload["item"], payload["locus"], payload["status"]) == (ITEM, LOCUS, "valid")
         assert payload["attempts"] == 1
         assert payload["record"] == good_record()
+        assert payload["sig"] == _sign(good_record())
         assert backend.calls == 1
 
     def test_fixture_replay_of_recorded_pair(self, tmp_path):

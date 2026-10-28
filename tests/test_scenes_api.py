@@ -3,7 +3,7 @@
 - Request: Content-Type application/json (else 415 {"error": "unsupported_media_type"}); body capped before
   and while reading (-> 413 {"error": "too_large"}); body = exactly {"image": "data:image/jpeg;base64,
   <processed JPEG from POST /loci>", "box": {"x1","y1","x2","y2"} (POST /loci shape), "record": <POST
-  /associate record>}.
+  /associate record>, "sig": <its POST /associate sig>} (signature rules: MEM-036, test_record_sign.py).
 - Rejections, each before any model call: malformed JSON / non-object / missing or unknown key -> 400; image
   not a JPEG data URL or not a processed photo -> 400 (validate_processed codes, never re-encoded); box not
   exactly four ints (bools refused) with 0 <= x1 < x2 <= width and 0 <= y1 < y2 <= height -> 400 {"error":
@@ -24,6 +24,7 @@ import socket
 import pytest
 from fastapi.testclient import TestClient
 from PIL import Image, PngImagePlugin
+from test_record_sign import KEY, KEY_ENV, _sign
 
 from memripal.app import create_app
 from memripal.backend import BackendCallFailed, FixtureBackend, FixtureMissing, ResponseCache
@@ -109,9 +110,16 @@ def _client(backend, base_url: str = LOOPBACK_URL) -> TestClient:
     return TestClient(create_app(backend=backend), base_url=base_url)
 
 
+@pytest.fixture(autouse=True)
+def _record_key(monkeypatch):
+    monkeypatch.setenv(KEY_ENV, KEY)
+
+
 def _body(**over) -> dict:
+    """A /scenes body whose record (default or overridden) carries a valid sig under KEY."""
     body = {"image": _data_url(), "box": dict(BOX), "record": good_record()}
     body.update(over)
+    body.setdefault("sig", _sign(body["record"]))
     return body
 
 
@@ -234,7 +242,7 @@ class TestScenesFixtureReplay:
 
 # Covers: MEM-028
 # Requirement: input is validated at the boundary before any model call (content type, body cap, exact
-# {image, box, record} shape, processed JPEG, in-bounds integer box, record passing the association
+# {image, box, record, sig} shape, processed JPEG, in-bounds integer box, record passing the association
 # validator); every rejection is {"error": code} only and echoes no input text.
 class TestScenesRejections:
     def test_wrong_content_type_is_415(self):

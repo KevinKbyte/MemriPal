@@ -118,13 +118,16 @@ def _associate(client, item=ITEM, locus=LOCUS):
     return _post(client, "/associate", {"image": _data_url(), "item": item, "locus": locus})
 
 
-def _scenes_body(record=None, sig=None, **over) -> dict:
+_SIGN_IT = object()
+
+
+def _scenes_body(record=None, sig=_SIGN_IT, **over) -> dict:
     record = good_record() if record is None else record
     body = {
         "image": _data_url(),
         "box": dict(BOX),
         "record": record,
-        "sig": _sign(record) if sig is None else sig,
+        "sig": _sign(record) if sig is _SIGN_IT else sig,
     }
     body.update(over)
     return body

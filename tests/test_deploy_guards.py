@@ -45,6 +45,7 @@ ENV_VARS = (
     "MEMRIPAL_CALL_BUDGET",
     "MEMRIPAL_MAX_BODY_BYTES",
     "MEMRIPAL_ALLOWED_HOSTS",
+    "MEMRIPAL_RECORD_KEY",
 )
 NOTES = "First, our budget doubled this year. Second, the new library opens in May."
 SPLIT_REPLY = {"points": [{"label": "budget", "source_quote": "our budget doubled this year"}]}
