@@ -87,6 +87,8 @@ Options, pros/cons and rationale per decision ([index](docs/decisions/README.md)
 - [0021](docs/decisions/0021-client-palace-store-injected-kv.md) Client palace store is IndexedDB behind an injected KV
   adapter, keyed by item + locus label
 - [0022](docs/decisions/0022-opt-in-place-context-server-lookup.md) Opt-in place context via server lookup
+- [0023](docs/decisions/0023-chat-provider-adapter-reuses-meta-client.md) Chat provider adapter reuses `MetaClient`;
+  answers keyed by provider model
 
 ## Modes
 

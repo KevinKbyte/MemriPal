@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.9.0] - 2026-10-27
+
+### Added
+
+- `MEMRIPAL_CHAT_PROVIDER=meta|baseten|fireworks|local` (default `meta`, live mode only) moves Spark chat to an
+  OpenAI-compatible host; segmentation stays on Meta; answers cached under `<provider>/<provider model>`; ADR 0023
+  (MEM-026, D12).
+- `scripts/run_live.ps1` also loads `~/.secrets/<provider>-api-key.dpapi` for `baseten` / `fireworks`; missing file
+  exits 2 before the child starts (MEM-026).
+
 ## [0.8.0] - 2026-10-27
 
 ### Added
