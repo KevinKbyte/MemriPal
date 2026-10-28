@@ -3,7 +3,8 @@
 - `MetaBackend.call(ModelRequest(method="image_edit", ...))` sends one POST /images/edits whose `prompt` is
   `scenes.scene_prompt(record)` and whose image is the whole processed photo as a JPEG data URL, with a 30 s
   per-request timeout (overriding the client default); the reply's `data[0].b64_json` is the edited image.
-- Timeout (httpx.ReadTimeout, sent so never retried) and content-policy 400 -> tier 3 after exactly 1 request.
+- Timeout (httpx.ReadTimeout, sent so never retried) and content-policy 400 -> tier 3 after exactly 1 request;
+  any httpx timeout (connect, read, write, pool) -> reason "timeout", never "upstream".
 - Hostile replies (body over meta_client.MAX_RESPONSE_BYTES, non-JSON, JSON without data, b64 of non-image)
   -> tier 3 after exactly 1 request.
 - With `cache_root`, a tier-1 reply is written through, and FixtureBackend on that root replays the same
@@ -150,6 +151,27 @@ class TestLiveFallback:
             results = list(pool.map(lambda r: _render(backend, r), records))
         assert [s.tier for s in results] == [3] * 10
         assert len(api.requests) == 10
+
+
+# Covers: MEM-027
+# Requirement: a live edit that times out (any httpx timeout phase) is tier 3 with reason "timeout", not
+# "upstream", after exactly one request.
+class TestLiveTimeoutReason:
+    @pytest.mark.parametrize(
+        "exc",
+        [
+            httpx.ConnectTimeout("slow dns"),
+            httpx.ReadTimeout("timed out"),
+            httpx.WriteTimeout("stuck"),
+            httpx.PoolTimeout("pool"),
+        ],
+        ids=["ConnectTimeout", "ReadTimeout", "WriteTimeout", "PoolTimeout"],
+    )
+    def test_timeout_maps_to_reason_timeout(self, exc):
+        api = _ImageApi(exc)
+        scene = _render(_live(api))
+        assert (scene.tier, scene.image, scene.reason) == (3, None, "timeout")
+        assert len(api.requests) == 1
 
 
 # Covers: MEM-027
