@@ -6,9 +6,11 @@ speech-to-text and returns transcript TEXT only; GET /demo/recall.json serves th
 - `create_app(backend=..., place_provider=..., asr_client=...)`: asr_client has
   `transcribe(wav_bytes, *, keywords=None, ...) -> meta_client.CallResult` (MetaClient's shape). None in meta mode
   -> a MetaClient on META_API_KEY; never called in fixture mode.
-- Passcode (D1): env MEMRIPAL_PASSCODE, read at create_app; header `X-MemriPal-Passcode`, compared in constant time.
-  Meta mode: header missing or wrong, or env unset/empty (fail closed) -> 401 {"error": "passcode_required"},
-  checked before the body is read; no ASR call.
+- Passcode (D1, the S7 shared gate, tests/test_deploy_guards.py): env MEMRIPAL_PASSCODE read at create_app,
+  surrounding whitespace stripped, blank = unset; header `X-Memripal-Passcode`, compared in constant time.
+  Meta mode: header missing or wrong -> 401 {"error": "passcode_required"}, checked before the body is read; no
+  ASR call. Passcode unset: loopback hosts pass (local run_live), any other host (admitted via env
+  MEMRIPAL_ALLOWED_HOSTS, comma list) gets 401 (fail closed).
 - Fixture mode: 409 {"error": "live_only"} (the offline path is the client-side timeline replay); no ASR call.
 - Request: Content-Type application/json (else 415 {"error": "unsupported_media_type"}); body exactly
   {"audio": <base64 WAV>, "keywords": [str, ...]}, keywords = palace short labels, <= 12 (split.MAX_POINTS),
@@ -40,8 +42,10 @@ from memripal.app import create_app
 from memripal.meta_client import CallResult
 
 LOOPBACK_URL = "http://127.0.0.1"
+PUBLIC_HOST = "memripal-abc.a.run.app"
+PUBLIC_URL = f"https://{PUBLIC_HOST}"
 PASSCODE = "pass-" + "c" * 20
-HEADER = "X-MemriPal-Passcode"
+HEADER = "X-Memripal-Passcode"
 SENTINEL = "SENTINEL-UPSTREAM-do-not-leak-91c2"
 LABELS = ["lamp", "door", "clock"]
 REPLAY_LABEL = "replay of a recorded session"
@@ -96,14 +100,16 @@ class _ModeBackend:
 def _env(monkeypatch, tmp_path):
     monkeypatch.delenv("MEMRIPAL_MODE", raising=False)
     monkeypatch.delenv("META_API_KEY", raising=False)
+    for name in ("MEMRIPAL_ALLOWED_HOSTS", "MEMRIPAL_CALL_BUDGET", "MEMRIPAL_MAX_BODY_BYTES"):
+        monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("MEMRIPAL_PASSCODE", PASSCODE)
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
     monkeypatch.setenv("USERPROFILE", str(tmp_path / "home"))
 
 
-def _client(asr: FakeAsr, mode: str = "meta") -> TestClient:
+def _client(asr: FakeAsr, mode: str = "meta", base_url: str = LOOPBACK_URL) -> TestClient:
     app = create_app(backend=_ModeBackend(mode), place_provider=object(), asr_client=asr)
-    return TestClient(app, base_url=LOOPBACK_URL)
+    return TestClient(app, base_url=base_url)
 
 
 def _body(audio: bytes, keywords=None) -> dict:
@@ -177,18 +183,49 @@ class TestRelayPasscode:
         assert resp.json() == {"error": "passcode_required"}
         assert asr.calls == []
 
-    @pytest.mark.parametrize("env_value", [None, ""])
+    @pytest.mark.parametrize("env_value", [None, "", "  \n"], ids=["unset", "empty", "blank"])
     def test_unset_passcode_env_fails_closed(self, monkeypatch, env_value):
-        # Requirement: with no passcode configured, live mode serves nobody (fail closed).
+        # Requirement: with no passcode configured, live mode on a public host serves nobody (fail closed).
+        if env_value is None:
+            monkeypatch.delenv("MEMRIPAL_PASSCODE", raising=False)
+        else:
+            monkeypatch.setenv("MEMRIPAL_PASSCODE", env_value)
+        monkeypatch.setenv("MEMRIPAL_ALLOWED_HOSTS", f"other.example, {PUBLIC_HOST}")
+        asr = FakeAsr()
+        for sent in (None, "", PASSCODE):
+            resp = _post(_client(asr, base_url=PUBLIC_URL), _body(_wav()), passcode=sent)
+            assert resp.status_code == 401, (sent, resp.text[:200])
+            assert resp.json() == {"error": "passcode_required"}
+        assert asr.calls == []
+
+    @pytest.mark.parametrize("env_value", [None, "", "  \n"], ids=["unset", "empty", "blank"])
+    def test_unset_passcode_env_on_loopback_reaches_asr(self, monkeypatch, env_value):
+        # Requirement: with no passcode configured, local live use on a loopback host is open (S7 gate).
         if env_value is None:
             monkeypatch.delenv("MEMRIPAL_PASSCODE", raising=False)
         else:
             monkeypatch.setenv("MEMRIPAL_PASSCODE", env_value)
         asr = FakeAsr()
-        for sent in (None, "", PASSCODE):
-            resp = _post(_client(asr), _body(_wav()), passcode=sent)
-            assert resp.status_code == 401, sent
-        assert asr.calls == []
+        resp = _post(_client(asr), _body(_wav()), passcode=None)
+        assert resp.status_code == 200, resp.text[:200]
+        assert resp.json() == {"text": "vivid images stick better than plain facts"}
+        assert len(asr.calls) == 1
+
+    def test_correct_passcode_on_listed_public_host_reaches_asr(self, monkeypatch):
+        # Requirement: the public deploy relays a clip once the listed host sends the right passcode.
+        monkeypatch.setenv("MEMRIPAL_ALLOWED_HOSTS", PUBLIC_HOST)
+        asr = FakeAsr()
+        resp = _post(_client(asr, base_url=PUBLIC_URL), _body(_wav()))
+        assert resp.status_code == 200, resp.text[:200]
+        assert len(asr.calls) == 1
+
+    def test_passcode_env_whitespace_is_stripped(self, monkeypatch):
+        # Requirement: a Secret Manager trailing newline on the passcode does not lock the owner out.
+        monkeypatch.setenv("MEMRIPAL_PASSCODE", PASSCODE + "\n")
+        asr = FakeAsr()
+        resp = _post(_client(asr), _body(_wav()))
+        assert resp.status_code == 200, resp.text[:200]
+        assert len(asr.calls) == 1
 
     def test_passcode_checked_before_body_validation(self):
         # Requirement: an unauthenticated hostile body gets 401, never a validation hint.
