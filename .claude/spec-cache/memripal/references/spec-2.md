@@ -127,7 +127,8 @@ ADR [0007](../../../../docs/decisions/0007-scene-render-tiers.md),
   `scene_prompt(record)` fills them from item, locus, spatial, visual, scene_prompt_details, each collapsed to one
   line (`" ".join(text.split())`): injected new lines add or alter no framing line; braces in field text stay literal.
 - `MAX_CONCURRENT_SCENES` = 3: one module-level `threading.BoundedSemaphore` around `backend.call`, so the cap holds
-  across threads (10 concurrent scenes peak at exactly 3 in flight). The slot wait has no timeout.
+  across threads (10 concurrent scenes peak at exactly 3 in flight). The slot wait is bounded by `SLOT_WAIT_S` = 10 s;
+  no slot by then -> tier 3 `busy`, no model call. The slot is released on every path.
 - `render_scene(backend, processed, box, record) -> Scene(tier, image, reason)` (frozen). Exactly one
   `backend.call(ModelRequest(method="image_edit", image_jpeg=processed.jpeg, subject="scene", attempt=0,
   model="muse-image-1.0", prompt_template_id="scene", gen_params={PROMPT_ARGS: {"record": record}}, schema=None))`;
@@ -136,8 +137,9 @@ ADR [0007](../../../../docs/decisions/0007-scene-render-tiers.md),
 - Tier 1: reply must be non-empty bytes <= `imaging.MAX_UPLOAD_BYTES` with PNG/JPEG/WEBP magic, header within
   `MAX_SIDE` / `MAX_PIXELS` (checked before decode); then RGB, LANCZOS-resized to (processed.width,
   processed.height), always re-encoded JPEG at `imaging.JPEG_QUALITY` (90); reason None.
-- Tier 3: image None, reason one of `fixture_missing` (FixtureMissing), `upstream` (BackendCallFailed: read timeout,
-  content-policy 400, malformed reply), `timeout` (TimeoutError), `internal` (any other exception), or a hostile-reply
+- Tier 3: image None, reason one of `busy` (slot wait expired), `fixture_missing` (FixtureMissing), `upstream`
+  (BackendCallFailed: content-policy 400, malformed reply), `timeout` (TimeoutError, checked first: a live read
+  timeout is a BackendTimeout, both), `internal` (any other exception), or a hostile-reply
   code `not_bytes`, `empty`, `too_large`, `bad_magic`, `decode_error`, `pixel_bomb`. No model or exception text in
   the reason; the warning log carries only the code (plus the exception type name for `internal`).
 - MetaBackend `image_edit`: `MetaClient.image_edit(image_data_url=<processed JPEG data URL>,
@@ -178,7 +180,7 @@ Tests: tests/test_scenes_api.py
 ## MEM-029 Scene panel (client)
 
 ADR [0024](../../../../docs/decisions/0024-scene-render-contract.md). Plan S5. `static/scenes.js`, `static/index.html`
-(`#scenes`, `#scene-overlay` hidden). Not yet wired into `app.js`.
+(`#scenes`, `#scene-overlay` hidden). Wired via `runEncode` (MEM-030).
 - `runScenes(cards, {doc, fetch, image})`, card = `{item, locus: {n, label, box}, entry: {record, status} | null}` ->
   one result per card, null = skipped. Eligible = entry status "valid" and a locus box; others send nothing. No
   image -> no request, no throw. One POST /scenes (MEM-028) per eligible card, body exactly `{image, box, record}`.
@@ -193,12 +195,13 @@ ADR [0024](../../../../docs/decisions/0024-scene-render-contract.md). Plan S5. `
   error `network`; other reply shape `bad_response`. Fallback cards never open the overlay.
 - Item, label and reason via textContent only; no HTML-string sinks in `scenes.js`.
 
-Tests: static/scenes.test.mjs
+Tests: static/scenes.test.mjs, static/app_flow.test.mjs
 
 ## MEM-030 Encode UI: route review, walk view
 
-Plan S5 (D13, D19). `static/encode.js`, `static/palace_store.js`, `static/style.css`, `static/index.html`. Not yet
-wired into `app.js`.
+Plan S5 (D13, D19). `static/encode.js`, `static/palace_store.js`, `static/style.css`, `static/index.html`. Wired
+by `static/flow.js` `wireApp`: `#load-demo` runs `runDemoPalace`; `app.js` backs the palace store with
+`selectStore` (MEM-033).
 - `createRouteReview(loci)` (input never mutated): `move(i, +-1)` swaps neighbours, refused past either end, clears a
   pending drop; `requestDrop(i)` only marks; `confirmDrop()` removes; `cancelDrop()`; `undo()` restores the newest
   drop at its index (stack); `canUndo()`.
@@ -218,7 +221,7 @@ wired into `app.js`.
 - `style.css` linked; fits a 360 px phone: no width / min-width / flex-basis above 360 px, images `max-width: 100%`.
 - Model text via textContent only; no HTML-string sinks in `encode.js`.
 
-Tests: static/encode.test.mjs, static/palace_store.test.mjs, static/layout.test.mjs
+Tests: static/encode.test.mjs, static/palace_store.test.mjs, static/layout.test.mjs, static/app_flow.test.mjs
 
 ## MEM-031 Deterministic recall matcher (client)
 
@@ -243,7 +246,8 @@ Tests: static/recall_match.test.mjs
 
 ADR [0008](../../../../docs/decisions/0008-spoken-recall-deterministic-matcher.md),
 [0026](../../../../docs/decisions/0026-client-side-recall-matcher.md). Plan S6 (D4, D17). `src/memripal/app.py`,
-`src/memripal/recall_relay.py`, `static/recall.js`, `fixtures/demo/recall_timeline.json`.
+`src/memripal/recall_relay.py`, `static/recall.js`, `static/mic_wav.js`, `static/flow.js`,
+`fixtures/demo/recall_timeline.json`.
 
 a) POST /recall/audio, checks in order:
 - Fixture mode -> 409 {"error": "live_only"}. Live: no or wrong passcode -> 401 "passcode_required" before the body
@@ -259,7 +263,17 @@ a) POST /recall/audio, checks in order:
 b) Client (`static/recall.js`):
 - `startRecall({points, getUserMedia, doc})` -> `{mode, stream, matcher, submitTyped(text), results()}`. Mic
   missing, throwing or denied -> mode "typed", `#recall-typed` shown; typed answers use the same matcher. Never
-  constructs `SpeechRecognition` (D17). Mic capture to WAV clips and the /recall/audio post are not built yet.
+  constructs `SpeechRecognition` (D17).
+- `static/mic_wav.js`: `recordClip({stream, AudioContext, maxMs})` -> `{stop()}` resolving one 16 kHz mono 16-bit WAV
+  (box-average downsample, at most maxMs kept). `postRecallAudio({fetch, wav, keywords, passcode})` -> `{text}`, else
+  `RecallAudioError(code)`: 401/409/413/429/502 -> `passcode_required`/`live_only`/`too_large`/`budget_exhausted`/
+  `upstream`, other status `unexpected`, fetch throws `network`, reply without string text `upstream`.
+- Page (`static/flow.js` `wireApp`): `#recall-start` asks for the mic only on that click and records up to
+  `MAX_RECALL_MS` (3 min); no AudioContext -> mic released, typed box. `#recall-submit` (Done) stops and releases the
+  mic, re-splits the WAV under `MAX_CHUNK_BYTES`, posts each chunk (keywords = point labels, passcode via
+  `withPasscode`), appends each transcript to the matcher, saves the rehearsal. A `RecallAudioError` keeps the run
+  open typed, with "Speech relay failed (<code>)". `#recall-replay` replays `/demo/recall.json`, results labelled
+  `REPLAY_LABEL`.
 - `replayRecording(timeline, matcher, {wait})`: appends each chunk in order after waiting its `t_ms` gap; resolves
   to `matcher.results()`; no network.
 
@@ -267,11 +281,19 @@ c) GET /demo/recall.json: `fixtures/demo/recall_timeline.json` (generated by `ma
 {"label": "replay of a recorded session" (`REPLAY_LABEL`), "chunks": [{"t_ms", "text"}]}, t_ms non-decreasing; the
 demo replay gets >= 1 point and misses >= 1. Missing -> 404 "demo_missing".
 
-Tests: tests/test_recall_audio.py, static/recall.test.mjs
+Tests: tests/test_recall_audio.py, static/recall.test.mjs, static/mic_wav.test.mjs, static/app_spoken.test.mjs,
+static/app_flow.test.mjs
 
 ## MEM-033 Stored rehearsals
 
-Plan S6 (D18). `static/rehearsals.js`. Not yet wired into `app.js`.
+Plan S6 (D18). `static/rehearsals.js`, `static/idb_adapter.js`, `static/flow.js`, `static/palace_store.js`.
+- Storage: `app.js` builds the rehearsal and palace stores on `selectStore(globalThis, {dbName, storeName, prefix})`
+  (`flow.js`): `createIdbAdapter` when `indexedDB` exists, else `localStorageAdapter(prefix)` (localStorage read
+  lazily). Distinct databases `memripal-rehearsals` / `memripal-palace`: the adapter creates its object store only on
+  a database's first open. A write resolves on transaction complete. Records already in localStorage are not
+  migrated.
+- Page: history for palace id "demo", one row per run "<timestamp>: <got>/<n> recalled" + Delete (confirm "Delete
+  this rehearsal?", then `#rehearsal-undo`); `#hit-rates` rows "<label>: <hits>/<runs>", " (chronic miss)" appended.
 - `createRehearsalStore(adapter, {now, newId})`, adapter = async `{get, put, delete, list}`. `save(palaceId, {transcript,
   results})` -> record `{id, palace_id, timestamp (ISO), transcript, points}`, stored as a JSON string; points
   whitelist `{label, source_quote, got, override, span}`, so no audio or other field is stored. `get(id)` (unknown
@@ -283,7 +305,8 @@ Plan S6 (D18). `static/rehearsals.js`. Not yet wired into `app.js`.
 - `deleteRehearsalWithUndo(id, {store, confirm, showUndo})`: unknown id or declined confirm -> nothing deleted, no
   Undo; accepted -> deleted, `showUndo(undo)` where undo restores the identical record (also after a reload).
 
-Tests: static/rehearsals.test.mjs
+Tests: static/rehearsals.test.mjs, static/idb_adapter.test.mjs, static/palace_store.test.mjs,
+static/app_spoken.test.mjs, static/app_flow.test.mjs
 
 ## MEM-034 Deploy guards + Cloud Run artifacts
 

@@ -4,9 +4,14 @@ MemriPal turns any place you know into a memory palace for whatever you need to 
 vocabulary. Photograph a familiar space (a room, a library aisle, a campus walk); SAM 3.1 segments distinct objects
 into an ordered walking route of loci; Muse Spark splits your study list into items and writes a validated KAVE COGS
 association tying each item to its locus; Muse Image renders each scene onto your photo. You then walk the route
-eyes closed and recall aloud; a deterministic matcher (no LLM) checks the Muse Voice Transcribe transcript, lights
-each locus you recall, and (planned) lists the ones you miss so you re-recite only those. The full encode-and-recall
-loop runs live against the Meta Model API or offline from recorded fixtures.
+eyes closed and recall aloud; a deterministic matcher (no LLM) checks the Muse Voice Transcribe transcript, marks
+each locus you recall and lists the ones you miss, with per-locus hit rates and chronic misses across rehearsals, so
+you re-recite only those. The full encode-and-recall loop runs live against the Meta Model API or offline from
+recorded fixtures.
+
+On the page, Load demo builds the demo palace, renders its scenes and opens the walk view; the recall panel then
+takes spoken recall (mic), typed answers (no mic, or the speech relay failed), or a replay of a recorded session.
+Each run is saved in the browser with a said-vs-palace view; deleting one asks to confirm and offers Undo.
 
 ## Built during the hackathon (Oct 26 - Nov 4 2026)
 

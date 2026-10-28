@@ -2,6 +2,51 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.10.0] - 2026-10-28
+
+### Added
+
+- S4 `src/memripal/scenes.py` + `POST /scenes`: one whole-photo Muse Image edit per association under a 3-slot cap,
+  never retried, re-encoded to JPEG at the photo dims; any failure is 200 tier 3 with a short `reason`; ADR 0024
+  (MEM-027, MEM-028).
+- S5 scene panel `static/scenes.js` (3 in flight, zoom to the locus box, full-size overlay) and encode UI
+  `static/encode.js`: route review (reorder, drop with confirm + Undo), walk view (MEM-029, MEM-030).
+- S6 client-side deterministic recall matcher `static/recall_match.js`, zero network calls; ADR 0026 (MEM-031).
+- S6 `POST /recall/audio` (`src/memripal/recall_relay.py`): relays one mono 16-bit WAV clip (<= 1 MiB decoded) plus
+  palace labels as keywords to Muse Voice Transcribe, returns `{"text"}`; fixture mode 409 `live_only`; audio never
+  stored or logged (MEM-032).
+- S6 `static/recall.js`: typed answers on the same matcher when the mic is missing or denied, never Web Speech;
+  offline replay of `GET /demo/recall.json` (MEM-032).
+- S6 `static/rehearsals.js`: stored rehearsals (JSON, no audio), per-point hit rates with chronic misses,
+  said-vs-palace view, delete with confirm + Undo (MEM-033).
+- S7 deploy guards, ADR 0025 (MEM-034): `MEMRIPAL_PASSCODE` gate (`X-Memripal-Passcode`) on every live model route,
+  unset fails closed off loopback; `MEMRIPAL_ALLOWED_HOSTS` host allowlist; `MEMRIPAL_CALL_BUDGET` per-instance live
+  call budget -> 429 `budget_exhausted`; `MEMRIPAL_MAX_BODY_BYTES` app-wide body cap.
+- `/recall/audio` spends the call budget shared with the other model routes: refusals (401/415/413/400) spend
+  nothing, a failed upstream call (502) still spends (MEM-032, MEM-034).
+- S7 artifacts: `Dockerfile` (fixture mode, non-root, no secrets), `scripts/deploy_cloud_run.sh`
+  (`--max-instances=1`, secrets only via `--set-secrets`), web manifest + icon, `#public-banner` on non-loopback hosts
+  (MEM-034, MEM-035).
+- Page flow `static/flow.js`: Load demo -> demo palace -> scenes -> walk -> recall panel (spoken, typed, or demo
+  replay) -> rehearsal history with hit rates; a typed passcode rides as `X-Memripal-Passcode` on model routes
+  (MEM-029..033).
+- Spoken recall `static/mic_wav.js`: mic capture to 16 kHz WAV, relayed to `/recall/audio` in `MAX_CHUNK_BYTES`
+  chunks; a relay error falls back to typed answers and names the error code (MEM-032).
+- IndexedDB KV adapter `static/idb_adapter.js`; `selectStore` backs the palace and rehearsal stores with IndexedDB
+  when present, else localStorage (MEM-033).
+
+### Changed
+
+- Palace and rehearsal stores move to IndexedDB where available; history already in localStorage is not migrated
+  and goes unread while IndexedDB is present (MEM-033).
+- README: intro and recall flow describe the shipped misses, hit rates and demo -> scenes -> walk -> recall page.
+
+### Fixed
+
+- S4 security review: decompression-bomb PNG -> scene tier 3 `decode_error` and `POST /loci` 400 `decode_error`;
+  bounded slot wait `SLOT_WAIT_S` -> tier 3 `busy`; tier-1 JPEG carries no comment; `MetaClient.image_edit` sends one
+  attempt; live timeouts map to `timeout` (MEM-027, MEM-028).
+
 ## [0.9.0] - 2026-10-27
 
 ### Added
