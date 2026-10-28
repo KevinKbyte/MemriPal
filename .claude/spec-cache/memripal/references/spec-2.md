@@ -1,6 +1,6 @@
 # MemriPal spec (continuation)
 
-Continuation of [spec.md](spec.md), which is at its 500-line cap.
+Continuation of [spec.md](spec.md), which is at its 500-line cap. Continued in [spec-3.md](spec-3.md) (MEM-041 onward).
 
 ## MEM-023 Demo notes + replayed associations
 
