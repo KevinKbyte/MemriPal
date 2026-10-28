@@ -28,6 +28,14 @@ canvas {
   height: auto;
 }
 
+/* MEM-040: decorative picture shown until a palace is drawn. */
+#empty-state {
+  display: block;
+  max-width: min(100%, 360px);
+  height: auto;
+  margin: 0 auto;
+}
+
 button {
   min-height: 2.75rem;
   padding: 0.25rem 0.75rem;

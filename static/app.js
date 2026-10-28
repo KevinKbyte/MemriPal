@@ -163,6 +163,9 @@ async function drawResult(payload, isCurrent, deps) {
     item.textContent = locus.label;
     list.append(item);
   }
+  // Never un-hidden: once a palace has been drawn the empty state is gone for the session.
+  const empty = deps.doc.getElementById("empty-state");
+  if (empty) empty.hidden = true;
   return true;
 }
 
