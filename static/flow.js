@@ -12,7 +12,8 @@ import { localStorageAdapter } from "./palace_store.js";
 import { showPublicBanner } from "./public_banner.js";
 import { REPLAY_LABEL, replayRecording, startRecall } from "./recall.js";
 import { createMatcher } from "./recall_match.js";
-import { deleteRehearsalWithUndo, hitRates, renderSaidVsPalace } from "./rehearsals.js";
+import { markPointGot, renderEndScreen } from "./recall_end.js";
+import { deleteRehearsalWithUndo, hitRates } from "./rehearsals.js";
 
 // The model routes the live server gates on the passcode (MEM-034); /demo/* fixtures stay open.
 const PASSCODE_ROUTES = new Set(["/loci", "/split", "/associate", "/scenes", "/recall/audio"]);
@@ -198,9 +199,18 @@ export function wireApp(deps) {
    */
   const endRun = async (transcript, results, replay) => {
     session = null;
-    const record = await rehearsals.save(DEMO_PALACE_ID, { transcript, results });
+    let record = await rehearsals.save(DEMO_PALACE_ID, { transcript, results });
     const label = replay ? [textEl(doc, "p", `Results: ${REPLAY_LABEL}`)] : [];
-    byId("recall-results")?.replaceChildren(...label, renderSaidVsPalace(record, doc));
+    const show = () => byId("recall-results")?.replaceChildren(...label, renderEndScreen(record, doc, (i) => void mark(i)));
+    // Re-rendered before the write, so a second click builds on this override, never a stale copy.
+    /** @param {number} i */
+    const mark = async (i) => {
+      record = markPointGot(record, i);
+      show();
+      await rehearsals.restore(record);
+      await renderHistory();
+    };
+    show();
     await renderHistory();
   };
 
