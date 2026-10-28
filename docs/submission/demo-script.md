@@ -17,7 +17,7 @@ Recording rules:
 | 0:10-0:25 | Problem | Kev at a lectern, notes in hand | "Reading a speech off notes loses the room. The method of loci works, but building a memory palace by hand takes hours." | Impact |
 | 0:25-0:50 | Upload -> route | Photo upload; loci boxes appear in walking order | "I photograph a room I know. Muse Spark names the objects, SAM 3.1 boxes each one, and plain code orders them into a walking route." | Use of Meta AI tooling; Technical depth |
 | 0:50-1:15 | Associations -> scenes -> walk | Paste speech notes; points split; KAVE COGS associations; Muse Image scenes on the photo; walk view | "Muse Spark splits my notes into key points and ties each to a spot, checked by a validator. Muse Image paints each scene onto my own photo." | Use of Meta AI tooling; Impact |
-| 1:15-2:15 | **Hero: spoken recall** (60 s) | ~40 s: Kev eyes closed, recites the pitch walking the palace in his head, deliberately skipping one point; presses Done. ~12 s: end screen, got/missed per locus; the skipped point shows missed; Kev clicks "Mark got it" (or re-recites it in a second run) and the count updates. ~8 s: close on the rehearsal history and per-point hit rates. | (Kev's own spoken pitch; no voice-over) | Demo quality; Impact; Technical depth |
+| 1:15-2:15 | **Hero: spoken recall** (60 s) | ~40 s: Kev eyes closed, recites the pitch walking the palace in his head, deliberately skipping one point; the board (badge "LIVE") lights each point as he says it, the skipped point stays unlit; presses Done. ~12 s: end screen, got/missed per locus; the skipped point shows missed; Kev clicks "Mark got it" (or re-recites it in a second run) and the count updates. ~8 s: close on the rehearsal history and per-point hit rates. | (Kev's own spoken pitch; no voice-over) | Demo quality; Impact; Technical depth |
 | 2:15-2:20 | Offline cut (5 s) | Network off, Load demo runs; caption **"recorded replay: fixture mode, offline"** | (none) | Technical depth |
 | 2:20-2:45 | Model disclosure | Model names with their jobs; 8-10 s on the README `## Pipeline` mermaid diagram; 3-5 s on `static/recall_match.js` captioned "no LLM" | "Four Meta models: Muse Spark for the object names and associations, SAM 3.1 for the loci, Muse Image for the scenes, Muse Voice Transcribe for spoken recall. The matching is deterministic code, no LLM, so a speech can't prompt-inject the grader." | Use of Meta AI tooling; Technical depth |
 | 2:45-3:00 | Close | Deployed URL + repo URL; VR clip only if S9 (WebXR stretch) shipped | "Try it at the link: Load demo runs with no key. Walk your palace, say it eyes closed, re-recite only what you missed." | Demo quality; Impact |
@@ -26,11 +26,13 @@ Recording rules:
 
 - Kev skips exactly one point on purpose. Recall targets: >= 10/12 points, 0 false positives on unrelated speech.
 - Keep D16 (the "why/apply" question) out of this beat.
-- Shows end-of-run matching: spoken recall is one clip matched after Done (`static/flow.js`, `recall-submit`
-  handler), per the plan's cut ladder (`docs/plans/2026-10-26-memripal.md:161`, D4 item 4). If live loci lighting
-  lands, re-shoot this beat with points lighting up during speech.
-- The in-app replay label reads "replay of a recorded session" (`static/recall.js` `REPLAY_LABEL`); the video caption
-  still says "recorded replay".
+- Shows live lighting (MEM-037): the clip is sliced every 5 s (1 s overlap) through the recall relay, so a point
+  lights a few seconds after Kev says it; Done posts the remainder, which can light the last points before the end
+  screen (`static/flow.js` `recall-submit` handler). Pause briefly after the last point so it lights on camera.
+- If the relay fails mid-run, the page drops to typed answers with "Speech relay failed (<code>)" and lit points
+  stay lit: re-shoot rather than type.
+- The replay board badge reads "recorded replay"; the replay button and results label read "replay of a recorded
+  session" (`static/recall.js` `REPLAY_LABEL`); the video caption still says "recorded replay".
 
 ## Backup clip
 
