@@ -468,3 +468,22 @@ and a `/demo/recall.json` failure in `#recall-replay` (`flow.js`) was unhandled.
   "Replay failed: unexpected error". Mirrors Load demo's "Demo failed: <code>".
 
 Tests: static/storage_migrate.test.mjs, static/app_flow_replay.test.mjs
+
+## MEM-040 Wire generated assets into the page
+
+The separate wiring change MEM-038 defers. Assets committed at 2e2cf96 under `static/assets/` (MEM-038 run):
+`icon-192.png` (192x192), `icon-512.png` (512x512), `empty-state.webp`. `static/manifest.webmanifest`,
+`static/index.html`, `static/style.css`. No new deps, no JS module beyond the existing static files, ASCII only.
+- Manifest `icons`: the existing `icon.svg` entry stays first; then append `{"src": "/static/assets/icon-192.png",
+  "sizes": "192x192", "type": "image/png", "purpose": "any"}` and the same for `icon-512.png` / `"512x512"`. Each
+  PNG's real pixel size equals its `sizes`; every icon is served (`tests/test_deploy_web.py` rule, unchanged).
+- `index.html`: one decorative `<img id="empty-state" src="/static/assets/empty-state.webp" alt="">` directly
+  before `#scene-wrap`. Nothing else in `index.html` changes (no new link tags).
+- Visibility: shown on page load; gets the `hidden` attribute once a palace's places render in `#loci` (a photo
+  upload or Load demo whose result is drawn), and stays hidden for the rest of the page session (a later failed
+  upload does not bring it back).
+- `style.css`: `#empty-state` is a centered block, `max-width: min(100%, 360px)`, `height: auto`.
+  `#empty-state[hidden]` stays `display: none`: the existing global `[hidden] { display: none !important; }` rule
+  must keep winning over the new explicit `display` (no `!important` on `#empty-state`).
+
+Tests: tests/test_assets_wiring.py, static/app_empty_state.test.mjs
