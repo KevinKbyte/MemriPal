@@ -53,8 +53,7 @@ ASSOCIATE_KEYS = {"image", "item", "locus"}
 PLACE_BODY_CAP = 1024
 PLACE_KEYS = {"lat", "lon"}
 
-# DNS-rebinding guard for the loopback-only server.
-# S7 (public Cloud Run deploy, ADR 0010) must extend this list with the deploy host.
+# DNS-rebinding guard: loopback always, plus the deploy hosts listed in env MEMRIPAL_ALLOWED_HOSTS.
 ALLOWED_HOSTS = ("127.0.0.1", "localhost")
 LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
 PASSCODE_HEADER = "X-Memripal-Passcode"
@@ -155,6 +154,12 @@ def _passcode_ok(request: Request, passcode: str) -> bool:
     return hmac.compare_digest(sent.encode("utf-8"), passcode.encode("utf-8"))
 
 
+def _allowed_hosts() -> list[str]:
+    """ALLOWED_HOSTS plus the comma-separated, non-blank entries of MEMRIPAL_ALLOWED_HOSTS."""
+    extra = (h.strip() for h in os.environ.get("MEMRIPAL_ALLOWED_HOSTS", "").split(","))
+    return [*ALLOWED_HOSTS, *(h for h in extra if h)]
+
+
 def create_app(backend: ModelBackend | None = None, place_provider=None, asr_client=None) -> FastAPI:
     if backend is None:
         backend = select_backend(None, fixtures_root=REPLAY_DIR, live_cache_root=LIVE_CACHE_DIR)
@@ -168,7 +173,7 @@ def create_app(backend: ModelBackend | None = None, place_provider=None, asr_cli
         asr_client = MetaClient(api_key) if api_key else None
 
     app = FastAPI(title="MemriPal")
-    app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(ALLOWED_HOSTS))
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=_allowed_hosts())
 
     @app.get("/healthz")
     def healthz() -> dict[str, str]:
