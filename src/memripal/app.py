@@ -1,6 +1,6 @@
 """FastAPI app: health, static shell (MEM-001), POST /loci (MEM-015), demo photo (MEM-017),
 POST /split (MEM-020), POST /associate (MEM-021), demo notes (MEM-023), POST /scenes (MEM-028),
-deploy guards (MEM-034)."""
+POST /recall/audio and the demo recall replay (MEM-032), deploy guards (MEM-034)."""
 
 import base64
 import hmac
@@ -30,7 +30,17 @@ from memripal.associate import (
 from memripal.backend import BackendCallFailed, FixtureMissing, ModelBackend, select_backend
 from memripal.imaging import MAX_UPLOAD_BYTES, ImageRejected, process_upload, validate_processed
 from memripal.loci import Locus, find_loci
+from memripal.meta_client import MetaClient
 from memripal.place import FixturePlaceProvider, PlaceProvider, valid_coords
+from memripal.recall_relay import (
+    MAX_CHUNK_BYTES,
+    MAX_TRANSCRIPT_CHARS,
+    RELAY_BODY_CAP,
+    decode_audio,
+    is_relayable_wav,
+    parse_body,
+    transcript_or_none,
+)
 from memripal.scenes import render_scene
 from memripal.split import MAX_POINTS, SplitRejected, check_notes, split_list, split_notes
 
@@ -43,6 +53,7 @@ DEMO_PHOTO = REPO_ROOT / "fixtures" / "demo" / "photo.jpg"
 DEMO_NOTES = REPO_ROOT / "fixtures" / "demo" / "notes.txt"
 # Stands in for EXIF GPS: the synthetic demo photo must stay EXIF-free (MEM-005, MEM-025).
 DEMO_PLACE = REPO_ROOT / "fixtures" / "demo" / "place.json"
+DEMO_RECALL = REPO_ROOT / "fixtures" / "demo" / "recall_timeline.json"
 
 UPLOAD_TYPES = {"image/jpeg", "image/png", "image/webp"}
 # Base64 of a max-size photo plus room for 20 KB of notes even when JSON-escaped as \uXXXX.
@@ -96,11 +107,15 @@ class _BudgetedBackend:
     def __getattr__(self, name: str) -> Any:
         return getattr(self._backend, name)
 
-    def call(self, req: Any) -> Any:
+    def spend(self) -> None:
+        """Charge one live upstream call; /recall/audio charges each ASR relay here, after validation."""
         with self._lock:
             if self._left <= 0:
                 raise BudgetExhausted
             self._left -= 1
+
+    def call(self, req: Any) -> Any:
+        self.spend()
         return self._backend.call(req)
 
 
@@ -254,12 +269,15 @@ def _length_error(request: Request, cap: int) -> JSONResponse | None:
     return None
 
 
-def create_app(backend: ModelBackend | None = None, place_provider=None) -> FastAPI:
+def create_app(backend: ModelBackend | None = None, place_provider=None, asr_client=None) -> FastAPI:
     if backend is None:
         backend = select_backend(None, fixtures_root=REPLAY_DIR, live_cache_root=LIVE_CACHE_DIR)
     if place_provider is None:
         # Fixture mode stays offline end to end, so the demo place replays like every other answer.
         place_provider = FixturePlaceProvider(REPLAY_DIR) if backend.mode == "fixture" else PlaceProvider()
+    if asr_client is None and backend.mode != "fixture":
+        api_key = os.environ.get("META_API_KEY", "")
+        asr_client = MetaClient(api_key) if api_key else None
 
     # Deploy guards (MEM-034), read once here. Strip: Secret Manager values carry a trailing newline.
     extra_hosts = [h.strip() for h in os.environ.get("MEMRIPAL_ALLOWED_HOSTS", "").split(",") if h.strip()]
@@ -316,6 +334,53 @@ def create_app(backend: ModelBackend | None = None, place_provider=None) -> Fast
         if not DEMO_PLACE.is_file():
             return _error(404, "demo_missing")
         return FileResponse(DEMO_PLACE, media_type="application/json")
+
+    # The offline recall path: the client replays this recorded transcript timeline through its matcher.
+    @app.get("/demo/recall.json", include_in_schema=False)
+    def demo_recall() -> Response:
+        if not DEMO_RECALL.is_file():
+            return _error(404, "demo_missing")
+        return FileResponse(DEMO_RECALL, media_type="application/json")
+
+    # Audio lives only in this request's memory: never written to disk, never logged (D4).
+    @app.post("/recall/audio")
+    async def post_recall_audio(request: Request) -> JSONResponse:
+        if backend.mode == "fixture":
+            return _error(409, "live_only")
+        # Before the body: an unauthenticated caller gets no validation hints and spends no ASR.
+        if (passcode_error := _passcode_error(request)) is not None:
+            return passcode_error
+        media_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
+        if media_type != "application/json":
+            return _error(415, "unsupported_media_type")
+        if (length_error := _length_error(request, RELAY_BODY_CAP)) is not None:
+            return length_error
+        raw = await _read_capped(request, RELAY_BODY_CAP)
+        if raw is None:
+            return _error(413, "too_large")
+        parsed = parse_body(raw)
+        if parsed is None:
+            return _error(400, "bad_request")
+        audio_b64, keywords = parsed
+        audio = decode_audio(audio_b64)
+        if audio is None:
+            return _error(400, "bad_base64")
+        if len(audio) > MAX_CHUNK_BYTES:
+            return _error(413, "too_large")
+        if not is_relayable_wav(audio):
+            return _error(400, "bad_audio")
+        if asr_client is None:
+            return _error(503, "asr_unavailable")
+        if isinstance(backend, _BudgetedBackend):
+            try:
+                backend.spend()
+            except BudgetExhausted:
+                return _error(429, "budget_exhausted")
+        result = await run_in_threadpool(asr_client.transcribe, audio, keywords=keywords)
+        text = transcript_or_none(result.body) if result.ok else None
+        if text is None:
+            return _error(502, "upstream")
+        return JSONResponse({"text": text[:MAX_TRANSCRIPT_CHARS]})
 
     # Stateless: the coords are used for one lookup and never stored or logged (MEM-025).
     @app.post("/place")
@@ -467,6 +532,8 @@ def create_app(backend: ModelBackend | None = None, place_provider=None) -> Fast
 
     @app.post("/scenes")
     async def post_scenes(request: Request) -> JSONResponse:
+        if (passcode_error := _passcode_error(request)) is not None:
+            return passcode_error
         media_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
         if media_type != "application/json":
             return _error(415, "unsupported_media_type")
