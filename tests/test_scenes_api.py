@@ -23,7 +23,7 @@ import socket
 
 import pytest
 from fastapi.testclient import TestClient
-from PIL import Image
+from PIL import Image, PngImagePlugin
 
 from memripal.app import create_app
 from memripal.backend import BackendCallFailed, FixtureBackend, FixtureMissing, ResponseCache
@@ -189,6 +189,28 @@ class TestScenesSuccess:
             _assert_tier3(_post(client, _body(record=record)))
         assert backend.calls == 10
         assert not [r for r in caplog.records if r.exc_info]
+
+
+def _ztxt_bomb_png() -> bytes:
+    """A tiny valid PNG whose zTXt chunk inflates past Pillow's MAX_TEXT_CHUNK (Image.open -> ValueError)."""
+    info = PngImagePlugin.PngInfo()
+    info.add_text("k", "A" * (2 * PngImagePlugin.MAX_TEXT_CHUNK), zip=True)
+    buf = io.BytesIO()
+    Image.new("RGB", (8, 8)).save(buf, "PNG", pnginfo=info)
+    return buf.getvalue()
+
+
+# Covers: MEM-028
+# Requirement: a model reply Pillow refuses with a non-OSError (zTXt decompression bomb) is still a 200
+# tier-3 "decode_error" scene, never a 500.
+class TestScenesUndecodableReply:
+    def test_ztxt_bomb_reply_is_200_tier3_decode_error(self):
+        backend = FakeBackend(_ztxt_bomb_png())
+        client = TestClient(create_app(backend=backend), base_url=LOOPBACK_URL, raise_server_exceptions=False)
+        resp = _post(client, _body())
+        _assert_tier3(resp)
+        assert resp.json()["reason"] == "decode_error"
+        assert backend.calls == 1
 
 
 def _no_network(*args, **kwargs):

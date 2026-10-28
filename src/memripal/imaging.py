@@ -13,7 +13,8 @@ LONG_SIDE = 2048
 JPEG_QUALITY = 90
 
 _PILLOW_FORMAT = {"jpeg": "JPEG", "png": "PNG", "webp": "WEBP"}
-_DECODE_ERRORS = (UnidentifiedImageError, OSError, Image.DecompressionBombError, SyntaxError)
+# ValueError: Pillow raises it for hostile chunks (a zTXt decompression bomb), not only OSError.
+_DECODE_ERRORS = (UnidentifiedImageError, OSError, Image.DecompressionBombError, SyntaxError, ValueError)
 
 
 class ImageRejected(ValueError):

@@ -18,7 +18,7 @@ import zlib
 from pathlib import Path
 
 import pytest
-from PIL import Image
+from PIL import Image, PngImagePlugin
 
 REPO = Path(__file__).resolve().parents[1]
 DEMO_PHOTO = REPO / "fixtures" / "demo" / "photo.jpg"
@@ -170,6 +170,25 @@ class TestProcessUploadRejections:
 
     def test_png_magic_followed_by_garbage_is_decode_error(self, imaging):
         exc = _rejected(imaging, imaging.process_upload, b"\x89PNG\r\n\x1a\n" + b"\x00" * 64)
+        assert str(exc) == "decode_error"
+        assert exc.status == 400
+
+
+def _ztxt_bomb_png():
+    """A tiny valid PNG whose zTXt chunk inflates past Pillow's MAX_TEXT_CHUNK (Image.open -> ValueError)."""
+    info = PngImagePlugin.PngInfo()
+    info.add_text("k", "A" * (2 * PngImagePlugin.MAX_TEXT_CHUNK), zip=True)
+    buf = io.BytesIO()
+    Image.new("RGB", (8, 8)).save(buf, "PNG", pnginfo=info)
+    return buf.getvalue()
+
+
+# Covers: MEM-012
+# Requirement: an upload Pillow refuses with a non-OSError (zTXt decompression bomb raises ValueError in
+# Image.open) is rejected as decode_error (400), never an unhandled exception.
+class TestProcessUploadNonOsDecodeErrors:
+    def test_ztxt_bomb_png_is_decode_error(self, imaging):
+        exc = _rejected(imaging, imaging.process_upload, _ztxt_bomb_png())
         assert str(exc) == "decode_error"
         assert exc.status == 400
 

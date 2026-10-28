@@ -34,6 +34,10 @@ class BackendCallFailed(RuntimeError):
     """A live call failed or returned an incomplete/schema-invalid response; message holds no key or body."""
 
 
+class BackendTimeout(BackendCallFailed, TimeoutError):
+    """A live call timed out in transport; still a BackendCallFailed for callers that do not care which."""
+
+
 def _check_photo_sha(photo_sha: object) -> None:
     if not isinstance(photo_sha, str) or not _PHOTO_SHA.fullmatch(photo_sha):
         raise ValueError("photo_sha must be 64 lowercase hex chars")
@@ -339,7 +343,13 @@ class MetaBackend:
             # Provider-distinct key: Modal answers never overwrite or replay as Meta SAM entries (ADR 0018).
             return self._store(replace(req, model="modal/" + req.model), text)
 
-        from memripal.meta_client import chat_content_json, image_bytes, responses_text, to_data_url
+        from memripal.meta_client import (
+            TIMEOUT_ERRORS,
+            chat_content_json,
+            image_bytes,
+            responses_text,
+            to_data_url,
+        )
 
         image_url = to_data_url(req.image_jpeg)
         store_req = req
@@ -387,7 +397,8 @@ class MetaBackend:
             raise NotImplementedError(f"live {req.method} lands in a later slice")
         if not result.ok:
             # CallResult.error is "<status> <safe code>" and already key-redacted; the body is never quoted.
-            raise BackendCallFailed(f"{req.method} call failed: {result.error}")
+            failed = BackendTimeout if result.error in TIMEOUT_ERRORS else BackendCallFailed
+            raise failed(f"{req.method} call failed: {result.error}")
         try:
             value = parse(result.body)
         except (ValueError, KeyError, IndexError, TypeError) as exc:

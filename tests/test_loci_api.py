@@ -24,7 +24,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-from PIL import Image
+from PIL import Image, PngImagePlugin
 
 import memripal.app as app_module
 from memripal import loci
@@ -259,6 +259,28 @@ class TestUploadRejections:
         backend = FakeBackend()
         resp = _post(_client(create_app(backend=backend)), chunks())
         assert resp.status_code == 413
+        assert backend.calls == 0
+
+
+def _ztxt_bomb_png() -> bytes:
+    """A tiny valid PNG whose zTXt chunk inflates past Pillow's MAX_TEXT_CHUNK (Image.open -> ValueError)."""
+    info = PngImagePlugin.PngInfo()
+    info.add_text("k", "A" * (2 * PngImagePlugin.MAX_TEXT_CHUNK), zip=True)
+    buf = io.BytesIO()
+    Image.new("RGB", (8, 8)).save(buf, "PNG", pnginfo=info)
+    return buf.getvalue()
+
+
+# Covers: MEM-015, MEM-012
+# Requirement: an uploaded PNG whose zTXt chunk is a decompression bomb answers 400 {"error": "decode_error"}
+# before any model call, never 500.
+class TestUndecodableUpload:
+    def test_ztxt_bomb_png_is_400_decode_error(self):
+        backend = FakeBackend()
+        client = _client(create_app(backend=backend), raise_server_exceptions=False)
+        resp = _post(client, _ztxt_bomb_png(), "image/png")
+        assert resp.status_code == 400, resp.text
+        assert resp.json() == {"error": "decode_error"}
         assert backend.calls == 0
 
 

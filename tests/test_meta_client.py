@@ -4,8 +4,8 @@
 # header; retries only 429/500/503 and connect-phase transport errors (ConnectError,
 # ConnectTimeout; never read/protocol errors after the request may have been sent)
 # (Retry-After honoured, capped at 60s, else exponential backoff plus jitter, at most 3
-# attempts); rejects a response body over MAX_RESPONSE_BYTES as a non-retryable error
-# without returning its content; surfaces a server error code only when it matches
+# attempts; image edits are never retried); rejects a response body over MAX_RESPONSE_BYTES
+# as a non-retryable error without returning its content; surfaces a server error code only when it matches
 # [A-Za-z0-9_.-]{1,64}, else "http_error"; returns a CallResult instead of raising;
 # never leaks the API key in errors or repr; and offers pure helpers
 # to unpack chat JSON, SAM text, edited image bytes and to build JPEG data URLs.
@@ -306,6 +306,31 @@ class TestRetry:
         client, sleeps = make_client(rec, max_retries=0)
         result = client.post("/x", {})
         assert result.attempts == 1
+        assert sleeps == []
+
+
+# Covers: MEM-006, MEM-027
+# Requirement: an image edit is sent exactly once: no retry and no backoff sleep on 429/500/503 or a
+# connect failure, so a scene never holds a render slot through retries.
+class TestImageEditNoRetry:
+    @pytest.mark.parametrize(
+        "reply",
+        [
+            err(429, headers={"Retry-After": "3"}),
+            err(500),
+            err(503, headers={"Retry-After": "3"}),
+            httpx.ConnectError("down"),
+            httpx.ConnectTimeout("slow dns"),
+        ],
+        ids=["429", "500", "503", "ConnectError", "ConnectTimeout"],
+    )
+    def test_image_edit_makes_exactly_one_attempt(self, reply):
+        rec = Recorder(reply, ok())
+        client, sleeps = make_client(rec)
+        result = client.image_edit(image_data_url=DATA_URL, prompt="p")
+        assert result.ok is False
+        assert result.attempts == 1
+        assert len(rec.requests) == 1
         assert sleeps == []
 
 
