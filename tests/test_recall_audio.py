@@ -4,12 +4,12 @@ speech-to-text and returns transcript TEXT only; GET /demo/recall.json serves th
 - `src/memripal/recall_relay.py` exports MAX_CHUNK_BYTES == 1 MiB (D4 chunk cap, decoded audio bytes) and
   MAX_TRANSCRIPT_CHARS (int > 0, cap on the returned text).
 - `create_app(backend=..., place_provider=..., asr_client=...)`: asr_client has
-  `transcribe(wav_bytes, *, keywords=None, ...) -> meta_client.CallResult` (MetaClient's shape). None in meta mode
-  -> a MetaClient on META_API_KEY; never called in fixture mode.
+  `transcribe(wav_bytes, *, keywords=None, ...) -> meta_client.CallResult` (MetaClient's shape).
+  None in meta mode -> a MetaClient on META_API_KEY; never called in fixture mode.
 - Passcode (D1, the S7 shared gate, tests/test_deploy_guards.py): env MEMRIPAL_PASSCODE read at create_app,
   surrounding whitespace stripped, blank = unset; header `X-Memripal-Passcode`, compared in constant time.
-  Meta mode: header missing or wrong -> 401 {"error": "passcode_required"}, checked before the body is read; no
-  ASR call. Passcode unset: loopback hosts pass (local run_live), any other host (admitted via env
+  Meta mode: header missing or wrong -> 401 {"error": "passcode_required"}, checked before the body is
+  read; no ASR call. Passcode unset: loopback hosts pass (local run_live), any other host (admitted via env
   MEMRIPAL_ALLOWED_HOSTS, comma list) gets 401 (fail closed).
 - Fixture mode: 409 {"error": "live_only"} (the offline path is the client-side timeline replay); no ASR call.
 - Request: Content-Type application/json (else 415 {"error": "unsupported_media_type"}); body exactly
@@ -354,7 +354,8 @@ class TestRelayHostileInput:
 # Covers: MEM-032
 class TestRelayHostileUpstream:
     def test_oversize_transcript_is_capped(self):
-        # Requirement: an oversize upstream transcript is truncated to MAX_TRANSCRIPT_CHARS, never relayed whole.
+        # Requirement: an oversize upstream transcript is truncated to MAX_TRANSCRIPT_CHARS,
+        # never relayed whole.
         from memripal.recall_relay import MAX_TRANSCRIPT_CHARS
 
         upstream = ("lamp door clock " * (MAX_TRANSCRIPT_CHARS // 4))[: MAX_TRANSCRIPT_CHARS * 3]
