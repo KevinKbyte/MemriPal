@@ -1,0 +1,82 @@
+/* MemriPal: fits a 360 px phone (D13); no fixed width above 360 px anywhere. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* An element with display set below would otherwise ignore its hidden attribute. */
+[hidden] {
+  display: none !important;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  line-height: 1.4;
+}
+
+main {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 0.75rem;
+}
+
+img,
+canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+button {
+  min-height: 2.75rem;
+  padding: 0.25rem 0.75rem;
+}
+
+#route li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+#route li > span:first-child {
+  flex: 1 1 auto;
+}
+
+/* The tier-1 scene is the whole photo, zoomed by an inline transform; the frame crops it. */
+.scene-frame {
+  overflow: hidden;
+}
+
+.scene-frame img {
+  display: block;
+  width: 100%;
+  cursor: zoom-in;
+}
+
+#scene-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  background: rgba(0, 0, 0, 0.85);
+  cursor: zoom-out;
+}
+
+#scene-overlay img {
+  max-height: 100%;
+}
+
+#walk dt {
+  font-weight: bold;
+  text-transform: capitalize;
+}
+
+#walk dd {
+  margin: 0 0 0.5rem;
+}

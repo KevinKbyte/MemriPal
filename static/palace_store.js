@@ -21,6 +21,9 @@ export function associationKey(item, locusLabel) {
   return JSON.stringify([item, locusLabel]);
 }
 
+// Not a JSON array, so no associationKey(item, label) can ever equal it.
+const ROUTE_KEY = "route";
+
 /**
  * @param {PalaceAdapter} adapter
  */
@@ -41,6 +44,19 @@ export function createPalaceStore(adapter) {
     },
     async list() {
       return adapter.list();
+    },
+    /**
+     * The reviewed route order (MEM-030), so a reload walks the same route.
+     * @param {any[]} loci
+     */
+    async saveRoute(loci) {
+      if (!Array.isArray(loci)) throw new TypeError("route must be an array of loci");
+      await adapter.put(ROUTE_KEY, loci);
+    },
+    /** @returns {Promise<any[] | null>} the saved route, or null when none was saved */
+    async loadRoute() {
+      const loci = await adapter.get(ROUTE_KEY);
+      return Array.isArray(loci) ? loci : null;
     },
   };
 }
