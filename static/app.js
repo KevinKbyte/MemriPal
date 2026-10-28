@@ -271,7 +271,7 @@ export const KAVE_CHANNELS = Object.freeze([
 
 /**
  * @typedef {{item: string, locus: {n: number, label: string}}} AssocPair
- * @typedef {{record: Record<string, string>, status: "valid" | "invalid"}} AssocEntry
+ * @typedef {{record: Record<string, string>, status: "valid" | "invalid", sig?: string}} AssocEntry
  * @typedef {{
  *   doc: Pick<Document, "getElementById" | "createElement">,
  *   fetch: typeof fetch,
@@ -304,7 +304,11 @@ async function requestAssociation(pair, deps) {
     throw new Error(payload && typeof payload.error === "string" ? payload.error : `http_${resp.status}`);
   }
   if (!payload || typeof payload.record !== "object" || payload.record === null) throw new Error("bad_response");
-  return { record: payload.record, status: payload.status === "valid" ? "valid" : "invalid" };
+  /** @type {AssocEntry} */
+  const entry = { record: payload.record, status: payload.status === "valid" ? "valid" : "invalid" };
+  // Kept beside the record, never inside it: the server signed the record as sent (MEM-036).
+  if (typeof payload.sig === "string") entry.sig = payload.sig;
+  return entry;
 }
 
 /**

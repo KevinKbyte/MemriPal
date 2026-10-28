@@ -15,7 +15,7 @@ const SAFE_SRC = /^(data:image\/(png|jpeg|webp);base64,|blob:)/;
  * @typedef {{x1: number, y1: number, x2: number, y2: number}} Box
  * @typedef {{tier: 1, image: string, width?: number, height?: number} | {tier: 3, reason: string}} SceneResult
  * @typedef {{item: string, locus: {n: number, label: string, box?: Box},
- *   entry: {record: Record<string, string>, status: string} | null}} SceneCard
+ *   entry: {record: Record<string, string>, status: string, sig?: string} | null}} SceneCard
  * @typedef {Pick<Document, "getElementById" | "createElement" | "addEventListener">} SceneDoc
  */
 
@@ -133,12 +133,15 @@ export function sceneView(doc, result, box, overlay) {
 async function requestScene(card, image, fetchFn) {
   /** @param {string} reason @returns {SceneResult} */
   const fail = (reason) => ({ tier: 3, reason });
+  const sig = card.entry && card.entry.sig;
+  // A record stored before signing (MEM-036) would only earn a 403, so it is never sent.
+  if (typeof sig !== "string") return fail("unsigned");
   let resp;
   try {
     resp = await fetchFn("/scenes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ image, box: card.locus.box, record: card.entry && card.entry.record }),
+      body: JSON.stringify({ image, box: card.locus.box, record: card.entry && card.entry.record, sig }),
     });
   } catch {
     return fail("network");

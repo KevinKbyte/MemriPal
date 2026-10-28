@@ -24,6 +24,9 @@ MAX_ITEM_LEN = 100
 MAX_LOCUS_LEN = 100
 # Per-field cap on an untrusted reply; a realistic field is a sentence or two.
 MAX_FIELD_CHARS = 2000
+# The fields /scenes sends to image edit (MEM-036): refused here too, so every signed record passes /scenes.
+SCENE_FIELDS = ("spatial", "visual", "scene_prompt_details")
+MAX_SCENE_FIELD_CHARS = 300
 MAX_ATTEMPTS = 3
 ASSOCIATION_GEN_PARAMS = {"max_completion_tokens": 2048}
 
@@ -121,7 +124,7 @@ def validate_association(value: Any, item: str, locus: str) -> str | None:
         text = value[name]
         if not isinstance(text, str):
             return f"the {name} field is not a string"
-        if len(text) > MAX_FIELD_CHARS:
+        if len(text) > (MAX_SCENE_FIELD_CHARS if name in SCENE_FIELDS else MAX_FIELD_CHARS):
             return f"the {name} field is too long"
         if not normalize(text):
             return f"the {name} channel is empty" if name in CHANNELS else f"the {name} field is empty"
@@ -135,6 +138,20 @@ def validate_association(value: Any, item: str, locus: str) -> str | None:
     if normalize(value["locus"]) != normalize(locus):
         return "the echoed locus does not match the requested locus"
     return None
+
+
+def record_ok(record: object) -> bool:
+    """True when the record passes the association validator against its own item and locus."""
+    if not isinstance(record, dict):
+        return False
+    item, locus = record.get("item"), record.get("locus")
+    if not isinstance(item, str) or not isinstance(locus, str):
+        return False
+    try:
+        check_inputs(item, locus)
+    except AssociateRejected:
+        return False
+    return validate_association(record, item, locus) is None
 
 
 def associate(

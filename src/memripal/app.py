@@ -1,6 +1,6 @@
 """FastAPI app: health, static shell (MEM-001), POST /loci (MEM-015), demo photo (MEM-017),
 POST /split (MEM-020), POST /associate (MEM-021), demo notes (MEM-023), POST /scenes (MEM-028),
-POST /recall/audio and the demo recall replay (MEM-032), deploy guards (MEM-034)."""
+POST /recall/audio and the demo recall replay (MEM-032), deploy guards (MEM-034), signed records (MEM-036)."""
 
 import base64
 import hmac
@@ -25,7 +25,7 @@ from memripal.associate import (
     associate,
     check_inputs,
     check_place,
-    validate_association,
+    record_ok,
 )
 from memripal.backend import BackendCallFailed, FixtureMissing, ModelBackend, select_backend
 from memripal.imaging import MAX_UPLOAD_BYTES, ImageRejected, process_upload, validate_processed
@@ -41,6 +41,7 @@ from memripal.recall_relay import (
     parse_body,
     transcript_or_none,
 )
+from memripal.record_sign import record_key, sig_ok, sign_record
 from memripal.scenes import render_scene
 from memripal.split import MAX_POINTS, SplitRejected, check_notes, split_list, split_notes
 
@@ -66,7 +67,7 @@ PLACE_BODY_CAP = 1024
 PLACE_KEYS = {"lat", "lon"}
 # A max-size photo as a data URL plus a max-size record even when every char is JSON-escaped as \uXXXX.
 SCENES_BODY_CAP = 4 * -(-MAX_UPLOAD_BYTES // 3) + 6 * MAX_FIELD_CHARS * len(FIELDS) + 64 * 1024
-SCENES_KEYS = {"image", "box", "record"}
+SCENES_KEYS = {"image", "box", "record", "sig"}
 BOX_KEYS = ("x1", "y1", "x2", "y2")
 
 # DNS-rebinding guard; the public deploy (ADR 0010) appends its host via MEMRIPAL_ALLOWED_HOSTS.
@@ -212,7 +213,7 @@ def _associate_body(raw: bytes) -> dict | None:
 
 
 def _scenes_body(raw: bytes) -> dict | None:
-    """The parsed /scenes body, or None unless it is exactly {image, box, record} with a string image."""
+    """The parsed /scenes body, or None unless it is exactly {image, box, record, sig} with a string image."""
     try:
         body = json.loads(raw)
     except ValueError:
@@ -220,20 +221,6 @@ def _scenes_body(raw: bytes) -> dict | None:
     if not isinstance(body, dict) or set(body) != SCENES_KEYS or not isinstance(body["image"], str):
         return None
     return body
-
-
-def _record_ok(record: object) -> bool:
-    """True when the record passes the association validator against its own item and locus."""
-    if not isinstance(record, dict):
-        return False
-    item, locus = record.get("item"), record.get("locus")
-    if not isinstance(item, str) or not isinstance(locus, str):
-        return False
-    try:
-        check_inputs(item, locus)
-    except AssociateRejected:
-        return False
-    return validate_association(record, item, locus) is None
 
 
 def _box_ok(box: object, width: int, height: int) -> bool:
@@ -284,6 +271,7 @@ def create_app(backend: ModelBackend | None = None, place_provider=None, asr_cli
     passcode = os.environ.get("MEMRIPAL_PASSCODE", "").strip() or None
     call_budget = _env_int("MEMRIPAL_CALL_BUDGET", 0)
     max_body = _env_int("MEMRIPAL_MAX_BODY_BYTES", 1)
+    signing_key = record_key()
     live = backend.mode != "fixture"
     if live and call_budget is not None:
         backend = _BudgetedBackend(backend, call_budget)
@@ -520,15 +508,16 @@ def create_app(backend: ModelBackend | None = None, place_provider=None, asr_cli
         except Exception:
             logger.exception("POST /associate failed")
             return _error(500, "internal")
-        return JSONResponse(
-            {
-                "item": result.item,
-                "locus": result.locus,
-                "status": result.status,
-                "attempts": result.attempts,
-                "record": result.record,
-            }
-        )
+        payload = {
+            "item": result.item,
+            "locus": result.locus,
+            "status": result.status,
+            "attempts": result.attempts,
+            "record": result.record,
+        }
+        if result.record is not None:
+            payload["sig"] = sign_record(signing_key, result.record)
+        return JSONResponse(payload)
 
     @app.post("/scenes")
     async def post_scenes(request: Request) -> JSONResponse:
@@ -546,8 +535,10 @@ def create_app(backend: ModelBackend | None = None, place_provider=None, asr_cli
         if body is None:
             return _error(400, "bad_request")
         image, box, record = body["image"], body["box"], body["record"]
-        # Caps first: a bad record is refused before the photo is decoded or any model call.
-        if not _record_ok(record):
+        # Signature, then caps: a bad record is refused before the photo is decoded or any model call.
+        if not sig_ok(signing_key, record, body["sig"]):
+            return _error(403, "bad_signature")
+        if not record_ok(record):
             return _error(400, "bad_record")
         if not image.startswith(JPEG_DATA_URL):
             return _error(400, "bad_data_url")
