@@ -218,11 +218,11 @@ Load demo, `load_demo.png` into `<outdir>`; prints the loci items. Exit 0 clean,
 uv run --no-project --with playwright python scripts/screenshot_ui.py <url> <outdir>
 ```
 
-End-to-end browser drive (Playwright, installed Chrome; not part of `scripts/check.sh`): runs 21 steps against a
+End-to-end browser drive (Playwright, installed Chrome; not part of `scripts/check.sh`): runs 22 steps against a
 fixture-mode uvicorn it starts on a free local port with `MEMRIPAL_ALLOWED_HOSTS=memripal-e2e.test` (inherited
 `MEMRIPAL_*` vars dropped) and stops on exit. `--base-url URL` targets a running server instead; it needs that same
 `MEMRIPAL_ALLOWED_HOSTS` or the public-banner step fails. `--out` defaults to `<system temp>/memripal-e2e/<timestamp>`;
-writes `results.json`, `run.log`, `server.log`, PNGs. Exit 0 all 21 pass, 1 any failure or fewer than 21 steps, 2
+writes `results.json`, `run.log`, `server.log`, PNGs. Exit 0 all 22 pass, 1 any failure or fewer than 22 steps, 2
 server never ready.
 
 ```bash

@@ -14,6 +14,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
   per 3-min run (36 slices + the Done remainder).
 - `#recall-replay` shows the same board badged "recorded replay" and lights points as the replay plays. Typed mode
   has no board.
+- E2E driver step "8b live board lights on replay" (`scripts/e2e_steps.py` `s_live_board`): badge reads "recorded
+  replay", one board row per palace point, lit rows == got points (>= 1). The driver now runs 22 steps.
 
 ## [0.12.0] - 2026-10-28
 
