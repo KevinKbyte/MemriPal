@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>MemriPal</title>
+    <link rel="stylesheet" href="/static/style.css">
   </head>
   <body>
     <main>
@@ -27,6 +28,21 @@
       <ol id="loci"></ol>
       <p id="assoc-status" role="status"></p>
       <div id="associations"></div>
+      <label><input id="auto" type="checkbox"> Auto: skip route review</label>
+      <section id="route-review" hidden>
+        <h2>Review your route</h2>
+        <ol id="route"></ol>
+        <button id="route-undo" type="button" hidden>Undo drop</button>
+        <button id="generate" type="button">Generate</button>
+      </section>
+      <div id="scenes"></div>
+      <section id="walk" hidden>
+        <h2>Walk your palace</h2>
+        <div id="walk-step"></div>
+        <button id="walk-prev" type="button">Previous</button>
+        <button id="walk-next" type="button">Next</button>
+      </section>
+      <div id="scene-overlay" hidden></div>
     </main>
     <script type="module" src="/static/app.js"></script>
   </body>

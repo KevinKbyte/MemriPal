@@ -131,6 +131,49 @@ describe("palace store: records persist through the adapter", () => {
   });
 });
 
+// Covers: MEM-030
+// Requirement: the reviewed route order persists and reloads: saveRoute(loci) then loadRoute()
+// on a new store over the same adapter returns the same order; nothing saved -> null/undefined;
+// association records and the route never overwrite each other; a non-array route is rejected.
+describe("palace store: route order", () => {
+  const route = [
+    { n: 2, label: "door", box: { x1: 1, y1: 1, x2: 9, y2: 9 } },
+    { n: 1, label: "lamp", box: { x1: 10, y1: 1, x2: 19, y2: 9 } },
+  ];
+
+  test("saveRoute then loadRoute on a reloaded store returns the same order", async () => {
+    const adapter = memoryAdapter();
+    await palace.createPalaceStore(adapter).saveRoute(route);
+    assert.deepEqual(await palace.createPalaceStore(adapter).loadRoute(), route);
+  });
+
+  test("loadRoute before any save returns nothing; a second save overwrites", async () => {
+    const store = palace.createPalaceStore(memoryAdapter());
+    assert.ok((await store.loadRoute()) == null);
+    await store.saveRoute(route);
+    await store.saveRoute([route[1]]);
+    assert.deepEqual(await store.loadRoute(), [route[1]]);
+  });
+
+  test("route and association records never overwrite each other", async () => {
+    const store = palace.createPalaceStore(memoryAdapter());
+    const key = palace.associationKey("milk", "lamp");
+    await store.put(key, entry("milk", "valid"));
+    await store.saveRoute(route);
+    assert.deepEqual(await store.get(key), entry("milk", "valid"));
+    await store.put(palace.associationKey("route", "route"), entry("route", "valid"));
+    assert.deepEqual(await store.loadRoute(), route);
+  });
+
+  test("saveRoute rejects a non-array route", async () => {
+    const store = palace.createPalaceStore(memoryAdapter());
+    assert.equal(typeof store.saveRoute, "function", "store.saveRoute missing");
+    for (const bad of [null, undefined, "lamp", { label: "lamp" }]) {
+      await assert.rejects(Promise.resolve().then(() => store.saveRoute(bad)), String(bad));
+    }
+  });
+});
+
 // Covers: MEM-022
 // Requirement: an association is keyed by item AND locus short label (D3), so moving an item to
 // another locus is a different record, and no two distinct (item, label) pairs share a key.
