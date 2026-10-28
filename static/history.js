@@ -1,0 +1,87 @@
+// @ts-check
+// Rehearsal history (MEM-033): one row per stored run with View and Delete (confirm, then Undo), the
+// per-point hit rates, and a pane showing the viewed run's said-vs-palace from its stored record
+// alone. Stored text is user/model text, so it is set via textContent only.
+
+import { deleteRehearsalWithUndo, hitRates, renderSaidVsPalace } from "./rehearsals.js";
+
+/** @typedef {import("./rehearsals.js").Rehearsal} Rehearsal */
+
+/**
+ * @param {{
+ *   doc: Document,
+ *   rehearsals: ReturnType<typeof import("./rehearsals.js").createRehearsalStore>,
+ *   confirm: () => boolean | Promise<boolean>,
+ *   palaceId: string,
+ * }} deps
+ * @returns {() => Promise<void>} re-renders the history from the store
+ */
+export function createHistory({ doc, rehearsals, confirm, palaceId }) {
+  /** @param {string} id */
+  const byId = (id) => doc.getElementById(id);
+  /** @param {string} tag @param {string} text */
+  const textEl = (tag, text) => {
+    const e = doc.createElement(tag);
+    e.textContent = text;
+    return e;
+  };
+  /** @type {string | null} */
+  let viewedId = null;
+
+  /** @param {string} text @param {string} label @param {() => void} onClick */
+  const button = (text, label, onClick) => {
+    const b = /** @type {HTMLButtonElement} */ (doc.createElement("button"));
+    b.type = "button";
+    b.textContent = text;
+    b.setAttribute("aria-label", label);
+    b.addEventListener("click", onClick);
+    return b;
+  };
+
+  const render = async () => {
+    const runs = await rehearsals.list(palaceId);
+    byId("rehearsals")?.replaceChildren(...runs.map(runItem));
+    byId("hit-rates")?.replaceChildren(
+      ...hitRates(runs).map((h) => textEl("li", `${h.label}: ${h.hits}/${h.runs}${h.chronic ? " (chronic miss)" : ""}`)),
+    );
+    // Re-read from the store, so the pane follows an override and empties once its run is removed.
+    const viewed = runs.find((r) => r.id === viewedId);
+    byId("history-view")?.replaceChildren(...(viewed ? [renderSaidVsPalace(viewed, doc)] : []));
+    // Never re-hidden: Undo after removing the last run must stay reachable.
+    const section = byId("history");
+    if (section && runs.length) section.hidden = false;
+  };
+
+  /** @param {Rehearsal} run */
+  const runItem = (run) => {
+    const li = doc.createElement("li");
+    const got = run.points.filter((p) => p.got || p.override).length;
+    const view = button("View", `View the rehearsal of ${run.timestamp}`, () => {
+      viewedId = run.id;
+      void render();
+    });
+    const del = button("Delete", `Delete the rehearsal of ${run.timestamp}`, () => void removeRun(run.id));
+    del.dataset.action = "delete-rehearsal";
+    li.append(textEl("span", `${run.timestamp}: ${got}/${run.points.length} recalled `), view, del);
+    return li;
+  };
+
+  /** @param {string} id */
+  const removeRun = async (id) => {
+    const undo = byId("rehearsal-undo");
+    /** @param {() => Promise<void>} restore */
+    const showUndo = (restore) => {
+      if (!undo) return;
+      undo.hidden = false;
+      undo.onclick = async () => {
+        undo.onclick = null;
+        undo.hidden = true;
+        await restore();
+        await render();
+      };
+    };
+    if (await deleteRehearsalWithUndo(id, { store: rehearsals, confirm, showUndo })) await render();
+  };
+
+  return render;
+}

@@ -294,6 +294,9 @@ Plan S6 (D18). `static/rehearsals.js`, `static/idb_adapter.js`, `static/flow.js`
   migrated.
 - Page: history for palace id "demo", one row per run "<timestamp>: <got>/<n> recalled" + Delete (confirm "Delete
   this rehearsal?", then `#rehearsal-undo`); `#hit-rates` rows "<label>: <hits>/<runs>", " (chronic miss)" appended.
+  History rows + hit rates render on start with no Load demo when >= 1 run is stored (order = `list()`, oldest
+  first); 0 runs -> the history stays hidden. Each row has a "View" button showing that run's said-vs-palace from
+  the stored record (no request).
 - `createRehearsalStore(adapter, {now, newId})`, adapter = async `{get, put, delete, list}`. `save(palaceId, {transcript,
   results})` -> record `{id, palace_id, timestamp (ISO), transcript, points}`, stored as a JSON string; points
   whitelist `{label, source_quote, got, override, span}`, so no audio or other field is stored. `get(id)` (unknown
@@ -302,11 +305,15 @@ Plan S6 (D18). `static/rehearsals.js`, `static/idb_adapter.js`, `static/flow.js`
   chronic = runs >= 2 and rate < 0.5 (0.5 is not chronic; one missed run is not chronic).
 - `renderSaidVsPalace(record, doc)` -> `<ol class="said-vs-palace">`, one row per point in palace order: label, what
   was said (span, "marked got it", or "not said"), source quote; textContent only.
+- End-screen override: each missed row has one `<button data-action="mark-got">` "Mark got it"; got rows have none.
+  Click -> that point becomes `{got: true, override: true, span: null}` in the saved record (same id, timestamp,
+  transcript; other points unchanged), the row shows "marked got it" without the button, and history + hit rates
+  re-render. Survives a reload.
 - `deleteRehearsalWithUndo(id, {store, confirm, showUndo})`: unknown id or declined confirm -> nothing deleted, no
   Undo; accepted -> deleted, `showUndo(undo)` where undo restores the identical record (also after a reload).
 
 Tests: static/rehearsals.test.mjs, static/idb_adapter.test.mjs, static/palace_store.test.mjs,
-static/app_spoken.test.mjs, static/app_flow.test.mjs
+static/app_spoken.test.mjs, static/app_flow.test.mjs, static/app_recall_override.test.mjs
 
 ## MEM-034 Deploy guards + Cloud Run artifacts
 
