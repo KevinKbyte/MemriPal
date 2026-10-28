@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.16.0] - 2026-10-28
+
+### Added
+
+- v6 Review prototype source under `docs/design/v6/` (MEM-041) as a design reference, with a photo-crop regression
+  test (`docs/design/v6/tests/crop_use_size.test.mjs`) run by `scripts/check.sh`.
+
 ## [0.15.0] - 2026-10-28
 
 ### Added
