@@ -23,7 +23,7 @@ _log = logging.getLogger(__name__)
 
 
 class MissingApiKey(RuntimeError):
-    """Raised when meta mode is selected without META_API_KEY in the environment."""
+    """Raised when meta mode is selected without META_API_KEY or the chat provider's key in the env."""
 
 
 class FixtureMissing(LookupError):
@@ -308,6 +308,7 @@ class MetaBackend:
         cache_root: Path | None = None,
         client: Any = None,
         seg_client: Any = None,
+        chat: Any = None,
     ) -> None:
         self._api_key = api_key
         self.cache = ResponseCache(cache_root) if cache_root is not None else None
@@ -319,6 +320,8 @@ class MetaBackend:
         self._client = client
         # None keeps segment calls on Meta SAM; a ModalSegClient takes them over (MEM-016).
         self._seg_client = seg_client
+        # None keeps Spark chat on Meta; a chat_provider.ChatProvider takes it over (MEM-026).
+        self._chat = chat
 
     # Explicit so the key can never surface through a default dataclass/object repr.
     def __repr__(self) -> str:
@@ -333,6 +336,7 @@ class MetaBackend:
         from memripal.meta_client import chat_content_json, responses_text, to_data_url
 
         image_url = to_data_url(req.image_jpeg)
+        store_req = req
         if req.method == "segment":
             result = self._client.segment(
                 image_data_url=image_url, phrase=req.subject, model=req.model, **req.gen_params
@@ -343,14 +347,19 @@ class MetaBackend:
             gen_params = dict(req.gen_params)
             prompt_args = gen_params.pop(PROMPT_ARGS, {})
             send_image = gen_params.pop(SEND_IMAGE, True)
-            result = self._client.chat_json(
+            chat = self._chat
+            client, model = (self._client, req.model) if chat is None else (chat.client, chat.model)
+            result = client.chat_json(
                 prompt=_prompt_for(req.prompt_template_id, prompt_args),
                 schema=req.schema,
                 schema_name=req.subject,
                 image_data_url=image_url if send_image else None,
-                model=req.model,
+                model=model,
                 **gen_params,
             )
+            if chat is not None:
+                # Provider-distinct key, as for Modal SAM: never replays as a Meta Spark entry (ADR 0018).
+                store_req = replace(req, model=chat.name + "/" + req.model)
             parse = chat_content_json
 
             def valid(v: Any) -> bool:
@@ -366,7 +375,7 @@ class MetaBackend:
             raise BackendCallFailed(f"{req.method} response incomplete or malformed") from exc
         if not valid(value):
             raise BackendCallFailed(f"{req.method} response does not match its schema")
-        return self._store(req, value)
+        return self._store(store_req, value)
 
     def _store(self, req: ModelRequest, value: Any) -> Any:
         if self.cache is not None:
@@ -411,9 +420,12 @@ def select_backend(
         if not api_key:
             raise MissingApiKey("meta mode requires META_API_KEY in the environment")
         # Lazy: seg_provider imports meta_client, which imports this module (cycle at module top).
+        from memripal.chat_provider import chat_provider_from_env, select_chat_provider
         from memripal.seg_provider import modal_seg_client_from_env, select_seg_provider
 
         # Meta branch only, like META_API_KEY: fixture mode never reads the provider settings.
         seg_client = modal_seg_client_from_env() if select_seg_provider() == "modal" else None
-        return MetaBackend(api_key, cache_root=live_cache_root, seg_client=seg_client)
+        chat_name = select_chat_provider()
+        chat = chat_provider_from_env(chat_name) if chat_name != "meta" else None
+        return MetaBackend(api_key, cache_root=live_cache_root, seg_client=seg_client, chat=chat)
     raise ValueError(f"unknown MEMRIPAL_MODE {mode!r}; expected 'fixture' or 'meta'")

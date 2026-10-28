@@ -85,7 +85,7 @@ def _retry_after(response: httpx.Response) -> float | None:
 class MetaClient:
     def __init__(
         self,
-        api_key: str,
+        api_key: str | None,
         *,
         base_url: str = DEFAULT_BASE_URL,
         timeout: float = 60.0,
@@ -94,7 +94,8 @@ class MetaClient:
         rand: Callable[[], float] = random.random,
         max_retries: int = 2,
     ) -> None:
-        if not api_key:
+        # None (not "") opts out of auth for a keyless local OpenAI-compatible server (MEM-026).
+        if api_key is not None and not api_key:
             raise MissingApiKey("MetaClient requires a non-empty API key")
         self._api_key = api_key
         self._base_url = base_url.rstrip("/")
@@ -110,14 +111,14 @@ class MetaClient:
     __str__ = __repr__
 
     def _redact(self, text: str) -> str:
-        return text.replace(self._api_key, "***")
+        return text.replace(self._api_key, "***") if self._api_key else text
 
     def post(self, path: str, payload: dict) -> CallResult:
         return self._send(path, json=payload)
 
     def _send(self, path: str, **content) -> CallResult:
         url = self._base_url + path
-        headers = {"Authorization": "Bearer " + self._api_key}
+        headers = {"Authorization": "Bearer " + self._api_key} if self._api_key else {}
         start = time.perf_counter()
         attempt = 0
         while True:
