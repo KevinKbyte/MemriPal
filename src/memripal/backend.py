@@ -358,8 +358,9 @@ class MetaBackend:
                 **gen_params,
             )
             if chat is not None:
-                # Provider-distinct key, as for Modal SAM: never replays as a Meta Spark entry (ADR 0018).
-                store_req = replace(req, model=chat.name + "/" + req.model)
+                # Provider-distinct key, as for Modal SAM: never replays as a Meta Spark entry (ADR 0018);
+                # the provider's own model id, so two local models never share an entry.
+                store_req = replace(req, model=chat.name + "/" + chat.model)
             parse = chat_content_json
 
             def valid(v: Any) -> bool:
