@@ -16,8 +16,9 @@
 //       {scale: 1, tx: 0, ty: 0}.
 //     runScenes(cards, deps) -> Promise<Array<{tier: 1, image} | {tier: 3, reason} | null>>,
 //       one entry per card in input order (null = card skipped, no request).
-//       cards = [{item, locus: {n, label, box: {x1, y1, x2, y2}}, entry: {record, status} | null}]
-//         (an AssocPair plus its stored AssocEntry). Eligible = entry.status "valid" + a box.
+//       cards = [{item, locus: {n, label, box: {x1, y1, x2, y2}}, entry: {record, status, sig} | null}]
+//         (an AssocPair plus its stored AssocEntry). Eligible = entry.status "valid" + a box
+//         (+ a string entry.sig, MEM-036; unsigned -> {tier: 3, reason: "unsigned"}, no request).
 //       deps = {doc, fetch, image}: image = the processed photo data URL from POST /loci.
 //       Renders one #scenes child per eligible card, in input order whatever the answer order;
 //       its text includes the item and locus label. Tier 1 with a safe src -> an <img> whose
@@ -28,7 +29,7 @@
 //       "Scene unavailable: <code>": tier-3 reason; non-2xx JSON error string, else
 //       "http_<status>"; network error "network"; tier 1 with an unsafe src "bad_image".
 //       Never throws. Missing image -> no request.
-// POST /scenes (MEM-028): JSON body exactly {image, box, record}; 200 {tier: 1, image, width,
+// POST /scenes (MEM-028, MEM-036): JSON body exactly {image, box, record, sig}; 200 {tier: 1, image, width,
 //   height} or 200 {tier: 3, reason}. Fake DOM surface: see fake_dom_test.mjs.
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -69,7 +70,7 @@ function cards(n, entryFor = () => "valid") {
     return {
       item,
       locus: { n: i + 1, label, box: { x1: 10 + i * 100, y1: 20, x2: 90 + i * 100, y2: 120 } },
-      entry: status === null ? null : { record: record(item, label), status },
+      entry: status === null ? null : { record: record(item, label), status, sig: `sig_${item}` },
     };
   });
 }
@@ -152,10 +153,10 @@ describe("isSafeImageSrc", () => {
 
 // Covers: MEM-029
 // Requirement: each eligible card (valid record + locus box) gets exactly one POST /scenes with
-// JSON {image, box, record}; ineligible cards and a run without a photo send nothing; never more
+// JSON {image, box, record, sig}; ineligible cards and a run without a photo send nothing; never more
 // than 3 requests are in flight, and every card is still requested.
 describe("runScenes: requests", () => {
-  test("one POST /scenes per card, JSON body exactly {image, box, record}", async () => {
+  test("one POST /scenes per card, JSON body exactly {image, box, record, sig}", async () => {
     const p = page();
     const f = sceneFetch();
     const input = cards(2);
@@ -171,7 +172,7 @@ describe("runScenes: requests", () => {
     }
     assert.deepEqual(
       f.calls.map((c) => c.body),
-      input.map((c) => ({ image: IMAGE, box: c.locus.box, record: c.entry.record })),
+      input.map((c) => ({ image: IMAGE, box: c.locus.box, record: c.entry.record, sig: c.entry.sig })),
     );
   });
 
@@ -431,7 +432,7 @@ describe("scene panel text safety", () => {
       {
         item: hostile,
         locus: { n: 1, label: `${hostile}<script>alert(2)</script>`, box: { x1: 1, y1: 1, x2: 50, y2: 50 } },
-        entry: { record: record("milk", "lamp", { visual: hostile }), status: "valid" },
+        entry: { record: record("milk", "lamp", { visual: hostile }), status: "valid", sig: "sig_milk" },
       },
     ];
     const f = sceneFetch(() => jsonResponse({ tier: 3, reason: hostile }));

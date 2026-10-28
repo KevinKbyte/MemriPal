@@ -71,13 +71,16 @@ const IDS = [
 ];
 const page = () => fakePage(IDS, { hidden: ["route-review", "route-undo", "walk", "scene-overlay"] });
 
+/** Opaque server signature the fake /associate returns for an item (MEM-036). */
+const sigOf = (item) => `sig_${item}`;
+
 /** Fetch for /associate and /scenes; sceneFor(item) -> /scenes JSON body. */
 function flowFetch(sceneFor = (item) => ({ tier: 1, image: SCENE(item), width: 800, height: 600 })) {
   const calls = [];
   const fn = async (url, init = {}) => {
     const body = init.body ? JSON.parse(init.body) : null;
     calls.push({ url: String(url), body });
-    if (url === "/associate") return jsonResponse({ record: record(body.item, body.locus), status: "valid" });
+    if (url === "/associate") return jsonResponse({ record: record(body.item, body.locus), status: "valid", sig: sigOf(body.item) });
     if (url === "/scenes") return jsonResponse(sceneFor(body.record.item));
     return jsonResponse({ error: "not_found" }, 404);
   };
@@ -281,18 +284,27 @@ describe("runEncode: auto flag and resume", () => {
     assert.equal(p.els["route-review"].hidden, true);
     assert.equal(p.els.walk.hidden, false);
     assert.deepEqual(f.assoc(), ITEMS.map((item, i) => [item, LABELS[i]]));
-    assert.equal(f.calls.filter((c) => c.url === "/scenes").length, 3);
+    const sceneBodies = f.calls.filter((c) => c.url === "/scenes").map((c) => c.body);
+    assert.equal(sceneBodies.length, 3);
+    assert.deepEqual(
+      sceneBodies.map((b) => [b.record.item, b.sig]),
+      ITEMS.map((item) => [item, sigOf(item)]),
+      "each /scenes request carries its record's /associate sig",
+    );
   });
 
   test("resume: a valid stored record is reused without a request", async () => {
     const { p, store } = setup();
-    await store.put(associationKey("milk", "lamp"), { record: record("milk", "lamp"), status: "valid" });
+    await store.put(associationKey("milk", "lamp"), { record: record("milk", "lamp"), status: "valid", sig: sigOf("milk") });
     const f = flowFetch();
     await api("runEncode")(input({ auto: true }), { doc: p.doc, fetch: f.fn, store });
     assert.deepEqual(f.assoc(), [
       ["eggs", "door"],
       ["bread", "clock"],
     ]);
+    const reused = f.calls.find((c) => c.url === "/scenes" && c.body.record.item === "milk");
+    assert.ok(reused, "the reused record still gets its scene");
+    assert.deepEqual([reused.body.record, reused.body.sig], [record("milk", "lamp"), sigOf("milk")], "with the stored record and sig");
   });
 });
 
@@ -358,13 +370,14 @@ describe("runEncode: walk view", () => {
     const fetch = async (url, init) => {
       const body = JSON.parse(init.body);
       if (url === "/associate") {
-        return jsonResponse({ record: record(body.item, body.locus, { visual: hostile }), status: "valid" });
+        return jsonResponse({ record: record(body.item, body.locus, { visual: hostile }), status: "valid", sig: sigOf(body.item) });
       }
       return jsonResponse({ tier: 3, reason: "timeout" });
     };
     await api("runEncode")(input({ auto: true }), { doc: p.doc, fetch, store });
     assert.deepEqual(p.htmlWrites, []);
     assert.ok(step(p).includes(hostile));
+    assert.match(step(p), /Scene unavailable: timeout/, "the signed record reached the /scenes render path");
     assert.ok(!p.madeByCode().some((e) => e.tagName === "IMG" || e.tagName === "SCRIPT"));
   });
 
