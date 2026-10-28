@@ -290,8 +290,8 @@ Plan S6 (D18). `static/rehearsals.js`, `static/idb_adapter.js`, `static/flow.js`
 - Storage: `app.js` builds the rehearsal and palace stores on `selectStore(globalThis, {dbName, storeName, prefix})`
   (`flow.js`): `createIdbAdapter` when `indexedDB` exists, else `localStorageAdapter(prefix)` (localStorage read
   lazily). Distinct databases `memripal-rehearsals` / `memripal-palace`: the adapter creates its object store only on
-  a database's first open. A write resolves on transaction complete. Records already in localStorage are not
-  migrated.
+  a database's first open. A write resolves on transaction complete. Records already in localStorage migrate
+  once (MEM-039).
 - Page: history for palace id "demo", one row per run "<timestamp>: <got>/<n> recalled" + Delete (confirm "Delete
   this rehearsal?", then `#rehearsal-undo`); `#hit-rates` rows "<label>: <hits>/<runs>", " (chronic miss)" appended.
   History rows + hit rates render on start with no Load demo when >= 1 run is stored (order = `list()`, oldest
@@ -403,3 +403,68 @@ remainder; MEMRIPAL_CALL_BUDGET, Q17).
   Typed mode: no board.
 
 Tests: static/recall_live.test.mjs, static/mic_wav_take.test.mjs, static/app_live.test.mjs
+
+## MEM-038 UI asset generator
+
+Kev-approved generic style, restyled once design mockups land. `scripts/gen_assets.py`, run by Kev with his own key
+(`scripts/run_live.ps1 uv run python scripts/gen_assets.py`); Claude never reads the key. Never run by the app
+or the Dockerfile (`.dockerignore` excludes scripts).
+- `MetaClient` has no text-to-image (chat_json, segment, image_edit, transcribe), so each asset is one
+  `image_edit(image_data_url=..., prompt=...)` on a generated base: Pillow (already a dependency) 1024x1024 white RGB
+  canvas -> JPEG -> `to_data_url`. No `size` sent (no caller sends one; valid values unverified). Output =
+  `image_bytes(body)` (WebP).
+- `ASSETS` (fixed, 2 entries, list order = call order), written under `static/assets/` (served at `/static/assets/`
+  by the existing `/static` mount, shipped by the Dockerfile's static copy); `--out <dir>` overrides. `icon` ->
+  `icon-512.png` + `icon-192.png` (Pillow center-crop to square, LANCZOS resize, both from the one call);
+  `empty-state` -> `empty-state.webp` (returned bytes as is).
+- Prompts are module constants: a per-asset subject (icon: house outline with three gold dots; empty-state: open
+  doorway into a room with numbered spots on the floor) + shared `STYLE` ("flat 2D vector illustration, navy
+  #1f3a5f and gold #f2b134 on plain white, no text"; colors from `icon.svg` / `theme_color`). Restyle = edit the
+  constants and re-run.
+- Writes files only; never edits `manifest.webmanifest`, `index.html` or `style.css`. Wiring the outputs in (PNG
+  icon entries beside `icon.svg`, an empty-state `<img>`) is a separate change after Kev commits them:
+  `tests/test_deploy_web.py` requires every manifest icon to be served.
+- Key: `META_API_KEY` from the environment only (as `app.py`, `backend.py`, `probe_live.py`); never a file, never
+  printed (`MetaClient` redacts it from errors). Unset or blank -> stderr "META_API_KEY is not set; launch via
+  scripts/run_live.ps1", exit 2, before any call or write.
+- `--dry-run`: one line per asset (name, output paths) then "calls: 2"; no key needed, no client built, no file
+  written, exit 0.
+- Budget: exactly one `image_edit` per asset (never retried: `retries=0`), so a full run = 2 paid calls, no other
+  API call.
+- Failure: a non-ok `CallResult` (non-2xx, transport, response_too_large) or a body Pillow cannot decode -> stderr
+  "<name>: failed (<CallResult.error, else bad_image>)", that asset's existing files untouched, the next asset still
+  runs; exit 1 if any asset failed, else 0. Each written path is printed.
+- `main(argv, make_client=MetaClient)`: tests pass a fake factory returning canned `CallResult`s, sockets blocked
+  (no network).
+
+Tests: tests/test_gen_assets.py
+
+## MEM-039 localStorage -> IndexedDB migration + replay fetch failure
+
+Kev chose copy-then-clear. Closes two gaps: MEM-033 records stored in localStorage before IndexedDB stayed invisible,
+and a `/demo/recall.json` failure in `#recall-replay` (`flow.js`) was unhandled. `static/storage_migrate.js`,
+`static/app.js`, `static/flow.js`. Out of scope: `localStorageAdapter.list()` order (unsorted;
+`createRehearsalStore.list` sorts).
+- `migrateLocalStorage(getStorage, prefix, adapter)` -> Promise<{copied, skipped, cleared}>, never rejects. `app.js`
+  runs it on page load only when `globalThis.indexedDB` exists (the `selectStore` test), once per store on that
+  store's own adapter: `memripal.palace:` -> memripal-palace/palace, `memripal.rehearsal:` ->
+  memripal-rehearsals/rehearsals; awaited before `wireApp` (which renders history on start). No other localStorage
+  key is touched (`memripal.placeHistory`, MEM-025, stays).
+- Copy: snapshot the prefixed keys first; per key, `JSON.parse` the value (the `localStorageAdapter` encoding), key
+  = name minus prefix. `adapter.get(key)` !== undefined -> already in IndexedDB: it wins, nothing written (no
+  duplicate, no overwrite). Else `adapter.put(key, value)` with exactly what the localStorage adapter's `get` returned
+  (rehearsal: its JSON string; palace: the entry or route array).
+- Malformed JSON: that key is skipped and kept in localStorage (never copied, never removed); it does not block the
+  other keys.
+- Clear: only after every get/put for that prefix resolved (put = transaction complete), remove that prefix's
+  copied and already-present keys. Any get/put rejection (IndexedDB open or write failure) -> remove nothing for
+  that prefix; the next load retries. localStorage unreadable (disabled storage throws) -> no-op. No IndexedDB ->
+  not run; the MEM-033 localStorage fallback keeps serving the keys. Page wiring runs whatever the outcome.
+- Idempotent: a second load finds no prefixed keys (or only kept malformed ones) -> no put, no remove.
+- `#recall-replay` fetch failure -> one line in `#recall-results` (textContent); no board, no replay, no rehearsal
+  saved. Fetch rejects with TypeError -> "Replay failed: network"; non-2xx -> "Replay failed: <code>", code = JSON
+  body `error` string else `http_<status>` (the `encode.js` `errorCode` rule; missing fixture -> "Replay failed:
+  demo_missing"); 2xx body not JSON or `chunks` not an array -> "Replay failed: bad_response"; any other error ->
+  "Replay failed: unexpected error". Mirrors Load demo's "Demo failed: <code>".
+
+Tests: static/storage_migrate.test.mjs, static/app_flow.test.mjs
