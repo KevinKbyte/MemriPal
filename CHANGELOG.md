@@ -10,8 +10,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
   row per palace point) and lights each point (class `lit`) as soon as the matcher finds it. The mic clip is sliced
   every 5 s with 1 s overlap (`recordClip` `take()`, `static/recall_live.js` `createLiveRelay`) and each slice goes
   through the unchanged `POST /recall/audio` relay; Done posts only the untaken remainder. A relay failure falls
-  back to typed answers with "Speech relay failed (<code>)"; lit points stay lit. Server unchanged; <= 36 ASR calls
-  per 3-min run.
+  back to typed answers with "Speech relay failed (<code>)"; lit points stay lit. Server unchanged; <= 37 ASR calls
+  per 3-min run (36 slices + the Done remainder).
 - `#recall-replay` shows the same board badged "recorded replay" and lights points as the replay plays. Typed mode
   has no board.
 
