@@ -18,6 +18,8 @@
       <p id="meta-notice" hidden>Your photo is sent to Meta's AI APIs to find places in it.</p>
       <label for="photo">Take or choose a photo of a room</label>
       <input id="photo" type="file" accept="image/*" capture="environment">
+      <label for="passcode">Live passcode (not needed for Load demo)</label>
+      <input id="passcode" type="password" autocomplete="off">
       <button id="load-demo" type="button">Load demo</button>
       <fieldset id="place-settings">
         <legend>Place history (optional)</legend>
@@ -46,6 +48,19 @@
         <div id="walk-step"></div>
         <button id="walk-prev" type="button">Previous</button>
         <button id="walk-next" type="button">Next</button>
+      </section>
+      <section id="recall" hidden>
+        <h2>Recall your palace</h2>
+        <button id="recall-start" type="button">Start recall</button>
+        <button id="recall-replay" type="button">Play the replay of a recorded session</button>
+        <textarea id="recall-typed" rows="4" aria-label="Type what you remember" hidden></textarea>
+        <button id="recall-submit" type="button">Done</button>
+        <div id="recall-results"></div>
+        <h3>Rehearsals</h3>
+        <ol id="rehearsals"></ol>
+        <button id="rehearsal-undo" type="button" hidden>Undo delete</button>
+        <h3>Hit rate per point</h3>
+        <ul id="hit-rates"></ul>
       </section>
       <div id="scene-overlay" hidden></div>
     </main>
