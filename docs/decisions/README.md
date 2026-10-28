@@ -51,6 +51,8 @@ the others that you asked about".
   global middleware, `*` hosts, or per-request counting).
 - [0026](0026-client-side-recall-matcher.md) Recall matcher client-side (Levenshtein 0.8 or 60% coverage window),
   server relays one WAV clip to ASR (over a server matcher, embeddings, WebSocket relay, or Web Speech).
+- [0027](0027-signed-association-records.md) /scenes renders only records /associate HMAC-signed; key from
+  `MEMRIPAL_RECORD_KEY`, else random per instance; forged sig 403 (over a session store, a required key, or 400).
 
 ## Minor decisions (no ADR)
 
