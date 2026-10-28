@@ -6,6 +6,7 @@ import { selectStore, withPasscode, wireApp } from "./flow.js";
 import { associationKey, createPalaceStore } from "./palace_store.js";
 import { browserGeolocate, createPlaceState, lookupPlace, readGps, wirePlace } from "./place.js";
 import { createRehearsalStore } from "./rehearsals.js";
+import { migrateLocalStorage } from "./storage_migrate.js";
 
 export { isPublicHost, showPublicBanner } from "./public_banner.js";
 
@@ -414,16 +415,28 @@ function wireUpload() {
 // Guard keeps the module importable under node --test.
 if (typeof document !== "undefined") {
   const media = navigator.mediaDevices;
-  wireApp({
-    ...wireUpload(),
-    // Distinct databases: createIdbAdapter only creates its object store on a database's first open.
-    store: createPalaceStore(selectStore(globalThis, { dbName: "memripal-palace", storeName: "palace", prefix: "memripal.palace:" })),
-    rehearsals: createRehearsalStore(
-      selectStore(globalThis, { dbName: "memripal-rehearsals", storeName: "rehearsals", prefix: "memripal.rehearsal:" }),
-    ),
-    getUserMedia: media ? media.getUserMedia.bind(media) : undefined,
-    AudioContext: globalThis.AudioContext || /** @type {any} */ (globalThis).webkitAudioContext,
-    location,
-    confirm: () => window.confirm("Delete this rehearsal?"),
-  });
+  // Distinct databases: createIdbAdapter only creates its object store on a database's first open.
+  const palace = { dbName: "memripal-palace", storeName: "palace", prefix: "memripal.palace:" };
+  const rehearsal = { dbName: "memripal-rehearsals", storeName: "rehearsals", prefix: "memripal.rehearsal:" };
+  const palaceAdapter = selectStore(globalThis, palace);
+  const rehearsalAdapter = selectStore(globalThis, rehearsal);
+  // Pre-IndexedDB records move over before wireApp renders history (MEM-039); without IndexedDB the
+  // localStorage fallback keeps serving them. Lazy: touching localStorage throws where it is disabled.
+  const migrated = globalThis.indexedDB
+    ? Promise.all([
+        migrateLocalStorage(() => localStorage, palace.prefix, palaceAdapter),
+        migrateLocalStorage(() => localStorage, rehearsal.prefix, rehearsalAdapter),
+      ])
+    : Promise.resolve();
+  void migrated.then(() =>
+    wireApp({
+      ...wireUpload(),
+      store: createPalaceStore(palaceAdapter),
+      rehearsals: createRehearsalStore(rehearsalAdapter),
+      getUserMedia: media ? media.getUserMedia.bind(media) : undefined,
+      AudioContext: globalThis.AudioContext || /** @type {any} */ (globalThis).webkitAudioContext,
+      location,
+      confirm: () => window.confirm("Delete this rehearsal?"),
+    }),
+  );
 }

@@ -5,7 +5,7 @@
 // only via textContent.
 
 import { formatHealth, lookupDemoPlace } from "./app.js";
-import { runDemoPalace } from "./encode.js";
+import { errorCode, runDemoPalace } from "./encode.js";
 import { createHistory } from "./history.js";
 import { createIdbAdapter } from "./idb_adapter.js";
 import { chunkSamples, encodeWav, postRecallAudio, RecallAudioError, recordClip, TARGET_SAMPLE_RATE } from "./mic_wav.js";
@@ -86,6 +86,24 @@ function wavChunks(wav) {
   }
   const chunks = chunkSamples(samples);
   return (chunks.length ? chunks : [samples]).map((c) => encodeWav(c, TARGET_SAMPLE_RATE));
+}
+
+/**
+ * The recorded demo session (MEM-039 failure codes, mirroring Load demo's "Demo failed: <code>").
+ * @param {typeof fetch} fetchFn
+ * @returns {Promise<{timeline: any} | {code: string}>}
+ */
+async function fetchReplay(fetchFn) {
+  let resp;
+  try {
+    resp = await fetchFn("/demo/recall.json");
+  } catch (err) {
+    // fetch rejects with a TypeError only when the request never got an answer.
+    return { code: err instanceof TypeError ? "network" : "unexpected error" };
+  }
+  if (!resp.ok) return { code: await errorCode(resp) };
+  const timeline = await resp.json().catch(() => null);
+  return timeline && Array.isArray(timeline.chunks) ? { timeline } : { code: "bad_response" };
 }
 
 /**
@@ -312,8 +330,13 @@ export function wireApp(deps) {
   // Offline demo: the recorded session from the server, matched locally; never the speech relay.
   onClick("recall-replay", async () => {
     void stopSpeaking();
-    const resp = await fetchFn("/demo/recall.json");
-    const timeline = await resp.json();
+    const replay = await fetchReplay(fetchFn);
+    if ("code" in replay) {
+      byId("recall-live")?.replaceChildren();
+      byId("recall-results")?.replaceChildren(textEl(doc, "p", `Replay failed: ${replay.code}`));
+      return;
+    }
+    const { timeline } = replay;
     const matcher = createMatcher(points);
     const board = showBoard("recorded replay");
     const results = await replayRecording(timeline, matcher, { wait: deps.wait, onMatch: board.light });

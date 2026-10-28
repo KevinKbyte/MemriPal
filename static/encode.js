@@ -233,7 +233,7 @@ export async function runEncode(input, deps) {
 }
 
 /** @param {Response} resp */
-async function errorCode(resp) {
+export async function errorCode(resp) {
   const payload = await resp.json().catch(() => null);
   return payload && typeof payload.error === "string" ? payload.error : `http_${resp.status}`;
 }
