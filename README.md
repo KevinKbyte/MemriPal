@@ -11,7 +11,9 @@ recorded fixtures.
 
 On the page, Load demo builds the demo palace, renders its scenes and opens the walk view; the recall panel then
 takes spoken recall (mic), typed answers (no mic, or the speech relay failed), or a replay of a recorded session.
-Each run is saved in the browser with a said-vs-palace view; deleting one asks to confirm and offers Undo.
+Each run is saved in the browser with a said-vs-palace view; deleting one asks to confirm and offers Undo. On the
+end screen, "Mark got it" overrides a missed point (counts and hit rates update, kept across reloads). Stored runs
+and hit rates show on page load in a history section; each row's "View" opens that run's said-vs-palace.
 
 ## Built during the hackathon (Oct 26 - Nov 4 2026)
 
@@ -100,6 +102,8 @@ Options, pros/cons and rationale per decision ([index](docs/decisions/README.md)
   `MEMRIPAL_ALLOWED_HOSTS`, budget counts live model calls
 - [0026](docs/decisions/0026-client-side-recall-matcher.md) Recall matcher runs client-side; server relays one WAV
   clip to ASR
+- [0027](docs/decisions/0027-signed-association-records.md) `/associate` HMAC-signs records; `/scenes` renders only
+  signed ones
 
 ## Modes
 
@@ -122,6 +126,10 @@ all of these ([ADR 0023](docs/decisions/0023-chat-provider-adapter-reuses-meta-c
 Missing provider key or local model -> startup error. Strict `json_schema` structured output on the non-Meta hosts is
 not yet verified live.
 
+`MEMRIPAL_RECORD_KEY` (any mode) is the HMAC key for association-record signatures; unset or blank -> a random
+per-process key, so signatures die with the process. Multi-instance deploys must set it
+([ADR 0027](docs/decisions/0027-signed-association-records.md)).
+
 ## HTTP API
 
 Errors are always `{"error": "<code>"}`, never model or exception text. Upstream failure -> 502 `upstream`; no
@@ -134,8 +142,8 @@ header -> 401 `passcode_required` (no passcode set: loopback only); spent call b
 | `GET /healthz` | - | `{"status": "ok", "mode"}` |
 | `POST /loci` | photo bytes (`image/jpeg`, `image/png`, `image/webp`) | `{"image": "data:image/jpeg;base64,...", "width", "height", "photo_sha", "reask_used", "loci"}` ([ADR 0011](docs/decisions/0011-s2-loci-request-shape.md)) |
 | `POST /split` | JSON `{"photo": <plain base64 of the processed JPEG>, "mode": "list" \| "notes", "text", "loci_count": 1..12}` | `{"points": [{"label", "source_quote"}]}`; list mode = one point per line, no model call; notes mode = one Spark call, one regeneration, then 422 `split_invalid` ([ADR 0019](docs/decisions/0019-split-endpoint-contract.md)) |
-| `POST /associate` | JSON `{"image": "data:image/jpeg;base64,<processed JPEG>", "item": <1..100 chars>, "locus": <label>}`, optional `"place": {"title", "extract"}` | `{"item", "locus", "status": "valid" \| "invalid", "attempts", "record"}`; up to 2 regenerations ([ADR 0020](docs/decisions/0020-association-validate-and-regenerate.md)) |
-| `POST /scenes` | JSON `{"image": "data:image/jpeg;base64,<processed JPEG>", "box": {"x1", "y1", "x2", "y2"}, "record": <association record>}` | `{"tier": 1, "image": "data:image/jpeg;base64,...", "width", "height"}`, else `{"tier": 3, "reason"}` on any model failure incl. no replay (never 404/502) ([ADR 0024](docs/decisions/0024-scene-render-contract.md)) |
+| `POST /associate` | JSON `{"image": "data:image/jpeg;base64,<processed JPEG>", "item": <1..100 chars>, "locus": <label>}`, optional `"place": {"title", "extract"}` | `{"item", "locus", "status": "valid" \| "invalid", "attempts", "record"}`, plus `"sig"` when valid; up to 2 regenerations ([ADR 0020](docs/decisions/0020-association-validate-and-regenerate.md), [ADR 0027](docs/decisions/0027-signed-association-records.md)) |
+| `POST /scenes` | JSON exactly `{"image": "data:image/jpeg;base64,<processed JPEG>", "box": {"x1", "y1", "x2", "y2"}, "record": <association record>, "sig": <from /associate>}` | `{"tier": 1, "image": "data:image/jpeg;base64,...", "width", "height"}`, else `{"tier": 3, "reason"}` on any model failure incl. no replay (never 404/502); missing `sig` -> 400 `bad_request`, bad `sig` -> 403 `bad_signature`, before any model call ([ADR 0024](docs/decisions/0024-scene-render-contract.md), [ADR 0027](docs/decisions/0027-signed-association-records.md)) |
 | `POST /place` | JSON `{"lat", "lon"}` (opt-in, below) | `{"places": [{"title", "distance_m", "extract"}]}`, up to 3; upstream failure -> empty list ([ADR 0022](docs/decisions/0022-opt-in-place-context-server-lookup.md)) |
 | `POST /recall/audio` | JSON `{"audio": <base64 mono WAV, <= 1 MiB decoded>, "keywords": [<labels>]}`; `X-Memripal-Passcode` header | `{"text"}` (<= 2000 chars); fixture mode -> 409 `live_only`; no ASR client -> 503 `asr_unavailable`; audio never stored or logged ([ADR 0026](docs/decisions/0026-client-side-recall-matcher.md)) |
 | `GET /demo/recall.json` | - | recorded transcript timeline `{"label", "chunks": [{"t_ms", "text"}]}` the client replays through its matcher; missing -> 404 `demo_missing` |

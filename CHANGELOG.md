@@ -2,6 +2,30 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.11.0] - 2026-10-28
+
+### Added
+
+- Recall end screen: "Mark got it" on each missed point stores an override; counts and hit rates update and the
+  override survives reload (MEM-033).
+- Rehearsal history + hit rates render on page load when runs are stored, in their own section
+  (`static/history.js`); each row's "View" button shows that run's said-vs-palace from the stored record (MEM-033).
+
+### Fixed
+
+- `scripts/merge_branch.sh` skips `git rebase` when `main` is already an ancestor, so merge commits are no longer
+  flattened.
+
+### Security
+
+- Signed association records, ADR 0027 (MEM-036): `POST /associate` signs each valid record (HMAC-SHA256, key from
+  `MEMRIPAL_RECORD_KEY`, else a random per-process key) and returns `sig`; `POST /scenes` requires exactly
+  `{image, box, record, sig}`: missing `sig` -> 400 `bad_request`, bad `sig` -> 403 `bad_signature`, both before any
+  model call. `spatial`, `visual` and `scene_prompt_details` are capped at 300 chars. The client skips unsigned
+  stored entries as tier 3 `unsigned`.
+- Palaces stored before 0.11.0 show unsigned scenes until regenerated; multi-instance deploys must set
+  `MEMRIPAL_RECORD_KEY` (a per-process key fails signatures across instances and restarts).
+
 ## [0.10.0] - 2026-10-28
 
 ### Added
