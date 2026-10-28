@@ -91,7 +91,7 @@ function pageFromHtml() {
   return fakePage(ids, { hidden });
 }
 
-/** Fake server: demo fixtures, /loci, /split, /associate, /scenes, /demo/recall.json. */
+/** Fake server: demo fixtures, /loci, /split, /associate (signed, MEM-036), /scenes, /demo/recall.json. */
 function demoServer() {
   const calls = [];
   const fn = async (url, init = {}) => {
@@ -105,7 +105,7 @@ function demoServer() {
     if (u === "/demo/recall.json") return jsonResponse(TIMELINE);
     if (u === "/loci") return jsonResponse({ image: IMAGE, width: 800, height: 600, loci: LOCI });
     if (u === "/split") return jsonResponse({ points: POINTS });
-    if (u === "/associate") return jsonResponse({ record: record(body.item, body.locus), status: "valid" });
+    if (u === "/associate") return jsonResponse({ record: record(body.item, body.locus), status: "valid", sig: `sig_${body.item}` });
     if (u === "/scenes") return jsonResponse({ tier: 1, image: IMAGE, width: 800, height: 600 });
     return jsonResponse({ error: "not_found" }, 404);
   };
@@ -242,6 +242,9 @@ describe("Load demo builds and walks the fixture palace", () => {
     await until(() => !el(b, "walk").hidden, "walk view shown", TURNS);
     assert.equal(b.server.count("POST", "/associate"), POINTS.length);
     assert.equal(b.server.count("POST", "/scenes"), POINTS.length);
+    for (const c of b.server.calls.filter((c) => c.u === "/scenes")) {
+      assert.equal(c.body.sig, `sig_${c.body.record.item}`, "each /scenes request carries its record's /associate sig");
+    }
     assert.equal(findAll(el(b, "scenes"), (n) => n.tagName === "IMG").length, POINTS.length, "a scene per locus in #scenes");
     assert.match(visibleText(el(b, "walk-step")), /\b1 of 12\b/);
     assert.equal(el(b, "walk-prev").disabled, true);

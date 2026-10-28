@@ -71,13 +71,16 @@ const IDS = [
 ];
 const page = () => fakePage(IDS, { hidden: ["route-review", "route-undo", "walk", "scene-overlay"] });
 
+/** Opaque server signature the fake /associate returns for an item (MEM-036). */
+const sigOf = (item) => `sig_${item}`;
+
 /** Fetch for /associate and /scenes; sceneFor(item) -> /scenes JSON body. */
 function flowFetch(sceneFor = (item) => ({ tier: 1, image: SCENE(item), width: 800, height: 600 })) {
   const calls = [];
   const fn = async (url, init = {}) => {
     const body = init.body ? JSON.parse(init.body) : null;
     calls.push({ url: String(url), body });
-    if (url === "/associate") return jsonResponse({ record: record(body.item, body.locus), status: "valid" });
+    if (url === "/associate") return jsonResponse({ record: record(body.item, body.locus), status: "valid", sig: sigOf(body.item) });
     if (url === "/scenes") return jsonResponse(sceneFor(body.record.item));
     return jsonResponse({ error: "not_found" }, 404);
   };
@@ -281,7 +284,13 @@ describe("runEncode: auto flag and resume", () => {
     assert.equal(p.els["route-review"].hidden, true);
     assert.equal(p.els.walk.hidden, false);
     assert.deepEqual(f.assoc(), ITEMS.map((item, i) => [item, LABELS[i]]));
-    assert.equal(f.calls.filter((c) => c.url === "/scenes").length, 3);
+    const sceneBodies = f.calls.filter((c) => c.url === "/scenes").map((c) => c.body);
+    assert.equal(sceneBodies.length, 3);
+    assert.deepEqual(
+      sceneBodies.map((b) => [b.record.item, b.sig]),
+      ITEMS.map((item) => [item, sigOf(item)]),
+      "each /scenes request carries its record's /associate sig",
+    );
   });
 
   test("resume: a valid stored record is reused without a request", async () => {
