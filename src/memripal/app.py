@@ -1,15 +1,20 @@
 """FastAPI app: health, static shell (MEM-001), POST /loci (MEM-015), demo photo (MEM-017),
-POST /split (MEM-020), POST /associate (MEM-021), demo notes (MEM-023)."""
+POST /split (MEM-020), POST /associate (MEM-021), demo notes (MEM-023), deploy guards (MEM-034)."""
 
 import base64
+import hmac
 import json
 import logging
+import os
+import threading
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
+from starlette.datastructures import Headers
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from memripal.associate import AssociateRejected, associate, check_inputs, check_place
@@ -39,9 +44,9 @@ ASSOCIATE_KEYS = {"image", "item", "locus"}
 PLACE_BODY_CAP = 1024
 PLACE_KEYS = {"lat", "lon"}
 
-# DNS-rebinding guard for the loopback-only server.
-# S7 (public Cloud Run deploy, ADR 0010) must extend this list with the deploy host.
+# DNS-rebinding guard; the public deploy (ADR 0010) appends its host via MEMRIPAL_ALLOWED_HOSTS.
 ALLOWED_HOSTS = ("127.0.0.1", "localhost")
+PASSCODE_HEADER = "X-Memripal-Passcode"
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +54,76 @@ logger = logging.getLogger(__name__)
 def _error(status: int, code: str) -> JSONResponse:
     # Only a fixed short code: model/exception text never reaches the client.
     return JSONResponse({"error": code}, status_code=status)
+
+
+def _env_int(name: str, minimum: int) -> int | None:
+    """The env var as an int >= `minimum`, None when unset; anything else fails startup loudly."""
+    raw = os.environ.get(name)
+    if raw is None:
+        return None
+    if not (raw.isascii() and raw.isdigit()) or int(raw) < minimum:
+        raise ValueError(f"{name} must be an integer >= {minimum}")
+    return int(raw)
+
+
+class BudgetExhausted(RuntimeError):
+    """The per-instance live call budget is spent; the call never reached the backend."""
+
+
+class _BudgetedBackend:
+    """Counts live backend.call against a per-instance cap (MEM-034); everything else passes through."""
+
+    def __init__(self, backend: ModelBackend, cap: int) -> None:
+        self._backend = backend
+        self._left = cap
+        # Routes run in the threadpool and /loci fans SAM calls out across threads.
+        self._lock = threading.Lock()
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._backend, name)
+
+    def call(self, req: Any) -> Any:
+        with self._lock:
+            if self._left <= 0:
+                raise BudgetExhausted
+            self._left -= 1
+        return self._backend.call(req)
+
+
+class _BodyTooLarge(Exception):
+    pass
+
+
+class _BodyCap:
+    """App-wide body cap ahead of every route cap: a declared or streamed body past `cap` -> 413."""
+
+    def __init__(self, app, cap: int) -> None:
+        self.app = app
+        self.cap = cap
+
+    async def __call__(self, scope, receive, send) -> None:
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        length = Headers(scope=scope).get("content-length")
+        # A malformed length is left to the route's own _length_error.
+        if length is not None and length.isascii() and length.isdigit() and int(length) > self.cap:
+            return await _error(413, "too_large")(scope, receive, send)
+        total = 0
+
+        async def capped_receive():
+            nonlocal total
+            message = await receive()
+            if message["type"] == "http.request":
+                total += len(message.get("body", b""))
+                if total > self.cap:
+                    raise _BodyTooLarge
+            return message
+
+        try:
+            await self.app(scope, capped_receive, send)
+        except _BodyTooLarge:
+            # Routes read the whole body before responding, so no response has started yet.
+            await _error(413, "too_large")(scope, receive, send)
 
 
 def _locus_json(lc: Locus) -> dict:
@@ -138,8 +213,33 @@ def create_app(backend: ModelBackend | None = None, place_provider=None) -> Fast
         # Fixture mode stays offline end to end, so the demo place replays like every other answer.
         place_provider = FixturePlaceProvider(REPLAY_DIR) if backend.mode == "fixture" else PlaceProvider()
 
+    # Deploy guards (MEM-034), read once here. Strip: Secret Manager values carry a trailing newline.
+    extra_hosts = [h.strip() for h in os.environ.get("MEMRIPAL_ALLOWED_HOSTS", "").split(",") if h.strip()]
+    passcode = os.environ.get("MEMRIPAL_PASSCODE", "").strip() or None
+    call_budget = _env_int("MEMRIPAL_CALL_BUDGET", 0)
+    max_body = _env_int("MEMRIPAL_MAX_BODY_BYTES", 1)
+    live = backend.mode != "fixture"
+    if live and call_budget is not None:
+        backend = _BudgetedBackend(backend, call_budget)
+
     app = FastAPI(title="MemriPal")
-    app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(ALLOWED_HOSTS))
+    if max_body is not None:
+        app.add_middleware(_BodyCap, cap=max_body)
+    # Added last so it runs first: an unlisted host is refused before any other check.
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=[*ALLOWED_HOSTS, *extra_hosts])
+
+    def _passcode_error(request: Request) -> JSONResponse | None:
+        """401 for a live model route without the passcode; checked before the body is read."""
+        if not live:
+            return None
+        if passcode is None:
+            # Unconfigured: local run_live use stays open, anything public fails closed.
+            return None if request.url.hostname in ALLOWED_HOSTS else _error(401, "passcode_required")
+        # Header values arrive latin-1 decoded; re-encoding recovers the raw bytes the client sent.
+        sent = request.headers.get(PASSCODE_HEADER, "").encode("latin-1")
+        if hmac.compare_digest(sent, passcode.encode("utf-8")):
+            return None
+        return _error(401, "passcode_required")
 
     @app.get("/healthz")
     def healthz() -> dict[str, str]:
@@ -188,6 +288,8 @@ def create_app(backend: ModelBackend | None = None, place_provider=None) -> Fast
 
     @app.post("/loci")
     async def post_loci(request: Request) -> JSONResponse:
+        if (passcode_error := _passcode_error(request)) is not None:
+            return passcode_error
         media_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
         if media_type not in UPLOAD_TYPES:
             return _error(415, "unsupported_media_type")
@@ -206,6 +308,8 @@ def create_app(backend: ModelBackend | None = None, place_provider=None) -> Fast
             return _error(404, "fixture_missing")
         except BackendCallFailed:
             return _error(502, "upstream")
+        except BudgetExhausted:
+            return _error(429, "budget_exhausted")
         except Exception:
             logger.exception("POST /loci failed")
             return _error(500, "internal")
@@ -222,6 +326,8 @@ def create_app(backend: ModelBackend | None = None, place_provider=None) -> Fast
 
     @app.post("/split")
     async def post_split(request: Request) -> JSONResponse:
+        if (passcode_error := _passcode_error(request)) is not None:
+            return passcode_error
         media_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
         if media_type != "application/json":
             return _error(415, "unsupported_media_type")
@@ -254,10 +360,14 @@ def create_app(backend: ModelBackend | None = None, place_provider=None) -> Fast
             return _error(404, "fixture_missing")
         except BackendCallFailed:
             return _error(502, "upstream")
+        except BudgetExhausted:
+            return _error(429, "budget_exhausted")
         return JSONResponse({"points": points})
 
     @app.post("/associate")
     async def post_associate(request: Request) -> JSONResponse:
+        if (passcode_error := _passcode_error(request)) is not None:
+            return passcode_error
         media_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
         if media_type != "application/json":
             return _error(415, "unsupported_media_type")
@@ -292,6 +402,8 @@ def create_app(backend: ModelBackend | None = None, place_provider=None) -> Fast
             return _error(404, "fixture_missing")
         except BackendCallFailed:
             return _error(502, "upstream")
+        except BudgetExhausted:
+            return _error(429, "budget_exhausted")
         except Exception:
             logger.exception("POST /associate failed")
             return _error(500, "internal")
