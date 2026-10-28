@@ -163,6 +163,22 @@ def s_replay(ctx, page):
     ctx.rec("8 recall replay -> end screen", vis and got >= 1 and missed >= 1, detail)
 
 
+@step("8b live board lights on replay")
+def s_live_board(ctx, page):
+    # MEM-037: the replay board holds one row per palace point; the rows the matcher found are lit.
+    page.wait_for_selector("#recall-live p.live-badge", timeout=30000)
+    page.wait_for_selector("#recall-live ol.live-board li.lit", timeout=30000)
+    badge = page.text_content("#recall-live p.live-badge")
+    rows = page.locator("#recall-live ol.live-board li").count()
+    lit = page.locator("#recall-live ol.live-board li.lit").count()
+    points = page.locator("#recall-results ol.said-vs-palace > li").count()
+    got = page.locator("#recall-results ol.said-vs-palace > li.said-got").count()
+    ctx.shot(page, "10a_live_board")
+    ok = badge == "recorded replay" and rows == points and lit == got and lit >= 1
+    detail = f"badge={badge!r} board_rows={rows} palace_points={points} lit={lit} got={got}"
+    ctx.rec("8b live board lights on replay", ok, detail)
+
+
 def _hits(rate_rows):
     m = re.search(r": (\d+)/(\d+)", rate_rows[0]) if rate_rows else None
     return int(m.group(1)) if m else None

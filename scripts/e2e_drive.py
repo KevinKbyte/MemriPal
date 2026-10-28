@@ -24,7 +24,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 HOST = "127.0.0.1"
 # Step 14 needs a non-localhost Host the app still accepts; Chrome maps it to 127.0.0.1.
 PUBLIC_HOST = "memripal-e2e.test"
-EXPECTED_STEPS = 21
+EXPECTED_STEPS = 22
 READY_TIMEOUT_S = 30.0
 
 Result = tuple[str, str, str]  # (step name, "PASS" | "FAIL", detail)
