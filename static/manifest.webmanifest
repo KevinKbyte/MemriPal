@@ -1,0 +1,13 @@
+{
+  "name": "MemriPal",
+  "short_name": "MemriPal",
+  "description": "Turn a photo of a familiar place into a memory palace.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1f3a5f",
+  "icons": [
+    {"src": "/static/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}
+  ]
+}

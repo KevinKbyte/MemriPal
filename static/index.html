@@ -5,10 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>MemriPal</title>
     <link rel="stylesheet" href="/static/style.css">
+    <link rel="manifest" href="/static/manifest.webmanifest">
+    <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+    <meta name="theme-color" content="#1f3a5f">
+
   </head>
   <body>
     <main>
       <h1>MemriPal</h1>
+      <p id="public-banner" hidden>live needs passcode / try Load demo</p>
       <p id="status">Checking backend...</p>
       <p id="meta-notice" hidden>Your photo is sent to Meta's AI APIs to find places in it.</p>
       <label for="photo">Take or choose a photo of a room</label>
