@@ -102,8 +102,8 @@ Contract:
   max_completion_tokens: int = 1024, model="muse-spark-1.3") -> CallResult`: payload exactly per API facts;
   strict true; image part only when image_data_url given; max_completion_tokens always present.
 - `segment(*, image_data_url: str, phrase: str, model="sam-3.1") -> CallResult`: payload per API facts.
-- `image_edit(*, image_data_url: str, prompt: str, size: str | None = None, model="muse-image-1.0") -> CallResult`:
-  payload per API facts; "size" key only when given.
+- `image_edit(*, image_data_url: str, prompt: str, size: str | None = None, model="muse-image-1.0", timeout=None)
+  -> CallResult`: payload per API facts; "size" key only when given; `timeout` per request (MEM-027).
 - Pure helpers: `chat_content_json(body: bytes) -> dict` (json.loads of choices[0].message.content);
   `responses_text(body: bytes) -> str` (output_text, else joined output[*].content[*].text, else "");
   `image_bytes(body: bytes) -> bytes` (base64-decode data[0].b64_json); `to_data_url(jpeg: bytes) -> str`

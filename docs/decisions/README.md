@@ -44,6 +44,8 @@ the others that you asked about".
 - [0023](0023-chat-provider-adapter-reuses-meta-client.md) `MEMRIPAL_CHAT_PROVIDER` reuses `MetaClient` per host;
   answers keyed `<provider>/<provider model>` (over the `openai` library, a separate HTTP client, or
   `<provider>/<req.model>`).
+- [0024](0024-scene-render-contract.md) Scenes: one whole-photo edit re-encoded to JPEG, keyed by the whole record (box,
+  timeout and template unkeyed), every failure tier 3 (over pass-through bytes, box keys, or /associate's statuses).
 
 ## Minor decisions (no ADR)
 

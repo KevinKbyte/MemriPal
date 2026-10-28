@@ -117,3 +117,59 @@ ADR [0023](../../../../docs/decisions/0023-chat-provider-adapter-reuses-meta-cli
   Meta key. Keys never printed.
 
 Tests: tests/test_chat_provider.py, tests/test_chat_provider_wiring.py, tests/test_run_live.py
+
+## MEM-027 Scene rendering (scenes.py)
+
+ADR [0007](../../../../docs/decisions/0007-scene-render-tiers.md),
+[0024](../../../../docs/decisions/0024-scene-render-contract.md). Plan S4. `src/memripal/scenes.py`, `backend.py`,
+`meta_client.py`.
+- `SCENE_PROMPT`: fixed PG ("family-friendly (PG)") template with fields ITEM, LOCUS, SPATIAL, VISUAL, DETAILS.
+  `scene_prompt(record)` fills them from item, locus, spatial, visual, scene_prompt_details, each collapsed to one
+  line (`" ".join(text.split())`): injected new lines add or alter no framing line; braces in field text stay literal.
+- `MAX_CONCURRENT_SCENES` = 3: one module-level `threading.BoundedSemaphore` around `backend.call`, so the cap holds
+  across threads (10 concurrent scenes peak at exactly 3 in flight). The slot wait has no timeout.
+- `render_scene(backend, processed, box, record) -> Scene(tier, image, reason)` (frozen). Exactly one
+  `backend.call(ModelRequest(method="image_edit", image_jpeg=processed.jpeg, subject="scene", attempt=0,
+  model="muse-image-1.0", prompt_template_id="scene", gen_params={PROMPT_ARGS: {"record": record}}, schema=None))`;
+  never retried, never raises. `box` is not sent (whole-photo edit, client zooms the overlay). Distinct records ->
+  distinct cache keys.
+- Tier 1: reply must be non-empty bytes <= `imaging.MAX_UPLOAD_BYTES` with PNG/JPEG/WEBP magic, header within
+  `MAX_SIDE` / `MAX_PIXELS` (checked before decode); then RGB, LANCZOS-resized to (processed.width,
+  processed.height), always re-encoded JPEG at `imaging.JPEG_QUALITY` (90); reason None.
+- Tier 3: image None, reason one of `fixture_missing` (FixtureMissing), `upstream` (BackendCallFailed: read timeout,
+  content-policy 400, malformed reply), `timeout` (TimeoutError), `internal` (any other exception), or a hostile-reply
+  code `not_bytes`, `empty`, `too_large`, `bad_magic`, `decode_error`, `pixel_bomb`. No model or exception text in
+  the reason; the warning log carries only the code (plus the exception type name for `internal`).
+- MetaBackend `image_edit`: `MetaClient.image_edit(image_data_url=<processed JPEG data URL>,
+  prompt=scene_prompt(record), model=req.model, timeout=backend.IMAGE_EDIT_TIMEOUT_S)` -> one POST /images/edits with
+  a 30 s per-request read timeout. `MetaClient.image_edit(timeout=None)` keeps the client default (kwarg omitted:
+  httpx reads None as no timeout). ReadTimeout is never retried (MetaClient retries pre-send connect errors only).
+  Value = base64-decoded `data[0].b64_json`; non-JSON, no data, undecodable base64, empty bytes, or a body over
+  `meta_client.MAX_RESPONSE_BYTES` -> BackendCallFailed, uncached.
+- Write-through: with `cache_root`, any non-empty reply bytes are stored raw under the request key (photo first);
+  FixtureBackend on that root replays them as bytes -> the same tier-1 scene offline. The timeout is not in the key.
+
+Tests: tests/test_scenes.py, tests/test_scenes_live.py
+
+## MEM-028 POST /scenes
+
+ADR [0024](../../../../docs/decisions/0024-scene-render-contract.md). Plan S4. `src/memripal/app.py`, MEM-021
+idiom; checks in this order, all before any model call:
+- Content-Type not application/json -> 415 {"error": "unsupported_media_type"}; Content-Length or streamed body past
+  `SCENES_BODY_CAP` (max-size photo as a data URL + `6 * MAX_FIELD_CHARS * len(FIELDS)` + 64 KiB) -> 413
+  {"error": "too_large"}; malformed Content-Length -> 400 "bad_content_length".
+- Body exactly {"image": str, "box", "record"}; malformed JSON, non-object, missing or unknown key, non-string image
+  -> 400 {"error": "bad_request"}.
+- Record, before the photo is decoded: an object whose str item and locus pass `check_inputs` (item <= 100 chars)
+  and which passes `validate_association(record, item, locus)` (MEM-021), else 400 {"error": "bad_record"}.
+- Image: no `data:image/jpeg;base64,` prefix -> 400 "bad_data_url"; invalid base64 -> 400 "bad_base64"; bytes
+  checked by `validate_processed`, never re-encoded (replay keys hold): ImageRejected -> its status + code.
+- Box: exactly {"x1", "y1", "x2", "y2"} ints (bools refused) with 0 <= x1 < x2 <= width and 0 <= y1 < y2 <= height
+  of the processed photo, else 400 {"error": "bad_box"}.
+- Then `render_scene` (MEM-027) in the threadpool. Tier 1 -> 200 exactly {"tier": 1, "image":
+  "data:image/jpeg;base64,...", "width", "height"} (processed photo dims). Tier 3 -> 200 exactly {"tier": 3,
+  "reason": <code>}, fixture miss and upstream failure included (never 404/502/500, unlike /associate).
+- Error bodies only {"error": code}, no model or input text. Host guard applies.
+- Fixture mode: a recorded scene replays offline (no network); a record never recorded -> tier 3.
+
+Tests: tests/test_scenes_api.py
