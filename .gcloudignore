@@ -1,0 +1,5 @@
+# Source upload filter for `gcloud run deploy --source` (MEM-034): the Cloud Build tarball gets
+# the same exclusions as the image build context, plus everything gitignored.
+.gcloudignore
+#!include:.gitignore
+#!include:.dockerignore

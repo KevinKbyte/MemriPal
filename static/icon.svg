@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Placeholder MemriPal icon: a house outline (the memory palace) with three numbered-locus dots. -->
+  <rect width="512" height="512" rx="96" fill="#1f3a5f"/>
+  <path d="M96 256 L256 112 L416 256 V400 H96 Z" fill="none" stroke="#ffffff" stroke-width="28" stroke-linejoin="round"/>
+  <circle cx="176" cy="320" r="24" fill="#f2b134"/>
+  <circle cx="256" cy="264" r="24" fill="#f2b134"/>
+  <circle cx="336" cy="320" r="24" fill="#f2b134"/>
+</svg>

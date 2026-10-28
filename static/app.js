@@ -4,6 +4,9 @@
 
 import { associationKey } from "./palace_store.js";
 import { browserGeolocate, createPlaceState, lookupPlace, readGps, wirePlace } from "./place.js";
+import { showPublicBanner } from "./public_banner.js";
+
+export { isPublicHost, showPublicBanner } from "./public_banner.js";
 
 /**
  * @typedef {{x1: number, y1: number, x2: number, y2: number}} LocusBox
@@ -414,6 +417,7 @@ function wireUpload() {
 
 // Guard keeps the module importable under node --test.
 if (typeof document !== "undefined") {
+  showPublicBanner(document, location.hostname);
   showHealth();
   wireUpload();
 }

@@ -1,0 +1,19 @@
+# Build context for the Cloud Run image (MEM-034): nothing secret, private, or dev-only.
+.git
+.githooks
+.venv
+.claude
+.pytest_cache
+.ruff_cache
+**/__pycache__
+.env
+.env.*
+.secrets
+*.dpapi
+**/*.dpapi
+refs
+fixtures/raw
+docs
+tests
+scripts
+static/*.test.mjs
