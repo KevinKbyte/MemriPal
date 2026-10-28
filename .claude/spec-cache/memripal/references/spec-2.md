@@ -429,7 +429,7 @@ or the Dockerfile (`.dockerignore` excludes scripts).
   scripts/run_live.ps1", exit 2, before any call or write.
 - `--dry-run`: one line per asset (name, output paths) then "calls: 2"; no key needed, no client built, no file
   written, exit 0.
-- Budget: exactly one `image_edit` per asset (never retried: `retries=0`), so a full run = 2 paid calls, no other
+- Budget: exactly one `image_edit` per asset (never retried: `max_retries=0`), so a full run = 2 paid calls, no other
   API call.
 - Failure: a non-ok `CallResult` (non-2xx, transport, response_too_large) or a body Pillow cannot decode -> stderr
   "<name>: failed (<CallResult.error, else bad_image>)", that asset's existing files untouched, the next asset still

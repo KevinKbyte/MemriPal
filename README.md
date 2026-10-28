@@ -17,6 +17,7 @@ replay lights the same board badged "recorded replay".
 Each run is saved in the browser with a said-vs-palace view; deleting one asks to confirm and offers Undo. On the
 end screen, "Mark got it" overrides a missed point (counts and hit rates update, kept across reloads). Stored runs
 and hit rates show on page load in a history section; each row's "View" opens that run's said-vs-palace.
+Runs saved in localStorage before IndexedDB was available are copied into IndexedDB once on page load.
 
 ## Built during the hackathon (Oct 26 - Nov 4 2026)
 
@@ -276,6 +277,10 @@ powershell -File scripts/run_live.ps1 [-KeyFile <path>] uv run python scripts/pr
 - Add `--audio <clip.wav>` (mono 16-bit WAV, 16 or 24 kHz) to also probe Meta speech-to-text:
   `powershell -File scripts/run_live.ps1 [-KeyFile <path>] uv run python scripts/probe_live.py --photo <demo photo>
   --audio <clip.wav>`; the report gains `asr_ok`, `asr_transcript_nonempty`, `asr_has_duration` and an `asr` block.
+- `gen_assets.py` generates the app icon (`icon-512.png`, `icon-192.png`) and `empty-state.webp` into
+  `static/assets/` (`--out <dir>` overrides), one paid `image_edit` per asset (2 calls). Check the plan first with
+  `--dry-run` (no key, no calls), then:
+  `powershell -File scripts/run_live.ps1 [-KeyFile <path>] uv run python scripts/gen_assets.py`.
 
 ## Deploy
 

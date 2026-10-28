@@ -2,6 +2,25 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.14.0] - 2026-10-28
+
+### Added
+
+- `scripts/gen_assets.py` (MEM-038): generates the app icon (`icon-512.png`, `icon-192.png`) and `empty-state.webp`
+  under `static/assets/` (`--out <dir>` overrides) with one Meta `image_edit` per asset on a blank white canvas (2
+  paid calls, `max_retries=0`). `--dry-run` prints the plan and `calls: 2` (no key, no calls, no writes).
+  `META_API_KEY` is required (unset or blank: exit 2); a failed asset keeps its existing files, the next still runs,
+  exit 1. Writes files only; wiring them into the manifest / `index.html` is a later change.
+
+### Changed
+
+- On page load where IndexedDB exists, palace and rehearsal history saved in localStorage (`memripal.palace:`,
+  `memripal.rehearsal:`) is copied into IndexedDB once (`static/storage_migrate.js`, MEM-039). A record already in
+  IndexedDB wins; a malformed entry is skipped and kept; a prefix's localStorage keys are cleared only when every
+  copy for it succeeded, else the next load retries.
+- Recall replay failure now shows one line "Replay failed: <code>" in the results (`network`, the server's error code
+  such as `demo_missing` else `http_<status>`, `bad_response`, `unexpected error`) and saves no rehearsal (MEM-039).
+
 ## [0.13.0] - 2026-10-28
 
 ### Added
@@ -100,7 +119,7 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 ### Changed
 
 - Palace and rehearsal stores move to IndexedDB where available; history already in localStorage is not migrated
-  and goes unread while IndexedDB is present (MEM-033).
+  and goes unread while IndexedDB is present (MEM-033; migrated as of 0.14.0, MEM-039).
 - README: intro and recall flow describe the shipped misses, hit rates and demo -> scenes -> walk -> recall page.
 
 ### Fixed
