@@ -383,14 +383,17 @@ through the unchanged MEM-032 relay, not streaming. `static/mic_wav.js`, `static
 - `recordClip(...)` gains `take()` -> Promise<Uint8Array | null>: 16 kHz mono WAV of the samples since the previous
   take's mark, starting `LIVE_OVERLAP_MS` (1000) before that mark (clamped at 0); null when no new sample since the
   mark. `stop()` returns the untaken remainder with the same overlap, or null when a take() ran and nothing is new
-  since it. Without take() calls, `stop()` is unchanged (the whole clip).
+  since it. Without take() calls, `stop()` is unchanged (the whole clip, empty WAV if no frames). take() after
+  stop() -> null.
 - `renderLiveBoard(points, doc, {label})` -> `{el, light(indices)}`: `el` holds `p.live-badge` (label, "LIVE" or
   "recorded replay") and `ol.live-board`, one `li` per point in palace order (label text, textContent only).
   `light(indices)` adds class "lit" and `data-state="got"`; unknown indices ignored; idempotent.
 - `createLiveRelay({clip, post, matcher, onMatch, onFail, every = LIVE_SLICE_MS (5000), setInterval,
   clearInterval})` -> `{stop()}`. Each tick: skip if a post is in flight; else `take()`; null -> no post; else
-  `post(wav)` -> `onMatch(matcher.append(text))`. A `RecallAudioError` clears the interval, calls `onFail(err)`, no
-  further posts. `stop()` clears the interval and awaits any in-flight post; idempotent.
+  `post(wav)` -> `onMatch(matcher.append(text))`. Any post rejection (a `RecallAudioError` or other error) clears
+  the interval, calls `onFail(err)` once, no further posts; the page shows `err.code`, else "unexpected". `stop()`
+  clears the interval and awaits any in-flight post; it never rejects (that post's failure goes to onFail);
+  idempotent.
 - Page: `#recall-start` with mic + AudioContext renders the board ("LIVE") into `<div id="recall-live">` in `#recall`
   and starts the relay (post = `postRecallAudio`, keywords = point labels, passcode via `withPasscode`). Live
   failure = Done failure: clip stopped, mic released, typed fallback, "Speech relay failed (<code>)"; lit points stay
@@ -398,4 +401,4 @@ through the unchanged MEM-032 relay, not streaming. `static/mic_wav.js`, `static
   end the run as today. `#recall-replay`: board labelled "recorded replay", each chunk's matches light as it plays.
   Typed mode: no board.
 
-Tests: static/recall_live.test.mjs, static/mic_wav.test.mjs, static/app_live.test.mjs
+Tests: static/recall_live.test.mjs, static/mic_wav_take.test.mjs, static/app_live.test.mjs
