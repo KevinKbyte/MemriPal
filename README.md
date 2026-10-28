@@ -12,6 +12,8 @@ recorded fixtures.
 
 On the page, Load demo builds the demo palace, renders its scenes and opens the walk view; the recall panel then
 takes spoken recall (mic), typed answers (no mic, or the speech relay failed), or a replay of a recorded session.
+While you speak, a board badged "LIVE" lights each point as you recall it (5 s slices through the same relay); the
+replay lights the same board badged "recorded replay".
 Each run is saved in the browser with a said-vs-palace view; deleting one asks to confirm and offers Undo. On the
 end screen, "Mark got it" overrides a missed point (counts and hit rates update, kept across reloads). Stored runs
 and hit rates show on page load in a history section; each row's "View" opens that run's said-vs-palace.

@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.13.0] - 2026-10-28
+
+### Added
+
+- Live recall lighting (MEM-037): during spoken recall the page shows a board in `#recall-live` (badge "LIVE", one
+  row per palace point) and lights each point (class `lit`) as soon as the matcher finds it. The mic clip is sliced
+  every 5 s with 1 s overlap (`recordClip` `take()`, `static/recall_live.js` `createLiveRelay`) and each slice goes
+  through the unchanged `POST /recall/audio` relay; Done posts only the untaken remainder. A relay failure falls
+  back to typed answers with "Speech relay failed (<code>)"; lit points stay lit. Server unchanged; <= 36 ASR calls
+  per 3-min run.
+- `#recall-replay` shows the same board badged "recorded replay" and lights points as the replay plays. Typed mode
+  has no board.
+
 ## [0.12.0] - 2026-10-28
 
 ### Added
