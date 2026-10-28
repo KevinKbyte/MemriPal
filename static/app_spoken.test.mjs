@@ -97,7 +97,7 @@ function demoServer(audio) {
     if (u === "/demo/notes.txt") return new Response(NOTES, { headers: { "content-type": "text/plain" } });
     if (u === "/loci") return jsonResponse({ image: IMAGE, width: 800, height: 600, loci: LOCI });
     if (u === "/split") return jsonResponse({ points: POINTS });
-    if (u === "/associate") return jsonResponse({ record: record(body.item, body.locus), status: "valid" });
+    if (u === "/associate") return jsonResponse({ record: record(body.item, body.locus), status: "valid", sig: `sig_${body.item}` });
     if (u === "/scenes") return jsonResponse({ tier: 1, image: IMAGE, width: 800, height: 600 });
     if (u === "/recall/audio" && method === "POST") return audio(call);
     return jsonResponse({ error: "not_found" }, 404);
