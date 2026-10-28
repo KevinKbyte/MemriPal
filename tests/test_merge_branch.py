@@ -206,6 +206,55 @@ class TestMergeBranch:
         assert _calls(log) == []
 
 
+def _merge_resolving_conflict(wt: Path, env: dict, other: str, resolved: str) -> str:
+    """Merge `other` into the worktree branch, resolve shared.txt's conflict, return the merge sha."""
+    merge = _git(wt, env, "merge", "-q", "--no-ff", other)
+    assert merge.returncode != 0, "fixture expected a conflicting merge: " + merge.stdout + merge.stderr
+    (wt / "shared.txt").write_text(resolved, encoding="utf-8", newline="\n")
+    _ok(_git(wt, env, "add", "--", "shared.txt"))
+    _ok(_git(wt, env, "commit", "-q", "--no-edit"))
+    return _head(wt, env)
+
+
+# Covers: MEM-024
+# Requirement: when main is already an ancestor of the branch HEAD (e.g. main was merged in, or
+# the branch contains its own resolved merge commits), merge_branch.sh skips the rebase -- a
+# plain fast-forward suffices -- so a merge-heavy branch is enqueued with its history intact
+# (HEAD sha unchanged, merge commits preserved) instead of being flattened into a replay that
+# re-hits already-resolved conflicts.
+class TestMergeBranchSkipsRebaseWhenMainIsAncestor:
+    def test_branch_with_main_merged_in_enqueues_with_head_unchanged(self, repos, tmp_path):
+        primary, wt, env, log = repos
+        _commit_file(wt, env, "shared.txt", "feature side\n", "feature edits shared")
+        _commit_file(primary, env, "shared.txt", "main side\n", "main edits shared")
+        merge_sha = _merge_resolving_conflict(wt, env, "main", "reconciled\n")
+        assert _git(wt, env, "merge-base", "--is-ancestor", "main", "HEAD").returncode == 0
+
+        result = _run([wt.as_posix()], env, tmp_path)
+
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert _calls(log) == ["check:feature", "enqueue", "check:main"]
+        assert _head(wt, env) == merge_sha
+        assert _git(wt, env, "merge-base", "--is-ancestor", merge_sha, "HEAD").returncode == 0
+
+    def test_branch_with_internal_conflicting_merge_is_not_rebased(self, repos, tmp_path):
+        _primary, wt, env, log = repos
+        _ok(_git(wt, env, "switch", "-q", "-c", "side"))
+        _commit_file(wt, env, "shared.txt", "side edit\n", "side edits shared")
+        _ok(_git(wt, env, "switch", "-q", "feature"))
+        _commit_file(wt, env, "shared.txt", "feature edit\n", "feature edits shared")
+        merge_sha = _merge_resolving_conflict(wt, env, "side", "resolved\n")
+        parents = _ok(_git(wt, env, "rev-list", "--parents", "-n", "1", "HEAD")).split()
+        assert len(parents) == 3, "fixture HEAD should be a two-parent merge commit"
+
+        result = _run([wt.as_posix()], env, tmp_path)
+
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert _head(wt, env) == merge_sha, "branch was rewritten (rebased) despite main being an ancestor"
+        assert _calls(log) == ["check:feature", "enqueue", "check:main"]
+        assert (wt / "shared.txt").read_text(encoding="utf-8") == "resolved\n"
+
+
 # Fake `uv`: strips `run` and its options, then execs the command only when it targets a
 # script under $FAKE_ALLOWED_ROOT; anything else (e.g. a real request_merge.py) is blocked.
 FAKE_UV = """#!/bin/sh
