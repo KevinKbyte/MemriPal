@@ -22,6 +22,7 @@ import base64
 import io
 import json
 import socket
+import wave
 
 import pytest
 from fastapi.testclient import TestClient
@@ -29,6 +30,8 @@ from PIL import Image
 
 from memripal.app import create_app
 from memripal.backend import PROMPT_ARGS
+from memripal.meta_client import CallResult
+from memripal.recall_relay import MAX_CHUNK_BYTES
 
 LOOPBACK_URL = "http://127.0.0.1"
 PUBLIC_HOST = "memripal-abc123-uc.a.run.app"
@@ -334,3 +337,115 @@ class TestGlobalBodyCap:
         monkeypatch.setenv("MEMRIPAL_MAX_BODY_BYTES", bad)
         with pytest.raises(ValueError):
             create_app(backend=LiveStub())
+
+
+def _wav(rate: int = 16000, sampwidth: int = 2, frames: int = 1600) -> bytes:
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(sampwidth)
+        w.setframerate(rate)
+        w.writeframes(b"\x00" * sampwidth * frames)
+    return buf.getvalue()
+
+
+def _asr_result(ok: bool) -> CallResult:
+    if not ok:
+        return CallResult(ok=False, status=500, body=b"down", error="500 http_error", attempts=1, latency_s=0)
+    body = json.dumps({"transcript": "vivid images stick"}).encode()
+    return CallResult(ok=True, status=200, body=body, error=None, attempts=1, latency_s=0)
+
+
+class FakeAsr:
+    """ASR stand-in: replies with the queued results in order (then the last one again), records calls."""
+
+    def __init__(self, *oks: bool):
+        self.results = [_asr_result(ok) for ok in (oks or (True,))]
+        self.calls = 0
+
+    def transcribe(self, wav_bytes, *, keywords=None, **kw):
+        self.calls += 1
+        return self.results[min(self.calls, len(self.results)) - 1]
+
+
+def _audio_body(audio: bytes | None = None, b64: str | None = None) -> bytes:
+    encoded = b64 if b64 is not None else base64.b64encode(_wav() if audio is None else audio).decode("ascii")
+    return json.dumps({"audio": encoded, "keywords": ["lamp", "door"]}).encode("utf-8")
+
+
+# Decoded clip is one 44-byte WAV header past MAX_CHUNK_BYTES; the base64 body stays under the route cap.
+OVERSIZE_CLIP_BODY = _audio_body(_wav(frames=MAX_CHUNK_BYTES // 2))
+BAD_BASE64_BODY = _audio_body(b64="data:audio/wav;base64,UklGRg==")
+
+# (content type, body, passcode, expected status, expected error) for a /recall/audio refusal
+AUDIO_REJECTIONS = {
+    "401-wrong-passcode": ("application/json", _audio_body(), "wrong-passcode", 401, "passcode_required"),
+    "415-content-type": ("audio/wav", _audio_body(), PASSCODE, 415, "unsupported_media_type"),
+    "413-oversize-clip": ("application/json", OVERSIZE_CLIP_BODY, PASSCODE, 413, "too_large"),
+    "400-bad-request": ("application/json", b"[]", PASSCODE, 400, "bad_request"),
+    "400-bad-base64": ("application/json", BAD_BASE64_BODY, PASSCODE, 400, "bad_base64"),
+    "400-bad-audio": ("application/json", _audio_body(_wav(sampwidth=1)), PASSCODE, 400, "bad_audio"),
+}
+
+
+# Covers: MEM-032, MEM-034
+# Requirement: each /recall/audio ASR relay spends one unit of the shared MEMRIPAL_CALL_BUDGET, charged only
+# after the request passes the passcode and validation; a spent budget answers 429 budget_exhausted with no
+# ASR call, refused requests spend nothing, and a failed upstream call still counts.
+class TestRecallAudioBudget:
+    def _live(self, monkeypatch, asr: FakeAsr, budget: str = "1"):
+        monkeypatch.setenv("MEMRIPAL_PASSCODE", PASSCODE)
+        monkeypatch.setenv("MEMRIPAL_CALL_BUDGET", budget)
+        stub = LiveStub()
+        return stub, TestClient(create_app(backend=stub, asr_client=asr), base_url=LOOPBACK_URL)
+
+    def _relay(self, client):
+        return _post(client, "/recall/audio", "application/json", _audio_body(), PASSCODE)
+
+    def test_relay_past_the_cap_is_429_without_asr_call(self, monkeypatch):
+        asr = FakeAsr()
+        _, client = self._live(monkeypatch, asr)
+        assert self._relay(client).status_code == 200
+        resp = self._relay(client)
+        assert resp.status_code == 429, resp.text[:300]
+        assert resp.json() == {"error": "budget_exhausted"}
+        assert asr.calls == 1
+
+    @pytest.mark.parametrize("case", list(AUDIO_REJECTIONS), ids=list(AUDIO_REJECTIONS))
+    def test_refused_relay_does_not_spend(self, monkeypatch, case):
+        content_type, body, sent, status, error = AUDIO_REJECTIONS[case]
+        asr = FakeAsr()
+        _, client = self._live(monkeypatch, asr)
+        for _ in range(2):
+            resp = _post(client, "/recall/audio", content_type, body, sent)
+            assert resp.status_code == status, resp.text[:300]
+            assert resp.json() == {"error": error}
+        resp = self._relay(client)
+        assert resp.status_code == 200, resp.text[:300]
+        assert asr.calls == 1
+
+    def test_failed_upstream_call_still_spends(self, monkeypatch):
+        asr = FakeAsr(False, True)
+        _, client = self._live(monkeypatch, asr)
+        failed = self._relay(client)
+        assert failed.status_code == 502, failed.text[:300]
+        assert failed.json() == {"error": "upstream"}
+        resp = self._relay(client)
+        assert resp.status_code == 429, resp.text[:300]
+        assert asr.calls == 1
+
+    def test_model_call_spends_the_relay_budget(self, monkeypatch):
+        asr = FakeAsr()
+        stub, client = self._live(monkeypatch, asr)
+        assert _post(client, "/split", "application/json", _split_body(), PASSCODE).status_code == 200
+        resp = self._relay(client)
+        assert resp.status_code == 429, resp.text[:300]
+        assert (stub.calls, asr.calls) == (1, 0)
+
+    def test_relay_spends_the_model_call_budget(self, monkeypatch):
+        asr = FakeAsr()
+        stub, client = self._live(monkeypatch, asr)
+        assert self._relay(client).status_code == 200
+        resp = _post(client, "/split", "application/json", _split_body(), PASSCODE)
+        assert resp.status_code == 429, resp.text[:300]
+        assert (stub.calls, asr.calls) == (0, 1)
