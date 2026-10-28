@@ -95,6 +95,20 @@ Set `MEMRIPAL_MODE`:
 - `fixture` (default): offline replay of recorded responses under `fixtures/`; no network, no key.
 - `meta`: live Meta Model API calls; requires `META_API_KEY` in the environment.
 
+In `meta` mode only, `MEMRIPAL_CHAT_PROVIDER` moves Spark chat to another OpenAI-compatible host (exact match; any
+other value fails startup). Segmentation stays on Meta, so `META_API_KEY` is still required; fixture mode ignores
+all of these ([ADR 0023](docs/decisions/0023-chat-provider-adapter-reuses-meta-client.md)).
+
+| `MEMRIPAL_CHAT_PROVIDER` | Base URL | Model | Key env |
+| --- | --- | --- | --- |
+| `meta` (default) | Meta Model API | Muse Spark | `META_API_KEY` |
+| `baseten` | `https://inference.baseten.co/v1` | `meta-models/muse-spark-open-1026` | `BASETEN_API_KEY` |
+| `fireworks` | `https://api.fireworks.ai/inference/v1` | `accounts/fireworks/models/muse-spark-open` | `FIREWORKS_API_KEY` |
+| `local` | `MEMRIPAL_LOCAL_CHAT_URL` (default `http://localhost:11434/v1`) | `MEMRIPAL_LOCAL_CHAT_MODEL` (required) | none |
+
+Missing provider key or local model -> startup error. Strict `json_schema` structured output on the non-Meta hosts is
+not yet verified live.
+
 ## HTTP API
 
 Errors are always `{"error": "<code>"}`, never model or exception text. Upstream failure -> 502 `upstream`; no
@@ -182,6 +196,9 @@ powershell -File scripts/run_live.ps1 [-KeyFile <path>] uv run python scripts/pr
   `META_API_KEY` + `MEMRIPAL_MODE=meta` only in the child process env; it never writes or logs the key, and exits with
   the child's exit code (missing key file: exit 2). With no child command it starts the app
   (`uv run uvicorn memripal.app:app --port 8000`).
+- With `MEMRIPAL_CHAT_PROVIDER` `baseten` or `fireworks` it also decrypts `~/.secrets/<provider>-api-key.dpapi`
+  (create it with the step 1 command, file name changed) into the child's `BASETEN_API_KEY` / `FIREWORKS_API_KEY`;
+  missing file: exit 2 before the child starts, stderr names the file.
 - `probe_live.py` exercises Spark, SAM 3.1 and Muse Image on one photo and writes `report.json` (+ `tier1.webp`,
   `tier2.webp`) to `fixtures/raw/probe/<UTC timestamp>/` (gitignored; override with `--out <dir>`). It reads the key
   only from `META_API_KEY` (unset, or photo not found: exit 2) and prints the kept-loci count and the 5 plan checks.

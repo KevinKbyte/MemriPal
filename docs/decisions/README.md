@@ -41,6 +41,9 @@ the others that you asked about".
   item + locus label (over direct IndexedDB, localStorage, or server storage).
 - [0022](0022-opt-in-place-context-server-lookup.md) Opt-in place context: client reads original-file GPS, stateless
   server Wikipedia lookup, user-confirmed place in /associate (over browser-direct lookup or EXIF-only); amends 0009.
+- [0023](0023-chat-provider-adapter-reuses-meta-client.md) `MEMRIPAL_CHAT_PROVIDER` reuses `MetaClient` per host;
+  answers keyed `<provider>/<provider model>` (over the `openai` library, a separate HTTP client, or
+  `<provider>/<req.model>`).
 
 ## Minor decisions (no ADR)
 

@@ -86,3 +86,34 @@ Acceptance (plan CRITERIA):
 7. `scripts/check.sh` rc=0; fixtures regenerated in a separate commit.
 
 Tests: static/place.test.mjs, tests/test_place_api.py, tests/test_associate_place.py
+
+## MEM-026 Chat provider toggle
+
+ADR [0023](../../../../docs/decisions/0023-chat-provider-adapter-reuses-meta-client.md). Plan D12 (ADR 0006).
+`src/memripal/chat_provider.py`, `backend.py`, `meta_client.py`, `scripts/run_live.ps1`.
+- Env MEMRIPAL_CHAT_PROVIDER = "meta" (default) | "baseten" | "fireworks" | "local", exact match; other ->
+  ValueError naming the env var and the allowed set (`CHAT_PROVIDERS`).
+- Wiring: read only in `select_backend("meta")`; fixture mode never reads it or any provider var. "meta" -> Spark
+  chat on Meta, unchanged. Only Spark chat (`spark_json`) routes to the provider; segment calls stay on Meta;
+  META_API_KEY always required.
+- `ChatProvider(name, client, model)`, client = `MetaClient` at the provider's base URL:
+  - baseten: `https://inference.baseten.co/v1`, model `meta-models/muse-spark-open-1026`, key BASETEN_API_KEY.
+  - fireworks: `https://api.fireworks.ai/inference/v1`, model `accounts/fireworks/models/muse-spark-open` (full
+    path required), key FIREWORKS_API_KEY.
+  - Keyed provider with its key unset or empty -> `MissingApiKey` at startup.
+  - local: MEMRIPAL_LOCAL_CHAT_URL (unset or empty -> `http://localhost:11434/v1`; trailing slash stripped);
+    MEMRIPAL_LOCAL_CHAT_MODEL required (unset or empty -> ValueError at startup); `MetaClient(None, ...)` sends no
+    Authorization header. `MetaClient("")` still raises `MissingApiKey`.
+- Payload identical to Meta's (`max_completion_tokens`, strict `json_schema`), with the provider's model id. Live
+  compatibility of that shape with Baseten / Fireworks / local is UNVERIFIED (open); plain chat connectivity to all
+  three verified 2026-10-27.
+- Cache key: `dataclasses.replace(req, model=<provider> + "/" + <provider model>).cache_key()` (e.g.
+  `local/llama3.2`), the ADR 0018 `modal/` convention: never stored or replayed as a Meta entry; two local models
+  never share an entry.
+- No provider key in the backend repr/str, nor in a failed chat call's logs or error.
+- run_live.ps1: MEMRIPAL_CHAT_PROVIDER baseten | fireworks (case-sensitive) also decrypts
+  `$HOME/.secrets/<provider>-api-key.dpapi` into the child's BASETEN_API_KEY / FIREWORKS_API_KEY beside
+  META_API_KEY; file missing -> stderr names it, exit 2, child never launched. Unset, meta and local load only the
+  Meta key. Keys never printed.
+
+Tests: tests/test_chat_provider.py, tests/test_chat_provider_wiring.py, tests/test_run_live.py
