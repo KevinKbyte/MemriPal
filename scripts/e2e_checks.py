@@ -8,6 +8,7 @@ from e2e_steps import (
     s_drop,
     s_generate,
     s_history_on_load,
+    s_live_board,
     s_load,
     s_override,
     s_reorder,
@@ -232,6 +233,7 @@ def run_all(ctx, browser):
         s_scenes(ctx, page)
         s_walk(ctx, page)
         s_replay(ctx, page)
+        s_live_board(ctx, page)
         override = s_override(ctx, page)
         rows = s_saved(ctx, page)
         if override:

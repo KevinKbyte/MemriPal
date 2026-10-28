@@ -1,12 +1,12 @@
-# Covers: MEM-001, MEM-002, MEM-017, MEM-034, MEM-035
+# Covers: MEM-001, MEM-002, MEM-017, MEM-034, MEM-035, MEM-037
 # Requirement: scripts/e2e_drive.py drives the whole UI against a fixture-mode server it starts itself.
 # Its browser-free helpers must: accept only an http(s) --base-url (trailing slash dropped) and default
 # --out to a fresh dir under the temp dir; start the server on loopback with every inherited MEMRIPAL_*
 # var stripped (no stray passcode, record key or live mode) plus MEMRIPAL_MODE=fixture and the public
 # test host allow-listed; map a base URL to the same port on that non-loopback public host; wait for
 # readiness without hanging when the server dies or the timeout passes; and exit 0 only when exactly
-# 21 steps ran and all passed, 1 on any failure or missing step, 2 when the server never became ready.
-# The module must import without playwright installed.
+# 22 steps ran and all passed, 1 on any failure or missing step, 2 when the server never became ready.
+# One step is the MEM-037 live-board check after recall replay. The module must import without playwright.
 import contextlib
 import importlib.util
 import sys
@@ -18,7 +18,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = REPO_ROOT / "scripts" / "e2e_drive.py"
 PUBLIC_HOST = "memripal-e2e.test"
-EXPECTED = 21
+EXPECTED = 22
 
 
 def _load():
@@ -225,7 +225,7 @@ class TestWaitUntilReady:
         assert t2.slept == 0
 
 
-# Covers: MEM-017
+# Covers: MEM-017, MEM-037
 class TestSummaryAndExitCode:
     def test_summarize_empty(self, mod):
         assert mod.summarize([]) == {"passed": 0, "failed": 0, "total": 0}
