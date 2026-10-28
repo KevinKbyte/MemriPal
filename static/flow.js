@@ -1,10 +1,14 @@
 // @ts-check
-// Page flow (MEM-029..033): Load demo -> encode -> walk view, then the recall panel (typed answers,
-// or the recorded demo replay), the rehearsal history with per-point hit rates, and the live
-// passcode header. The one home of the page wiring app.js calls; model text only via textContent.
+// Page flow (MEM-029..033): Load demo -> encode -> walk view, then the recall panel (spoken via
+// /recall/audio, typed answers, or the recorded demo replay), the rehearsal history with per-point
+// hit rates, and the live passcode header. The one home of the page wiring app.js calls; model text
+// only via textContent.
 
 import { formatHealth, lookupDemoPlace } from "./app.js";
 import { runDemoPalace } from "./encode.js";
+import { createIdbAdapter } from "./idb_adapter.js";
+import { chunkSamples, encodeWav, postRecallAudio, RecallAudioError, recordClip, TARGET_SAMPLE_RATE } from "./mic_wav.js";
+import { localStorageAdapter } from "./palace_store.js";
 import { showPublicBanner } from "./public_banner.js";
 import { REPLAY_LABEL, replayRecording, startRecall } from "./recall.js";
 import { createMatcher } from "./recall_match.js";
@@ -16,6 +20,9 @@ const PASSCODE_ROUTES = new Set(["/loci", "/split", "/associate", "/scenes", "/r
 // The demo is the only palace this page builds, so its history keys on a name that survives reloads.
 const DEMO_PALACE_ID = "demo";
 
+// Cap on one spoken run: room for a full recall without unbounded PCM in memory (6 relay chunks).
+const MAX_RECALL_MS = 3 * 60 * 1000;
+
 /**
  * @typedef {import("./rehearsals.js").Rehearsal} Rehearsal
  * @typedef {{
@@ -24,6 +31,7 @@ const DEMO_PALACE_ID = "demo";
  *   store: ReturnType<typeof import("./palace_store.js").createPalaceStore>,
  *   rehearsals: ReturnType<typeof import("./rehearsals.js").createRehearsalStore>,
  *   getUserMedia?: (c: MediaStreamConstraints) => Promise<MediaStream>,
+ *   AudioContext?: typeof AudioContext,
  *   location: {hostname: string},
  *   loadImage: (src: string) => Promise<CanvasImageSource>,
  *   confirm: () => boolean | Promise<boolean>,
@@ -48,6 +56,33 @@ export function withPasscode(fetchFn, doc) {
     headers.set("X-Memripal-Passcode", code);
     return fetchFn(url, { ...init, headers });
   };
+}
+
+/**
+ * Key-value adapter for a page store (MEM-033): IndexedDB when the browser has it, else localStorage
+ * under `prefix`. localStorage is read lazily: merely touching it throws where storage is disabled.
+ * @param {{indexedDB?: IDBFactory | null, localStorage?: Storage}} env
+ * @param {{dbName: string, storeName: string, prefix: string}} opts
+ */
+export function selectStore(env, { dbName, storeName, prefix }) {
+  if (env.indexedDB) return createIdbAdapter(env.indexedDB, { dbName, storeName });
+  return localStorageAdapter(prefix, () => /** @type {Storage} */ (env.localStorage));
+}
+
+/**
+ * Re-split a recorded 16 kHz WAV so each POST stays under the relay's MAX_CHUNK_BYTES; at least one
+ * chunk. The int16 -> float mapping inverts encodeWav exactly, so the relayed PCM is the recorded PCM.
+ * @param {Uint8Array} wav canonical 44-byte header + int16 mono samples
+ */
+function wavChunks(wav) {
+  const pcm = new DataView(wav.buffer, wav.byteOffset + 44, wav.byteLength - 44);
+  const samples = new Float32Array(pcm.byteLength / 2);
+  for (let i = 0; i < samples.length; i++) {
+    const s = pcm.getInt16(i * 2, true);
+    samples[i] = s < 0 ? s / 0x8000 : s / 0x7fff;
+  }
+  const chunks = chunkSamples(samples);
+  return (chunks.length ? chunks : [samples]).map((c) => encodeWav(c, TARGET_SAMPLE_RATE));
 }
 
 /**
@@ -98,6 +133,24 @@ export function wireApp(deps) {
   let points = [];
   /** @type {Awaited<ReturnType<typeof startRecall>> | null} */
   let session = null;
+  /** @type {Awaited<ReturnType<typeof recordClip>> | null} */
+  let clip = null;
+
+  /** @param {MediaStream} stream */
+  const releaseMic = (stream) => {
+    for (const track of stream.getTracks()) track.stop();
+  };
+  const showTyped = () => {
+    const box = byId("recall-typed");
+    if (box) box.hidden = false;
+  };
+  // Ends any recording in progress and releases the mic; resolves to its WAV, or null if none.
+  const stopSpeaking = () => {
+    const wav = clip ? clip.stop() : null;
+    clip = null;
+    if (session && session.stream) releaseMic(session.stream);
+    return wav;
+  };
 
   const renderHistory = async () => {
     const runs = await rehearsals.list(DEMO_PALACE_ID);
@@ -152,6 +205,7 @@ export function wireApp(deps) {
   };
 
   onClick("load-demo", async () => {
+    void stopSpeaking();
     session = null;
     lookupDemoPlace({ doc, fetch: fetchFn, place: deps.place });
     const auto = Boolean(/** @type {HTMLInputElement | null} */ (byId("auto"))?.checked);
@@ -165,25 +219,51 @@ export function wireApp(deps) {
 
   // The mic is only ever asked for here, on the user's click (MEM-032).
   onClick("recall-start", async () => {
+    void stopSpeaking();
     session = await startRecall({ points, getUserMedia: deps.getUserMedia, doc });
-    if (session.stream) {
-      // Spoken capture (/recall/audio) is not wired yet: release the mic and take typed answers.
-      for (const track of session.stream.getTracks()) track.stop();
-      const box = byId("recall-typed");
-      if (box) box.hidden = false;
+    if (!session.stream) return;
+    if (deps.AudioContext) {
+      clip = await recordClip({ stream: session.stream, AudioContext: deps.AudioContext, maxMs: MAX_RECALL_MS });
+      return;
     }
+    // No Web Audio to record with: release the mic and take typed answers.
+    releaseMic(session.stream);
+    showTyped();
   });
 
   onClick("recall-submit", async () => {
     const box = /** @type {HTMLInputElement | null} */ (byId("recall-typed"));
     if (!session || !box) return;
-    session.submitTyped(String(box.value ?? ""));
-    box.value = "";
-    await endRun(session.matcher.transcript(), session.results(), false);
+    const current = session;
+    const wav = stopSpeaking();
+    if (wav) {
+      // Detached while relaying, so a second Done cannot end the same run twice.
+      session = null;
+      try {
+        for (const chunk of wavChunks(await wav)) {
+          const { text } = await postRecallAudio({ fetch: fetchFn, wav: chunk, keywords: points.map((p) => p.label) });
+          current.matcher.append(text);
+        }
+      } catch (err) {
+        if (!(err instanceof RecallAudioError)) throw err;
+        // Budget spent, fixture-only server or network down: the run continues typed.
+        session = current;
+        showTyped();
+        byId("recall-results")?.replaceChildren(
+          textEl(doc, "p", `Speech relay failed (${err.code}): type what you remember instead.`),
+        );
+        return;
+      }
+    } else {
+      current.submitTyped(String(box.value ?? ""));
+      box.value = "";
+    }
+    await endRun(current.matcher.transcript(), current.results(), false);
   });
 
   // Offline demo: the recorded session from the server, matched locally; never the speech relay.
   onClick("recall-replay", async () => {
+    void stopSpeaking();
     const resp = await fetchFn("/demo/recall.json");
     const timeline = await resp.json();
     const matcher = createMatcher(points);

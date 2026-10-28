@@ -2,8 +2,8 @@
 // MemriPal frontend: backend health plus photo upload -> numbered memory loci (MEM-017).
 // Served as a raw ES module (no build step). Model-derived text is only ever set via textContent.
 
-import { withPasscode, wireApp } from "./flow.js";
-import { associationKey, createPalaceStore, localStorageAdapter } from "./palace_store.js";
+import { selectStore, withPasscode, wireApp } from "./flow.js";
+import { associationKey, createPalaceStore } from "./palace_store.js";
 import { browserGeolocate, createPlaceState, lookupPlace, readGps, wirePlace } from "./place.js";
 import { createRehearsalStore } from "./rehearsals.js";
 
@@ -412,10 +412,13 @@ if (typeof document !== "undefined") {
   const media = navigator.mediaDevices;
   wireApp({
     ...wireUpload(),
-    // localStorage stands in for IndexedDB until the IndexedDB adapter lands.
-    store: createPalaceStore(localStorageAdapter("memripal.palace:")),
-    rehearsals: createRehearsalStore(localStorageAdapter("memripal.rehearsal:")),
+    // Distinct databases: createIdbAdapter only creates its object store on a database's first open.
+    store: createPalaceStore(selectStore(globalThis, { dbName: "memripal-palace", storeName: "palace", prefix: "memripal.palace:" })),
+    rehearsals: createRehearsalStore(
+      selectStore(globalThis, { dbName: "memripal-rehearsals", storeName: "rehearsals", prefix: "memripal.rehearsal:" }),
+    ),
     getUserMedia: media ? media.getUserMedia.bind(media) : undefined,
+    AudioContext: globalThis.AudioContext || /** @type {any} */ (globalThis).webkitAudioContext,
     location,
     confirm: () => window.confirm("Delete this rehearsal?"),
   });
