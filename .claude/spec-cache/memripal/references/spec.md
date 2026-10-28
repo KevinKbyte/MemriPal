@@ -282,7 +282,7 @@ Tests: tests/test_backend.py, tests/test_loci_pipeline.py, tests/test_live_cache
 - Body read via `request.stream()` with a running cap (never `request.body()`); chunked past 15 MiB -> 413
   {"error": "too_large"}. Pipeline: `process_upload` -> `find_loci`, both via `run_in_threadpool`.
 - Host guard: `TrustedHostMiddleware`, `ALLOWED_HOSTS = ("127.0.0.1", "localhost")`, all routes; other Host
-  -> 400. S7 public Cloud Run deploy (ADR 0010) MUST extend ALLOWED_HOSTS with the deploy host, or every
+  -> 400. The public deploy appends its host via MEMRIPAL_ALLOWED_HOSTS (MEM-034, spec-2.md), else every
   request returns 400.
 - 200 JSON: {"image": "data:image/jpeg;base64,...", "width", "height", "photo_sha", "reask_used", "loci": [{"n",
   "label", "phrase", "box": {"x1","y1","x2","y2"}, "outline": [[x,y],...]}]}; image carries no EXIF.
