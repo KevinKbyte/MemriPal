@@ -193,8 +193,15 @@ class MetaClient:
         return self.post("/responses", payload)
 
     def image_edit(
-        self, *, image_data_url: str, prompt: str, size: str | None = None, model: str = "muse-image-1.0"
+        self,
+        *,
+        image_data_url: str,
+        prompt: str,
+        size: str | None = None,
+        model: str = "muse-image-1.0",
+        timeout: float | None = None,
     ) -> CallResult:
+        """`timeout` (seconds) overrides the client default for this request only; None keeps the default."""
         payload: dict = {
             "model": model,
             "prompt": prompt,
@@ -204,7 +211,9 @@ class MetaClient:
         }
         if size is not None:
             payload["size"] = size
-        return self.post("/images/edits", payload)
+        # Omitted rather than None: httpx reads timeout=None as "no timeout at all".
+        per_request = {} if timeout is None else {"timeout": timeout}
+        return self._send("/images/edits", json=payload, **per_request)
 
     def transcribe(
         self,

@@ -1,5 +1,5 @@
 """FastAPI app: health, static shell (MEM-001), POST /loci (MEM-015), demo photo (MEM-017),
-POST /split (MEM-020), POST /associate (MEM-021), demo notes (MEM-023)."""
+POST /split (MEM-020), POST /associate (MEM-021), demo notes (MEM-023), POST /scenes (MEM-028)."""
 
 import base64
 import json
@@ -12,11 +12,20 @@ from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from memripal.associate import AssociateRejected, associate, check_inputs, check_place
+from memripal.associate import (
+    FIELDS,
+    MAX_FIELD_CHARS,
+    AssociateRejected,
+    associate,
+    check_inputs,
+    check_place,
+    validate_association,
+)
 from memripal.backend import BackendCallFailed, FixtureMissing, ModelBackend, select_backend
 from memripal.imaging import MAX_UPLOAD_BYTES, ImageRejected, process_upload, validate_processed
 from memripal.loci import Locus, find_loci
 from memripal.place import FixturePlaceProvider, PlaceProvider, valid_coords
+from memripal.scenes import render_scene
 from memripal.split import MAX_POINTS, SplitRejected, check_notes, split_list, split_notes
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -38,6 +47,10 @@ ASSOCIATE_BODY_CAP = 4 * -(-MAX_UPLOAD_BYTES // 3) + 64 * 1024
 ASSOCIATE_KEYS = {"image", "item", "locus"}
 PLACE_BODY_CAP = 1024
 PLACE_KEYS = {"lat", "lon"}
+# A max-size photo as a data URL plus a max-size record even when every char is JSON-escaped as \uXXXX.
+SCENES_BODY_CAP = 4 * -(-MAX_UPLOAD_BYTES // 3) + 6 * MAX_FIELD_CHARS * len(FIELDS) + 64 * 1024
+SCENES_KEYS = {"image", "box", "record"}
+BOX_KEYS = ("x1", "y1", "x2", "y2")
 
 # DNS-rebinding guard for the loopback-only server.
 # S7 (public Cloud Run deploy, ADR 0010) must extend this list with the deploy host.
@@ -105,6 +118,40 @@ def _associate_body(raw: bytes) -> dict | None:
     if not all(isinstance(body[k], str) for k in ASSOCIATE_KEYS):
         return None
     return body
+
+
+def _scenes_body(raw: bytes) -> dict | None:
+    """The parsed /scenes body, or None unless it is exactly {image, box, record} with a string image."""
+    try:
+        body = json.loads(raw)
+    except ValueError:
+        return None
+    if not isinstance(body, dict) or set(body) != SCENES_KEYS or not isinstance(body["image"], str):
+        return None
+    return body
+
+
+def _record_ok(record: object) -> bool:
+    """True when the record passes the association validator against its own item and locus."""
+    if not isinstance(record, dict):
+        return False
+    item, locus = record.get("item"), record.get("locus")
+    if not isinstance(item, str) or not isinstance(locus, str):
+        return False
+    try:
+        check_inputs(item, locus)
+    except AssociateRejected:
+        return False
+    return validate_association(record, item, locus) is None
+
+
+def _box_ok(box: object, width: int, height: int) -> bool:
+    """Exactly four ints (bools refused) with 0 <= x1 < x2 <= width and 0 <= y1 < y2 <= height."""
+    if not isinstance(box, dict) or set(box) != set(BOX_KEYS):
+        return False
+    if not all(isinstance(box[k], int) and not isinstance(box[k], bool) for k in BOX_KEYS):
+        return False
+    return 0 <= box["x1"] < box["x2"] <= width and 0 <= box["y1"] < box["y2"] <= height
 
 
 def _place_body(raw: bytes) -> tuple[float, float] | None:
@@ -302,6 +349,49 @@ def create_app(backend: ModelBackend | None = None, place_provider=None) -> Fast
                 "status": result.status,
                 "attempts": result.attempts,
                 "record": result.record,
+            }
+        )
+
+    @app.post("/scenes")
+    async def post_scenes(request: Request) -> JSONResponse:
+        media_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
+        if media_type != "application/json":
+            return _error(415, "unsupported_media_type")
+        if (length_error := _length_error(request, SCENES_BODY_CAP)) is not None:
+            return length_error
+        raw = await _read_capped(request, SCENES_BODY_CAP)
+        if raw is None:
+            return _error(413, "too_large")
+        body = _scenes_body(raw)
+        if body is None:
+            return _error(400, "bad_request")
+        image, box, record = body["image"], body["box"], body["record"]
+        # Caps first: a bad record is refused before the photo is decoded or any model call.
+        if not _record_ok(record):
+            return _error(400, "bad_record")
+        if not image.startswith(JPEG_DATA_URL):
+            return _error(400, "bad_data_url")
+        try:
+            photo = base64.b64decode(image[len(JPEG_DATA_URL) :], validate=True)
+        except ValueError:  # binascii.Error, or a non-ASCII str
+            return _error(400, "bad_base64")
+        try:
+            # Never re-encoded: the bytes key the fixture/cache entries.
+            processed = await run_in_threadpool(validate_processed, photo)
+        except ImageRejected as exc:
+            return _error(exc.status, str(exc))
+        if not _box_ok(box, processed.width, processed.height):
+            return _error(400, "bad_box")
+        # Never raises: every model failure, fixture miss included, comes back as tier 3.
+        scene = await run_in_threadpool(render_scene, backend, processed, box, record)
+        if scene.tier != 1:
+            return JSONResponse({"tier": scene.tier, "reason": scene.reason})
+        return JSONResponse(
+            {
+                "tier": 1,
+                "image": "data:image/jpeg;base64," + base64.b64encode(scene.image).decode("ascii"),
+                "width": processed.width,
+                "height": processed.height,
             }
         )
 

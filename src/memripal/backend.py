@@ -278,6 +278,8 @@ PROMPT_ARGS = "prompt_args"
 # Reserved gen_params key: False keeps the photo out of a spark_json call (POST /split, ADR 0019) while
 # the photo still keys the cache; absent means the image is sent.
 SEND_IMAGE = "send_image"
+# Per-request read bound for a scene edit (ADR 0007); kept out of gen_params, as it never shapes the answer.
+IMAGE_EDIT_TIMEOUT_S = 30
 
 
 def _prompt_for(template_id: str, args: dict) -> str:
@@ -293,6 +295,10 @@ def _prompt_for(template_id: str, args: dict) -> str:
         return _reask_prompt(list(args["exclude"]))
     if template_id == "split":
         return split_prompt(args["notes"], args["max_points"])
+    if template_id == "scene":
+        from memripal.scenes import scene_prompt
+
+        return scene_prompt(args["record"])
     raise ValueError(f"unknown prompt template: {template_id!r}")
 
 
@@ -333,7 +339,7 @@ class MetaBackend:
             # Provider-distinct key: Modal answers never overwrite or replay as Meta SAM entries (ADR 0018).
             return self._store(replace(req, model="modal/" + req.model), text)
 
-        from memripal.meta_client import chat_content_json, responses_text, to_data_url
+        from memripal.meta_client import chat_content_json, image_bytes, responses_text, to_data_url
 
         image_url = to_data_url(req.image_jpeg)
         store_req = req
@@ -365,6 +371,18 @@ class MetaBackend:
 
             def valid(v: Any) -> bool:
                 return isinstance(v, dict) and (req.schema is None or _schema_valid(v, req.schema))
+        elif req.method == "image_edit":
+            gen_params = dict(req.gen_params)
+            prompt_args = gen_params.pop(PROMPT_ARGS, {})
+            result = self._client.image_edit(
+                image_data_url=image_url,
+                prompt=_prompt_for(req.prompt_template_id, prompt_args),
+                model=req.model,
+                timeout=IMAGE_EDIT_TIMEOUT_S,
+                **gen_params,
+            )
+            # Bytes only; whether they are a safe image is the caller's check (scenes._fit).
+            parse, valid = image_bytes, lambda v: isinstance(v, bytes) and len(v) > 0
         else:
             raise NotImplementedError(f"live {req.method} lands in a later slice")
         if not result.ok:
@@ -380,7 +398,12 @@ class MetaBackend:
 
     def _store(self, req: ModelRequest, value: Any) -> Any:
         if self.cache is not None:
-            body = value.encode("utf-8") if isinstance(value, str) else json.dumps(value).encode("utf-8")
+            if isinstance(value, bytes):
+                body = value
+            elif isinstance(value, str):
+                body = value.encode("utf-8")
+            else:
+                body = json.dumps(value).encode("utf-8")
             try:
                 # Photo first (kept for a later promote step), so no response entry lacks its photo.
                 self.cache.put_photo(req.image_jpeg)
