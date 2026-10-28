@@ -2,6 +2,29 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.12.0] - 2026-10-28
+
+### Added
+
+- `scripts/e2e_drive.py` (+ `e2e_steps.py`, `e2e_checks.py`, `e2e_support.py`): 21-step Playwright browser E2E
+  driver; starts its own fixture-mode server with `MEMRIPAL_ALLOWED_HOSTS=memripal-e2e.test` (inherited `MEMRIPAL_*`
+  dropped); `--out`, `--base-url`; exit 0 all pass, 1 any failure, 2 server never ready. `tests/test_e2e_drive.py`
+  locks its pure helpers. Not part of `scripts/check.sh`.
+- `docs/submission/demo-script.md` (3-min demo script mapped to the judging rubric) and
+  `docs/submission/checklist.md` (compliance + submission checklist).
+
+### Changed
+
+- README: submission framing, "Built during the hackathon" note, route-to-Meta-call table, AI-generated refs image
+  disclosure, `MEMRIPAL_SEG_PROVIDER` / `MEMRIPAL_STT_PROVIDER` in Modes (STT toggle not yet wired into
+  `POST /recall/audio`), E2E driver command in Setup.
+
+### Fixed
+
+- E2E step 11 (scratchpad driver ported into `scripts/e2e_drive.py`) asserted said-vs-palace in `#recall-results`
+  after reload without a recall run, stale since history moved to its own section (MEM-033); it now checks the
+  history rows before and after Load demo.
+
 ## [0.11.0] - 2026-10-28
 
 ### Added
