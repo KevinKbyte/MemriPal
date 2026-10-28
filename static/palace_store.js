@@ -25,6 +25,32 @@ export function associationKey(item, locusLabel) {
 const ROUTE_KEY = "route";
 
 /**
+ * Browser key-value adapter over localStorage, a stand-in until the IndexedDB adapter lands. Values
+ * are JSON-encoded under `prefix`, so palace and rehearsal records share the origin without colliding.
+ * Storage is read lazily: merely touching window.localStorage throws where storage is disabled.
+ * @param {string} prefix
+ * @param {() => Storage} [storage]
+ */
+export function localStorageAdapter(prefix, storage = () => localStorage) {
+  return {
+    /** @param {string} key */
+    get: async (key) => {
+      const raw = storage().getItem(prefix + key);
+      return raw === null ? undefined : JSON.parse(raw);
+    },
+    /** @param {string} key @param {any} value */
+    put: async (key, value) => storage().setItem(prefix + key, JSON.stringify(value)),
+    /** @param {string} key */
+    delete: async (key) => storage().removeItem(prefix + key),
+    list: async () => {
+      const s = storage();
+      const keys = Array.from({ length: s.length }, (_, i) => s.key(i)).filter((k) => k !== null && k.startsWith(prefix));
+      return keys.map((k) => JSON.parse(/** @type {string} */ (s.getItem(/** @type {string} */ (k)))));
+    },
+  };
+}
+
+/**
  * @param {PalaceAdapter} adapter
  */
 export function createPalaceStore(adapter) {

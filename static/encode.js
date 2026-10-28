@@ -243,6 +243,7 @@ async function errorCode(resp) {
  * writes #upload-status and stops; never throws.
  * @param {{auto?: boolean}} opts
  * @param {EncodeDeps & {loadImage: (src: string) => Promise<CanvasImageSource>}} deps
+ * @returns {Promise<Point[] | undefined>} the /split points once the walk view shows, for recall
  */
 export async function runDemoPalace(opts, deps) {
   const status = deps.doc.getElementById("upload-status");
@@ -283,6 +284,7 @@ export async function runDemoPalace(opts, deps) {
     if (!payload || !Array.isArray(payload.points)) return say("Demo failed: bad_response");
     say(`Found ${found.loci.length} places and ${payload.points.length} notes`);
     await runEncode({ image: found.image, loci: found.loci, points: payload.points, auto: Boolean(opts && opts.auto) }, deps);
+    return payload.points;
   } catch (err) {
     say(`Demo failed: ${err instanceof TypeError ? "network" : "unexpected error"}`);
   }

@@ -2,9 +2,10 @@
 // MemriPal frontend: backend health plus photo upload -> numbered memory loci (MEM-017).
 // Served as a raw ES module (no build step). Model-derived text is only ever set via textContent.
 
-import { associationKey } from "./palace_store.js";
+import { withPasscode, wireApp } from "./flow.js";
+import { associationKey, createPalaceStore, localStorageAdapter } from "./palace_store.js";
 import { browserGeolocate, createPlaceState, lookupPlace, readGps, wirePlace } from "./place.js";
-import { showPublicBanner } from "./public_banner.js";
+import { createRehearsalStore } from "./rehearsals.js";
 
 export { isPublicHost, showPublicBanner } from "./public_banner.js";
 
@@ -79,21 +80,6 @@ export function latestOnly() {
 /** @param {string} id */
 function byId(id) {
   return document.getElementById(id);
-}
-
-async function showHealth() {
-  const el = byId("status");
-  if (!el) return;
-  try {
-    const resp = await fetch("/healthz");
-    const health = resp.ok ? await resp.json() : null;
-    el.textContent = formatHealth(health);
-    // The privacy notice only applies when the photo actually leaves for Meta's APIs.
-    const notice = byId("meta-notice");
-    if (notice && health && health.mode === "meta") notice.hidden = false;
-  } catch {
-    el.textContent = formatHealth(null);
-  }
 }
 
 /**
@@ -248,19 +234,26 @@ export function onPhotoChange(input, deps) {
 }
 
 /**
- * "Load demo" click handler.
+ * Opt-in place lookup for "Load demo" (MEM-025).
+ * @param {Pick<UploadDeps, "doc" | "fetch" | "place">} deps
+ */
+export function lookupDemoPlace(deps) {
+  const place = deps.place;
+  if (!place || !place.enabled()) return;
+  // The demo photo is EXIF-free (MEM-005), so a sidecar stands in for its GPS.
+  const coords = async () => {
+    const resp = await deps.fetch("/demo/place.json");
+    return resp.ok ? resp.json() : null;
+  };
+  void lookupPlace(coords, { doc: deps.doc, fetch: deps.fetch, place });
+}
+
+/**
+ * "Load demo" handler with the upload-only flow (the page runs flow.js's full demo palace).
  * @param {UploadDeps} deps
  */
 export function onLoadDemo(deps) {
-  const place = deps.place;
-  if (place && place.enabled()) {
-    // The demo photo is EXIF-free (MEM-005), so a sidecar stands in for its GPS.
-    const coords = async () => {
-      const resp = await deps.fetch("/demo/place.json");
-      return resp.ok ? resp.json() : null;
-    };
-    void lookupPlace(coords, { doc: deps.doc, fetch: deps.fetch, place });
-  }
+  lookupDemoPlace(deps);
   return showUpload(() => demoUpload(deps.fetch), "could not load the demo photo", deps);
 }
 
@@ -410,14 +403,20 @@ function wireUpload() {
     geolocate: browserGeolocate,
   };
   const input = /** @type {HTMLInputElement | null} */ (byId("photo"));
-  if (input) input.addEventListener("change", () => onPhotoChange(input, deps));
-  const demo = byId("load-demo");
-  if (demo) demo.addEventListener("click", () => onLoadDemo(deps));
+  if (input) input.addEventListener("change", () => onPhotoChange(input, { ...deps, fetch: withPasscode(deps.fetch, document) }));
+  return deps;
 }
 
 // Guard keeps the module importable under node --test.
 if (typeof document !== "undefined") {
-  showPublicBanner(document, location.hostname);
-  showHealth();
-  wireUpload();
+  const media = navigator.mediaDevices;
+  wireApp({
+    ...wireUpload(),
+    // localStorage stands in for IndexedDB until the IndexedDB adapter lands.
+    store: createPalaceStore(localStorageAdapter("memripal.palace:")),
+    rehearsals: createRehearsalStore(localStorageAdapter("memripal.rehearsal:")),
+    getUserMedia: media ? media.getUserMedia.bind(media) : undefined,
+    location,
+    confirm: () => window.confirm("Delete this rehearsal?"),
+  });
 }
