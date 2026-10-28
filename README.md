@@ -26,9 +26,9 @@ flowchart LR
   phrases --> sam["SAM 3.1: boxes per object phrase (built)"]
   sam --> loci["loci.py: select 10-12 loci, route order; no LLM (built)"]
   loci --> assoc["Muse Spark: split notes into items, item-to-locus association (built)"]
-  assoc --> scene["Muse Image: scene edited onto photo (probe)"]
-  scene --> asr["Muse Voice Transcribe: spoken recall (probe)"]
-  asr --> match["Deterministic matcher; no LLM (planned)"]
+  assoc --> scene["Muse Image: scene edited onto photo (built)"]
+  scene --> asr["Muse Voice Transcribe: spoken recall (built)"]
+  asr --> match["Client-side deterministic matcher; no LLM (built)"]
   match -- "missed loci" --> review["User re-recites missed loci"]
 ```
 
@@ -43,8 +43,8 @@ All via the Meta Model API (not original work); client in `src/memripal/meta_cli
 | --- | --- | --- |
 | Muse Spark (`muse-spark-1.3`) | Names objects in the photo; splits notes into items; writes the KAVE COGS association per item | built |
 | SAM 3.1 (`sam-3.1`) | Segments each object phrase into boxes that become loci | built |
-| Muse Image (`muse-image-1.0`) | Renders each mnemonic scene onto the photo | probe |
-| Muse Voice Transcribe (`muse-voice-transcribe-1.0`) | Speech-to-text for eyes-closed spoken recall | probe |
+| Muse Image (`muse-image-1.0`) | Renders each mnemonic scene onto the photo | built |
+| Muse Voice Transcribe (`muse-voice-transcribe-1.0`) | Speech-to-text for eyes-closed spoken recall | built |
 
 Locus selection and recall matching are deterministic code, no LLM
 ([ADR 0008](docs/decisions/0008-spoken-recall-deterministic-matcher.md)).
@@ -89,6 +89,12 @@ Options, pros/cons and rationale per decision ([index](docs/decisions/README.md)
 - [0022](docs/decisions/0022-opt-in-place-context-server-lookup.md) Opt-in place context via server lookup
 - [0023](docs/decisions/0023-chat-provider-adapter-reuses-meta-client.md) Chat provider adapter reuses `MetaClient`;
   answers keyed by provider model
+- [0024](docs/decisions/0024-scene-render-contract.md) Scenes: one whole-photo edit re-encoded to JPEG, keyed by the
+  whole record; every failure is tier 3
+- [0025](docs/decisions/0025-passcode-gate-and-host-allowlist.md) Passcode gate per live route, deploy host via
+  `MEMRIPAL_ALLOWED_HOSTS`, budget counts live model calls
+- [0026](docs/decisions/0026-client-side-recall-matcher.md) Recall matcher runs client-side; server relays one WAV
+  clip to ASR
 
 ## Modes
 
@@ -114,7 +120,9 @@ not yet verified live.
 ## HTTP API
 
 Errors are always `{"error": "<code>"}`, never model or exception text. Upstream failure -> 502 `upstream`; no
-replay in fixture mode -> 404 `fixture_missing`.
+replay in fixture mode -> 404 `fixture_missing`. Live mode: model routes without a valid `X-Memripal-Passcode`
+header -> 401 `passcode_required` (no passcode set: loopback only); spent call budget -> 429 `budget_exhausted`
+([ADR 0025](docs/decisions/0025-passcode-gate-and-host-allowlist.md)).
 
 | Endpoint | Request | 200 response |
 | --- | --- | --- |
@@ -124,6 +132,8 @@ replay in fixture mode -> 404 `fixture_missing`.
 | `POST /associate` | JSON `{"image": "data:image/jpeg;base64,<processed JPEG>", "item": <1..100 chars>, "locus": <label>}`, optional `"place": {"title", "extract"}` | `{"item", "locus", "status": "valid" \| "invalid", "attempts", "record"}`; up to 2 regenerations ([ADR 0020](docs/decisions/0020-association-validate-and-regenerate.md)) |
 | `POST /scenes` | JSON `{"image": "data:image/jpeg;base64,<processed JPEG>", "box": {"x1", "y1", "x2", "y2"}, "record": <association record>}` | `{"tier": 1, "image": "data:image/jpeg;base64,...", "width", "height"}`, else `{"tier": 3, "reason"}` on any model failure incl. no replay (never 404/502) ([ADR 0024](docs/decisions/0024-scene-render-contract.md)) |
 | `POST /place` | JSON `{"lat", "lon"}` (opt-in, below) | `{"places": [{"title", "distance_m", "extract"}]}`, up to 3; upstream failure -> empty list ([ADR 0022](docs/decisions/0022-opt-in-place-context-server-lookup.md)) |
+| `POST /recall/audio` | JSON `{"audio": <base64 mono WAV, <= 1 MiB decoded>, "keywords": [<labels>]}`; `X-Memripal-Passcode` header | `{"text"}` (<= 2000 chars); fixture mode -> 409 `live_only`; no ASR client -> 503 `asr_unavailable`; audio never stored or logged ([ADR 0026](docs/decisions/0026-client-side-recall-matcher.md)) |
+| `GET /demo/recall.json` | - | recorded transcript timeline `{"label", "chunks": [{"t_ms", "text"}]}` the client replays through its matcher; missing -> 404 `demo_missing` |
 | `GET /demo/photo.jpg`, `GET /demo/notes.txt` | - | committed demo fixtures; missing -> 404 `demo_missing` |
 
 ## Place history (opt-in)

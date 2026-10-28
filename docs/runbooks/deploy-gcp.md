@@ -1,8 +1,7 @@
 # Runbook: deploy to GCP Cloud Run
 
-Kev runs every step by hand; Claude never reads, decrypts, or prints a key. Steps marked **[S7]** need the plan's S7
-Deploy-lite code (Dockerfile, passcode, per-instance budget, body cap), which is not built yet: this runbook is the
-target procedure (`docs/plans/2026-10-26-memripal.md` D1, D11, D12, S7). Run from the repo root.
+Kev runs every step by hand; Claude never reads, decrypts, or prints a key. Plan refs: `docs/plans/2026-10-26-memripal.md`
+D1, D11, S7. Run from the repo root.
 
 ## Why Cloud Run
 
@@ -35,13 +34,12 @@ unusable on GCP). On GCP it lives in Secret Manager. The app reads env vars only
 | Env var | Secret | Needed when |
 |---|---|---|
 | `META_API_KEY` | `meta-api-key` | live mode (`src/memripal/backend.py`) |
-| `BASETEN_API_KEY` | `baseten-api-key` | only with `MEMRIPAL_CHAT_PROVIDER=baseten` (D12) |
-| `<PASSCODE_ENV>` | `memripal-passcode` | **[S7]** live-mode passcode (D1) |
+| `MEMRIPAL_PASSCODE` | `memripal-passcode` | live mode on the public URL; sent as the `X-Memripal-Passcode` header ([ADR 0025](../decisions/0025-passcode-gate-and-host-allowlist.md)) |
 
 1. Create each secret, typing the value at the prompt (never on the command line or in shell history):
    `gcloud secrets create <name> --replication-policy=automatic --data-file=-`
    End input on a blank line with Ctrl-D (bash/Cloud Shell) or Ctrl-Z then Enter (PowerShell/cmd). The trailing
-   newline is stored with the value; **[S7]** code must strip it.
+   newline is stored with the value; the app strips it from `MEMRIPAL_PASSCODE`.
 2. Rotate: `gcloud secrets versions add <name> --data-file=-` (same input rule), then redeploy (step 4) so new
    instances read `:latest`.
 3. Grant the runtime service account read access, per secret (default runtime SA:
@@ -50,28 +48,33 @@ unusable on GCP). On GCP it lives in Secret Manager. The app reads env vars only
 
 Never commit a key; the pre-commit hook scans for key patterns.
 
-## 4. Deploy [S7]
-
-With a `Dockerfile` in the repo root, `--source .` builds it (no Dockerfile: buildpacks, not the plan's path). The
-container must listen on Cloud Run's `$PORT`.
+## 4. Deploy
 
 ```bash
-gcloud run deploy memripal --source . --region <region> --allow-unauthenticated --max-instances=1 --set-env-vars=MEMRIPAL_MODE=fixture --set-secrets="META_API_KEY"=meta-api-key:latest,BASETEN_API_KEY=baseten-api-key:latest,<PASSCODE_ENV>=memripal-passcode:latest
+sh scripts/deploy_cloud_run.sh
 ```
 
-- The quotes around `"META_API_KEY"` are stripped by the shell; they keep `scripts/precommit_scan.py` from flagging
-  this line as a key assignment.
-- `--max-instances=1` caps concurrent containers, so the per-instance call budget (D1) is the whole-service budget.
-- `MEMRIPAL_MODE=fixture` keeps the public default at zero spend; how a passcode request reaches live mode is S7 code.
-- Every secret named in `--set-secrets` must exist (step 3); drop `BASETEN_API_KEY=...` if Baseten is unused.
-- `--set-secrets` and `--set-env-vars` replace all existing values on each deploy: always pass the full list.
+Optional env: `GCP_PROJECT` (default: gcloud config project), `REGION` (default `us-central1`), `SERVICE` (default
+`memripal`), `EXTRA_HOSTS` (comma list, e.g. a custom domain). It runs `gcloud run deploy --source .` (builds the repo
+`Dockerfile`) with `--allow-unauthenticated --max-instances=1` and prints the service URL.
+
+| Env var | Value | Why |
+|---|---|---|
+| `MEMRIPAL_MODE` | `fixture` | public default is zero spend |
+| `MEMRIPAL_CALL_BUDGET` | `300` | per-instance live call cap; with `--max-instances=1` it is the whole-service cap (D1) |
+| `MEMRIPAL_MAX_BODY_BYTES` | `21233664` | app-wide body cap = the largest route cap (`POST /split`) |
+| `MEMRIPAL_ALLOWED_HOSTS` | `<service>-<project-number>.<region>.run.app` plus `EXTRA_HOSTS` | host guard; the script derives Cloud Run's deterministic URL before the first deploy |
+
+Secrets come from step 3 via `--set-secrets` (`MEMRIPAL_PASSCODE`, `META_API_KEY`); both must exist before deploying.
+Going live = redeploy with `MEMRIPAL_MODE=meta` (edit the script's `--set-env-vars`); `--set-env-vars` and
+`--set-secrets` replace all existing values on each deploy, so always pass the full list.
 
 ## 5. Verify
 
 1. Open the service URL printed by the deploy.
 2. Banner reads "live needs passcode / try Load demo" (D13).
 3. "Load demo" runs the full loop in fixture mode.
-4. A live-mode request without the passcode returns 401 **[S7]**.
+4. After a live redeploy, a model request without the passcode returns 401 `passcode_required`.
 
 ## 6. Cost check
 
