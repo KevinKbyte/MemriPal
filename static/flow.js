@@ -6,6 +6,7 @@
 
 import { formatHealth, lookupDemoPlace } from "./app.js";
 import { runDemoPalace } from "./encode.js";
+import { createHistory } from "./history.js";
 import { createIdbAdapter } from "./idb_adapter.js";
 import { chunkSamples, encodeWav, postRecallAudio, RecallAudioError, recordClip, TARGET_SAMPLE_RATE } from "./mic_wav.js";
 import { localStorageAdapter } from "./palace_store.js";
@@ -13,7 +14,6 @@ import { showPublicBanner } from "./public_banner.js";
 import { REPLAY_LABEL, replayRecording, startRecall } from "./recall.js";
 import { createMatcher } from "./recall_match.js";
 import { markPointGot, renderEndScreen } from "./recall_end.js";
-import { deleteRehearsalWithUndo, hitRates } from "./rehearsals.js";
 
 // The model routes the live server gates on the passcode (MEM-034); /demo/* fixtures stay open.
 const PASSCODE_ROUTES = new Set(["/loci", "/split", "/associate", "/scenes", "/recall/audio"]);
@@ -25,7 +25,6 @@ const DEMO_PALACE_ID = "demo";
 const MAX_RECALL_MS = 3 * 60 * 1000;
 
 /**
- * @typedef {import("./rehearsals.js").Rehearsal} Rehearsal
  * @typedef {{
  *   doc: Document,
  *   fetch: typeof fetch,
@@ -153,44 +152,9 @@ export function wireApp(deps) {
     return wav;
   };
 
-  const renderHistory = async () => {
-    const runs = await rehearsals.list(DEMO_PALACE_ID);
-    byId("rehearsals")?.replaceChildren(...runs.map(runItem));
-    byId("hit-rates")?.replaceChildren(
-      ...hitRates(runs).map((h) => textEl(doc, "li", `${h.label}: ${h.hits}/${h.runs}${h.chronic ? " (chronic miss)" : ""}`)),
-    );
-  };
-
-  /** @param {Rehearsal} run */
-  const runItem = (run) => {
-    const li = doc.createElement("li");
-    const got = run.points.filter((p) => p.got || p.override).length;
-    const del = /** @type {HTMLButtonElement} */ (doc.createElement("button"));
-    del.type = "button";
-    del.dataset.action = "delete-rehearsal";
-    del.textContent = "Delete";
-    del.setAttribute("aria-label", `Delete the rehearsal of ${run.timestamp}`);
-    del.addEventListener("click", () => void removeRun(run.id));
-    li.append(textEl(doc, "span", `${run.timestamp}: ${got}/${run.points.length} recalled `), del);
-    return li;
-  };
-
-  /** @param {string} id */
-  const removeRun = async (id) => {
-    const undo = byId("rehearsal-undo");
-    /** @param {() => Promise<void>} restore */
-    const showUndo = (restore) => {
-      if (!undo) return;
-      undo.hidden = false;
-      undo.onclick = async () => {
-        undo.onclick = null;
-        undo.hidden = true;
-        await restore();
-        await renderHistory();
-      };
-    };
-    if (await deleteRehearsalWithUndo(id, { store: rehearsals, confirm: deps.confirm, showUndo })) await renderHistory();
-  };
+  const renderHistory = createHistory({ doc, rehearsals, confirm: deps.confirm, palaceId: DEMO_PALACE_ID });
+  // Stored runs are listed on open, before (and without) Load demo.
+  void renderHistory();
 
   /**
    * @param {string} transcript
