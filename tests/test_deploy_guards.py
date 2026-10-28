@@ -219,17 +219,31 @@ class TestPublicFixtureDemoLoop:
         monkeypatch.setenv("MEMRIPAL_PASSCODE", PASSCODE)
         monkeypatch.setenv("MEMRIPAL_ALLOWED_HOSTS", PUBLIC_HOST)
 
-        def no_network(*args, **kwargs):
-            raise AssertionError("fixture demo loop must not open a network connection")
+        attempts = []
 
-        monkeypatch.setattr(socket.socket, "connect", no_network)
-        client = _client(None, PUBLIC_URL)
-        assert client.get("/healthz").json()["mode"] == "fixture"
-        photo = client.get("/demo/photo.jpg")
-        assert photo.status_code == 200, photo.text[:200]
-        resp = client.post("/loci", content=photo.content, headers={"Content-Type": "image/jpeg"})
-        assert resp.status_code == 200, resp.text[:300]
-        assert len(resp.json()["loci"]) >= 10
+        def no_network(sock, address, *args, **kwargs):
+            attempts.append(address)
+            raise AssertionError(f"fixture demo loop must not open a network connection: {address!r}")
+
+        # The event loop starts first (Windows ProactorEventLoop builds its self-pipe with a loopback
+        # socketpair connect); only then is every connect blocked for the request path.
+        with _client(None, PUBLIC_URL) as client:
+            monkeypatch.setattr(socket.socket, "connect", no_network)
+            probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            try:
+                probe.settimeout(0.05)
+                with pytest.raises(AssertionError):
+                    probe.connect(("192.0.2.1", 80))
+            finally:
+                probe.close()
+            attempts.clear()
+            assert client.get("/healthz").json()["mode"] == "fixture"
+            photo = client.get("/demo/photo.jpg")
+            assert photo.status_code == 200, photo.text[:200]
+            resp = client.post("/loci", content=photo.content, headers={"Content-Type": "image/jpeg"})
+            assert resp.status_code == 200, resp.text[:300]
+            assert len(resp.json()["loci"]) >= 10
+        assert attempts == []
 
 
 # Requirement: a per-instance call budget (MEMRIPAL_CALL_BUDGET) refuses live model calls past the cap
