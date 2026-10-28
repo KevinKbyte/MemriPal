@@ -1,7 +1,10 @@
-"""Generate the offline demo fixtures (MEM-005, MEM-017, MEM-023, MEM-025). Deterministic and idempotent.
+"""Generate the offline demo fixtures (MEM-005, MEM-017, MEM-023, MEM-025, MEM-032).
+
+Deterministic and idempotent.
 
 Usage: uv run python scripts/make_synthetic_fixtures.py
-Writes fixtures/demo/photo.jpg, fixtures/demo/notes.txt, fixtures/demo/place.json, replayable responses
+Writes fixtures/demo/photo.jpg, fixtures/demo/notes.txt, fixtures/demo/place.json,
+fixtures/demo/recall_timeline.json, replayable responses
 under fixtures/replay/, and fixtures/MANIFEST.md.
 """
 
@@ -126,6 +129,21 @@ POINTS = [
     ("Speakers can drop their slides", "speakers can use it to drop their slides"),
     ("Try it on your next shopping list", "try it on your next shopping list"),
 ]
+
+# MEM-032 offline recall replay: a recorded-style transcript timeline that recalls some POINTS and skips
+# others, so a fixture-mode replay shows both got and missed.
+RECALL_TIMELINE = {
+    "label": "replay of a recorded session",
+    "chunks": [
+        {"t_ms": 0, "text": "okay so the method of loci is more than two thousand years old"},
+        {"t_ms": 3200, "text": "you place each thing you want to remember at a familiar spot"},
+        {"t_ms": 7100, "text": "vivid images stick better than plain facts"},
+        {"t_ms": 10400, "text": "imagine how the scene sounds"},
+        {"t_ms": 12600, "text": "smells tastes and feels"},
+        {"t_ms": 16900, "text": "um students can use it for exams"},
+        {"t_ms": 20300, "text": "and try it on your next shopping list"},
+    ],
+}
 
 
 def draw_shelf() -> Image.Image:
@@ -307,6 +325,9 @@ def main() -> int:
     place_files, places = place_entries(cache)
     written.extend(place_files)
     written.extend(notes_entries(cache, process_upload(photo_bytes), places))
+    recall = FIXTURES / "demo" / "recall_timeline.json"
+    recall.write_bytes((json.dumps(RECALL_TIMELINE, indent=2) + "\n").encode("ascii"))
+    written.append(recall)
 
     # Wikipedia text is CC BY-SA, so its replay is credited apart from the synthetic files.
     credits = {place_files[1]: (PLACE_SOURCE, PLACE_LICENSE)}

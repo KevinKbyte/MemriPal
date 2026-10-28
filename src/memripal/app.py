@@ -1,9 +1,12 @@
 """FastAPI app: health, static shell (MEM-001), POST /loci (MEM-015), demo photo (MEM-017),
-POST /split (MEM-020), POST /associate (MEM-021), demo notes (MEM-023)."""
+POST /split (MEM-020), POST /associate (MEM-021), demo notes (MEM-023), POST /recall/audio and the demo
+recall replay (MEM-032)."""
 
 import base64
+import hmac
 import json
 import logging
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -16,7 +19,17 @@ from memripal.associate import AssociateRejected, associate, check_inputs, check
 from memripal.backend import BackendCallFailed, FixtureMissing, ModelBackend, select_backend
 from memripal.imaging import MAX_UPLOAD_BYTES, ImageRejected, process_upload, validate_processed
 from memripal.loci import Locus, find_loci
+from memripal.meta_client import MetaClient
 from memripal.place import FixturePlaceProvider, PlaceProvider, valid_coords
+from memripal.recall_relay import (
+    MAX_CHUNK_BYTES,
+    MAX_TRANSCRIPT_CHARS,
+    RELAY_BODY_CAP,
+    decode_audio,
+    is_relayable_wav,
+    parse_body,
+    transcript_or_none,
+)
 from memripal.split import MAX_POINTS, SplitRejected, check_notes, split_list, split_notes
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -28,6 +41,7 @@ DEMO_PHOTO = REPO_ROOT / "fixtures" / "demo" / "photo.jpg"
 DEMO_NOTES = REPO_ROOT / "fixtures" / "demo" / "notes.txt"
 # Stands in for EXIF GPS: the synthetic demo photo must stay EXIF-free (MEM-005, MEM-025).
 DEMO_PLACE = REPO_ROOT / "fixtures" / "demo" / "place.json"
+DEMO_RECALL = REPO_ROOT / "fixtures" / "demo" / "recall_timeline.json"
 
 UPLOAD_TYPES = {"image/jpeg", "image/png", "image/webp"}
 # Base64 of a max-size photo plus room for 20 KB of notes even when JSON-escaped as \uXXXX.
@@ -42,6 +56,8 @@ PLACE_KEYS = {"lat", "lon"}
 # DNS-rebinding guard for the loopback-only server.
 # S7 (public Cloud Run deploy, ADR 0010) must extend this list with the deploy host.
 ALLOWED_HOSTS = ("127.0.0.1", "localhost")
+LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
+PASSCODE_HEADER = "X-Memripal-Passcode"
 
 logger = logging.getLogger(__name__)
 
@@ -131,12 +147,25 @@ def _length_error(request: Request, cap: int) -> JSONResponse | None:
     return None
 
 
-def create_app(backend: ModelBackend | None = None, place_provider=None) -> FastAPI:
+def _passcode_ok(request: Request, passcode: str) -> bool:
+    """D1 live-route gate. No passcode configured: loopback (run_live.ps1) passes, other hosts fail closed."""
+    if not passcode:
+        return request.url.hostname in LOOPBACK_HOSTS
+    sent = request.headers.get(PASSCODE_HEADER, "")
+    return hmac.compare_digest(sent.encode("utf-8"), passcode.encode("utf-8"))
+
+
+def create_app(backend: ModelBackend | None = None, place_provider=None, asr_client=None) -> FastAPI:
     if backend is None:
         backend = select_backend(None, fixtures_root=REPLAY_DIR, live_cache_root=LIVE_CACHE_DIR)
     if place_provider is None:
         # Fixture mode stays offline end to end, so the demo place replays like every other answer.
         place_provider = FixturePlaceProvider(REPLAY_DIR) if backend.mode == "fixture" else PlaceProvider()
+    # Secret Manager values end in a newline; a blank value counts as unset.
+    passcode = os.environ.get("MEMRIPAL_PASSCODE", "").strip()
+    if asr_client is None and backend.mode != "fixture":
+        api_key = os.environ.get("META_API_KEY", "")
+        asr_client = MetaClient(api_key) if api_key else None
 
     app = FastAPI(title="MemriPal")
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=list(ALLOWED_HOSTS))
@@ -168,6 +197,48 @@ def create_app(backend: ModelBackend | None = None, place_provider=None) -> Fast
         if not DEMO_PLACE.is_file():
             return _error(404, "demo_missing")
         return FileResponse(DEMO_PLACE, media_type="application/json")
+
+    # The offline recall path: the client replays this recorded transcript timeline through its matcher.
+    @app.get("/demo/recall.json", include_in_schema=False)
+    def demo_recall() -> Response:
+        if not DEMO_RECALL.is_file():
+            return _error(404, "demo_missing")
+        return FileResponse(DEMO_RECALL, media_type="application/json")
+
+    # Audio lives only in this request's memory: never written to disk, never logged (D4).
+    @app.post("/recall/audio")
+    async def post_recall_audio(request: Request) -> JSONResponse:
+        if backend.mode == "fixture":
+            return _error(409, "live_only")
+        # Before the body: an unauthenticated caller gets no validation hints and spends no ASR.
+        if not _passcode_ok(request, passcode):
+            return _error(401, "passcode_required")
+        media_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
+        if media_type != "application/json":
+            return _error(415, "unsupported_media_type")
+        if (length_error := _length_error(request, RELAY_BODY_CAP)) is not None:
+            return length_error
+        raw = await _read_capped(request, RELAY_BODY_CAP)
+        if raw is None:
+            return _error(413, "too_large")
+        parsed = parse_body(raw)
+        if parsed is None:
+            return _error(400, "bad_request")
+        audio_b64, keywords = parsed
+        audio = decode_audio(audio_b64)
+        if audio is None:
+            return _error(400, "bad_base64")
+        if len(audio) > MAX_CHUNK_BYTES:
+            return _error(413, "too_large")
+        if not is_relayable_wav(audio):
+            return _error(400, "bad_audio")
+        if asr_client is None:
+            return _error(503, "asr_unavailable")
+        result = await run_in_threadpool(asr_client.transcribe, audio, keywords=keywords)
+        text = transcript_or_none(result.body) if result.ok else None
+        if text is None:
+            return _error(502, "upstream")
+        return JSONResponse({"text": text[:MAX_TRANSCRIPT_CHARS]})
 
     # Stateless: the coords are used for one lookup and never stored or logged (MEM-025).
     @app.post("/place")

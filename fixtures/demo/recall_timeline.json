@@ -1,0 +1,33 @@
+{
+  "label": "replay of a recorded session",
+  "chunks": [
+    {
+      "t_ms": 0,
+      "text": "okay so the method of loci is more than two thousand years old"
+    },
+    {
+      "t_ms": 3200,
+      "text": "you place each thing you want to remember at a familiar spot"
+    },
+    {
+      "t_ms": 7100,
+      "text": "vivid images stick better than plain facts"
+    },
+    {
+      "t_ms": 10400,
+      "text": "imagine how the scene sounds"
+    },
+    {
+      "t_ms": 12600,
+      "text": "smells tastes and feels"
+    },
+    {
+      "t_ms": 16900,
+      "text": "um students can use it for exams"
+    },
+    {
+      "t_ms": 20300,
+      "text": "and try it on your next shopping list"
+    }
+  ]
+}
