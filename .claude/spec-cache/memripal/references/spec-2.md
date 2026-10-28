@@ -349,3 +349,21 @@ Plan S7 (D13). `static/manifest.webmanifest`, `static/icon.svg`, `static/public_
   calls it on load.
 
 Tests: tests/test_deploy_web.py, static/app_public_banner.test.mjs
+
+## MEM-036 Signed association records (security F3)
+
+ADR 0027. Plan S7 prerequisite: without it a passcode holder can send any record text to image edit on Kev's key.
+`src/memripal/app.py`, client flow modules. Both modes (fixture and live).
+- Key: MEMRIPAL_RECORD_KEY read once at `create_app`, stripped, blank = unset; unset -> 32 random bytes per app
+  (records signed before a restart stop verifying). Never logged or returned.
+- `/associate` 200 with a record adds `"sig"`: lowercase hex HMAC-SHA256(key, canonical(record)), canonical =
+  `json.dumps(record, sort_keys=True, separators=(",", ":"), ensure_ascii=True)`.
+- `/scenes` body is exactly {image, box, record, sig} (other key sets -> 400 "bad_request"); `sig` not a str, or
+  not equal (`hmac.compare_digest`) to the record's HMAC -> 403 {"error": "bad_signature"}, before record caps,
+  photo decode or any model call.
+- Caps: record `spatial`, `visual`, `scene_prompt_details` each <= 300 chars; over -> /scenes 400 "bad_record"; the
+  /associate validator refuses the same records, so every signed record passes /scenes caps.
+- Client: stores `sig` beside its record and sends it in every /scenes body; a stored record without `sig` (saved
+  before this change) makes no /scenes request and shows the tier-3 fallback.
+
+Tests: tests/test_record_sign.py, static/app_record_sign.test.mjs
