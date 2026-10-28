@@ -22,7 +22,10 @@ if [ -n "$dirty" ]; then
   exit 1
 fi
 
-if ! git -C "$wt" rebase -q main; then
+# Skip the rebase when main is already an ancestor: rebasing would flatten the
+# branch's merge commits and can conflict on history it already contains.
+if ! git -C "$wt" merge-base --is-ancestor main HEAD \
+  && ! git -C "$wt" rebase -q main; then
   git -C "$wt" rebase --abort
   echo "merge_branch: rebase onto main conflicted; aborted" >&2
   exit 1
