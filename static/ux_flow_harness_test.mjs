@@ -56,7 +56,8 @@ function pageFromHtml() {
 /**
  * Demo server. Optional hooks: photo() / recall() / split() return the answer (a Response or a
  * promise of one; a fresh Response per call); replies[n]() answers the n-th POST /recall/audio;
- * health is the GET /healthz JSON body (e.g. {status: "ok", mode: "fixture"}; default 404).
+ * health is the GET /healthz JSON body (e.g. {status: "ok", mode: "fixture"}; default 404);
+ * healthReply() instead answers GET /healthz itself (a Response or a promise of one).
  */
 function demoServer(opts) {
   const calls = [];
@@ -69,6 +70,7 @@ function demoServer(opts) {
     if (u === "/demo/photo.jpg") {
       return opts.photo ? opts.photo() : new Response(PHOTO, { headers: { "content-type": "image/jpeg" } });
     }
+    if (u === "/healthz" && opts.healthReply) return opts.healthReply();
     if (u === "/healthz" && opts.health) return jsonResponse(opts.health);
     if (u === "/demo/notes.txt") return new Response("notes", { headers: { "content-type": "text/plain" } });
     if (u === "/demo/recall.json") return opts.recall ? opts.recall() : jsonResponse(TIMELINE);
@@ -165,8 +167,8 @@ function clock() {
 }
 
 /**
- * Wire the page. opts: photo / recall / split / replies / health (server hooks), mic ({hold, deny}),
- * closeRejects, rehAdapter (rehearsal store adapter; default an in-memory map).
+ * Wire the page. opts: photo / recall / split / replies / health / healthReply (server hooks),
+ * mic ({hold, deny}), closeRejects, rehAdapter (rehearsal store adapter; default an in-memory map).
  */
 export function boot(opts = {}) {
   assert.ok("wireApp" in flow, `static/flow.js must export wireApp (${flow.__missing ?? "not exported"})`);
