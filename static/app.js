@@ -197,7 +197,11 @@ export async function showUpload(send, failure, deps) {
     if (!isCurrent()) return;
     if (!resp.ok) {
       const code = payload && typeof payload.error === "string" ? payload.error : httpStatusText(resp.status);
-      status.textContent = `Upload failed: ${code}`;
+      // A demo (fixture-mode) server only replays the demo photo, so point at the one thing that works.
+      status.textContent =
+        code === "fixture_missing"
+          ? "Upload failed: this demo server only knows its demo photo. Use Load demo instead."
+          : `Upload failed: ${code}`;
       return;
     }
     if (payload === null) {
