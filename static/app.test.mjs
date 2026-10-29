@@ -233,3 +233,41 @@ describe("Load demo markup", () => {
     assert.match(flowJs, /["']load-demo["']/);
   });
 });
+
+// Covers: MEM-043
+// Requirement: a page opened as /?room=<room_id> makes "Load demo" fetch the generated test room:
+// demoUpload(fetchFn, search) takes the page's location.search and GETs
+// /demo/photo.jpg?room=<encodeURIComponent(room_id)>, then POSTs those bytes to /loci as before.
+// With no search, an empty search, an empty room value, or no room param, the GET URL is unchanged
+// (/demo/photo.jpg).
+describe("Load demo test-room param", () => {
+  function recordingFetch() {
+    const urls = [];
+    const fetchFn = async (url) => {
+      urls.push(String(url));
+      if (String(url).startsWith("/demo/photo.jpg")) {
+        return new Response(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), {
+          status: 200,
+          headers: { "content-type": "image/jpeg" },
+        });
+      }
+      if (String(url) === "/loci") return new Response(JSON.stringify({ loci: [] }), { status: 200 });
+      throw new Error(`unexpected url ${url}`);
+    };
+    return { urls, fetchFn };
+  }
+
+  test("?room= fetches /demo/photo.jpg?room=<encoded id>", async () => {
+    const { urls, fetchFn } = recordingFetch();
+    await app.demoUpload(fetchFn, "?room=a b");
+    assert.deepEqual(urls, ["/demo/photo.jpg?room=a%20b", "/loci"]);
+  });
+
+  test("no room param keeps the plain /demo/photo.jpg fetch", async () => {
+    for (const search of [undefined, "", "?room=", "?other=1"]) {
+      const { urls, fetchFn } = recordingFetch();
+      await app.demoUpload(fetchFn, search);
+      assert.deepEqual(urls, ["/demo/photo.jpg", "/loci"], `search=${JSON.stringify(search)}`);
+    }
+  });
+});

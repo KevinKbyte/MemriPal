@@ -201,3 +201,85 @@ class TestDemoPhotoMissing:
         assert resp.status_code == 404, resp.text[:200]
         assert resp.headers["content-type"].startswith("application/json")
         assert resp.json() == {"error": "demo_missing"}
+
+
+def _webp_bytes(color):
+    import io
+
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new("RGB", (8, 6), color).save(buf, format="WEBP")
+    return buf.getvalue()
+
+
+# Covers: MEM-043
+# Requirement: GET /demo/photo.jpg?room=<room_id> serves a generated test room for the E2E drive.
+# No param, or an empty one, still serves today's demo photo unchanged. A room_id matching
+# ^[a-z0-9-]{1,32}$ that names an existing ROOMS_DIR/<room_id>.webp is served as those raw bytes
+# (no re-encode, ADR 0016) with the media type imaging.sniff reports (image/webp). Anything else -- an
+# unknown id, "..", "/", "%2F", uppercase, 33 chars -- answers 404 {"error": "room_missing"}: the
+# path is built only from a validated id, so no file outside ROOMS_DIR is ever reachable.
+class TestDemoRoomParam:
+    ROOM_ID = "kitchen-dim"
+
+    @pytest.fixture
+    def rooms(self, monkeypatch, tmp_path):
+        import memripal.app as app_module
+
+        rooms_dir = tmp_path / "rooms"
+        (rooms_dir / "a").mkdir(parents=True)
+        room = _webp_bytes((40, 50, 60))
+        (rooms_dir / f"{self.ROOM_ID}.webp").write_bytes(room)
+        # Decoys a path built from an unvalidated id would reach.
+        (rooms_dir / "a" / "b.webp").write_bytes(_webp_bytes((1, 2, 3)))
+        (rooms_dir / ("a" * 33 + ".webp")).write_bytes(_webp_bytes((4, 5, 6)))
+        (tmp_path / "secret.webp").write_bytes(_webp_bytes((7, 8, 9)))
+        monkeypatch.setattr(app_module, "ROOMS_DIR", rooms_dir, raising=False)
+        client = TestClient(
+            create_app(backend=FixtureBackend(DEMO_REPLAY_DIR)),
+            base_url=LOOPBACK_URL,
+            raise_server_exceptions=False,
+        )
+        return client, room
+
+    @pytest.mark.parametrize("query", ["", "?room="])
+    def test_no_room_param_serves_the_demo_photo_unchanged(self, rooms, query):
+        client, _ = rooms
+        resp = client.get(f"/demo/photo.jpg{query}")
+        assert resp.status_code == 200, resp.text[:200]
+        assert resp.headers["content-type"].split(";")[0].strip() == "image/jpeg"
+        assert resp.content == DEMO_PHOTO.read_bytes()
+
+    def test_valid_room_serves_its_bytes_unchanged_as_webp(self, rooms):
+        client, room = rooms
+        resp = client.get(f"/demo/photo.jpg?room={self.ROOM_ID}")
+        assert resp.status_code == 200, resp.text[:200]
+        assert resp.headers["content-type"].split(";")[0].strip() == "image/webp"
+        assert resp.content == room
+
+    def test_unknown_room_is_404_room_missing(self, rooms):
+        client, _ = rooms
+        resp = client.get("/demo/photo.jpg?room=garage")
+        assert resp.status_code == 404, resp.content[:200]
+        assert resp.headers["content-type"].startswith("application/json")
+        assert resp.json() == {"error": "room_missing"}
+
+    @pytest.mark.parametrize(
+        "query",
+        [
+            "room=..",
+            "room=../secret",
+            "room=..%2Fsecret",
+            "room=a/b",
+            "room=a%2Fb",
+            "room=%2F",
+            "room=KITCHEN-DIM",
+            "room=" + "a" * 33,
+        ],
+    )
+    def test_invalid_room_id_is_404_room_missing_and_never_reads_a_file(self, rooms, query):
+        client, _ = rooms
+        resp = client.get(f"/demo/photo.jpg?{query}")
+        assert resp.status_code == 404, resp.content[:200]
+        assert resp.json() == {"error": "room_missing"}

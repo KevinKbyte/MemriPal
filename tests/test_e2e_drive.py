@@ -117,6 +117,25 @@ class TestParseArgs:
         assert out.name  # a per-run subdir, not the shared parent
 
 
+# Covers: MEM-043
+# Requirement: `e2e_drive.py --room <room_id>` drives the existing steps on /?room=<room_id>; the id must
+# match the /demo/photo.jpg?room= pattern ^[a-z0-9-]{1,32}$, else argparse exits 2 naming --room.
+# Without --room, args.room is None and the run is unchanged.
+class TestRoomArg:
+    def test_valid_room_sets_args_room(self, mod):
+        assert mod.parse_args(["--room", "kitchen-dim"]).room == "kitchen-dim"
+
+    @pytest.mark.parametrize("room", ["Kitchen", "../x", "a/b", "a b", "", "a" * 33])
+    def test_bad_room_id_exits_2_naming_room(self, mod, room, capsys):
+        with pytest.raises(SystemExit) as exc:
+            mod.parse_args(["--room", room])
+        assert exc.value.code == 2
+        assert "--room" in capsys.readouterr().err
+
+    def test_no_room_flag_means_none(self, mod):
+        assert mod.parse_args([]).room is None
+
+
 # Covers: MEM-002, MEM-034
 class TestServerLaunch:
     def test_server_env_strips_every_inherited_memripal_var(self, mod):

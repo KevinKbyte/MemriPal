@@ -160,6 +160,42 @@ def test_dockerignore_keeps_runtime_files(rel):
     assert not _ignored(rel, _dockerignore_patterns()), f".dockerignore wrongly excludes {rel}"
 
 
+# Covers: MEM-043
+# Requirement: generated test rooms are test fixtures only (ADR 0029): the build context excludes
+# fixtures/rooms, so the Cloud Run image has no room file.
+@pytest.mark.parametrize("rel", ["fixtures/rooms/x.webp", "fixtures/rooms/kitchen-dim.webp"])
+def test_dockerignore_excludes_generated_rooms(rel):
+    assert _ignored(rel, _dockerignore_patterns()), f".dockerignore does not exclude {rel}"
+
+
+def _text_files(root: Path) -> list[Path]:
+    exts = {".html", ".js", ".mjs", ".css", ".md", ".json", ".txt", ".svg"}
+    return sorted(p for p in root.rglob("*") if p.is_file() and p.suffix.lower() in exts)
+
+
+# Covers: MEM-043
+# Requirement: no file under static/ or docs/submission/ references a generated room, so no room is
+# demo content, submission material or marketing (ADR 0029).
+@pytest.mark.parametrize("area", ["static", "docs/submission"])
+def test_no_room_refs_in_shipped_or_submission_files(area):
+    files = _text_files(REPO / area)
+    assert files, f"no text files found under {area}/"
+    hits = [
+        p.relative_to(REPO).as_posix() for p in files if "fixtures/rooms" in p.read_text(encoding="utf-8")
+    ]
+    assert hits == [], f"generated-room references in {area}/: {hits}"
+
+
+# Covers: MEM-043
+# Requirement: README shows no generated room as an image; rooms appear only as named script fixtures.
+def test_readme_images_never_reference_rooms():
+    text = _read(REPO / "README.md")
+    md_images = re.findall(r"!\[[^\]]*\]\(([^)]*)\)", text)
+    html_images = re.findall(r"<img\b[^>]*\bsrc=[\"']([^\"']*)", text, re.IGNORECASE)
+    refs = md_images + html_images
+    assert [r for r in refs if "rooms/" in r] == [], f"README image refs to rooms: {refs}"
+
+
 def _flag_values(script: str, flag: str) -> list[str]:
     return [m.group(2) for m in re.finditer(rf"{flag}[= ](['\"]?)(\S+?)\1(?=\s|$)", script)]
 
