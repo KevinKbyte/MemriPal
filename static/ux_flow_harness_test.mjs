@@ -39,13 +39,18 @@ export const TURNS = 5000;
 function pageFromHtml() {
   const ids = [];
   const hidden = [];
+  const disabled = [];
   for (const m of HTML.matchAll(/<[a-z][a-z0-9]*\b[^>]*>/gi)) {
     const id = /\bid="([^"]+)"/.exec(m[0]);
     if (!id) continue;
     ids.push(id[1]);
     if (/\shidden(?=[\s>=/])/.test(m[0])) hidden.push(id[1]);
+    if (/\sdisabled(?=[\s>=/])/.test(m[0])) disabled.push(id[1]);
   }
-  return fakePage(ids, { hidden });
+  const page = fakePage(ids, { hidden });
+  // As in index.html: an element written with the disabled attribute starts disabled.
+  for (const id of disabled) page.els[id].disabled = true;
+  return page;
 }
 
 /**
