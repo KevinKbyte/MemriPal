@@ -43,6 +43,7 @@ from memripal.recall_relay import (
 )
 from memripal.record_sign import record_key, sig_ok, sign_record
 from memripal.scenes import render_scene
+from memripal.security_headers import SecurityHeaders
 from memripal.split import MAX_POINTS, SplitRejected, check_notes, split_list, split_notes
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -279,8 +280,10 @@ def create_app(backend: ModelBackend | None = None, place_provider=None, asr_cli
     app = FastAPI(title="MemriPal")
     if max_body is not None:
         app.add_middleware(_BodyCap, cap=max_body)
-    # Added last so it runs first: an unlisted host is refused before any other check.
+    # Added late so it runs early: an unlisted host is refused before any other check.
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=[*ALLOWED_HOSTS, *extra_hosts])
+    # Outermost (MEM-042 C1), so host refusals and 404s carry the headers too; /docs and /redoc stop rendering.
+    app.add_middleware(SecurityHeaders)
 
     def _passcode_error(request: Request) -> JSONResponse | None:
         """401 for a live model route without the passcode; checked before the body is read."""

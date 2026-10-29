@@ -23,7 +23,7 @@ const CHRONIC_MAX_RATE = 0.5;
  * @param {any} r
  * @returns {RehearsalPoint}
  */
-function pointOf(r) {
+export function pointOf(r) {
   return {
     label: String(r?.label ?? ""),
     source_quote: String(r?.source_quote ?? ""),

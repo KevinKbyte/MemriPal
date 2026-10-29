@@ -229,6 +229,14 @@ export async function runEncode(input, deps) {
   /** @type {Step[]} */
   const steps = pairs.map((p, i) => ({ ...p, entry: entries[i] ?? null }));
   const scenes = await runScenes(steps, { doc, fetch: deps.fetch, image: input.image });
+  // I7: a sig only verifies under the issuing instance's key; demoting makes the next run regenerate it.
+  await Promise.all(
+    steps.map((s, i) => {
+      const r = scenes[i];
+      if (!s.entry || !r || r.tier !== 3 || r.reason !== "bad_signature") return null;
+      return store.put(associationKey(s.item, s.locus.label), { ...s.entry, status: "invalid" });
+    }),
+  );
   showWalk(steps, scenes, doc);
 }
 

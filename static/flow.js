@@ -9,6 +9,7 @@ import { errorCode, runDemoPalace } from "./encode.js";
 import { createHistory } from "./history.js";
 import { createIdbAdapter } from "./idb_adapter.js";
 import { chunkSamples, encodeWav, postRecallAudio, RecallAudioError, recordClip, TARGET_SAMPLE_RATE } from "./mic_wav.js";
+import { buildBackup, importBackup, MAX_IMPORT_BYTES } from "./palace_export.js";
 import { localStorageAdapter } from "./palace_store.js";
 import { showPublicBanner } from "./public_banner.js";
 import { REPLAY_LABEL, replayRecording, startRecall } from "./recall.js";
@@ -136,6 +137,50 @@ function textEl(doc, tag, text) {
   return e;
 }
 
+/**
+ * MEM-042 Download backup / import a backup; every outcome is one textContent line in #backup-status.
+ * @param {AppDeps} deps
+ * @param {() => Promise<void>} renderHistory
+ */
+function wireBackup(deps, renderHistory) {
+  const { doc } = deps;
+  const status = doc.getElementById("backup-status");
+  /** @param {string} text */
+  const say = (text) => {
+    if (status) status.textContent = text;
+  };
+  /** @param {unknown} err */
+  const why = (err) => (err instanceof Error ? err.message : "unexpected error");
+  doc.getElementById("backup-export")?.addEventListener("click", async () => {
+    try {
+      const backup = await buildBackup(deps);
+      const href = URL.createObjectURL(new Blob([JSON.stringify(backup)], { type: "application/json" }));
+      const a = /** @type {HTMLAnchorElement} */ (doc.createElement("a"));
+      a.href = href;
+      a.download = "memripal-backup.json";
+      a.click();
+      URL.revokeObjectURL(href);
+      say("");
+    } catch (err) {
+      say(`Export failed: ${why(err)}`);
+    }
+  });
+  const input = /** @type {HTMLInputElement | null} */ (doc.getElementById("backup-import"));
+  input?.addEventListener("change", async () => {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    try {
+      // Checked before reading, so an oversized file is never loaded into memory.
+      if (file.size > MAX_IMPORT_BYTES) throw new Error(`over ${MAX_IMPORT_BYTES} bytes`);
+      const { imported, skipped } = await importBackup(await file.text(), deps);
+      say(`Imported ${imported}, skipped ${skipped}`);
+      await renderHistory();
+    } catch (err) {
+      say(`Import failed: ${why(err)}`);
+    }
+  });
+}
+
 /** @param {AppDeps} deps */
 export function wireApp(deps) {
   const { doc, rehearsals } = deps;
@@ -214,6 +259,7 @@ export function wireApp(deps) {
   const renderHistory = createHistory({ doc, rehearsals, confirm: deps.confirm, palaceId: DEMO_PALACE_ID });
   // Stored runs are listed on open, before (and without) Load demo.
   void renderHistory();
+  wireBackup(deps, renderHistory);
 
   /**
    * @param {string} transcript

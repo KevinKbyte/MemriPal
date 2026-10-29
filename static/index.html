@@ -67,6 +67,14 @@
         <h3>Hit rate per point</h3>
         <ul id="hit-rates"></ul>
       </section>
+      <section id="backup">
+        <h2>Backup</h2>
+        <button id="backup-export" type="button">Download backup</button>
+        <p>The backup file contains your recall transcripts and place names.</p>
+        <label for="backup-import">Import a backup</label>
+        <input id="backup-import" type="file" accept="application/json,.json">
+        <p id="backup-status" role="status"></p>
+      </section>
       <div id="scene-overlay" hidden></div>
     </main>
     <script type="module" src="/static/app.js"></script>
