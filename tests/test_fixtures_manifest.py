@@ -8,6 +8,7 @@
 # tree matches what the generator produces (line endings aside), and running the
 # tests never rewrites the working-tree fixtures.
 import hashlib
+import importlib.util
 import io
 import os
 import shutil
@@ -50,12 +51,40 @@ def _normalized(snap):
     return {k: v.replace(b"\r\n", b"\n") if Path(k).suffix in TEXT_SUFFIXES else v for k, v in snap.items()}
 
 
+def _owned_sources():
+    script = REPO / "scripts" / "make_synthetic_fixtures.py"
+    spec = importlib.util.spec_from_file_location("msf_sources", script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return {module.SOURCE, module.PLACE_SOURCE}
+
+
+def _foreign_rows(text, owned):
+    """(path, row line) for every MANIFEST row whose Source the generator does not own (MEM-043 M1)."""
+    rows = []
+    for line in text.splitlines():
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if len(cells) == 3 and cells[0].startswith("`") and cells[1] not in owned:
+            rows.append((cells[0].strip("`"), line))
+    return rows
+
+
 @pytest.fixture(scope="module")
 def sandbox(tmp_path_factory):
-    """Copy of the generator in a temp root; it writes to <root>/fixtures, never the repo's."""
+    """Copy of the generator in a temp root; it writes to <root>/fixtures, never the repo's.
+
+    Committed foreign rows (rooms, promoted replay files: MEM-043 M1) and their files are copied in
+    too, so the generator run keeps them as it would in the repo; a no-op while none are committed.
+    """
     root = tmp_path_factory.mktemp("fixturegen")
     (root / "scripts").mkdir()
     shutil.copy2(REPO / "scripts" / "make_synthetic_fixtures.py", root / "scripts")
+    foreign = _foreign_rows((COMMITTED / "MANIFEST.md").read_text(encoding="utf-8"), _owned_sources())
+    if foreign:
+        for rel, _ in foreign:
+            (root / "fixtures" / rel).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(COMMITTED / rel, root / "fixtures" / rel)
+        shutil.copy2(COMMITTED / "MANIFEST.md", root / "fixtures" / "MANIFEST.md")
     return root
 
 
@@ -220,3 +249,45 @@ class TestDemoProcessedShaPin:
         processed = process_upload((COMMITTED / "demo" / "photo.jpg").read_bytes())
         assert processed.sha == DEMO_PROCESSED_SHA
         assert (processed.width, processed.height) == (1024, 768)
+
+
+# Covers: MEM-043
+# Requirement (M1): make_synthetic_fixtures.py owns only the MANIFEST rows whose Source is its SOURCE or
+# PLACE_SOURCE and their files; a generator run keeps every other row (generated test rooms, promoted
+# live replay files, ADR 0029) and its file byte-for-byte, so committing rooms never breaks regeneration.
+FOREIGN_FILES = {
+    "rooms/x.webp": b"RIFF\x10\x00\x00\x00WEBPVP8 foreign-room-bytes",
+    "replay/segment/" + "f" * 64 + ".txt": b"<ref>shelf</ref><box>(1,2),(30,40)</box>\n",
+}
+FOREIGN_ROWS = [
+    "| `rooms/x.webp` | generated with Muse Image (muse-image-1.0) by scripts/gen_room_fixtures.py, room x, "
+    "2026-10-29; test fixture only (ADR 0029) | test fixture only (ADR 0029) |",
+    "| `replay/segment/" + "f" * 64 + ".txt` | live Meta responses for room x, promoted by "
+    "scripts/promote_live_cache.py, 2026-10-29 | test fixture only (ADR 0029) |",
+]
+MANIFEST_HEADER = "# Fixtures manifest\n\n| Path | Source | License |\n| --- | --- | --- |\n"
+
+
+class TestGeneratorKeepsForeignRows:
+    def test_every_committed_foreign_row_names_a_committed_file(self):
+        text = (COMMITTED / "MANIFEST.md").read_text(encoding="utf-8")
+        foreign = _foreign_rows(text, _owned_sources())
+        assert [rel for rel, _ in foreign if not (COMMITTED / rel).is_file()] == []
+
+    def test_seeded_foreign_rows_and_files_survive_a_generator_run(self, tmp_path):
+        (tmp_path / "scripts").mkdir()
+        shutil.copy2(REPO / "scripts" / "make_synthetic_fixtures.py", tmp_path / "scripts")
+        fixtures = tmp_path / "fixtures"
+        for rel, data in FOREIGN_FILES.items():
+            (fixtures / rel).parent.mkdir(parents=True, exist_ok=True)
+            (fixtures / rel).write_bytes(data)
+        manifest = fixtures / "MANIFEST.md"
+        manifest.write_text(MANIFEST_HEADER + "\n".join(FOREIGN_ROWS) + "\n", encoding="utf-8", newline="\n")
+        result = _run_script("make_synthetic_fixtures.py", root=tmp_path)
+        assert result.returncode == 0, f"{result.stdout}\n{result.stderr}"
+        for rel, data in FOREIGN_FILES.items():
+            assert (fixtures / rel).read_bytes() == data, rel
+        lines = manifest.read_text(encoding="utf-8").splitlines()
+        assert any("`demo/photo.jpg`" in line and SOURCE_TEXT in line for line in lines)
+        for row in FOREIGN_ROWS:
+            assert row in lines, row
