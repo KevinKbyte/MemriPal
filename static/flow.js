@@ -11,6 +11,7 @@ import { createIdbAdapter } from "./idb_adapter.js";
 import { chunkSamples, encodeWav, postRecallAudio, recordClip, TARGET_SAMPLE_RATE } from "./mic_wav.js";
 import { buildBackup, importBackup, MAX_IMPORT_BYTES } from "./palace_export.js";
 import { localStorageAdapter } from "./palace_store.js";
+import { pointOf } from "./rehearsals.js";
 import { showPublicBanner } from "./public_banner.js";
 import { REPLAY_LABEL, replayRecording, startRecall } from "./recall.js";
 import { createMatcher } from "./recall_match.js";
@@ -273,7 +274,16 @@ export function wireApp(deps) {
    */
   const endRun = async (transcript, results, replay) => {
     session = null;
-    let record = await rehearsals.save(DEMO_PALACE_ID, { transcript, results });
+    /** @type {import("./rehearsals.js").Rehearsal} */
+    let record;
+    let saved = true;
+    try {
+      record = await rehearsals.save(DEMO_PALACE_ID, { transcript, results });
+    } catch {
+      // The store is unavailable (the history says so); the end screen still shows this run, unsaved.
+      saved = false;
+      record = { id: "", palace_id: DEMO_PALACE_ID, timestamp: new Date().toISOString(), transcript, points: results.map(pointOf) };
+    }
     const label = replay ? [textEl(doc, "p", `Results: ${REPLAY_LABEL}`)] : [];
     const show = () => byId("recall-results")?.replaceChildren(...label, renderEndScreen(record, doc, (i) => void mark(i)));
     // Re-rendered before the write, so a second click builds on this override, never a stale copy.
@@ -281,7 +291,9 @@ export function wireApp(deps) {
     const mark = async (i) => {
       record = markPointGot(record, i);
       show();
-      await rehearsals.restore(record);
+      // An unsaved run has no stored copy to rewrite; a failed rewrite leaves the stored copy, which the
+      // history re-render then shows.
+      if (saved) await rehearsals.restore(record).catch(() => {});
       await renderHistory();
     };
     show();

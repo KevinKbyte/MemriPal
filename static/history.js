@@ -38,8 +38,33 @@ export function createHistory({ doc, rehearsals, confirm, palaceId }) {
     return b;
   };
 
+  const showSection = () => {
+    const section = byId("history");
+    if (section) section.hidden = false;
+  };
+  // Created on the first failed read and only hidden again once a read succeeds.
+  /** @type {HTMLElement | null} */
+  let unavailable = null;
+
+  // Never rejects: an unreadable store (IndexedDB failed to open) says so, and the page keeps working.
   const render = async () => {
-    const runs = await rehearsals.list(palaceId);
+    let runs;
+    try {
+      runs = await rehearsals.list(palaceId);
+    } catch {
+      byId("rehearsals")?.replaceChildren();
+      byId("hit-rates")?.replaceChildren();
+      byId("history-view")?.replaceChildren();
+      if (!unavailable) {
+        unavailable = textEl("p", "History unavailable");
+        unavailable.setAttribute("role", "status");
+        byId("history")?.prepend(unavailable);
+      }
+      unavailable.hidden = false;
+      showSection();
+      return;
+    }
+    if (unavailable) unavailable.hidden = true;
     byId("rehearsals")?.replaceChildren(...runs.map(runItem));
     byId("hit-rates")?.replaceChildren(
       ...hitRates(runs).map((h) => textEl("li", `${h.label}: ${h.hits}/${h.runs}${h.chronic ? " (chronic miss)" : ""}`)),
@@ -48,8 +73,7 @@ export function createHistory({ doc, rehearsals, confirm, palaceId }) {
     const viewed = runs.find((r) => r.id === viewedId);
     byId("history-view")?.replaceChildren(...(viewed ? [renderSaidVsPalace(viewed, doc)] : []));
     // Never re-hidden: Undo after removing the last run must stay reachable.
-    const section = byId("history");
-    if (section && runs.length) section.hidden = false;
+    if (runs.length) showSection();
   };
 
   /** @param {Rehearsal} run */

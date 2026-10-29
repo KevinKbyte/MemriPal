@@ -73,9 +73,19 @@ export function createRehearsalStore(adapter, { now = Date.now, newId = () => cr
      */
     async list(palaceId) {
       const values = await adapter.list();
+      // An unparseable or null entry is skipped, so one corrupt record never hides the valid runs beside it.
+      /** @param {string} v @returns {Rehearsal[]} */
+      const parse = (v) => {
+        try {
+          const r = JSON.parse(v);
+          return r === null ? [] : [r];
+        } catch {
+          return [];
+        }
+      };
       return values
         .filter((v) => typeof v === "string")
-        .map((v) => /** @type {Rehearsal} */ (JSON.parse(v)))
+        .flatMap(parse)
         .filter((r) => r.palace_id === palaceId)
         .sort((a, b) => (a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0));
     },
