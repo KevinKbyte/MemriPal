@@ -5,8 +5,6 @@ import traceback
 from dataclasses import dataclass, field
 from pathlib import Path
 
-STATUS_READY_JS = "document.getElementById('status').textContent !== 'Checking backend...'"
-
 
 @dataclass
 class Ctx:
@@ -102,10 +100,19 @@ def route_labels(page):
     return texts(page, "#route li > span:first-child")
 
 
+# Waits use locators, which poll in Playwright's isolated world: an eval'd JS-string predicate
+# raises EvalError under the page CSP (MEM-042, no 'unsafe-eval').
+def wait_status_ready(page):
+    # Lazy import: this module must load where playwright is absent.
+    from playwright.sync_api import expect
+
+    expect(page.locator("#status")).not_to_have_text("Checking backend...", timeout=30000)
+
+
 def open_page(page, url):
     page.goto(url)
-    page.wait_for_function(STATUS_READY_JS)
+    wait_status_ready(page)
 
 
 def wait_history_rows(page):
-    page.wait_for_function("document.querySelectorAll('#rehearsals li').length > 0", timeout=15000)
+    page.locator("#rehearsals li").first.wait_for(timeout=15000)

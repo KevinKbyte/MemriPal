@@ -2,7 +2,7 @@
 
 import re
 
-from e2e_support import STATUS_READY_JS, open_page, route_labels, step, texts
+from e2e_support import open_page, route_labels, step, texts, wait_status_ready
 
 
 @step("1 load page")
@@ -233,7 +233,7 @@ def s_saved(ctx, page):
 @step("9a override persists after reload / 10b history on load")
 def s_history_on_load(ctx, page, rehearsal_after, rates_after):
     page.reload()
-    page.wait_for_function(STATUS_READY_JS)
+    wait_status_ready(page)
     page.wait_for_timeout(1500)
     vis = page.is_visible("#history")
     rows = texts(page, "#rehearsals li > span")

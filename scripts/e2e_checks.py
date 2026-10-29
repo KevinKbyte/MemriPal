@@ -17,7 +17,7 @@ from e2e_steps import (
     s_scenes,
     s_walk,
 )
-from e2e_support import STATUS_READY_JS, hscroll, instrument, open_page, step, texts, wait_history_rows
+from e2e_support import hscroll, instrument, open_page, step, texts, wait_history_rows, wait_status_ready
 
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 SCENES_KEYS = ["box", "image", "record", "sig"]
@@ -101,7 +101,7 @@ def s_reload(ctx, page, before_rows):
     # MEM-033: stored runs list on open, before (and without) Load demo. A past run's said-vs-palace
     # shows only via the history View button (step 10b), never in #recall-results without a recall run.
     page.reload()
-    page.wait_for_function(STATUS_READY_JS)
+    wait_status_ready(page)
     wait_history_rows(page)
     hist_vis = page.is_visible("#history")
     rows_before_demo = texts(page, "#rehearsals li > span")
@@ -127,14 +127,17 @@ def s_reload(ctx, page, before_rows):
 
 
 def _wait_rows(page, n):
-    page.wait_for_function(f"document.querySelectorAll('#rehearsals li').length === {n}", timeout=5000)
+    # Lazy import: this module must load where playwright is absent.
+    from playwright.sync_api import expect
+
+    expect(page.locator("#rehearsals li")).to_have_count(n, timeout=5000)
 
 
 @step("12 rehearsal delete confirm + undo")
 def s_delete(ctx, page):
     # A typed second run needs a mic; replay again to have 2 rows.
     page.click("#recall-replay")
-    page.wait_for_function("document.querySelectorAll('#rehearsals li').length >= 2", timeout=90000)
+    page.locator("#rehearsals li").nth(1).wait_for(timeout=90000)
     before = texts(page, "#rehearsals li > span")
     ctx.dialog["accept"] = False
     page.locator("#rehearsals li").first.locator("button[data-action=delete-rehearsal]").click()
