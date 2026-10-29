@@ -282,7 +282,8 @@ def create_app(backend: ModelBackend | None = None, place_provider=None, asr_cli
         app.add_middleware(_BodyCap, cap=max_body)
     # Added late so it runs early: an unlisted host is refused before any other check.
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=[*ALLOWED_HOSTS, *extra_hosts])
-    # Outermost (MEM-042 C1), so host refusals and 404s carry the headers too; /docs and /redoc stop rendering.
+    # Outermost (MEM-042 C1), so host refusals and 404s carry the headers too.
+    # /docs and /redoc stop rendering.
     app.add_middleware(SecurityHeaders)
 
     def _passcode_error(request: Request) -> JSONResponse | None:
