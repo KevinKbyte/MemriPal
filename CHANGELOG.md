@@ -2,6 +2,26 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.17.3] - 2026-10-29
+
+### Fixed
+
+- After Generate, the association and scene cards collapse behind Show/Hide toggles and the walk scrolls into view
+  (MEM-030; `static/app_ux_generate_collapse.test.mjs`).
+- Uploading your own photo on a demo (fixture) server explains to use Load demo instead of showing raw
+  "fixture_missing" (MEM-017; `static/app_ux_fixture_upload.test.mjs`).
+- On a fixture server, Start recall goes straight to typed recall, never asking for the mic (MEM-032;
+  `static/app_ux_fixture_start_typed.test.mjs`).
+- Done is disabled before Start and after a saved run; an empty typed Done saves nothing and prompts to type first
+  (MEM-032, MEM-033; `static/app_ux_done_guard.test.mjs`).
+- Reordering route places keeps keyboard focus on the moved place's button (MEM-030;
+  `static/app_ux_route_focus.test.mjs`).
+- History rows show local time instead of raw UTC ISO (MEM-033; `static/app_ux_history_local_time.test.mjs`).
+- A failed Mark got it save no longer claims success; the end screen says it could not be saved (MEM-033;
+  `static/app_ux_mark_got_fails.test.mjs`).
+- A failed history Delete keeps the row and shows "Could not delete" instead of an unhandled error (MEM-033;
+  `static/app_ux_delete_fails.test.mjs`).
+
 ## [0.17.2] - 2026-10-29
 
 ### Fixed
