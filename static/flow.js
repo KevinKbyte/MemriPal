@@ -300,15 +300,29 @@ export function wireApp(deps) {
       record = { id: "", palace_id: DEMO_PALACE_ID, timestamp: new Date().toISOString(), transcript, points: results.map(pointOf) };
     }
     const label = replay ? [textEl(doc, "p", `Results: ${REPLAY_LABEL}`)] : [];
-    const show = () => byId("recall-results")?.replaceChildren(...label, renderEndScreen(record, doc, (i) => void mark(i)));
+    /** @param {string} [note] */
+    const show = (note) =>
+      byId("recall-results")?.replaceChildren(
+        ...label,
+        renderEndScreen(record, doc, (i) => void mark(i)),
+        ...(note ? [textEl(doc, "p", note)] : []),
+      );
     // Re-rendered before the write, so a second click builds on this override, never a stale copy.
     /** @param {number} i */
     const mark = async (i) => {
+      const before = record.points[i];
       record = markPointGot(record, i);
       show();
-      // An unsaved run has no stored copy to rewrite; a failed rewrite leaves the stored copy, which the
-      // history re-render then shows.
-      if (saved) await rehearsals.restore(record).catch(() => {});
+      // An unsaved run has no stored copy to rewrite.
+      if (saved) {
+        try {
+          await rehearsals.restore(record);
+        } catch {
+          // Only this point is reverted, so an override clicked meanwhile on another row is kept.
+          record = { ...record, points: record.points.map((p, j) => (j === i ? before : p)) };
+          show(`Could not save "Mark got it" for ${before.label}; it is still counted as missed.`);
+        }
+      }
       await renderHistory();
     };
     show();
