@@ -8,7 +8,7 @@ import { formatHealth, lookupDemoPlace } from "./app.js";
 import { errorCode, runDemoPalace } from "./encode.js";
 import { createHistory } from "./history.js";
 import { createIdbAdapter } from "./idb_adapter.js";
-import { chunkSamples, encodeWav, postRecallAudio, RecallAudioError, recordClip, TARGET_SAMPLE_RATE } from "./mic_wav.js";
+import { chunkSamples, encodeWav, postRecallAudio, recordClip, TARGET_SAMPLE_RATE } from "./mic_wav.js";
 import { buildBackup, importBackup, MAX_IMPORT_BYTES } from "./palace_export.js";
 import { localStorageAdapter } from "./palace_store.js";
 import { showPublicBanner } from "./public_banner.js";
@@ -241,6 +241,11 @@ export function wireApp(deps) {
     if (session && session.stream) releaseMic(session.stream);
     return wav;
   };
+  // stopSpeaking for a run being abandoned: the WAV is unwanted and the mic is already released, so a
+  // failing AudioContext.close() has nothing left to lose and must not escape as an unhandled rejection.
+  const discardSpeaking = () => {
+    void stopSpeaking()?.catch(() => {});
+  };
   /**
    * Budget spent, fixture-only server or network down: the run continues typed; lit points stay lit.
    * @param {NonNullable<typeof session>} current
@@ -248,7 +253,7 @@ export function wireApp(deps) {
    */
   const fallBackTyped = (current, err) => {
     session = current;
-    void stopSpeaking();
+    discardSpeaking();
     showTyped();
     const code = /** @type {{ code?: unknown } | null | undefined} */ (err)?.code;
     byId("recall-results")?.replaceChildren(
@@ -284,7 +289,7 @@ export function wireApp(deps) {
   };
 
   onClick("load-demo", async () => {
-    void stopSpeaking();
+    discardSpeaking();
     session = null;
     lookupDemoPlace({ doc, fetch: fetchFn, place: deps.place });
     const auto = Boolean(/** @type {HTMLInputElement | null} */ (byId("auto"))?.checked);
@@ -314,7 +319,7 @@ export function wireApp(deps) {
     }
   });
   const beginRecall = async () => {
-    void stopSpeaking();
+    discardSpeaking();
     byId("recall-live")?.replaceChildren();
     session = await startRecall({ points, getUserMedia: deps.getUserMedia, doc });
     if (!session.stream) return;
@@ -378,7 +383,7 @@ export function wireApp(deps) {
           if (run) run.board.light(got);
         }
       } catch (err) {
-        if (!(err instanceof RecallAudioError)) throw err;
+        // A relay error or a failing AudioContext.close(): either way the spoken run goes on typed.
         fallBackTyped(current, err);
         return;
       }
@@ -402,7 +407,7 @@ export function wireApp(deps) {
     }
   });
   const replayDemo = async () => {
-    void stopSpeaking();
+    discardSpeaking();
     const replay = await fetchReplay(fetchFn);
     if ("code" in replay) {
       byId("recall-live")?.replaceChildren();
