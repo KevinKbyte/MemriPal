@@ -197,11 +197,9 @@ export function wireApp(deps) {
     if (e) e.addEventListener("click", () => void fn());
   };
   showPublicBanner(doc, deps.location.hostname);
-  // A fixture-mode server answers every speech relay call "live_only", so its runs never ask for the mic.
-  let fixtureMode = false;
-  void showHealth(doc, deps.fetch).then((mode) => {
-    fixtureMode = mode === "fixture";
-  });
+  // A fixture-mode server answers every speech relay call "live_only", so its runs never ask for the mic;
+  // Start awaits this, so a click racing a slow /healthz cannot take the mic path first.
+  const healthMode = showHealth(doc, deps.fetch);
 
   /** @type {import("./recall.js").RecallPoint[]} */
   let points = [];
@@ -361,6 +359,7 @@ export function wireApp(deps) {
     }
   });
   const beginRecall = async () => {
+    const fixtureMode = (await healthMode) === "fixture";
     discardSpeaking();
     byId("recall-live")?.replaceChildren();
     session = await startRecall({ points, getUserMedia: fixtureMode ? undefined : deps.getUserMedia, doc });
