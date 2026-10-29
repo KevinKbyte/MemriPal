@@ -223,6 +223,25 @@ class MetaClient:
         # Never retried: an edit is slow and paid, and the scene slot is held for the whole call.
         return self._send("/images/edits", json=payload, retries=0, **per_request)
 
+    def image_generate(
+        self,
+        *,
+        prompt: str,
+        model: str = "muse-image-1.0",
+        output_format: str = "webp",
+        timeout: float | None = None,
+    ) -> CallResult:
+        """Text-to-image (MEM-043 G1); decode the reply with `image_bytes(result.body)`.
+
+        Payload is exactly {model, prompt, n, output_format}: the API 400s on unknown fields, so no
+        `seed`, and no `size` because its valid values are unverified (Q23 default; MEM-038).
+        `timeout` (seconds) overrides the client default for this request only; None keeps the default.
+        """
+        payload = {"model": model, "prompt": prompt, "n": 1, "output_format": output_format}
+        per_request = {} if timeout is None else {"timeout": timeout}
+        # Never retried: generation is paid and a retry after a 5xx may double-bill.
+        return self._send("/images/generations", json=payload, retries=0, **per_request)
+
     def transcribe(
         self,
         wav_bytes: bytes,
