@@ -288,7 +288,12 @@ export function wireApp(deps) {
     session = null;
     lookupDemoPlace({ doc, fetch: fetchFn, place: deps.place });
     const auto = Boolean(/** @type {HTMLInputElement | null} */ (byId("auto"))?.checked);
+    // Disabled while a load runs, so a second click cannot build the palace twice; runDemoPalace never
+    // throws, so it is re-enabled on every outcome.
+    const button = /** @type {HTMLButtonElement | null} */ (byId("load-demo"));
+    if (button) button.disabled = true;
     const split = await runDemoPalace({ auto }, { ...deps, fetch: fetchFn });
+    if (button) button.disabled = false;
     if (!split) return;
     points = split;
     const panel = byId("recall");
