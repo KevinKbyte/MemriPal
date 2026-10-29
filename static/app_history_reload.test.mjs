@@ -187,7 +187,9 @@ const visibleRows = (b) => (shown(b, "rehearsals") ? runRows(b) : []);
 const button = (row, pred) => findAll(row, (n) => n.tagName === "BUTTON" && pred(n), { visibleOnly: true })[0] ?? null;
 const viewButton = (row) => button(row, (n) => /^\s*View\b/.test(n.textContent));
 const removeButton = (row) => button(row, (n) => n.dataset.action === "delete-rehearsal");
-const stampOf = (row, stamps) => stamps.find((s) => visibleText(row).includes(s)) ?? null;
+// A row names its run by timestamp, shown locale-formatted (UX F14) or as the stored ISO string.
+const showsStamp = (row, iso) => [iso, new Date(iso).toLocaleString()].some((s) => visibleText(row).includes(s));
+const stampOf = (row, stamps) => stamps.find((s) => showsStamp(row, s)) ?? null;
 
 /** Every <ol class="said-vs-palace"> the user can currently see, anywhere on the page. */
 function shownSaidLists(b) {
@@ -301,7 +303,7 @@ describe("per-run said-vs-palace view", () => {
     const { rehAdapter, a, b: runB } = await seeded();
     const b = boot({ rehAdapter });
     await until(() => visibleRows(b).length === 2, "history listed on load", TURNS);
-    const rowFor = (stamp) => visibleRows(b).find((r) => visibleText(r).includes(stamp));
+    const rowFor = (stamp) => visibleRows(b).find((r) => showsStamp(r, stamp));
     for (const row of visibleRows(b)) assert.ok(viewButton(row), "every row has a View control");
     assert.ok(!viewing(b, RUN_A) && !viewing(b, RUN_B), "no run opened before a View click");
     const callsBefore = b.server.calls.length;
@@ -359,7 +361,7 @@ describe("removing a run via the history shown on load", () => {
     const b = boot({ rehAdapter, confirm: () => answer });
     await until(() => visibleRows(b).length === 2, "history listed on load", TURNS);
     const before = [...rehAdapter.map.entries()];
-    const rowA = () => visibleRows(b).find((r) => visibleText(r).includes(a.timestamp));
+    const rowA = () => visibleRows(b).find((r) => showsStamp(r, a.timestamp));
 
     b.p.fire(removeButton(rowA()), "click");
     await until(() => b.confirms.length === 1, "confirm asked", TURNS);
