@@ -64,12 +64,15 @@ describe("upload UI markup", () => {
   const js = readFileSync(new URL("./app.js", import.meta.url), "utf8");
   const NOTICE = "Your photo is sent to Meta's AI APIs to find places in it";
 
+  // Only the photo picker: the MEM-042 backup import (#backup-import) is a second, non-image file input.
   const fileInputs = () =>
-    [...html.matchAll(/<input\b[^>]*>/g)].filter((m) => /\btype="file"/.test(m[0]));
+    [...html.matchAll(/<input\b[^>]*>/g)].filter(
+      (m) => /\btype="file"/.test(m[0]) && /\baccept="image\/\*"/.test(m[0]),
+    );
 
   test("index.html has a camera-capable image file input", () => {
     const inputs = fileInputs();
-    assert.equal(inputs.length, 1, "expected exactly one file input");
+    assert.equal(inputs.length, 1, "expected exactly one image file input");
     assert.match(inputs[0][0], /\baccept="image\/\*"/);
     assert.match(inputs[0][0], /\bcapture="environment"/);
   });
@@ -78,7 +81,7 @@ describe("upload UI markup", () => {
     const at = html.indexOf(NOTICE);
     assert.ok(at >= 0, "notice text missing from index.html");
     const inputs = fileInputs();
-    assert.equal(inputs.length, 1, "expected exactly one file input");
+    assert.equal(inputs.length, 1, "expected exactly one image file input");
     assert.ok(at < inputs[0].index, "notice must precede the file input");
   });
 
@@ -219,9 +222,11 @@ describe("Load demo markup", () => {
     assert.equal([...html.matchAll(/\bid="load-demo"/g)].length, 1, "id load-demo must be unique");
   });
 
-  test("index.html still has exactly one file input", () => {
-    const inputs = [...html.matchAll(/<input\b[^>]*>/g)].filter((m) => /\btype="file"/.test(m[0]));
-    assert.equal(inputs.length, 1, "expected exactly one file input");
+  test("index.html still has exactly one photo file input", () => {
+    const inputs = [...html.matchAll(/<input\b[^>]*>/g)].filter(
+      (m) => /\btype="file"/.test(m[0]) && /\baccept="image\/\*"/.test(m[0]),
+    );
+    assert.equal(inputs.length, 1, "expected exactly one photo file input");
   });
 
   test("flow.js wires the load-demo button", () => {

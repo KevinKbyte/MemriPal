@@ -99,10 +99,15 @@ describe("MEM-042 E1: export format", () => {
 
     const big = stores();
     const long = "x".repeat(2000);
-    for (let i = 0; i < 100; i++) {
-      const rec = fullRecord(`item ${i}`, "lamp", { question: long, answer: long, walk_cue: long, reencode_hint: long });
-      await big.store.put(associationKey(`item ${i}`, "lamp"), { record: rec, status: "valid", sig: SIG });
-    }
+    const bigEntry = (i) => ({
+      record: fullRecord(`item ${i}`, "lamp", { question: long, answer: long, walk_cue: long, reencode_hint: long }),
+      status: "valid",
+      sig: SIG,
+    });
+    // Entry i only grows with i, so count entries of at least entry 0's size exceed the byte cap.
+    const count = Math.floor(api("MAX_IMPORT_BYTES") / JSON.stringify(bigEntry(0)).length) + 1;
+    assert.ok(count <= api("MAX_IMPORT_ASSOCIATIONS"), "the byte cap, not the count cap, must be what trips");
+    for (let i = 0; i < count; i++) await big.store.put(associationKey(`item ${i}`, "lamp"), bigEntry(i));
     await assert.rejects(api("buildBackup")(big), "over MAX_IMPORT_BYTES serialized");
   });
 });
