@@ -99,6 +99,8 @@ function wireOverlay(doc, overlay) {
 export function sceneView(doc, result, box, overlay) {
   if (!result || result.tier !== 1 || !isSafeImageSrc(result.image)) {
     const reason = result && result.tier === 3 ? result.reason : result ? "bad_image" : "skipped";
+    // A demo server only has scenes recorded for its demo photo; say so instead of the raw code.
+    if (reason === "fixture_missing") return textEl(doc, "p", "Scene unavailable: no demo scene for this");
     return textEl(doc, "p", `Scene unavailable: ${reason}`);
   }
   const src = result.image;
