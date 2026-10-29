@@ -296,8 +296,19 @@ export function wireApp(deps) {
     await renderHistory();
   });
 
+  // A Start still waiting on the mic or the recorder owns the run; a second click must not open another.
+  let starting = false;
   // The mic is only ever asked for here, on the user's click (MEM-032).
   onClick("recall-start", async () => {
+    if (starting) return;
+    starting = true;
+    try {
+      await beginRecall();
+    } finally {
+      starting = false;
+    }
+  });
+  const beginRecall = async () => {
     void stopSpeaking();
     byId("recall-live")?.replaceChildren();
     session = await startRecall({ points, getUserMedia: deps.getUserMedia, doc });
@@ -331,7 +342,7 @@ export function wireApp(deps) {
     // No Web Audio to record with: release the mic and take typed answers.
     releaseMic(session.stream);
     showTyped();
-  });
+  };
 
   onClick("recall-submit", async () => {
     const box = /** @type {HTMLInputElement | null} */ (byId("recall-typed"));
