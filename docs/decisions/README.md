@@ -53,6 +53,8 @@ the others that you asked about".
   server relays one WAV clip to ASR (over a server matcher, embeddings, WebSocket relay, or Web Speech).
 - [0027](0027-signed-association-records.md) /scenes renders only records /associate HMAC-signed; key from
   `MEMRIPAL_RECORD_KEY`, else random per instance; forged sig 403 (over a session store, a required key, or 400).
+- [0028](0028-palace-backup-export-import.md) Palace backup: one JSON file, validated additive client import, app-wide
+  CSP; supersedes 0003's import/export rejection (over per-palace files, images, overwrite, or a server endpoint).
 
 ## Minor decisions (no ADR)
 

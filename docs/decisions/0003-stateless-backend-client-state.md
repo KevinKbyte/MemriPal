@@ -22,6 +22,7 @@ Single-user demo. S4 scenes need the processed photo; resumable generation needs
 - Palace JSON import/export.
   Pros: none recorded.
   Cons: XSS/tracking surface for no Goal value.
+  Superseded in part by ADR [0028](0028-palace-backup-export-import.md): validated additive JSON backup.
 - Scenes stored as b64 strings (Ledger F5).
   Pros: none recorded.
   Cons: rejected by the Finisher's size check in favor of Blobs.
@@ -31,7 +32,7 @@ Single-user demo. S4 scenes need the processed photo; resumable generation needs
 Stateless backend. Every endpoint re-validates image bytes, dims and text caps and builds every model prompt
 server-side. IndexedDB holds structured records with scene Blobs, saved per completed record. No accounts, no
 import/export. Q1: stored rehearsals (D18) are human-readable JSON text records in the same store; audio is never
-stored.
+stored. "No import/export" superseded in part by ADR [0028](0028-palace-backup-export-import.md).
 
 ## Why this over the others
 
@@ -42,4 +43,5 @@ still hits when the client re-sends the photo.
 
 - Repeated photo upload per request (accepted; streaming scene generation over one request was rejected as
   complexity).
-- Clearing browser storage loses palaces; there is no export.
+- Clearing browser storage loses palaces; there is no export. Superseded in part by ADR
+  [0028](0028-palace-backup-export-import.md): a backup file restores rehearsals and cached associations.
