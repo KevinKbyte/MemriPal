@@ -76,6 +76,22 @@ describe("MEM-042 E1: export format", () => {
     assert.ok(!JSON.stringify(out).includes(associationKey("milk", "lamp")), "no storage key in the file");
   });
 
+  test("export skips entries failing I3, so the file never carries an entry import would skip", async () => {
+    const s = stores();
+    const failing = {
+      "extra record key": { record: fullRecord("a", "lamp", { mood: "x" }), status: "valid" },
+      "non-string field": { record: fullRecord("b", "lamp", { visual: 3 }), status: "valid" },
+      "item over 100": { record: fullRecord("i".repeat(101), "lamp"), status: "valid" },
+      "status pending": { record: fullRecord("c", "lamp"), status: "pending" },
+      "sig uppercase": entry("d", "lamp", { sig: "AB".repeat(32) }),
+      "record not object": { record: "x", status: "valid" },
+    };
+    for (const [name, value] of Object.entries(failing)) await s.store.put(`bad ${name}`, value);
+    await s.store.put(associationKey("good", "door"), entry("good", "door"));
+    const out = await api("buildBackup")(s);
+    assert.deepEqual(out.associations, [entry("good", "door")], "only the I3-valid entry is exported");
+  });
+
   test("a store over an I1 cap is refused, so every exported file imports", async () => {
     const many = stores();
     for (let i = 0; i < 501; i++) await many.store.put(associationKey(`item ${i}`, "lamp"), entry(`item ${i}`, "lamp"));
