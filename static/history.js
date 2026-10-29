@@ -80,13 +80,15 @@ export function createHistory({ doc, rehearsals, confirm, palaceId }) {
   const runItem = (run) => {
     const li = doc.createElement("li");
     const got = run.points.filter((p) => p.got || p.override).length;
-    const view = button("View", `View the rehearsal of ${run.timestamp}`, () => {
+    // Stored as UTC ISO; shown in the user's own locale and time zone.
+    const when = new Date(run.timestamp).toLocaleString();
+    const view = button("View", `View the rehearsal of ${when}`, () => {
       viewedId = run.id;
       void render();
     });
-    const del = button("Delete", `Delete the rehearsal of ${run.timestamp}`, () => void removeRun(run.id));
+    const del = button("Delete", `Delete the rehearsal of ${when}`, () => void removeRun(run.id));
     del.dataset.action = "delete-rehearsal";
-    li.append(textEl("span", `${run.timestamp}: ${got}/${run.points.length} recalled `), view, del);
+    li.append(textEl("span", `${when}: ${got}/${run.points.length} recalled `), view, del);
     return li;
   };
 
