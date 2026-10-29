@@ -86,6 +86,16 @@ function isoRoundTrips(t) {
 }
 
 /**
+ * pointOf runs String() on label and source_quote, which throws on {toString: 1} and overflows the
+ * stack on a deeply nested array; only primitives (or absent) are safe to hand it.
+ * @param {unknown} p
+ */
+function safePoint(p) {
+  if (!isObject(p)) return false;
+  return ["label", "source_quote"].every((k) => p[k] === null || p[k] === undefined || ["string", "number", "boolean"].includes(typeof p[k]));
+}
+
+/**
  * I4: a fresh rehearsal or null. The points cap is checked over the whole file first (capError).
  * @param {unknown} r
  */
@@ -94,7 +104,7 @@ function rehearsalOf(r) {
   const { id, palace_id, timestamp, transcript, points } = r;
   if (typeof id !== "string" || !UUID_RE.test(id) || palace_id !== PALACE_ID) return null;
   if (typeof timestamp !== "string" || !isoRoundTrips(timestamp)) return null;
-  if (typeof transcript !== "string" || !Array.isArray(points)) return null;
+  if (typeof transcript !== "string" || !Array.isArray(points) || !points.every(safePoint)) return null;
   return { id, palace_id, timestamp, transcript, points: points.map(pointOf) };
 }
 
@@ -190,20 +200,22 @@ function parseBackup(text) {
  */
 export async function importBackup(text, { store, rehearsals }) {
   const file = parseBackup(text);
+  // Every entry is validated before the first write, so no bad entry can leave a partial merge.
+  const entries = file.associations.map(associationOf);
+  const runs = file.rehearsals.map(rehearsalOf);
   let imported = 0;
   let skipped = 0;
-  for (const raw of file.associations) {
-    const a = associationOf(raw);
+  for (const a of entries) {
     const key = a ? associationKey(a.record.item, a.record.locus) : "";
     if (!a || (await store.get(key)) !== undefined) {
       skipped += 1;
       continue;
     }
-    await store.put(key, a);
+    // I3: an unsigned "valid" entry never reaches /scenes; "invalid" makes the next run re-sign it.
+    await store.put(key, "sig" in a ? a : { record: a.record, status: "invalid" });
     imported += 1;
   }
-  for (const raw of file.rehearsals) {
-    const r = rehearsalOf(raw);
+  for (const r of runs) {
     if (!r || (await rehearsals.get(r.id)) !== null) {
       skipped += 1;
       continue;
