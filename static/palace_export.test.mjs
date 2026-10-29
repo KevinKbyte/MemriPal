@@ -345,3 +345,50 @@ describe("MEM-042 R1: round trip", () => {
     assert.deepEqual(await importText(text, dst), { imported: 0, skipped: 4 });
   });
 });
+
+// Covers: MEM-042
+// Requirement: I4 a hostile point inside a rehearsal (a label or source_quote that is not a string
+// and cannot be turned into one: {"toString": 1}, [{"toString": 1}], or a 20000-deep nested array)
+// skips that rehearsal only: importBackup still resolves {imported, skipped}, never throws, and the
+// associations and the other rehearsals in the file are all imported.
+describe("MEM-042 I4: hostile rehearsal points are skipped, never thrown", () => {
+  const MARK = "@@HOSTILE@@";
+  const hostile = {
+    "label {toString: 1}": ["label", '{"toString":1}'],
+    "source_quote [{toString: 1}]": ["source_quote", '[{"toString":1}]'],
+    "label nested 20000 arrays deep": ["label", `${"[".repeat(20000)}${"]".repeat(20000)}`],
+  };
+  for (const [name, [field, json]] of Object.entries(hostile)) {
+    test(`skips: ${name}; the rest of the file imports`, async () => {
+      const s = stores();
+      const before = rehearsal();
+      const bad = rehearsal({ points: [{ ...POINT, [field]: MARK }] });
+      const after = rehearsal();
+      const file = backup({ associations: [entry("milk", "lamp")], rehearsals: [before, bad, after] });
+      const text = JSON.stringify(file).replace(`"${MARK}"`, json);
+      let res;
+      await assert.doesNotReject(async () => { res = await importText(text, s); }, "importBackup must not throw");
+      assert.deepEqual(res, { imported: 3, skipped: 1 });
+      assert.deepEqual(await s.store.get(associationKey("milk", "lamp")), entry("milk", "lamp"));
+      assert.deepEqual(await s.rehearsals.list("demo"), [before, after], "only the hostile rehearsal is skipped");
+      assert.equal(await s.rehearsals.get(bad.id), null);
+    });
+  }
+});
+
+// Covers: MEM-042
+// Requirement: I3 + I7 an imported entry claiming status "valid" with no sig can never reach /scenes
+// (scenes.js reports it "unsigned" and no 403 ever demotes it), so it is stored with status
+// "invalid" (record kept) and the next run regenerates a signed record; a signed "valid" entry and
+// an unsigned "invalid" entry are stored as in the file.
+describe("MEM-042 I3: unsigned valid entries import as invalid", () => {
+  test("{record, status: 'valid'} without sig is stored as {record, status: 'invalid'}", async () => {
+    const s = stores();
+    const unsigned = { record: fullRecord("milk", "lamp"), status: "valid" };
+    const file = backup({ associations: [unsigned, entry("eggs", "door"), { record: fullRecord("jam", "rug"), status: "invalid" }] });
+    assert.deepEqual(await importObj(file, s), { imported: 3, skipped: 0 });
+    assert.deepEqual(await s.store.get(associationKey("milk", "lamp")), { record: fullRecord("milk", "lamp"), status: "invalid" });
+    assert.deepEqual(await s.store.get(associationKey("eggs", "door")), entry("eggs", "door"), "signed valid entry unchanged");
+    assert.deepEqual(await s.store.get(associationKey("jam", "rug")), { record: fullRecord("jam", "rug"), status: "invalid" });
+  });
+});
