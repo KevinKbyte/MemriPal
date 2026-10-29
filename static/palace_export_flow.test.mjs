@@ -305,6 +305,6 @@ describe("MEM-042 I6: imported strings render as text", () => {
     assert.deepEqual(b.p.htmlWrites, [], "no innerHTML / outerHTML / insertAdjacentHTML");
     assert.equal(imgsMade(b), imgsBefore, "no img element created");
     assert.equal((await b.s.rehearsals.get(r.id)).transcript, PAYLOAD, "transcript stored literally");
-    assert.deepEqual(await b.s.store.get(associationKey("milk", "lamp")), assoc, "record stored literally");
+    assert.deepEqual(await b.s.store.get(associationKey("milk", "lamp")), { record: assoc.record, status: "invalid" }, "record stored literally; unsigned valid demoted (I3)");
   });
 });
