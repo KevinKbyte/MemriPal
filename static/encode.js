@@ -99,7 +99,8 @@ function actionButton(doc, action, text, label, onClick) {
 
 /**
  * Show the review list; resolves with the reviewed order once Generate is clicked. Page-root
- * handlers are assigned (not added), so a newer run replaces an older one's.
+ * handlers are assigned (not added), so a later run's review never inherits an earlier one's
+ * listeners (Load demo is disabled while a run is pending, so two reviews never overlap).
  * @param {Locus[]} loci
  * @param {Document} doc
  * @returns {Promise<Locus[]>}
@@ -209,6 +210,33 @@ function showWalk(steps, scenes, doc) {
   }
   show();
   walk.hidden = false;
+  // Optional call: only a real browser lays the page out.
+  walk.scrollIntoView?.({ block: "start" });
+}
+
+/**
+ * Collapse the cards in panel `id` behind a Show/Hide toggle, so the walk is not buried under them;
+ * the cards are kept, only hidden. The next run's replaceChildren drops the toggle with them.
+ * @param {Document} doc
+ * @param {string} id
+ * @param {string} name what the cards are, for the toggle text
+ */
+function collapseCards(doc, id, name) {
+  const panel = doc.getElementById(id);
+  if (!panel) return;
+  const cards = /** @type {HTMLElement[]} */ (Array.from(panel.children));
+  if (!cards.length) return;
+  const toggle = /** @type {HTMLButtonElement} */ (doc.createElement("button"));
+  toggle.type = "button";
+  /** @param {boolean} open */
+  const set = (open) => {
+    for (const card of cards) card.hidden = !open;
+    toggle.textContent = `${open ? "Hide" : "Show"} ${name} (${cards.length})`;
+    toggle.setAttribute("aria-expanded", String(open));
+  };
+  toggle.addEventListener("click", () => set(toggle.getAttribute("aria-expanded") !== "true"));
+  set(false);
+  panel.prepend(toggle);
 }
 
 /**
@@ -237,6 +265,8 @@ export async function runEncode(input, deps) {
       return store.put(associationKey(s.item, s.locus.label), { ...s.entry, status: "invalid" });
     }),
   );
+  collapseCards(doc, "associations", "associations");
+  collapseCards(doc, "scenes", "scenes");
   showWalk(steps, scenes, doc);
 }
 
