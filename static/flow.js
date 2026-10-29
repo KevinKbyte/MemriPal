@@ -111,10 +111,11 @@ async function fetchReplay(fetchFn) {
 /**
  * @param {Document} doc
  * @param {typeof fetch} fetchFn
+ * @returns {Promise<string | null>} the server's mode ("fixture", "meta"), or null when unknown
  */
 async function showHealth(doc, fetchFn) {
   const el = doc.getElementById("status");
-  if (!el) return;
+  if (!el) return null;
   try {
     const resp = await fetchFn("/healthz");
     const health = resp.ok ? await resp.json() : null;
@@ -122,8 +123,10 @@ async function showHealth(doc, fetchFn) {
     // The privacy notice only applies when the photo actually leaves for Meta's APIs.
     const notice = doc.getElementById("meta-notice");
     if (notice && health && health.mode === "meta") notice.hidden = false;
+    return health && typeof health.mode === "string" ? health.mode : null;
   } catch {
     el.textContent = formatHealth(null);
+    return null;
   }
 }
 
@@ -194,7 +197,11 @@ export function wireApp(deps) {
     if (e) e.addEventListener("click", () => void fn());
   };
   showPublicBanner(doc, deps.location.hostname);
-  void showHealth(doc, deps.fetch);
+  // A fixture-mode server answers every speech relay call "live_only", so its runs never ask for the mic.
+  let fixtureMode = false;
+  void showHealth(doc, deps.fetch).then((mode) => {
+    fixtureMode = mode === "fixture";
+  });
 
   /** @type {import("./recall.js").RecallPoint[]} */
   let points = [];
@@ -333,7 +340,7 @@ export function wireApp(deps) {
   const beginRecall = async () => {
     discardSpeaking();
     byId("recall-live")?.replaceChildren();
-    session = await startRecall({ points, getUserMedia: deps.getUserMedia, doc });
+    session = await startRecall({ points, getUserMedia: fixtureMode ? undefined : deps.getUserMedia, doc });
     if (!session.stream) return;
     if (deps.AudioContext) {
       const current = session;
