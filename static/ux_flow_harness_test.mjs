@@ -50,7 +50,8 @@ function pageFromHtml() {
 
 /**
  * Demo server. Optional hooks: photo() / recall() / split() return the answer (a Response or a
- * promise of one; a fresh Response per call); replies[n]() answers the n-th POST /recall/audio.
+ * promise of one; a fresh Response per call); replies[n]() answers the n-th POST /recall/audio;
+ * health is the GET /healthz JSON body (e.g. {status: "ok", mode: "fixture"}; default 404).
  */
 function demoServer(opts) {
   const calls = [];
@@ -63,6 +64,7 @@ function demoServer(opts) {
     if (u === "/demo/photo.jpg") {
       return opts.photo ? opts.photo() : new Response(PHOTO, { headers: { "content-type": "image/jpeg" } });
     }
+    if (u === "/healthz" && opts.health) return jsonResponse(opts.health);
     if (u === "/demo/notes.txt") return new Response("notes", { headers: { "content-type": "text/plain" } });
     if (u === "/demo/recall.json") return opts.recall ? opts.recall() : jsonResponse(TIMELINE);
     if (u === "/loci") return jsonResponse({ image: IMAGE, width: 800, height: 600, loci: LOCI });
@@ -158,7 +160,7 @@ function clock() {
 }
 
 /**
- * Wire the page. opts: photo / recall / split / replies (server hooks), mic ({hold, deny}),
+ * Wire the page. opts: photo / recall / split / replies / health (server hooks), mic ({hold, deny}),
  * closeRejects, rehAdapter (rehearsal store adapter; default an in-memory map).
  */
 export function boot(opts = {}) {
