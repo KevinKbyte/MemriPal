@@ -1,4 +1,4 @@
-# Covers: MEM-001, MEM-002, MEM-017, MEM-034, MEM-035, MEM-037
+# Covers: MEM-001, MEM-002, MEM-017, MEM-034, MEM-035, MEM-037, MEM-042
 # Requirement: scripts/e2e_drive.py drives the whole UI against a fixture-mode server it starts itself.
 # Its browser-free helpers must: accept only an http(s) --base-url (trailing slash dropped) and default
 # --out to a fresh dir under the temp dir; start the server on loopback with every inherited MEMRIPAL_*
@@ -7,6 +7,7 @@
 # readiness without hanging when the server dies or the timeout passes; and exit 0 only when exactly
 # 22 steps ran and all passed, 1 on any failure or missing step, 2 when the server never became ready.
 # One step is the MEM-037 live-board check after recall replay. The module must import without playwright.
+# The E2E helpers must wait without evaluating page-side JS strings, because the app's CSP forbids eval.
 import contextlib
 import importlib.util
 import sys
@@ -17,6 +18,7 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = REPO_ROOT / "scripts" / "e2e_drive.py"
+E2E_SCRIPTS = sorted((REPO_ROOT / "scripts").glob("e2e_*.py"))
 PUBLIC_HOST = "memripal-e2e.test"
 EXPECTED = 22
 
@@ -323,3 +325,22 @@ class TestImport:
         module = _load()
         assert module.summarize([]) == {"passed": 0, "failed": 0, "total": 0}
         assert callable(module.main)
+
+
+# Covers: MEM-017, MEM-042
+class TestNoEvalWaits:
+    def test_the_e2e_script_glob_is_not_empty(self):
+        names = [p.name for p in E2E_SCRIPTS]
+        assert len(E2E_SCRIPTS) >= 4, names
+        assert "e2e_drive.py" in names
+
+    @pytest.mark.parametrize("script", E2E_SCRIPTS, ids=lambda p: p.name)
+    def test_script_never_calls_wait_for_function(self, script):
+        source = script.read_text(encoding="utf-8")
+        hits = [
+            f"{script.name}:{n}: {line.strip()}"
+            for n, line in enumerate(source.splitlines(), start=1)
+            if "wait_for_function" in line
+        ]
+        why = "wait_for_function evaluates a JS string, which the CSP forbids:\n"
+        assert hits == [], why + "\n".join(hits)
