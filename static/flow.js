@@ -309,20 +309,36 @@ export function wireApp(deps) {
         renderEndScreen(record, doc, (i) => void mark(i)),
         ...(note ? [textEl(doc, "p", note)] : []),
       );
+    // Overlapping writes land in completion order, so `stored` is the last one the store confirmed; once
+    // none is in flight the screen shows exactly that: a failed point stays only if a later write kept it.
+    let stored = record;
+    let inFlight = 0;
+    /** @type {number[]} */
+    let failed = [];
     // Re-rendered before the write, so a second click builds on this override, never a stale copy.
     /** @param {number} i */
     const mark = async (i) => {
-      const before = record.points[i];
       record = markPointGot(record, i);
       show();
       // An unsaved run has no stored copy to rewrite.
       if (saved) {
+        const written = record;
+        inFlight += 1;
         try {
-          await rehearsals.restore(record);
+          await rehearsals.restore(written);
+          stored = written;
         } catch {
-          // Only this point is reverted, so an override clicked meanwhile on another row is kept.
-          record = { ...record, points: record.points.map((p, j) => (j === i ? before : p)) };
-          show(`Could not save "Mark got it" for ${before.label}; it is still counted as missed.`);
+          failed.push(i);
+        }
+        inFlight -= 1;
+        if (inFlight === 0) {
+          const lost = failed.filter((j) => !stored.points[j].got).map((j) => stored.points[j].label);
+          failed = [];
+          if (stored !== record || lost.length) {
+            record = stored;
+            const tail = `${lost.length > 1 ? "they are" : "it is"} still counted as missed.`;
+            show(lost.length ? `Could not save "Mark got it" for ${lost.join(", ")}; ${tail}` : "");
+          }
         }
       }
       await renderHistory();
