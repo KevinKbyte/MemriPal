@@ -112,16 +112,21 @@ function reviewRoute(loci, doc) {
   const generate = doc.getElementById("generate");
   const review = createRouteReview(loci);
   if (!panel || !list || !generate) return Promise.resolve(review.order());
-  const render = () => {
+  // A move rebuilds every row, removing the focused button, so focus follows the moved place to its
+  // same button (or its other move button, once that one is disabled at the first/last slot).
+  /** @param {{locus: Locus, action: "up" | "down"} | null} [focus] */
+  const render = (focus = null) => {
     const all = review.order();
+    /** @type {HTMLButtonElement | null} */
+    let target = null;
     list.replaceChildren(
       ...all.map((locus, i) => {
         const li = doc.createElement("li");
         li.append(textEl(doc, "span", locus.label));
-        /** @param {() => unknown} change */
-        const act = (change) => () => {
+        /** @param {() => unknown} change @param {{locus: Locus, action: "up" | "down"} | null} [next] */
+        const act = (change, next = null) => () => {
           change();
-          render();
+          render(next);
         };
         if (review.pendingDrop() === i) {
           li.append(
@@ -130,15 +135,22 @@ function reviewRoute(loci, doc) {
             actionButton(doc, "cancel-drop", "Cancel", `Keep ${locus.label}`, act(() => review.cancelDrop())),
           );
         } else {
-          const up = actionButton(doc, "up", "Up", `Move ${locus.label} up`, act(() => review.move(i, -1)));
-          const down = actionButton(doc, "down", "Down", `Move ${locus.label} down`, act(() => review.move(i, 1)));
+          const up = actionButton(doc, "up", "Up", `Move ${locus.label} up`, act(() => review.move(i, -1), { locus, action: "up" }));
+          const down = actionButton(doc, "down", "Down", `Move ${locus.label} down`, act(() => review.move(i, 1), { locus, action: "down" }));
           up.disabled = i === 0;
           down.disabled = i === all.length - 1;
+          if (focus && focus.locus === locus) {
+            const [same, other] = focus.action === "up" ? [up, down] : [down, up];
+            target = same.disabled ? other : same;
+          }
           li.append(up, down, actionButton(doc, "drop", "Drop", `Drop ${locus.label}`, act(() => review.requestDrop(i))));
         }
         return li;
       }),
     );
+    // Focused only once in the page: a detached button cannot take focus. (Cast: tsc narrows a
+    // let assigned inside the map callback back to null.)
+    /** @type {HTMLButtonElement | null} */ (target)?.focus();
     if (undo) undo.hidden = !review.canUndo();
   };
   if (undo) {
