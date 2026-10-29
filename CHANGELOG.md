@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.17.1] - 2026-10-29
+
+### Fixed
+
+- E2E driver (`scripts/e2e_checks.py`, `e2e_steps.py`, `e2e_support.py`) no longer waits via `page.wait_for_function`,
+  whose JS string the MEM-042 CSP (no `'unsafe-eval'`) refuses once it polls (step 12 failed, 21/22); it waits with
+  locators / `expect` (`wait_status_ready`), back to 22/22. `tests/test_e2e_drive.py` `TestNoEvalWaits` fails if any
+  `scripts/e2e_*.py` calls `wait_for_function`.
+
 ## [0.17.0] - 2026-10-29
 
 ### Added
