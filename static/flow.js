@@ -234,6 +234,13 @@ export function wireApp(deps) {
     const box = byId("recall-typed");
     if (box) box.hidden = false;
   };
+  // Done only acts on an open run, so it is disabled whenever none is open.
+  /** @param {boolean} open */
+  const setRunOpen = (open) => {
+    const done = /** @type {HTMLButtonElement | null} */ (byId("recall-submit"));
+    if (done) done.disabled = !open;
+  };
+  setRunOpen(false);
   /** @param {string} label */
   const showBoard = (label) => {
     const board = renderLiveBoard(points, doc, { label });
@@ -281,6 +288,7 @@ export function wireApp(deps) {
    */
   const endRun = async (transcript, results, replay) => {
     session = null;
+    setRunOpen(false);
     /** @type {import("./rehearsals.js").Rehearsal} */
     let record;
     let saved = true;
@@ -310,6 +318,7 @@ export function wireApp(deps) {
   onClick("load-demo", async () => {
     discardSpeaking();
     session = null;
+    setRunOpen(false);
     lookupDemoPlace({ doc, fetch: fetchFn, place: deps.place });
     const auto = Boolean(/** @type {HTMLInputElement | null} */ (byId("auto"))?.checked);
     // Disabled while a load runs, so a second click cannot build the palace twice; runDemoPalace never
@@ -341,6 +350,7 @@ export function wireApp(deps) {
     discardSpeaking();
     byId("recall-live")?.replaceChildren();
     session = await startRecall({ points, getUserMedia: fixtureMode ? undefined : deps.getUserMedia, doc });
+    setRunOpen(true);
     if (!session.stream) return;
     if (deps.AudioContext) {
       const current = session;
@@ -407,7 +417,13 @@ export function wireApp(deps) {
         return;
       }
     } else {
-      current.submitTyped(String(box.value ?? ""));
+      const typed = String(box.value ?? "");
+      // An empty typed Done would save a 0/N run; keep the run open and ask for an answer instead.
+      if (!typed.trim()) {
+        byId("recall-results")?.replaceChildren(textEl(doc, "p", "Type what you remember first, then press Done."));
+        return;
+      }
+      current.submitTyped(typed);
       box.value = "";
     }
     await endRun(current.matcher.transcript(), current.results(), false);
