@@ -3,7 +3,8 @@
 // through the page's own handlers (onLoadDemo / onPhotoChange). A failed demo GET, or a failed
 // /loci POST whose body carries no JSON string `error`, names the HTTP status as "HTTP <status>"
 // (e.g. "HTTP 503") and never shows an internal "http_<status>" code. A server JSON error code
-// (body {"error": "fixture_missing"}) is still shown as-is. A 200 answer whose body is not JSON
+// (body {"error": "upstream"}) is still shown as-is; "fixture_missing" on an own photo instead gets a
+// plain-words hint (app_ux_fixture_upload.test.mjs). A 200 answer whose body is not JSON
 // shows a distinct "unreadable response" message, never "http_200" and never the generic
 // could-not-send text.
 import { describe, test } from "node:test";
@@ -129,20 +130,20 @@ describe("upload: a failed POST without a JSON error names the HTTP status", () 
 });
 
 // Covers: MEM-017
-// Requirement: a server JSON error code is still shown verbatim ("Upload failed: fixture_missing").
+// Requirement: a server JSON error code is still shown verbatim ("Upload failed: upstream").
 describe("upload: a server JSON error code is shown as-is", () => {
   for (const source of SOURCES) {
-    test(`${source.name}: body {"error":"fixture_missing"} shows "Upload failed: fixture_missing"`, async () => {
+    test(`${source.name}: body {"error":"upstream"} shows "Upload failed: upstream"`, async () => {
       const page = fakePage();
       const { fetchFn } = stubFetch({
         lociPost: () =>
-          new Response(JSON.stringify({ error: "fixture_missing" }), {
-            status: 404,
+          new Response(JSON.stringify({ error: "upstream" }), {
+            status: 502,
             headers: { "content-type": "application/json" },
           }),
       });
       await source.run(depsFor(page, fetchFn));
-      assert.equal(page.status.textContent, "Upload failed: fixture_missing");
+      assert.equal(page.status.textContent, "Upload failed: upstream");
     });
   }
 });
