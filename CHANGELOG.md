@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.17.2] - 2026-10-29
+
+### Fixed
+
+- Double-clicking Start recall opens one mic, not two (MEM-032; `static/app_ux_start_twice.test.mjs`).
+- Load demo is disabled while a demo load is pending (MEM-030; `static/app_ux_load_demo_twice.test.mjs`).
+- Double-clicking replay saves one run (MEM-032, MEM-033; `static/app_ux_replay_twice.test.mjs`).
+- A failing `AudioContext.close` falls back to typed recall, never an unhandled rejection (MEM-032, MEM-037;
+  `static/app_ux_close_rejects.test.mjs`).
+- An unavailable or corrupt rehearsal store shows "History unavailable", skips corrupt/null records, and the end
+  screen still renders (MEM-033; `static/app_ux_history_unavailable.test.mjs`).
+- The tests above drive the app through the shared harness `static/ux_flow_harness_test.mjs`.
+
 ## [0.17.1] - 2026-10-29
 
 ### Fixed
