@@ -92,8 +92,13 @@ export function createHistory({ doc, rehearsals, confirm, palaceId }) {
     return li;
   };
 
+  // Created on the first failed delete; hidden again by the next delete attempt.
+  /** @type {HTMLElement | null} */
+  let deleteFailed = null;
+
   /** @param {string} id */
   const removeRun = async (id) => {
+    if (deleteFailed) deleteFailed.hidden = true;
     const undo = byId("rehearsal-undo");
     /** @param {() => Promise<void>} restore */
     const showUndo = (restore) => {
@@ -106,7 +111,20 @@ export function createHistory({ doc, rehearsals, confirm, palaceId }) {
         await render();
       };
     };
-    if (await deleteRehearsalWithUndo(id, { store: rehearsals, confirm, showUndo })) await render();
+    let deleted;
+    try {
+      deleted = await deleteRehearsalWithUndo(id, { store: rehearsals, confirm, showUndo });
+    } catch {
+      // The store refused: the run is still stored, so its row stays and no Undo is offered.
+      if (!deleteFailed) {
+        deleteFailed = textEl("p", "Could not delete that rehearsal; it is still saved.");
+        deleteFailed.setAttribute("role", "status");
+        byId("history")?.prepend(deleteFailed);
+      }
+      deleteFailed.hidden = false;
+      return;
+    }
+    if (deleted) await render();
   };
 
   return render;
