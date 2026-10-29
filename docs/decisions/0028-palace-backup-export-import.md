@@ -77,3 +77,6 @@ makes no request, so it adds no tracking path.
 - An entry whose echoed item/locus differs from the requested text (accepted after `normalize`,
   `validate_association`) restores under a different key and regenerates once.
 - 0003's and plan D5's "scene Blobs" are recorded here as never built.
+- Starlette's `ServerErrorMiddleware` wraps all app middleware, so the 500 it sends on an unhandled exception skips
+  `SecurityHeaders` and carries no CSP or `nosniff`. Accepted: with `debug` off its body is the fixed plain text
+  "Internal Server Error", no user-controlled markup.

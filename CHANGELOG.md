@@ -2,6 +2,31 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.17.0] - 2026-10-29
+
+### Added
+
+- Palace backup (MEM-042, ADR 0028): `<section id="backup">` in `index.html`. "Download backup" writes
+  `memripal-backup.json` (`{v: 1, palace_id: "demo", route, associations, rehearsals}`, `static/palace_export.js`
+  `buildBackup`): rehearsal history, cached associations and the route, never photos or scene images. Only an
+  entry's `record`/`status`/`sig` keys are exported; a store over an import cap gives "Export failed: <reason>" and
+  no file, so every exported file imports.
+- Import a backup (`importBackup`): a file over 1048576 bytes (`file.size`, then text byte length), not JSON, with
+  other top-level keys, `v` not 1, another palace, or over a count cap is rejected whole, before any write, with
+  "Import failed: <reason>". Every entry is checked against exact keys, types and caps before the first write; a bad
+  entry is skipped. Merge is additive (an existing entry wins, nothing overwritten or deleted), result "Imported n,
+  skipped m", then history re-renders. An unsigned entry is stored with status "invalid" so it regenerates; the
+  route is imported only when none is stored. Imported text renders via textContent only.
+- A /scenes 403 `bad_signature` re-puts that stored entry with status "invalid" (`static/encode.js`), so the next
+  run regenerates it instead of reusing a dead signature (e.g. a backup signed under another instance's key).
+
+### Security
+
+- `src/memripal/security_headers.py` `SecurityHeaders` middleware, outermost of the app's middleware, sets a
+  `Content-Security-Policy` (`default-src 'self'; img-src 'self' data: blob:; object-src 'none'; ...`) and
+  `X-Content-Type-Options: nosniff` on every response, host refusals and 404s included (not Starlette's
+  unhandled-error 500; ADR 0028). FastAPI `/docs` and `/redoc` no longer render.
+
 ## [0.16.0] - 2026-10-28
 
 ### Added
