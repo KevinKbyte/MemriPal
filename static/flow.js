@@ -389,8 +389,19 @@ export function wireApp(deps) {
     await endRun(current.matcher.transcript(), current.results(), false);
   });
 
+  // One replay at a time: a second click while one runs would save the same session twice.
+  let replaying = false;
   // Offline demo: the recorded session from the server, matched locally; never the speech relay.
   onClick("recall-replay", async () => {
+    if (replaying) return;
+    replaying = true;
+    try {
+      await replayDemo();
+    } finally {
+      replaying = false;
+    }
+  });
+  const replayDemo = async () => {
     void stopSpeaking();
     const replay = await fetchReplay(fetchFn);
     if ("code" in replay) {
@@ -403,5 +414,5 @@ export function wireApp(deps) {
     const board = showBoard("recorded replay");
     const results = await replayRecording(timeline, matcher, { wait: deps.wait, onMatch: board.light });
     await endRun(matcher.transcript(), results, true);
-  });
+  };
 }
