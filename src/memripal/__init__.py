@@ -1,3 +1,3 @@
 """MemriPal: memory palaces from photos of familiar places."""
 
-__version__ = "0.17.1"
+__version__ = "0.17.2"
