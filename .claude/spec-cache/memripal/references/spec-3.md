@@ -75,3 +75,98 @@ history, cached associations and the route, never photos or scene images. New `s
   route and rehearsals; importing the same file again -> "Imported 0, skipped <all>".
 
 Tests: static/palace_export.test.mjs, static/app_scene_demote.test.mjs, tests/test_security_headers.py
+
+## MEM-043 Generated hard rooms as E2E test fixtures
+
+ADR [0029](../../../../docs/decisions/0029-generated-test-rooms-fixture-provenance.md). Generated rooms are TEST
+FIXTURES ONLY: README.md sells "Photograph a familiar space", so no generated room is demo content, README art, video
+footage or marketing. 3-5 hard rooms from Muse Image text-to-image, committed as bytes (the API has no seed), each
+replayed offline in fixture mode after one live record. Starts after the core demo is green; dropped past about half
+a day. A live probe on one real room photo stays the realism check. New: `MetaClient.image_generate`,
+`scripts/gen_room_fixtures.py`, `scripts/promote_live_cache.py` (the promote step `backend.py` `_store` names),
+`fixtures/rooms/`, `e2e_drive.py --room`. Changed: `app.py` `/demo/photo.jpg`, the Load demo fetch, `.dockerignore`,
+`scripts/make_synthetic_fixtures.py` + `tests/test_fixtures_manifest.py` (M1), README script entries.
+- T1 Testing only. `.dockerignore` excludes `fixtures/rooms` (`.gcloudignore` includes `.dockerignore`), so the Cloud
+  Run image has no room file and `?room=` there -> 404 `room_missing`. No file under `static/` or `docs/submission/`
+  and no README image references a room; README names rooms only in its script entries, as generated test fixtures.
+  Accept: `tests/test_deploy_artifacts.py` asserts `fixtures/rooms/<id>.webp` is excluded; 0 room image refs in
+  `static/`, `docs/submission/`, README.
+- G1 `MetaClient.image_generate(*, prompt, model="muse-image-1.0", output_format="webp", timeout=None) ->
+  CallResult`: POST `/images/generations` (`DEFAULT_BASE_URL` https://api.meta.ai/v1;
+  https://dev.meta.ai/docs/api-reference/images/create-image), payload keys exactly {model, prompt, n: 1,
+  output_format}. No `seed` or other key (unknown fields -> 400); no `size` (valid values unverified, as MEM-038).
+  `retries=0` (paid, as `image_edit`). Bytes via the existing `image_bytes(body)` (`data[0].b64_json`). Accept: a fake
+  transport sees 1 request to `/images/generations` with exactly 4 payload keys; a 5xx makes 0 retries.
+- G2 `scripts/gen_room_fixtures.py`, run by Kev only: `scripts/run_live.ps1 uv run python
+  scripts/gen_room_fixtures.py`; Claude never reads the key. MEM-038 shape: `main(argv, make_client=MetaClient)`,
+  client `max_retries=0`; key from `META_API_KEY` only, unset or blank -> stderr "META_API_KEY is not set; launch via
+  scripts/run_live.ps1", exit 2 before any call or write. `ROOMS` = fixed tuple of 3-5 `(room_id, subject)`, room_id
+  `^[a-z0-9-]{1,32}$`, list order = call order. Output `fixtures/rooms/<room_id>.webp` = returned bytes unchanged; a
+  body Pillow cannot decode, or carrying an EXIF marker (`precommit_scan.py` blocks it), fails that room, nothing
+  written. A room whose file exists is skipped with no call: committed bytes are never regenerated. `--dry-run`: one
+  line per room (id, path, "skip" when present) then "calls: <missing count>"; no key, no client, no write, exit 0.
+  Failure: MEM-038 rule (stderr "<room_id>: failed (<CallResult.error, else bad_image>)", next room runs, exit 1).
+  Accept: a fake-client full run makes <= 5 calls, a second run 0; unset key -> exit 2, 0 calls.
+- G3 Prompts are module constants: per-room `subject` + shared `REALISM` suffix asking for a casual smartphone
+  snapshot, not a clean render: tilted framing, wide-angle distortion, mixed light, blown-out windows, sensor grain,
+  everyday clutter. Accept: every prompt = subject + REALISM; >= 1 room each is cluttered, dim, tilted.
+- V1 Variants: pure offline `make_variants(base: bytes) -> dict[str, bytes]` (Pillow, deterministic: same input, same
+  bytes). Never committed: two carry EXIF, which `precommit_scan.py` blocks; tests derive them into a temp dir from
+  `fixtures/demo/photo.jpg` and from each committed room. Variants are intake tests only (no E2E, no live record).
+  Expected `imaging.process_upload` outcome per variant:
+  - `orientation`: pixels rotated 90 degrees + the EXIF Orientation tag that restores them -> accepted, processed size
+    equals the base's processed size.
+  - `gps`: fake EXIF GPS IFD -> accepted; the processed JPEG has no EXIF APP1 marker (strip test).
+  - `heic`: ISO-BMFF `ftyp` box, brand `heic` -> 400 `bad_magic` (`sniff` knows jpeg/png/webp only); no `pillow-heif`
+    dependency.
+  - `oversize`: upscaled to long side 6000 (> `LONG_SIDE` 2048, within `MAX_SIDE`, `MAX_PIXELS`,
+    `MAX_UPLOAD_BYTES`) -> accepted, processed long side 2048.
+  - `heavy-jpeg`: JPEG quality 10 -> accepted.
+  - `aspect`: center crop to 9:16 portrait -> accepted, processed aspect within 1% of 9:16.
+  Accept: 6 variants, 6 outcome assertions, a second call byte-identical.
+- M1 Provenance manifest. Every room file and every promoted replay file gets a `fixtures/MANIFEST.md` row. Room row:
+  Source "generated with Muse Image (muse-image-1.0) by scripts/gen_room_fixtures.py, room <room_id>, <YYYY-MM-DD>;
+  test fixture only (ADR 0029)"; promoted row: Source "live Meta responses for room <room_id>, promoted by
+  scripts/promote_live_cache.py, <YYYY-MM-DD>"; License for both cites ADR 0029. `make_synthetic_fixtures.py` owns
+  only rows whose Source is its `SOURCE` or `PLACE_SOURCE` and their files: a run keeps every other row and file
+  byte-for-byte. `test_committed_fixtures_match_generator_output` compares generator-owned paths only;
+  `test_manifest_lists_every_fixture_file` covers every committed file. Accept: a foreign row + file seeded in the
+  sandbox survive a generator run; both tests green with rooms and promoted files committed.
+- P1 `python scripts/promote_live_cache.py --room <room_id> [--dry-run]`: offline, no key. Copies from
+  `refs/private/live-cache/<method>/` into `fixtures/replay/<method>/` only entries recorded for the room's processed
+  photo (`process_upload(fixtures/rooms/<room_id>.webp).sha`); never `photos/`, never another photo's entry (private
+  live runs share that cache, ADR 0017). Cache file names are key digests, not photo shas: an entry the script cannot
+  attribute to the room is not copied. Target exists with equal bytes -> skipped; different bytes -> stderr, exit 1,
+  nothing written. Adds the M1 rows; copied files pass `precommit_scan.py`. `--dry-run` prints the paths, writes
+  nothing. Accept: a cache seeded with 2 photos' entries -> only the room's copied, 0 from `photos/`; a re-run copies
+  0; a conflicting target -> exit 1.
+- D1 `GET /demo/photo.jpg?room=<room_id>`. No param -> today's demo photo, unchanged. A room_id matching
+  `^[a-z0-9-]{1,32}$` that names an existing `fixtures/rooms/<room_id>.webp` -> those bytes unchanged (raw, ADR 0016:
+  a browser re-encode breaks sha replay), media type from `imaging.sniff`. Anything else (unknown id, `..`, `/`,
+  `%2F`) -> 404 `room_missing`; the path is built only from a validated id. Route guards unchanged. Accept: absent,
+  valid (byte-equal), unknown and traversal cases tested.
+- D2 A page opened as `/?room=<room_id>` makes Load demo fetch `/demo/photo.jpg?room=<encodeURIComponent(room_id)>`;
+  without the param the fetch URL is unchanged. Notes, place and recall demo fetches unchanged; the id is never
+  written into the DOM. Accept: 2 client tests (with, without).
+- X1 `scripts/e2e_drive.py --room <room_id>`: id checked against the D1 pattern (`parser.error` otherwise); drives
+  the existing steps on `/?room=<room_id>` in fixture mode, so every model call replays from P1 entries and a
+  `fixture_missing` is a FAIL. DOM asserts only; screenshots land in `--out` as artifacts, never compared. Without
+  `--room` the run is unchanged (`EXPECTED_STEPS` 22). Accept: 2 parse tests; default run 22/22; exit 0 per promoted
+  room.
+- K1 Kev run (paid, about $1 total; Claude never reads keys or makes paid calls): confirm the output-ownership
+  clause in Meta's API terms (start at dev.meta.ai) before the first room commit; run G2; per room one live record
+  (`scripts/run_live.ps1` server, page `/?room=<room_id>`, the X1 step sequence); P1; X1 exit 0.
+- Build slices (CRITERIA; SIGNALS):
+  - B1 G1. CRITERIA: request path, 4 payload keys, 0 retries on 5xx asserted. SIGNALS: none.
+  - B2 G2, G3, V1. CRITERIA: dry-run exit 0 offline with "calls: <n>"; fake run <= 5 calls, re-run 0; unset key
+    exit 2 with 0 calls; 6 variant outcomes. SIGNALS: none.
+  - B3 M1, P1. CRITERIA: seeded foreign row survives a generator run; promote copies only the room's entries, 0 from
+    `photos/`, re-run 0, conflict exit 1; `tests/test_fixtures_manifest.py` green. SIGNALS: none.
+  - B4 T1, D1, D2, X1. CRITERIA: 4 route cases; 2 client cases; 2 `--room` parse cases; `.dockerignore` assert;
+    default E2E 22/22. SIGNALS: `e2e_drive.py` exit 0; screenshot gate (diff touches `static/`).
+  - B5 K1 (Kev). CRITERIA: 3-5 rooms committed with M1 rows; each promoted; `e2e_drive.py --room <room_id>` exit 0
+    per room. SIGNALS: ownership clause confirmed; Meta usage about $1.
+
+Tests: tests/test_meta_client.py, tests/test_gen_room_fixtures.py, tests/test_promote_live_cache.py,
+tests/test_fixtures_manifest.py, tests/test_app.py, tests/test_e2e_drive.py, tests/test_deploy_artifacts.py,
+static/app.test.mjs

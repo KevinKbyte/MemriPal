@@ -55,6 +55,8 @@ the others that you asked about".
   `MEMRIPAL_RECORD_KEY`, else random per instance; forged sig 403 (over a session store, a required key, or 400).
 - [0028](0028-palace-backup-export-import.md) Palace backup: one JSON file, validated additive client import, app-wide
   CSP; supersedes 0003's import/export rejection (over per-palace files, images, overwrite, or a server endpoint).
+- [0029](0029-generated-test-rooms-fixture-provenance.md) Muse Image hard rooms as committed test fixtures only,
+  replayed via promoted live records (over demo art, synthetic or stock rooms, regeneration, or committed variants).
 
 ## Minor decisions (no ADR)
 
