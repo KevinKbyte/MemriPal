@@ -259,6 +259,9 @@ export function wireApp(deps) {
   const discardSpeaking = () => {
     void stopSpeaking()?.catch(() => {});
   };
+  // The open run's relay failure message, kept beside the empty-Done prompt so it is never wiped.
+  /** @type {{ session: NonNullable<typeof session>, el: HTMLElement } | null} */
+  let relayNote = null;
   /**
    * Budget spent, fixture-only server or network down: the run continues typed; lit points stay lit.
    * @param {NonNullable<typeof session>} current
@@ -269,9 +272,10 @@ export function wireApp(deps) {
     discardSpeaking();
     showTyped();
     const code = /** @type {{ code?: unknown } | null | undefined} */ (err)?.code;
-    byId("recall-results")?.replaceChildren(
-      textEl(doc, "p", `Speech relay failed (${typeof code === "string" ? code : "unexpected"}): type what you remember instead.`),
-    );
+    const why = typeof code === "string" ? code : "unexpected";
+    const note = textEl(doc, "p", `Speech relay failed (${why}): type what you remember instead.`);
+    relayNote = { session: current, el: note };
+    byId("recall-results")?.replaceChildren(note);
   };
 
   const renderHistory = createHistory({ doc, rehearsals, confirm: deps.confirm, palaceId: DEMO_PALACE_ID });
@@ -433,7 +437,9 @@ export function wireApp(deps) {
       const typed = String(box.value ?? "");
       // An empty typed Done would save a 0/N run; keep the run open and ask for an answer instead.
       if (!typed.trim()) {
-        byId("recall-results")?.replaceChildren(textEl(doc, "p", "Type what you remember first, then press Done."));
+        const kept = relayNote && relayNote.session === current ? [relayNote.el] : [];
+        const prompt = textEl(doc, "p", "Type what you remember first, then press Done.");
+        byId("recall-results")?.replaceChildren(...kept, prompt);
         return;
       }
       current.submitTyped(typed);
