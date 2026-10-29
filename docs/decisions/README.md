@@ -57,6 +57,8 @@ the others that you asked about".
   CSP; supersedes 0003's import/export rejection (over per-palace files, images, overwrite, or a server endpoint).
 - [0029](0029-generated-test-rooms-fixture-provenance.md) Muse Image hard rooms as committed test fixtures only,
   replayed via promoted live records (over demo art, synthetic or stock rooms, regeneration, or committed variants).
+- [0030](0030-adopt-v6-css-markup-only.md) v6 look adopted as CSS + markup retargeted to live ids, v6 JS
+  reference-only (over full v6 JS adoption or linking v6 `styles.css` verbatim).
 
 ## Minor decisions (no ADR)
 

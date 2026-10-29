@@ -478,7 +478,9 @@ The separate wiring change MEM-038 defers. Assets committed at 2e2cf96 under `st
   "sizes": "192x192", "type": "image/png", "purpose": "any"}` and the same for `icon-512.png` / `"512x512"`. Each
   PNG's real pixel size equals its `sizes`; every icon is served (`tests/test_deploy_web.py` rule, unchanged).
 - `index.html`: one decorative `<img id="empty-state" src="/static/assets/empty-state.webp" alt="">` directly
-  before `#scene-wrap`. Nothing else in `index.html` changes (no new link tags).
+  before `#scene-wrap`. Nothing else in `index.html` changes (no new link tags). Superseded in part by MEM-044 P1:
+  one stylesheet link `/static/theme-painterly.css`, last rel=stylesheet; MEM-044 A2 restyles the markup, ids and
+  `hidden` kept.
 - Visibility: shown on page load; gets the `hidden` attribute once a palace's places render in `#loci` (a photo
   upload or Load demo whose result is drawn), and stays hidden for the rest of the page session (a later failed
   upload does not bring it back).

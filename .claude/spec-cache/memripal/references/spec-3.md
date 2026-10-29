@@ -7,7 +7,9 @@ Continuation of [spec-2.md](spec-2.md), which is at its 500-line cap.
 Source of the claude.ai "MemriPal Prototype" artifact (Version 7, https://claude.ai/artifact/RBvuQkU4vM3u7f5AhhdbKN)
 committed under `docs/design/v6/`: `memripal-prototype.html`, `app.js`, `review.js`, `sched.js`, `tags.js`,
 `styles.css`. Standalone design reference (v6: palace tags Talk/Exam/user tags, optional dates, Review sort/filter),
-not served by the app; nothing under `static/` changes.
+not served by the app; nothing under `static/` changes. Superseded in part by MEM-044: the v6 look (tokens, type,
+component styles) is adopted into `static/style.css` and `static/index.html`; v6 JS (`app.js`, `review.js`,
+`sched.js`, `tags.js`) and the screen-per-step navigation stay reference-only; `docs/design/v6/` is unchanged.
 - Regression rule: `photo()` in `docs/design/v6/app.js` renders cropped place photos with
   `<use href="#room" width="800" height="560"></use>`. Without explicit width/height the room symbol sizes to the crop
   viewBox, so Review cards and Scenes tier-2 cards for off-origin places (e.g. Wedding toast clock, window, armchair,
@@ -170,3 +172,87 @@ a day. A live probe on one real room photo stays the realism check. New: `MetaCl
 Tests: tests/test_meta_client.py, tests/test_gen_room_fixtures.py, tests/test_promote_live_cache.py,
 tests/test_fixtures_manifest.py, tests/test_app.py, tests/test_e2e_drive.py, tests/test_deploy_artifacts.py,
 static/app.test.mjs
+
+## MEM-044 v6 look adoption + painterly theme
+
+ADR [0030](../../../../docs/decisions/0030-adopt-v6-css-markup-only.md); supersedes in part MEM-041 (nothing under
+`static/` changes) and MEM-040 (no new link tags). Kev (Q22): adopt the v6 look ourselves. Take v6 CSS + markup ONLY
+(`docs/design/v6/styles.css` tokens and component looks, `memripal-prototype.html` patterns), retargeted to live ids and
+elements. v6 JS (`app.js`, `review.js`, `sched.js`, `tags.js`) is reference-only: a self-contained mock (0 fetch,
+hard-coded data, innerHTML against MEM-042 I6, globals, ids `#s1`-`#s9`/`#jump`); its step rail, screen-per-step
+navigation, Review and tags stay out. `docs/design/v6/` is unchanged. The live CSP (MEM-042 C1) has no `style-src` or
+`font-src`, so `<style>`, `style=` and remote fonts are refused. Changed: `static/style.css`, `static/index.html`,
+`static/rehearsals.js`, `static/app.js` (badge constants only, file <= 500 lines); new `static/theme-painterly.css`.
+- A1 Tokens + base (`static/style.css` rewritten in place): the 21 v6 tokens (`--bg`..`--shadow`, `--display`,
+  `--body`, `--mono`) under `:root`, `@media (prefers-color-scheme: dark) :root:not([data-theme="light"])` and
+  `:root[data-theme="dark"]`, `color-scheme` under all 3; every token consumed by a `var(` (0 dead). System font stacks
+  only: 0 `@font-face`, 0 `@import`, 0 `http`; a later web font is self-hosted under `/static/` (C1 `default-src
+  'self'`). CSP-clean: 0 inline style, 0 `<style>`, no eval. Kept: the live `[hidden]` rule spelling (`display: none
+  !important`; the parsed spelling is test-pinned), the `#empty-state`, `img` and `#scene-overlay` (position fixed,
+  inset 0, z-index >= 10) rules. On `html`, `:root`, `body`, `main`: none of filter, backdrop-filter, transform,
+  perspective, will-change, contain, mix-blend-mode, isolation, z-index, overflow (keeps `#scene-overlay`
+  viewport-fixed); v6 `body::before` fixed layer dropped. Contrast from tokens, light and dark: >= 4.5:1 for ink/bg,
+  ink/surface, muted/bg, muted/surface, muted/surface-2, on-primary/primary, primary/surface, lamp-ink/lamp-soft,
+  ink/lamp-soft, ok/ok-soft, bad/bad-soft, on-bad/bad; >= 3:1 for focus/bg, line/surface. Every rule setting a
+  background has an effective text colour >= 4.5:1 (`.live-board li.lit` -> `var(--lamp-soft)` + `color:
+  var(--ink)`). A rule setting `color` on input/textarea/select/button also sets `background`.
+- A2 Markup (`static/index.html`; F13): v6 shell and control markup (topbar brand, `.panel`, `.field`, `.btn`,
+  `.btn-primary`, `.eyebrow`, `.notice`) around the live elements. Every existing id kept and its `hidden` attribute
+  unchanged: id set and initially-hidden id set equal 748a5e1's. Link list unchanged; 0 `style=`, 0 `<style`;
+  `#empty-state` still directly before `#scene-wrap`. 0 orphan classes (each `index.html` class has a `style.css`
+  rule) and 0 orphan selectors (each `style.css` class is in `index.html` or a class literal in `static/*.js`). F13:
+  the `#auto` label sits in the same container as `#load-demo`, before it; every text/file/password input has a `<label
+  for>` inside one `.field` wrapper (display grid or block); 0 bare top-level `<label>`/`<input>` children of `main`.
+  `#auto` stays a native visible checkbox. `button` and `.btn` min-height >= 44px. No new wrapper between `main` and
+  `#scene-overlay` carries an A1-forbidden property.
+- A3 Components (`static/style.css`, `static/rehearsals.js`, `static/app.js`; F6, F12 numbering, F15 badge
+  contrast): 0 classes added to the `said-vs-palace` OL/LI (exact className asserts unchanged). F6:
+  `span.said-label`/`.said-text`/`.said-quote` display block; each row gains textContent labels "You said:" before
+  said-text and "In your palace:" before said-quote. F12: each `#route li` shows its number (counter or list-item
+  marker), `#route li > span:first-child` stays the label; `#loci` numbering matches the canvas badges. F15: badge
+  fill and text are exported constants in `app.js` (net <= +2 lines) at >= 4.5:1 (today `#ff3b30`/`#fff` = 3.55:1;
+  e.g. `#A1341A` on `#FFFFFF`). `#associations > section` and `#scenes > section` stay direct children; `.live-board
+  li.lit` takes background and color from tokens; 0 filter/transform on `#scene-wrap`, `#scenes`, `#walk`,
+  `#recall`, `#recall-live` or their ancestors.
+- P1 Painterly theme (`static/theme-painterly.css`, after A1-A3; droppable). No-op guard: the theme remaps v6 tokens
+  that the live `style.css` consumes; every theme token is a v6 token or consumed in the theme, so the theme
+  visibly changes the live app (a token-only theme over unconsumed tokens passes green and changes nothing).
+  1. `index.html`: the theme is the LAST `rel=stylesheet` link; `test_assets_wiring` LINKS list = 4 links in that
+     order, its comment cites MEM-044 P1; 0 `style="`, 0 `<style`.
+  2. 0 http(s) URLs, 0 `@import`; every `url()` is data: or `/static/`; each data: URI parses as SVG XML with xmlns,
+     has no raw `#`, no `<style`/`style=`/`<script`/`href`/`url(`, explicit width/height <= 256; data URIs total
+     <= 4096 bytes.
+  3. Tokens declared under the identical 3 A1 selectors; 0 dead tokens; `color-scheme` in all 3; the theme never
+     sets `--body` (serif only via `--display`).
+  4. Contrast: pairs extracted mechanically from every rule setting a background in every linked stylesheet (own
+     color or inherited ink), `var()` resolved per mode, >= 4.5:1 text, >= 3:1 focus/line; ink/bg, muted/bg and
+     primary/bg >= 4.5:1 against the worst-case grain composite; grain alpha <= 0.08.
+  5. 0 width/min-width/flex-basis > 360px (`layout.test.mjs` scans the theme); 0 A1-forbidden properties on `html`,
+     `:root`, `body`, `main` or any ancestor of `#scene-overlay`; 0 `filter:url(`, 0 inline `<svg><filter>` in
+     `index.html`; deckle via a mask-image data: SVG on `.panel::before` only; grain as a capped-alpha body
+     background; 0 mix-blend-mode; 0 `background-attachment: fixed`.
+  6. 0 lines changed in `static/style.css`, `docs/design/v6/`, `src/memripal/security_headers.py`.
+  7. 0 orphan selectors: every theme id/class/tag is in `index.html` or the `static/*.js` class allowlist.
+  8. `@media (forced-colors: active)`, `(prefers-contrast: more)` and `print` each reset
+     background-image/filter/mask-image/border-image for every theme selector that sets them; 0
+     `@keyframes`/animation/transition.
+  9. 0 `!important`; `[hidden]` still wins (the `test_hidden_wins` scan covers the theme).
+  10. `scripts/check.sh` green (ruff, pytest, both node suites).
+- P2 watercolour asset regen (paid, nondeterministic, 192 px icon legibility) deferred past Nov 3.
+- Build slices (CRITERIA; SIGNALS), sequential in one worktree:
+  - S1 A1. CRITERIA: A1 clauses; `test_assets_wiring` + `layout.test.mjs` green unmodified; 0 lines changed in
+    `index.html`, `*.js`, `docs/design/v6/`, `security_headers.py`; check.sh green. SIGNALS: screenshot_ui 0 console
+    errors; e2e 22/22 incl. step 13 360px no-hscroll; human look 360px light + dark; visual-verify record.
+  - S2 A2. CRITERIA: id + initially-hidden set equality; 0 orphans; F13 asserts; 44px min-height; check.sh green.
+    SIGNALS: e2e 22/22 (`page.check("#auto")`); screenshot_ui 0 errors; 360 + 1100 px screenshots; visual-verify
+    record.
+  - S3 A3. CRITERIA: className asserts pass unmodified; F6 both labels + hostile-input test; F12 numbering; F15 >=
+    4.5:1 from the exported constants; `app.js` <= 500 lines; check.sh green. SIGNALS: e2e steps 6, 7 (overlay
+    Escape + click at (5,5)), 8, 8b, 9a, 10b; light + emulated-dark `#scene-overlay` box == viewport (no eval);
+    visual-verify record.
+  - P1 P1. CRITERIA: no-op guard + P1 1-10. SIGNALS: screenshot_ui 0 errors; e2e 22/22; `to_have_css` body
+    background-color == theme `--bg` light + dark; `#scene-overlay` box == viewport; human sign-off 360px;
+    visual-verify record.
+
+Tests: static/style_v6.test.mjs, static/index_markup.test.mjs, static/style_v6_components.test.mjs,
+static/theme_painterly.test.mjs, static/rehearsals.test.mjs, static/layout.test.mjs, tests/test_assets_wiring.py
