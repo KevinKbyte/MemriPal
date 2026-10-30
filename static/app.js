@@ -9,6 +9,8 @@ import { createRehearsalStore } from "./rehearsals.js";
 import { migrateLocalStorage } from "./storage_migrate.js";
 
 export { isPublicHost, showPublicBanner } from "./public_banner.js";
+// MEM-044 F15: canvas badge colours (v6 --bad on white, >= 4.5:1); a canvas cannot read CSS tokens.
+export const BADGE_FILL = "#A1341A", BADGE_TEXT = "#FFFFFF";
 
 /**
  * @typedef {{x1: number, y1: number, x2: number, y2: number}} LocusBox
@@ -155,11 +157,11 @@ async function drawResult(payload, isCurrent, deps) {
   for (const locus of payload.loci) {
     if (locus.box) {
       const { x1, y1, x2, y2 } = locus.box;
-      ctx.strokeStyle = "#ff3b30";
+      ctx.strokeStyle = BADGE_FILL;
       ctx.strokeRect(x1 * scale, y1 * scale, (x2 - x1) * scale, (y2 - y1) * scale);
-      ctx.fillStyle = "#ff3b30";
+      ctx.fillStyle = BADGE_FILL;
       ctx.fillRect(x1 * scale, y1 * scale, 28, 24);
-      ctx.fillStyle = "#ffffff";
+      ctx.fillStyle = BADGE_TEXT;
       ctx.fillText(String(locus.n), x1 * scale + 4, y1 * scale + 3);
     }
     // Label only: the <ol id="loci"> marker supplies the number, matching the canvas badge.

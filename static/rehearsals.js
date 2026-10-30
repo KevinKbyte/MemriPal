@@ -144,11 +144,13 @@ export function renderSaidVsPalace(record, doc) {
     const said = p.got ? (p.span ?? "marked got it") : "not said";
     const row = doc.createElement("li");
     row.className = p.got ? "said-got" : "said-missed";
-    row.append(
-      textEl(doc, "span", "said-label", p.label),
-      textEl(doc, "span", "said-text", said),
-      textEl(doc, "span", "said-quote", p.source_quote),
-    );
+    const saidEl = doc.createElement("span");
+    saidEl.className = "said-text";
+    saidEl.append(textEl(doc, "strong", "", "You said:"), " ", said);
+    const quoteEl = doc.createElement("span");
+    quoteEl.className = "said-quote";
+    quoteEl.append(textEl(doc, "strong", "", "In your palace:"), " ", p.source_quote);
+    row.append(textEl(doc, "span", "said-label", p.label), saidEl, quoteEl);
     list.appendChild(row);
   }
   return list;

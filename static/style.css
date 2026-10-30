@@ -220,16 +220,66 @@ button[data-action="delete-rehearsal"]:hover {
   background: var(--bad);
 }
 
+/* Native file input button: same look as the other buttons. */
+input[type="file"]::file-selector-button {
+  min-height: 2.75rem;
+  margin-right: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font: inherit;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--surface-2);
+  cursor: pointer;
+}
+
+/* F7: the association/scene Show/Hide toggles read as quiet secondary controls. */
+button[aria-expanded] {
+  color: var(--primary);
+  background: var(--surface-2);
+  border-color: var(--line);
+}
+
+#history > [role="status"] {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--bad);
+  border-radius: 10px;
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+
+/* F12: the flex row hides the li marker, so a counter on an absolute ::before numbers it; the label
+   takes the first line whole, so Up/Down/Drop wrap together and Drop never sits alone at 360 px. */
+#route {
+  counter-reset: route;
+  padding-left: 0;
+}
+
 #route li {
+  position: relative;
+  counter-increment: route;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.25rem;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.5rem;
+  padding-left: 2rem;
+}
+
+#route li::before {
+  content: counter(route) ".";
+  position: absolute;
+  left: 0;
+  top: 0.1rem;
+  font: 600 0.9rem/1.5 var(--mono);
+  color: var(--muted);
 }
 
 #route li > span:first-child {
-  flex: 1 1 auto;
+  flex: 1 1 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* The tier-1 scene is the whole photo, zoomed by an inline transform; the frame crops it. */
@@ -293,4 +343,11 @@ li.said-got {
 li.said-missed {
   background: var(--bad-soft);
   color: var(--bad);
+}
+
+/* F6: label, "You said:" text and "In your palace:" quote each on their own line. */
+.said-label,
+.said-text,
+.said-quote {
+  display: block;
 }
