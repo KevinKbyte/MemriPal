@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.19.0] - 2026-10-30
+
+### Added
+
+- Generated demo rooms: `scripts/gen_room_fixtures.py` makes photo-like room images through the Meta
+  text-to-image call (never retried, key-gated, dry-run option) and records them in the fixture MANIFEST,
+  keeping rows it did not write (MEM-043; `tests/test_gen_room_fixtures.py`).
+- `?room=<id>` opens a demo room, and Load demo fetches that room's fixtures (MEM-043; `static/app.test.mjs`,
+  `tests/test_e2e_drive.py`).
+- Live runs write a `.sha` sidecar beside each cache entry, so `scripts/promote_live_cache.py --room <id>`
+  promotes only that room's entries (MEM-043; `tests/test_promote_live_cache.py`,
+  `tests/test_live_cache_sidecar.py`).
+
+### Fixed
+
+- Promoting a room with no recorded entries exits 1 with "0 entries for room <id>" instead of silently copying
+  nothing (MEM-043, Q25; `tests/test_promote_live_cache.py`).
+
 ## [0.18.1] - 2026-10-30
 
 ### Fixed
