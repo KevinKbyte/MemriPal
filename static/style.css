@@ -234,11 +234,23 @@ input[type="file"]::file-selector-button {
   cursor: pointer;
 }
 
+/* Rest fill is already --surface-2, so hover swaps back to --surface and marks the edge instead. */
+input[type="file"]::file-selector-button:hover {
+  background: var(--surface);
+  border-color: var(--primary);
+}
+
 /* F7: the association/scene Show/Hide toggles read as quiet secondary controls. */
 button[aria-expanded] {
   color: var(--primary);
   background: var(--surface-2);
   border-color: var(--line);
+}
+
+/* Same idiom as the file chooser: this rule outranks button:hover, whose fill would be a no-op here. */
+button[aria-expanded]:hover {
+  background: var(--surface);
+  border-color: var(--primary);
 }
 
 #history > [role="status"] {
@@ -264,14 +276,17 @@ button[aria-expanded] {
   align-items: center;
   gap: 0.25rem;
   margin-bottom: 0.5rem;
-  padding-left: 2rem;
+  padding-left: 2.5rem;
 }
 
+/* Fixed right-aligned box so a 3-digit place number ("100.") never runs into the label. */
 #route li::before {
   content: counter(route) ".";
   position: absolute;
   left: 0;
   top: 0.1rem;
+  width: 2.25rem;
+  text-align: right;
   font: 600 0.9rem/1.5 var(--mono);
   color: var(--muted);
 }
