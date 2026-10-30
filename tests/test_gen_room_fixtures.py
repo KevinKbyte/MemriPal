@@ -385,7 +385,7 @@ def _size(data: bytes) -> tuple[int, int]:
 
 # Covers: MEM-043
 class TestVariants:
-    def test_exactly_six_named_variants_of_bytes(self):
+    def test_exactly_six_named_variants_of_bytes(self, base):
         variants = _variants(base)
         assert set(variants) == VARIANT_KEYS
         assert all(isinstance(v, bytes) and v for v in variants.values())
@@ -405,7 +405,7 @@ class TestVariants:
         processed, expected = process_upload(data), process_upload(base)
         assert (processed.width, processed.height) == (expected.width, expected.height)
 
-    def test_gps_is_accepted_and_exif_is_stripped(self):
+    def test_gps_is_accepted_and_exif_is_stripped(self, base):
         variants = _variants(base)
         data = variants["gps"]
         with Image.open(BytesIO(data)) as img:
@@ -415,7 +415,7 @@ class TestVariants:
         with Image.open(BytesIO(processed.jpeg)) as img:
             assert len(img.getexif()) == 0
 
-    def test_heic_is_iso_bmff_ftyp_and_rejected_bad_magic(self):
+    def test_heic_is_iso_bmff_ftyp_and_rejected_bad_magic(self, base):
         variants = _variants(base)
         data = variants["heic"]
         assert data[4:8] == b"ftyp"
@@ -428,7 +428,7 @@ class TestVariants:
     def test_no_pillow_heif_dependency(self):
         assert "pillow-heif" not in (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8").lower()
 
-    def test_oversize_long_side_6000_within_caps_processed_to_2048(self):
+    def test_oversize_long_side_6000_within_caps_processed_to_2048(self, base):
         variants = _variants(base)
         data = variants["oversize"]
         w, h = _size(data)
@@ -447,7 +447,7 @@ class TestVariants:
         assert len(data) < len(base)
         assert process_upload(data).sha
 
-    def test_aspect_is_9_16_portrait_and_processed_within_1_percent(self):
+    def test_aspect_is_9_16_portrait_and_processed_within_1_percent(self, base):
         variants = _variants(base)
         data = variants["aspect"]
         w, h = _size(data)
