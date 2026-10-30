@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.18.0] - 2026-10-30
+
+### Changed
+
+- The app adopts the v6 painterly look: design tokens, light and dark color schemes, system fonts, panel and field
+  styling, and 44px tap targets; Auto mode sits beside Load demo (MEM-044, ADR 0030; `static/style_v6.test.mjs`,
+  `static/index_markup.test.mjs`).
+
 ## [0.17.3] - 2026-10-29
 
 ### Fixed
