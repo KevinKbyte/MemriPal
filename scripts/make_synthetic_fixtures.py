@@ -253,10 +253,13 @@ class BytesRecorder:
         return self.reply
 
 
-def scene_edit(shelf: Image.Image, box: tuple[int, int, int, int]) -> bytes:
-    """A small tier-1 demo scene: the shelf with a gold banner on the locus (render_scene resizes it)."""
+def scene_edit(shelf: Image.Image, box: tuple[int, int, int, int], size: tuple[int, int]) -> bytes:
+    """A small tier-1 demo scene: the shelf with a gold banner on the locus (render_scene resizes it).
+
+    `box` is in processed-image coordinates, so it scales by the processed `size`, not the shelf's.
+    """
     w, h = 256, 192
-    sx, sy = w / shelf.width, h / shelf.height
+    sx, sy = w / size[0], h / size[1]
     img = shelf.resize((w, h))
     x0, y0, x1, y1 = box
     ImageDraw.Draw(img).rectangle(
@@ -308,7 +311,7 @@ def notes_entries(
         if n == 1:
             b = found[0].box
             box = {"x1": b.x1, "y1": b.y1, "x2": b.x2, "y2": b.y2}
-            edit = scene_edit(shelf, (b.x1, b.y1, b.x2, b.y2))
+            edit = scene_edit(shelf, (b.x1, b.y1, b.x2, b.y2), (processed.width, processed.height))
             render_scene(BytesRecorder(cache, edit, written), processed, box, result.record)
         for hit in places:
             place = {"title": hit["title"], "extract": hit["extract"]}

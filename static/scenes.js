@@ -69,6 +69,9 @@ function textEl(doc, tag, text) {
   return e;
 }
 
+/** The thumbnail that opened each overlay, so closing it hands keyboard focus back. */
+const openers = new WeakMap();
+
 /**
  * Close-on-click and close-on-Escape, wired once per overlay however many runs share it.
  * @param {SceneDoc} doc
@@ -80,6 +83,8 @@ function wireOverlay(doc, overlay) {
   const close = () => {
     overlay.hidden = true;
     overlay.replaceChildren();
+    openers.get(overlay)?.focus();
+    openers.delete(overlay);
   };
   overlay.addEventListener("click", close);
   doc.addEventListener("keydown", (ev) => {
@@ -114,7 +119,7 @@ export function sceneView(doc, result, box, overlay, alt) {
   img.style.transformOrigin = "0 0";
   img.style.transform = `scale(${scale}) translate(${tx * 100}%, ${ty * 100}%)`;
   if (overlay) {
-    img.addEventListener("click", () => {
+    const open = () => {
       const full = /** @type {HTMLImageElement} */ (doc.createElement("img"));
       full.src = src;
       full.alt = `${alt}, full size`;
@@ -122,7 +127,20 @@ export function sceneView(doc, result, box, overlay, alt) {
       const close = /** @type {HTMLButtonElement} */ (textEl(doc, "button", "Close"));
       close.type = "button";
       overlay.replaceChildren(full, close);
+      overlay.setAttribute("role", "dialog");
+      overlay.setAttribute("aria-modal", "true");
+      overlay.setAttribute("aria-label", `${alt}, full size`);
+      openers.set(overlay, img);
       overlay.hidden = false;
+      close.focus();
+    };
+    img.tabIndex = 0;
+    img.addEventListener("click", open);
+    img.addEventListener("keydown", (ev) => {
+      const key = /** @type {KeyboardEvent} */ (ev).key;
+      if (key !== "Enter" && key !== " ") return;
+      ev.preventDefault();
+      open();
     });
   }
   frame.append(img);
@@ -178,6 +196,7 @@ export async function runScenes(cards, deps) {
   const image = deps.image;
   // The server rejects every request without a photo, so send nothing at all.
   if (!image) return results;
+  if (panel) panel.setAttribute("aria-busy", "true");
   /** @type {Array<{index: number, card: SceneCard, slot: HTMLElement}>} */
   const jobs = [];
   cards.forEach((card, index) => {
@@ -194,10 +213,15 @@ export async function runScenes(cards, deps) {
       const job = jobs[next++];
       const result = await requestScene(job.card, image, deps.fetch);
       results[job.index] = result;
-      const alt = `${job.card.item} at ${job.card.locus.label}`;
+      const alt = [job.card.item, job.card.locus.label].filter(Boolean).join(" at ") || "Scene";
       job.slot.replaceChildren(sceneView(deps.doc, result, job.card.locus.box, overlay, alt));
     }
   };
-  await Promise.all(Array.from({ length: Math.min(MAX_SCENES_IN_FLIGHT, jobs.length) }, worker));
+  try {
+    await Promise.all(Array.from({ length: Math.min(MAX_SCENES_IN_FLIGHT, jobs.length) }, worker));
+  } finally {
+    // The panel announces once, when every scene has settled, not once per card.
+    if (panel) panel.removeAttribute("aria-busy");
+  }
   return results;
 }
