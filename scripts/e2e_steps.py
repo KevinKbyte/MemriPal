@@ -91,6 +91,10 @@ def s_scenes(ctx, page):
     imgs = page.locator("#scenes .scene-frame img").count()
     unavailable = [t for t in texts(page, "#scenes p") if t.startswith("Scene unavailable")]
     rendering = [t for t in texts(page, "#scenes div") if t == "Rendering scene..."]
+    # The scene cards start collapsed behind a Show/Hide toggle (MEM-030); open them to click one.
+    toggle = page.locator('#scenes > button[aria-expanded="false"]')
+    if toggle.count():
+        toggle.first.click()
     ctx.shot(page, "06_scenes")
     overlay_ok = None
     transform = None
