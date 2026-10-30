@@ -2,6 +2,25 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.1] - 2026-10-30
+
+### Fixed
+
+- The full-size scene overlay is a modal dialog with a top-right Close button; focus moves to Close on open and
+  back to the thumbnail on close, and thumbnails open with Enter/Space (MEM-044;
+  `static/app_ux_scene_overlay.test.mjs`).
+- Scene images carry "<item> at <place>" alt text in the scenes panel and walk view (MEM-044;
+  `static/app_ux_scene_overlay.test.mjs`).
+- The scenes panel is a polite live region, marked aria-busy while rendering (MEM-044;
+  `static/app_ux_scene_overlay.test.mjs`).
+- At 360px, Confirm drop and Cancel share one line, and locus badges shrink at small scale so the demo's 12 do
+  not overlap (MEM-044; `static/app_ux_badges_360.test.mjs`, `static/style_v6_components.test.mjs`).
+
+### Changed
+
+- E2E step 6 (scene overlay) is strict, backed by a tier-1 demo scene fixture
+  (`fixtures/replay/image_edit/272afd50...webp`) (MEM-044; `tests/test_e2e_scene_step.py`).
+
 ## [0.20.0] - 2026-10-30
 
 ### Added
