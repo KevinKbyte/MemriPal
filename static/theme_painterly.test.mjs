@@ -9,223 +9,11 @@
 // every painterly image/filter/mask/border-image; 0 animation; 0 !important so [hidden] still wins.
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
-
-const read = (f) => readFileSync(new URL(f, import.meta.url), "utf8");
-const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "");
-const THEME_FILE = "theme-painterly.css";
-const HTML = read("./index.html");
-const STYLE = strip(read("./style.css"));
-let themeCache;
-const themeCss = () => {
-  assert.ok(existsSync(new URL(`./${THEME_FILE}`, import.meta.url)), `static/${THEME_FILE} missing`);
-  themeCache ??= strip(read(`./${THEME_FILE}`));
-  return themeCache;
-};
-
-const TOKENS = [
-  "--bg", "--surface", "--surface-2", "--ink", "--muted", "--line", "--primary", "--on-primary",
-  "--lamp", "--lamp-ink", "--lamp-soft", "--ok", "--ok-soft", "--bad", "--bad-soft", "--on-bad",
-  "--focus", "--shadow", "--display", "--body", "--mono",
-];
-const CONTEXTS = {
-  light: { media: null, sel: ":root", scheme: "light" },
-  dark: { media: "(prefers-color-scheme:dark)", sel: ':root:not([data-theme="light"])', scheme: "dark" },
-  "dark-attr": { media: null, sel: ':root[data-theme="dark"]', scheme: "dark" },
-};
-const FORBIDDEN = new Set([
-  "filter", "backdrop-filter", "transform", "perspective", "will-change", "contain", "mix-blend-mode",
-  "isolation", "z-index", "overflow", "overflow-x", "overflow-y",
-]);
-const ROOTISH = /^(html|:root|body|main)(?:\[[^\]]*\]|[.#][\w-]+|:(?!:)[\w-]+(?:\([^)]*\))?)*$/i;
-const RESET_MEDIA = { "forced-colors": /\(forced-colors:active\)/, "prefers-contrast": /\(prefers-contrast:more\)/,
-  print: /\bprint\b/ };
-const IMAGE_PROPS = ["background-image", "filter", "mask-image", "border-image"];
-const GRAIN_MAX = 0.08;
-
-// Split on sep at depth 0, outside quotes, parens and brackets.
-function splitTop(str, sep) {
-  const out = [];
-  let buf = "", depth = 0, quote = null;
-  for (const ch of str) {
-    if (quote) { buf += ch; if (ch === quote) quote = null; continue; }
-    if (ch === '"' || ch === "'") quote = ch;
-    else if (ch === "(" || ch === "[") depth++;
-    else if (ch === ")" || ch === "]") depth--;
-    else if (ch === sep && depth === 0) { out.push(buf); buf = ""; continue; }
-    buf += ch;
-  }
-  out.push(buf);
-  return out;
-}
-const norm = (s) => s.replace(/\s+/g, " ").trim();
-const normSel = (s) => norm(s).replace(/'/g, '"');
-
-// Rules: { parts: [selector...], decls: [[prop, value]], media: [normalized @media preludes] }.
-function parseRules(src) {
-  const rules = [], stack = [];
-  let buf = "", quote = null;
-  for (const ch of src) {
-    if (quote) { buf += ch; if (ch === quote) quote = null; continue; }
-    if (ch === '"' || ch === "'") { quote = ch; buf += ch; continue; }
-    if (ch === "{") { stack.push(norm(buf)); buf = ""; continue; }
-    if (ch === ";" && stack.length === 0) { buf = ""; continue; }
-    if (ch !== "}") { buf += ch; continue; }
-    const head = stack.pop();
-    if (head !== undefined && !head.startsWith("@")) {
-      const decls = splitTop(buf, ";").map((d) => d.trim()).filter((d) => d.includes(":")).map((d) => {
-        const i = d.indexOf(":");
-        return [d.slice(0, i).trim().toLowerCase(), norm(d.slice(i + 1))];
-      });
-      const media = stack.filter((h) => h.startsWith("@media")).map((h) => h.toLowerCase().replace(/\s+/g, ""));
-      rules.push({ parts: splitTop(head, ",").map(normSel), decls, media });
-    }
-    buf = "";
-  }
-  return rules;
-}
-const decl = (rule, prop) => rule.decls.filter(([p]) => p === prop).map(([, v]) => v).pop();
-const bare = (p) => p.replace(/^-(webkit|moz|ms)-/, "");
-const compounds = (part) => splitTop(part.replace(/\s*([>+~])\s*/g, " "), " ").filter(Boolean);
-const lastCompound = (part) => compounds(part).pop() ?? "";
-const where = (r) => `${r.media.join(" ")} ${r.parts.join(", ")}`.trim();
-const STYLE_RULES = parseRules(STYLE);
-const themeRules = () => parseRules(themeCss());
-const isReset = (r) => Object.values(RESET_MEDIA).some((re) => r.media.some((m) => re.test(m)));
-
-function contextDecls(rules, { media, sel }) {
-  const out = {};
-  for (const r of rules) {
-    const inCtx = media === null ? r.media.length === 0 : r.media.length === 1 && r.media[0].includes(media);
-    if (inCtx && r.parts.includes(sel)) for (const [p, v] of r.decls) out[p] = v;
-  }
-  return out;
-}
-// Tokens per mode with the theme cascading over style.css (it is linked after it).
-function modes() {
-  const tr = themeRules();
-  const light = { ...contextDecls(STYLE_RULES, CONTEXTS.light), ...contextDecls(tr, CONTEXTS.light) };
-  const dark = (ctx) => ({ ...light, ...contextDecls(STYLE_RULES, ctx), ...contextDecls(tr, ctx) });
-  return { light, dark: dark(CONTEXTS.dark), "dark-attr": dark(CONTEXTS["dark-attr"]) };
-}
-
-// Replace every var(--x[, fallback]) with the mode's token value, recursively.
-function resolveVars(value, tokens, depth = 0) {
-  if (depth > 10) return value;
-  const at = value.indexOf("var(");
-  if (at < 0) return value;
-  let i = at + 4, level = 1;
-  while (i < value.length && level > 0) { if (value[i] === "(") level++; if (value[i] === ")") level--; i++; }
-  const [name, ...fb] = splitTop(value.slice(at + 4, i - 1), ",");
-  const hit = tokens[name.trim()] ?? (fb.length ? fb.join(",").trim() : `<unresolved ${name.trim()}>`);
-  return resolveVars(value.slice(0, at) + resolveVars(hit, tokens, depth + 1) + value.slice(i), tokens, depth);
-}
-const COLOR_RE =
-  /#[0-9a-f]{3,8}\b|rgba?\([^)]*\)|\b(?:white|black|transparent|currentcolor)\b|<unresolved [^>]*>/gi;
-const URL_RE = /url\(\s*(?:"([^"]*)"|'([^']*)'|([^)\s]*))\s*\)/gi;
-const noUrls = (v) => v.replace(URL_RE, "");
-
-function parseColor(s) {
-  const t = s.trim().toLowerCase();
-  if (t === "white") return [255, 255, 255, 1];
-  if (t === "black") return [0, 0, 0, 1];
-  if (t === "transparent") return [0, 0, 0, 0];
-  let m = t.match(/^#([0-9a-f]{3,8})$/);
-  if (m && [3, 4, 6, 8].includes(m[1].length)) {
-    const h = m[1].length <= 4 ? [...m[1]].map((c) => c + c).join("") : m[1];
-    const n = (k) => parseInt(h.slice(k, k + 2), 16);
-    return [n(0), n(2), n(4), h.length === 8 ? n(6) / 255 : 1];
-  }
-  m = t.match(/^rgba?\(([^)]*)\)$/);
-  if (m) {
-    const p = m[1].split(/[\s,/]+/).filter(Boolean);
-    const ch = (v) => (v.endsWith("%") ? (parseFloat(v) * 255) / 100 : parseFloat(v));
-    const a = p[3] === undefined ? 1 : p[3].endsWith("%") ? parseFloat(p[3]) / 100 : parseFloat(p[3]);
-    if (p.length >= 3 && [0, 1, 2].every((k) => Number.isFinite(ch(p[k]))) && Number.isFinite(a)) {
-      return [ch(p[0]), ch(p[1]), ch(p[2]), a];
-    }
-  }
-  return null;
-}
-const over = ([r, g, b, a], [R, G, B]) => [r * a + R * (1 - a), g * a + G * (1 - a), b * a + B * (1 - a), 1];
-const lum = (c) => {
-  const [r, g, b] = c.slice(0, 3).map((v) => {
-    const s = v / 255;
-    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
-  });
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-};
-const ratio = (a, b) => {
-  const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
-  return (x + 0.05) / (y + 0.05);
-};
-function tokenColor(tokens, mode, name) {
-  const raw = tokens[name];
-  assert.ok(raw !== undefined, `${mode}: token ${name} is not declared`);
-  const c = parseColor(resolveVars(raw, tokens));
-  assert.ok(c, `${mode}: token ${name} = ${raw} is not a colour`);
-  return c[3] < 1 ? over(c, tokenColor(tokens, mode, "--bg")) : c;
-}
-
-// Raw url() targets of a stylesheet, then the decoded body of a data: URI.
-const urls = (css) => [...css.matchAll(URL_RE)].map((m) => m[1] ?? m[2] ?? m[3]);
-function decodeData(uri) {
-  const comma = uri.indexOf(",");
-  const head = uri.slice(0, comma), body = uri.slice(comma + 1);
-  return /;base64$/i.test(head) ? Buffer.from(body, "base64").toString("utf8") : decodeURIComponent(body);
-}
-const attrsOf = (rest) => Object.fromEntries([...rest.matchAll(/([\w:.-]+)\s*=\s*("([^"]*)"|'([^']*)')/g)]
-  .map((a) => [a[1].toLowerCase(), a[3] ?? a[4]]));
-
-// Well-formed XML check: one <svg> root, balanced tags, quoted attributes, legal entities.
-// Returns { problem } or { root: attrs, elements: [{ tag, attrs }] }.
-function parseSvg(src) {
-  const s = src.replace(/^\s*<\?xml[\s\S]*?\?>/, "").replace(/<!--[\s\S]*?-->/g, "").trim();
-  const stack = [], elements = [];
-  let last = 0, closedRoot = false;
-  const tagRe = /<(\/?)([A-Za-z][\w:.-]*)((?:"[^"]*"|'[^']*'|[^'">])*?)(\/?)>/g;
-  for (const m of s.matchAll(tagRe)) {
-    const text = s.slice(last, m.index);
-    if (text.includes("<") || (closedRoot && text.trim())) return { problem: `stray text ${text}` };
-    if (/&(?!(amp|lt|gt|quot|apos|#\d+|#x[0-9a-f]+);)/i.test(text)) return { problem: "bad entity" };
-    last = m.index + m[0].length;
-    const [, close, tag, rest, self] = m;
-    if (closedRoot) return { problem: `content after the root: <${close}${tag}>` };
-    if (close) {
-      if (stack.pop() !== tag) return { problem: `unbalanced </${tag}>` };
-      if (!stack.length) closedRoot = true;
-      continue;
-    }
-    if (!/^(\s+[\w:.-]+\s*=\s*("[^"]*"|'[^']*'))*\s*$/.test(rest)) return { problem: `bad attributes on <${tag}>` };
-    if (!elements.length && tag !== "svg") return { problem: `root is <${tag}>, not <svg>` };
-    if (elements.length && !stack.length) return { problem: "more than one root element" };
-    elements.push({ tag, attrs: attrsOf(rest) });
-    if (self) { if (!stack.length) closedRoot = true; } else stack.push(tag);
-  }
-  if (s.slice(last).trim() || stack.length || !closedRoot) return { problem: "unclosed or trailing content" };
-  return { root: elements[0].attrs, elements };
-}
-
-// Worst-case alpha of a grain SVG: root opacity x the largest opacity on any drawing element.
-function grainAlpha(svg) {
-  const op = (a) => ["opacity", "fill-opacity", "stroke-opacity", "flood-opacity"]
-    .map((k) => a[k]).filter((v) => v !== undefined).map(Number);
-  const root = op(svg.root);
-  const inner = svg.elements.slice(1).flatMap((e) => op(e.attrs));
-  return (root.length ? Math.min(...root) : 1) * (inner.length ? Math.max(...inner) : 1);
-}
-
-const linkedSheets = () => [...HTML.matchAll(/<link\b[^>]*>/gi)].map((m) => m[0])
-  .filter((t) => /rel\s*=\s*"stylesheet"/i.test(t)).map((t) => t.match(/href\s*=\s*"([^"]*)"/i)?.[1]);
-const HTML_TAGS = new Set([...HTML.matchAll(/<([a-zA-Z][\w-]*)/g)].map((m) => m[1].toLowerCase()));
-const HTML_IDS = new Set([...HTML.matchAll(/\sid="([^"]*)"/g)].map((m) => m[1]));
-const HTML_CLASSES = new Set([...HTML.matchAll(/\sclass="([^"]*)"/g)].flatMap((m) => m[1].split(/\s+/)));
-const JS = readdirSync(new URL("./", import.meta.url)).filter((n) => n.endsWith(".js"))
-  .map((f) => read(`./${f}`)).join("\n");
-const inJs = (c) => new RegExp(`["'\`]([^"'\`\\n]*\\s)?${c}(\\s[^"'\`\\n]*)?["'\`]`).test(JS);
-const usesVar = (css, t) => new RegExp(`var\\(\\s*${t}\\s*[,)]`).test(css);
-const themeTokens = () => [...new Set(themeRules().flatMap((r) => r.decls.map(([p]) => p))
-  .filter((p) => p.startsWith("--")))];
+import { read, strip, THEME_FILE, HTML, STYLE, themeCss, TOKENS, CONTEXTS, FORBIDDEN, RESET_MEDIA,
+  IMAGE_PROPS, GRAIN_MAX, norm, parseRules, decl, bare, compounds, lastCompound, where, STYLE_RULES,
+  themeRules, isReset, contextDecls, modes, resolveVars, COLOR_RE, URL_RE, noUrls, parseColor, over, ratio,
+  tokenColor, urls, decodeData, parseSvg, grainAlpha, linkedSheets, HTML_TAGS, HTML_IDS, HTML_CLASSES, inJs,
+  usesVar, sheetRules, resolved, mayMatchRoot, setsImage, resetsImage, themeTokens } from "./theme_painterly_css_test.mjs";
 
 // Covers: MEM-044
 // Requirement: MEM-044 P1 painterly theme (static/theme-painterly.css; see the file header).
@@ -370,9 +158,9 @@ describe("MEM-044 P1 painterly theme (static/theme-painterly.css)", () => {
     }
   });
 
-  test("overlay-safe: no A1-forbidden property on html, :root, body, main (#scene-overlay ancestors)", () => {
+  test("overlay-safe: no A1-forbidden property on any selector that can match html, :root, body, main", () => {
     for (const r of themeRules()) {
-      if (!r.parts.some((p) => ROOTISH.test(lastCompound(p)))) continue;
+      if (!r.parts.some((p) => mayMatchRoot(lastCompound(p)))) continue;
       for (const [p] of r.decls) assert.ok(!FORBIDDEN.has(bare(p)), `${where(r)} sets ${p}`);
     }
   });
@@ -420,13 +208,7 @@ describe("MEM-044 P1 painterly theme (static/theme-painterly.css)", () => {
   });
 
   test("forced-colors, prefers-contrast: more and print reset every painterly image/filter/mask/border-image", () => {
-    const tr = themeRules();
-    const sets = (r, prop) => r.decls.some(([p, v]) => bare(p) === prop
-      || (prop === "background-image" && p === "background" && /url\(/i.test(v))
-      || (prop === "mask-image" && bare(p) === "mask" && /url\(/i.test(v)));
-    const resets = (r, prop) => r.decls.some(([p, v]) => (bare(p) === prop && v === "none")
-      || (prop === "background-image" && p === "background" && !/url\(/i.test(v))
-      || (prop === "mask-image" && bare(p) === "mask" && v === "none"));
+    const tr = themeRules(), sets = setsImage, resets = resetsImage;
     let painted = 0;
     for (const r of tr.filter((x) => !isReset(x))) {
       for (const prop of IMAGE_PROPS.filter((p) => sets(r, p))) {
@@ -440,6 +222,60 @@ describe("MEM-044 P1 painterly theme (static/theme-painterly.css)", () => {
       }
     }
     assert.ok(painted, "theme sets no background-image/filter/mask-image/border-image to reset");
+  });
+
+  test("each forced-colors / more-contrast / print reset comes AFTER the rule it resets (source order)", () => {
+    const tr = themeRules();
+    tr.forEach((r, i) => {
+      if (isReset(r)) return;
+      for (const prop of IMAGE_PROPS.filter((p) => setsImage(r, p))) {
+        for (const part of r.parts) {
+          for (const [name, re] of Object.entries(RESET_MEDIA)) {
+            const later = tr.some((x, j) => j > i && x.media.some((m) => re.test(m)) && x.parts.includes(part)
+              && resetsImage(x, prop));
+            assert.ok(later, `${part} ${prop}: no ${name} reset after it in source order (an earlier one loses)`);
+          }
+        }
+      }
+    });
+  });
+
+  test("sticky .topbar stacks above every later positioned stacking context and below #scene-overlay", () => {
+    themeCss();
+    const all = sheetRules();
+    const after = HTML.slice(HTML.search(/class="[^"]*\btopbar\b/));
+    const laterInDom = (part) => {
+      const s = lastCompound(part).replace(/::?[\w-]+(\((?:[^()]|\([^()]*\))*\))?/g, "").replace(/\[[^\]]*\]/g, "");
+      const tag = s.match(/^([a-z][\w-]*)/i)?.[1];
+      return (!tag || new RegExp(`<${tag}\\b`, "i").test(after))
+        && [...s.matchAll(/#([\w-]+)/g)].every((m) => after.includes(`id="${m[1]}"`))
+        && [...s.matchAll(/\.([\w-]+)/g)].every((m) => new RegExp(`class="[^"]*\\b${m[1]}\\b`).test(after)
+          || inJs(m[1]));
+    };
+    const stackers = [...new Set(all.flatMap((r) => r.parts))]
+      .filter((p) => !/\.topbar\b|#scene-overlay\b/.test(p) && laterInDom(p))
+      .filter((p) => /^(relative|absolute|sticky|fixed)$/.test(resolved(all, p, "position") ?? "")
+        && (resolved(all, p, "isolation") === "isolate" || !/^(auto)?$/.test(resolved(all, p, "z-index") ?? "")));
+    if (!stackers.length) return;
+    const oz = Number(resolved(all, "#scene-overlay", "z-index"));
+    assert.ok(Number.isInteger(oz) && oz >= 10, `#scene-overlay z-index is ${oz}, expected an integer >= 10`);
+    assert.match(resolved(all, ".topbar", "position") ?? "", /^(sticky|fixed)$/, ".topbar is no longer sticky");
+    const tz = resolved(all, ".topbar", "z-index");
+    assert.ok(Number.isInteger(Number(tz)) && Number(tz) >= 1,
+      `.topbar z-index is ${tz ?? "auto"}: later stacking contexts (${stackers.join(", ")}) paint over the sticky bar`);
+    assert.ok(Number(tz) < oz, `.topbar z-index ${tz} must stay below #scene-overlay ${oz}`);
+  });
+
+  test(".panel::before keeps the panel's rounded corners (border-radius inherit or equal), incl. more contrast", () => {
+    themeCss();
+    const all = sheetRules().filter((r) => r.media.length === 0
+      || r.media.some((m) => RESET_MEDIA["prefers-contrast"].test(m)));
+    if (!all.some((r) => r.parts.includes(".panel::before"))) return;
+    const last = (part) => all.filter((r) => r.parts.includes(part)).map((r) => decl(r, "border-radius"))
+      .filter((v) => v !== undefined).pop();
+    const panel = last(".panel"), before = last(".panel::before");
+    assert.ok(before === "inherit" || (before !== undefined && before === panel),
+      `.panel::before border-radius is ${before ?? "unset (square)"} vs .panel ${panel}: its corners poke past the border`);
   });
 
   test("0 @keyframes, 0 animation, 0 transition", () => {
