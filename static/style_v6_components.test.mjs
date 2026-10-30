@@ -401,3 +401,28 @@ describe("MEM-044 A3 scene and recall surfaces", () => {
     assert.match(read("./scenes.js"), /createElement\("section"\)/, "scene cards are no longer <section>");
   });
 });
+
+// Covers: MEM-044
+// Requirement: F15 at 360 px: the route review's pending-drop row ("Drop this place?" + Confirm drop +
+// Cancel) never leaves Cancel alone on its own line (the prompt span takes a full line, so the two
+// buttons share the next one); the scene overlay's close button is pinned to the overlay's top-right
+// (position absolute/fixed with top and right, never left/inset), so viewport point (5,5) stays
+// backdrop and a click there still closes the overlay.
+describe("MEM-044 F15 360 px wraps and overlay close placement", () => {
+  test("Cancel never wraps alone", () => {
+    const prompt = effective(/^#route (> )?li > span(:not\(:first-child\)|:nth-child\(2\)|:nth-of-type\(2\)|:last-of-type| \+ span| ~ span)$/);
+    const basis = `${prompt.flex ?? ""} ${prompt["flex-basis"] ?? ""} ${prompt.width ?? ""}`;
+    const li = effective(ROUTE_LI);
+    const wraps = /flex/.test(li.display ?? "") && /\bwrap\b/.test(`${li["flex-wrap"] ?? ""} ${li["flex-flow"] ?? ""}`);
+    assert.ok(wraps && /\b100%/.test(basis),
+      `the "Drop this place?" span (#route li > span:not(:first-child)) { flex: ${basis.trim()} } lets Cancel wrap alone`);
+  });
+
+  test("the overlay close button sits top-right, clear of point (5,5)", () => {
+    const btn = effective(/^#scene-overlay (> )?button(\.[\w-]+|\[[^\]]+\])*$/);
+    assert.match(btn.position ?? "", /^(absolute|fixed)$/, `#scene-overlay button position is "${btn.position}"`);
+    assert.ok(btn.right && btn.right !== "auto", `#scene-overlay button right is "${btn.right}"`);
+    assert.ok(btn.top && btn.top !== "auto", `#scene-overlay button top is "${btn.top}"`);
+    assert.ok(!btn.inset && (!btn.left || btn.left === "auto"), `#scene-overlay button is pinned left (${btn.left ?? btn.inset})`);
+  });
+});
