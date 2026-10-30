@@ -6,6 +6,8 @@ Usage: uv run python scripts/make_synthetic_fixtures.py
 Writes fixtures/demo/photo.jpg, fixtures/demo/notes.txt, fixtures/demo/place.json,
 fixtures/demo/recall_timeline.json, replayable responses
 under fixtures/replay/, and fixtures/MANIFEST.md.
+It owns only the MANIFEST rows whose Source is SOURCE or PLACE_SOURCE and their files; every other row
+(generated test rooms, promoted live replays: MEM-043 M1, ADR 0029) and its file is kept byte-for-byte.
 """
 
 import hashlib
@@ -303,6 +305,22 @@ def place_entries(cache: ResponseCache) -> tuple[list[Path], list[dict]]:
     return [sidecar, replay], places
 
 
+def foreign_rows(manifest: Path) -> list[str]:
+    """Existing MANIFEST rows whose Source this script does not own, verbatim and in order (MEM-043 M1).
+
+    They follow the generated rows, where gen_room_fixtures.py and promote_live_cache.py append theirs,
+    so a regeneration with rooms or promoted replays committed leaves MANIFEST.md byte-identical.
+    """
+    if not manifest.is_file():
+        return []
+    kept = []
+    for line in manifest.read_text(encoding="utf-8").splitlines():
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if len(cells) == 3 and cells[0].startswith("`") and cells[1] not in (SOURCE, PLACE_SOURCE):
+            kept.append(line)
+    return kept
+
+
 def main() -> int:
     shelf = draw_shelf()
     photo_bytes = to_bytes(shelf, "JPEG", quality=90)
@@ -336,8 +354,9 @@ def main() -> int:
         f"| `{p.relative_to(FIXTURES).as_posix()}` | {' | '.join(credits.get(p, (SOURCE, LICENSE)))} |"
         for p in sorted(written)
     ]
-    manifest = "\n".join([*header, *rows])
-    (FIXTURES / "MANIFEST.md").write_text(manifest + "\n", encoding="utf-8", newline="\n")
+    manifest_path = FIXTURES / "MANIFEST.md"
+    manifest = "\n".join([*header, *rows, *foreign_rows(manifest_path)])
+    manifest_path.write_text(manifest + "\n", encoding="utf-8", newline="\n")
     print(f"wrote {len(written)} fixtures + MANIFEST.md under {FIXTURES}")
     return 0
 
