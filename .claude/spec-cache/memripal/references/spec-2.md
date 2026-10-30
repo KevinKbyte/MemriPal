@@ -192,7 +192,8 @@ ADR [0024](../../../../docs/decisions/0024-scene-render-contract.md). Plan S5. `
   (scale >= 1, 0.8 margin, box fully in frame, photo always covers the frame; full-image or invalid box ->
   identity). Click -> full-size image in `#scene-overlay`; click on it or Escape closes it.
 - Failure -> "Scene unavailable: <code>": tier-3 reason; non-2xx -> its `error` code else `http_<status>`; network
-  error `network`; other reply shape `bad_response`. Fallback cards never open the overlay.
+  error `network`; other reply shape `bad_response`. Code `fixture_missing` (demo server, no recorded scene)
+  instead shows "Scene unavailable: no demo scene for this". Fallback cards never open the overlay.
 - Item, label and reason via textContent only; no HTML-string sinks in `scenes.js`.
 
 Tests: static/scenes.test.mjs, static/app_flow.test.mjs
