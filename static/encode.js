@@ -196,7 +196,7 @@ function showWalk(steps, scenes, doc) {
     const parts = [
       textEl(doc, "p", `Step ${at + 1} of ${steps.length}.`),
       textEl(doc, "h3", `${s.item} at ${s.locus.label}`),
-      sceneView(doc, scenes[at] ?? null, s.locus.box, overlay),
+      sceneView(doc, scenes[at] ?? null, s.locus.box, overlay, `${s.item} at ${s.locus.label}`),
     ];
     if (s.entry) {
       if (s.entry.status !== "valid") parts.push(textEl(doc, "p", "Needs regeneration"));

@@ -106,7 +106,7 @@ def s_scenes(ctx, page):
         page.click("#scene-overlay", position={"x": 5, "y": 5})
         click_closed = not page.is_visible("#scene-overlay")
         overlay_ok = vis and esc_closed and click_closed
-    ok = secs > 0 and not rendering and (imgs + len(unavailable) == secs) and overlay_ok in (True, None)
+    ok = secs > 0 and not rendering and (imgs + len(unavailable) == secs) and overlay_ok is True
     detail = (
         f"sections={secs} tier1_imgs={imgs} tier3={len(unavailable)} reasons={sorted(set(unavailable))} "
         f"still_rendering={len(rendering)} first_transform={transform!r} overlay_open_esc_click={overlay_ok}"

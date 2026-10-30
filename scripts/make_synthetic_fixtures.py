@@ -26,6 +26,7 @@ from memripal.imaging import Processed, process_upload
 from memripal.loci import SAM_MODEL, SPARK_GEN_PARAMS, SPARK_MODEL, find_loci
 from memripal.place import SUMMARY_URL, PlaceProvider, replay_path
 from memripal.probe import PHRASE_SCHEMA
+from memripal.scenes import render_scene
 from memripal.split import split_notes
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
@@ -239,6 +240,31 @@ class ReplyRecorder:
         return self.reply
 
 
+class BytesRecorder:
+    """Answers one request with canned image bytes, recorded under that request's own cache key."""
+
+    mode = "fixture"
+
+    def __init__(self, cache: ResponseCache, reply: bytes, written: list[Path]) -> None:
+        self.cache, self.reply, self.written = cache, reply, written
+
+    def call(self, req: ModelRequest) -> bytes:
+        self.written.append(self.cache.put(req.cache_key(), self.reply))
+        return self.reply
+
+
+def scene_edit(shelf: Image.Image, box: tuple[int, int, int, int]) -> bytes:
+    """A small tier-1 demo scene: the shelf with a gold banner on the locus (render_scene resizes it)."""
+    w, h = 256, 192
+    sx, sy = w / shelf.width, h / shelf.height
+    img = shelf.resize((w, h))
+    x0, y0, x1, y1 = box
+    ImageDraw.Draw(img).rectangle(
+        (round(x0 * sx), round(y0 * sy), round(x1 * sx), round(y1 * sy)), outline=(212, 160, 23), width=3
+    )
+    return to_bytes(img, "WEBP", lossless=True)
+
+
 def association_record(n: int, item: str, locus: str, quote: str) -> dict:
     return {
         "item": item,
@@ -259,22 +285,31 @@ def association_record(n: int, item: str, locus: str, quote: str) -> dict:
     }
 
 
-def notes_entries(cache: ResponseCache, processed: Processed, places: list[dict]) -> list[Path]:
+def notes_entries(
+    cache: ResponseCache, processed: Processed, places: list[dict], shelf: Image.Image
+) -> list[Path]:
     """The demo notes plus the split and association replays the offline associate flow needs (MEM-023).
 
     Each pair is also recorded once per demo place, since a confirmed place is part of the request key
-    (MEM-025): any chip the user confirms in the demo still replays.
+    (MEM-025): any chip the user confirms in the demo still replays. The first pair (no place) also gets
+    one tier-1 scene replay, so the demo shows a real scene and its overlay (MEM-044).
     """
     notes = FIXTURES / "demo" / "notes.txt"
     notes.write_bytes(NOTES.encode("utf-8"))
     written = [notes]
     # A frozen clock keeps the deadline out of play, as in replay.
-    loci = [lc.label for lc in find_loci(FixtureBackend(cache.root), processed, clock=lambda: 0.0).loci]
+    found = find_loci(FixtureBackend(cache.root), processed, clock=lambda: 0.0).loci
+    loci = [lc.label for lc in found]
     reply = {"points": [{"label": label, "source_quote": quote} for label, quote in POINTS]}
     points = split_notes(ReplyRecorder(cache, reply, written), processed.jpeg, NOTES, len(loci))
     for n, (point, locus) in enumerate(zip(points, loci, strict=True), start=1):
         record = association_record(n, point["label"], locus, point["source_quote"])
-        associate(ReplyRecorder(cache, record, written), processed, point["label"], locus)
+        result = associate(ReplyRecorder(cache, record, written), processed, point["label"], locus)
+        if n == 1:
+            b = found[0].box
+            box = {"x1": b.x1, "y1": b.y1, "x2": b.x2, "y2": b.y2}
+            edit = scene_edit(shelf, (b.x1, b.y1, b.x2, b.y2))
+            render_scene(BytesRecorder(cache, edit, written), processed, box, result.record)
         for hit in places:
             place = {"title": hit["title"], "extract": hit["extract"]}
             spatial = f"The {locus} is stop {n} on your walk, set here at {hit['title']}."
@@ -342,7 +377,7 @@ def main() -> int:
     written.extend(loci_entries(cache, photo_bytes))
     place_files, places = place_entries(cache)
     written.extend(place_files)
-    written.extend(notes_entries(cache, process_upload(photo_bytes), places))
+    written.extend(notes_entries(cache, process_upload(photo_bytes), places, shelf))
     recall = FIXTURES / "demo" / "recall_timeline.json"
     recall.write_bytes((json.dumps(RECALL_TIMELINE, indent=2) + "\n").encode("ascii"))
     written.append(recall)

@@ -297,6 +297,11 @@ button[aria-expanded]:hover {
   overflow-wrap: anywhere;
 }
 
+/* The pending-drop prompt takes its own line, so Confirm drop and Cancel share the next one at 360 px. */
+#route li > span:not(:first-child) {
+  flex: 1 1 100%;
+}
+
 /* The tier-1 scene is the whole photo, zoomed by an inline transform; the frame crops it. */
 .scene-frame {
   overflow: hidden;
@@ -326,6 +331,19 @@ button[aria-expanded]:hover {
 
 #scene-overlay img {
   max-height: 100%;
+}
+
+/* Top-right only (never left/inset), so viewport point (5,5) stays backdrop. Fixed light-on-dark
+   colours, not tokens: the overlay is near-black in both modes and themes. */
+#scene-overlay button {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  color: #111;
+  background: #fff;
+  border-color: #fff;
 }
 
 #walk dt {

@@ -151,7 +151,10 @@ async function drawResult(payload, isCurrent, deps) {
   if (!ctx) return false;
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
   ctx.lineWidth = 3;
-  ctx.font = "bold 18px sans-serif";
+  // Under half scale (a phone) full-size badges of neighbouring loci overlap, so they shrink.
+  const small = scale < 0.5;
+  const [bw, bh, padX, padY] = small ? [18, 16, 2, 2] : [28, 24, 4, 3];
+  ctx.font = small ? "bold 12px sans-serif" : "bold 18px sans-serif";
   ctx.textBaseline = "top";
   list.replaceChildren();
   for (const locus of payload.loci) {
@@ -160,9 +163,9 @@ async function drawResult(payload, isCurrent, deps) {
       ctx.strokeStyle = BADGE_FILL;
       ctx.strokeRect(x1 * scale, y1 * scale, (x2 - x1) * scale, (y2 - y1) * scale);
       ctx.fillStyle = BADGE_FILL;
-      ctx.fillRect(x1 * scale, y1 * scale, 28, 24);
+      ctx.fillRect(x1 * scale, y1 * scale, bw, bh);
       ctx.fillStyle = BADGE_TEXT;
-      ctx.fillText(String(locus.n), x1 * scale + 4, y1 * scale + 3);
+      ctx.fillText(String(locus.n), x1 * scale + padX, y1 * scale + padY);
     }
     // Label only: the <ol id="loci"> marker supplies the number, matching the canvas badge.
     const item = deps.doc.createElement("li");

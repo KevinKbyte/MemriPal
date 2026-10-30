@@ -94,9 +94,10 @@ function wireOverlay(doc, overlay) {
  * @param {SceneResult | null} result null = no scene was requested for this card
  * @param {Box | undefined} box
  * @param {HTMLElement | null} overlay
+ * @param {string} alt "<item> at <locus>", so a screen reader hears what the scene shows
  * @returns {HTMLElement}
  */
-export function sceneView(doc, result, box, overlay) {
+export function sceneView(doc, result, box, overlay, alt) {
   if (!result || result.tier !== 1 || !isSafeImageSrc(result.image)) {
     const reason = result && result.tier === 3 ? result.reason : result ? "bad_image" : "skipped";
     // A demo server only has scenes recorded for its demo photo; say so instead of the raw code.
@@ -108,7 +109,7 @@ export function sceneView(doc, result, box, overlay) {
   frame.className = "scene-frame";
   const img = /** @type {HTMLImageElement} */ (doc.createElement("img"));
   img.src = src;
-  img.alt = "Scene";
+  img.alt = alt;
   const { scale, tx, ty } = zoomFor(box, Number(result.width), Number(result.height));
   img.style.transformOrigin = "0 0";
   img.style.transform = `scale(${scale}) translate(${tx * 100}%, ${ty * 100}%)`;
@@ -116,8 +117,11 @@ export function sceneView(doc, result, box, overlay) {
     img.addEventListener("click", () => {
       const full = /** @type {HTMLImageElement} */ (doc.createElement("img"));
       full.src = src;
-      full.alt = "Scene, full size";
-      overlay.replaceChildren(full);
+      full.alt = `${alt}, full size`;
+      // No listener of its own: the click bubbles to the overlay's close handler.
+      const close = /** @type {HTMLButtonElement} */ (textEl(doc, "button", "Close"));
+      close.type = "button";
+      overlay.replaceChildren(full, close);
       overlay.hidden = false;
     });
   }
@@ -190,7 +194,8 @@ export async function runScenes(cards, deps) {
       const job = jobs[next++];
       const result = await requestScene(job.card, image, deps.fetch);
       results[job.index] = result;
-      job.slot.replaceChildren(sceneView(deps.doc, result, job.card.locus.box, overlay));
+      const alt = `${job.card.item} at ${job.card.locus.label}`;
+      job.slot.replaceChildren(sceneView(deps.doc, result, job.card.locus.box, overlay, alt));
     }
   };
   await Promise.all(Array.from({ length: Math.min(MAX_SCENES_IN_FLIGHT, jobs.length) }, worker));
