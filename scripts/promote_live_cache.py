@@ -71,6 +71,9 @@ def main(argv: list[str] | None = None) -> int:
     entries, skipped = _room_entries(room)
     if skipped:
         print(f"skipped {skipped} live-cache entries without a sidecar (not attributable)", file=sys.stderr)
+    if not entries:
+        print(f"0 entries for room {args.room}", file=sys.stderr)
+        return 1
     plan = [(src, FIXTURES / "replay" / src.relative_to(LIVE_CACHE)) for src in entries]
     conflicts = [dst for src, dst in plan if dst.is_file() and dst.read_bytes() != src.read_bytes()]
     if conflicts:
