@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.0] - 2026-10-30
+
+### Added
+
+- A painterly theme (`static/theme-painterly.css`, loaded last): warm cream watercolour paper with a faint
+  grain in light mode, deep ink-blue in dark mode, ultramarine/burnt-sienna/sap-green pigment colours, a
+  serif display face, and deckled panel edges; every text pair stays at least 4.5:1 against the grain;
+  forced-colours, more-contrast and print fall back to plain panels (MEM-044 P1;
+  `static/theme_painterly.test.mjs`, `tests/test_assets_wiring.py`).
+- The sticky top bar stays above the panels while scrolling, and the place-history legend sits on its own
+  paper tab (MEM-044 P1; `static/theme_painterly.test.mjs`).
+
 ## [0.19.1] - 2026-10-30
 
 ### Changed
