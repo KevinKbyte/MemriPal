@@ -1,0 +1,114 @@
+/* MEM-044 P1 painterly theme: watercolour paper, pigment colours, serif display face, deckled panels.
+   Droppable: remove its <link> and the v6 look returns. It only remaps v6 tokens that style.css reads and
+   adds image layers; it never touches html/:root/body/main stacking (keeps #scene-overlay viewport-fixed). */
+:root {
+  --bg: #EFE6D6; --surface: #FBF7EE; --surface-2: #ECE2CF; --ink: #2A231E; --muted: #5C5046; --line: #9C8770;
+  --primary: #2E4877; --on-primary: #FBF7EE;
+  --lamp: #C98A2B; --lamp-ink: #7A4710; --lamp-soft: #F5E2BC;
+  --ok: #3B6636; --ok-soft: #E1EBD3; --bad: #9A3A1D; --bad-soft: #F5DFD1; --on-bad: #FFFFFF;
+  --focus: #2F5EAE;
+  --shadow: 0 1px 2px rgba(74, 52, 30, 0.10), 0 10px 26px -8px rgba(92, 64, 34, 0.28);
+  --display: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #171B25; --surface: #1F2431; --surface-2: #2A3041; --ink: #EEE7D9; --muted: #B8AE9D;
+    --line: #717789; --primary: #AFC5EB; --on-primary: #151B27;
+    --lamp: #E0B05A; --lamp-ink: #F0C878; --lamp-soft: #3B2F19;
+    --ok: #A0CE91; --ok-soft: #1F2F1D; --bad: #F2A588; --bad-soft: #3B2119; --on-bad: #1A0B06;
+    --focus: #9FC0F6;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 26px -8px rgba(0, 0, 0, 0.5);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #171B25; --surface: #1F2431; --surface-2: #2A3041; --ink: #EEE7D9; --muted: #B8AE9D;
+  --line: #717789; --primary: #AFC5EB; --on-primary: #151B27;
+  --lamp: #E0B05A; --lamp-ink: #F0C878; --lamp-soft: #3B2F19;
+  --ok: #A0CE91; --ok-soft: #1F2F1D; --bad: #F2A588; --bad-soft: #3B2119; --on-bad: #1A0B06;
+  --focus: #9FC0F6;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 26px -8px rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+}
+
+/* Paper grain: sparse dark and light specks plus faint fibres, every opacity attribute <= 0.08 so text
+   keeps 4.5:1 over the worst-case composite. Scrolls with the page (no fixed layer on body). */
+body {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cpath fill='black' fill-opacity='.07' d='M0 110h1v1h-1zM34 25h1v1h-1zM87 63h1v1h-1zM39 90h1v1h-1zM90 65h1v1h-1zM82 76h1v1h-1zM98 29h1v1h-1zM44 84h1v1h-1zM83 6h1v1h-1zM82 56h1v1h-1zM110 96h1v1h-1zM14 61h1v1h-1zM110 82h1v1h-1zM77 69h1v1h-1zM109 109h1v1h-1zM44 40h1v1h-1zM100 39h1v1h-1zM18 35h1v1h-1zM51 35h1v1h-1zM112 66h1v1h-1zM87 105h1v1h-1zM7 32h1v1h-1zM67 61h1v1h-1zM50 23h1v1h-1zM109 6h1v1h-1zM43 41h1v1h-1zM79 110h1v1h-1zM61 19h1v1h-1zM48 34h1v1h-1zM43 50h1v1h-1zM39 63h1v1h-1zM73 27h1v1h-1zM108 54h1v1h-1zM103 76h1v1h-1zM76 61h1v1h-1zM60 82h1v1h-1zM112 47h1v1h-1zM84 30h1v1h-1zM70 42h1v1h-1zM39 46h1v1h-1z'/%3E%3Cpath fill='white' fill-opacity='.08' d='M95 105h1v1h-1zM13 98h1v1h-1zM9 48h1v1h-1zM18 9h1v1h-1zM119 26h1v1h-1zM75 17h1v1h-1zM54 71h1v1h-1zM16 110h1v1h-1zM106 106h1v1h-1zM106 108h1v1h-1zM91 33h1v1h-1zM1 29h1v1h-1zM9 0h1v1h-1zM74 27h1v1h-1zM88 58h1v1h-1zM82 28h1v1h-1zM105 28h1v1h-1zM44 107h1v1h-1zM14 58h1v1h-1zM0 109h1v1h-1zM76 110h1v1h-1zM2 108h1v1h-1zM22 116h1v1h-1zM67 81h1v1h-1zM31 26h1v1h-1zM25 67h1v1h-1zM6 92h1v1h-1zM84 85h1v1h-1zM59 3h1v1h-1zM13 110h1v1h-1z'/%3E%3Cpath fill='none' stroke='black' stroke-opacity='.04' d='M15 82q4 -3 23 2M119 114q3 -1 10 1M105 47q-4 -1 23 0M42 74q2 -1 20 -1M23 37q5 2 18 2M110 23q1 -3 15 0'/%3E%3C/svg%3E");
+}
+
+.topbar {
+  box-shadow: var(--shadow);
+}
+
+.brand {
+  font-size: 1.45rem;
+  font-style: italic;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+h2,
+h3 {
+  font-weight: 600;
+  letter-spacing: 0.005em;
+}
+
+/* The panel paper lives on ::before so its deckled mask never clips content; isolation keeps the
+   z-index:-1 layer above the page and below the panel's children. */
+.panel {
+  position: relative;
+  isolation: isolate;
+  background-color: transparent;
+  border-color: transparent;
+}
+
+.panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-color: var(--surface);
+  background-image:
+    radial-gradient(120% 70% at 0% 0%, rgba(46, 72, 119, 0.06), transparent 60%),
+    radial-gradient(90% 60% at 100% 100%, rgba(154, 58, 29, 0.05), transparent 65%);
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256' viewBox='0 0 256 256' preserveAspectRatio='none'%3E%3Cpath d='M0 2.3L16 2.8L32 1.6L48 0.8L64 1.5L80 0.7L96 2.0L112 1.7L128 1.8L144 1.6L160 2.3L176 1.2L192 2.3L208 0.4L224 1.1L240 1.7L256 0.8L253.8 0L254.9 16L255.1 32L254 48L254.6 64L255.5 80L253.7 96L253.6 112L253.3 128L253.3 144L253.9 160L253.2 176L255.6 192L253.7 208L254.1 224L253.8 240L253.4 256L256 255.6L240 255.3L224 255.5L208 255.4L192 255.5L176 255.7L160 254.1L144 253.2L128 255.2L112 255.4L96 255.2L80 253.9L64 255.1L48 254.5L32 253.1L16 254.6L0 253.9L2.3 256L1.3 240L1.4 224L0.5 208L0.9 192L2.4 176L2.8 160L0.7 144L2.7 128L1.6 112L0.6 96L0.8 80L1.9 64L0.7 48L0.5 32L1 16L2 0z'/%3E%3C/svg%3E");
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+}
+
+/* Hand-brushed corners: slightly uneven radii instead of a machine-perfect curve. */
+button,
+.btn,
+input[type="text"],
+input[type="password"],
+textarea {
+  border-radius: 12px 9px 13px 10px / 10px 13px 9px 12px;
+}
+
+.btn-primary {
+  box-shadow: var(--shadow);
+}
+
+.notice {
+  border-radius: 16px 12px 15px 11px / 12px 15px 11px 16px;
+}
+
+/* Forced colours, more contrast and print drop every painterly layer and restore a crisp panel edge. */
+@media (forced-colors: active), (prefers-contrast: more), print {
+  body {
+    background-image: none;
+  }
+
+  .panel {
+    border-color: var(--line);
+  }
+
+  .panel::before {
+    background-image: none;
+    mask-image: none;
+  }
+}
