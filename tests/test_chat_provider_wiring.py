@@ -6,6 +6,7 @@ from unittest import mock
 
 import httpx
 import pytest
+from test_live_cache_sidecar import is_sidecar
 
 from memripal.backend import (
     BackendCallFailed,
@@ -160,6 +161,11 @@ def _headers_text(request: httpx.Request) -> str:
 
 def _files_under(path: Path) -> list[Path]:
     return sorted(p for p in path.rglob("*") if p.is_file()) if path.exists() else []
+
+
+def _entries_under(path: Path) -> list[Path]:
+    """Response entries only; their MEM-043 photo-sha sidecars are pinned in test_live_cache_sidecar.py."""
+    return [p for p in _files_under(path) if not is_sidecar(p)]
 
 
 # Covers: MEM-026
@@ -370,7 +376,7 @@ class TestChatProviderCache:
         backend.call(req)
 
         assert not ResponseCache(live).path_for(req.cache_key()).exists()
-        assert len(_files_under(live / "spark_json")) == 1
+        assert len(_entries_under(live / "spark_json")) == 1
 
 
 def _answer_names_model(net: _Net):
@@ -424,4 +430,4 @@ class TestChatProviderCacheKeyNamesProviderModel:
         assert paths[0] != paths[1]
         for model, path in zip(models, paths, strict=True):
             assert json.loads(path.read_bytes()) == {"phrases": [model]}
-        assert len(_files_under(live / "spark_json")) == 2
+        assert len(_entries_under(live / "spark_json")) == 2

@@ -9,9 +9,12 @@
 # changes nothing, not even an mtime); a target with different bytes -> stderr, exit 1, nothing
 # written. --dry-run prints the target paths and writes nothing. Copied files pass precommit_scan.py.
 #
-# Decision (Q23 default): a cache entry ties to a room through the backend, by the room photo's bytes:
-# the entries are the ones the real MetaBackend wrote for process_upload(room photo), as seeded here by
-# running find_loci; cache file names are key digests, so no name-based guess is accepted.
+# Decision (Kev Q23(ii), replaces replaying the room photo, which reached only find_loci entries): a
+# cache entry ties to a room by the write-time sidecar the real MetaBackend wrote next to it, naming the
+# photo sha of its run. Promote copies exactly the entries (loci, re-ask, segment, notes, associate)
+# whose sidecar names process_upload(room photo).sha, plus their sidecars, each with a MANIFEST row; 0
+# from another photo. An entry without a sidecar (incl. one recorded before sidecars landed) is skipped
+# and stderr prints the skip count. Cache file names are key digests, so no name-based guess is accepted.
 import hashlib
 import json
 import os
@@ -24,11 +27,14 @@ from pathlib import Path
 
 import pytest
 from PIL import Image, ImageDraw
+from test_live_cache_sidecar import ITEM, LOCUS, NOTES, SIDECAR_SUFFIX, RoutingClient
 
+from memripal.associate import associate
 from memripal.backend import MetaBackend
 from memripal.imaging import process_upload
 from memripal.loci import find_loci
 from memripal.meta_client import CallResult
+from memripal.split import split_notes
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ROOM_ID = "dim-kitchen"
@@ -95,6 +101,9 @@ class Sandbox:
         self.manifest = self.fixtures / "MANIFEST.md"
         self.room_entries: dict[str, bytes] = {}
         self.other_entries: dict[str, bytes] = {}
+        self.room_notes: dict[str, bytes] = {}
+        self.room_assoc: dict[str, bytes] = {}
+        self.legacy = ""
 
 
 @pytest.fixture
@@ -261,3 +270,121 @@ class TestPromoteIdempotentAndSafe:
         result = _promote(box, "--room", room_id)
         assert result.returncode != 0
         assert _tree(box.fixtures) == before
+
+
+def _seed_flow(cache: Path, photo: bytes, run) -> dict[str, bytes]:
+    """Record one live notes or associate run for `photo` through the real MetaBackend."""
+    before = _entries(cache)
+    run(MetaBackend(FAKE_KEY, cache_root=cache, client=RoutingClient()), process_upload(photo))
+    return {k: v for k, v in _entries(cache).items() if k not in before}
+
+
+def _notes(backend, processed) -> None:
+    split_notes(backend, processed.jpeg, NOTES, 6)
+
+
+def _associate(backend, processed) -> None:
+    assert associate(backend, processed, ITEM, LOCUS).status == "valid"
+
+
+def _legacy_notes(backend, processed) -> None:
+    split_notes(backend, processed.jpeg, "Buy milk. Feed the cat.", 6)
+
+
+@pytest.fixture
+def full(box, tmp_path) -> Sandbox:
+    """The box plus notes + associate runs for both photos and one room entry recorded without a sidecar."""
+    room = (box.fixtures / "rooms" / f"{ROOM_ID}.webp").read_bytes()
+    other = _image("JPEG", (180, 170, 150))
+    box.room_notes = _seed_flow(box.cache, room, _notes)
+    box.room_assoc = _seed_flow(box.cache, room, _associate)
+    box.room_entries = {**box.room_entries, **box.room_notes, **box.room_assoc}
+    box.other_entries = {
+        **box.other_entries,
+        **_seed_flow(box.cache, other, _notes),
+        **_seed_flow(box.cache, other, _associate),
+    }
+    # A pre-sidecar recording: the entry alone, copied from a scratch cache, its sidecar left behind.
+    scratch = tmp_path / "scratch-cache"
+    legacy = {
+        k: v for k, v in _seed_flow(scratch, room, _legacy_notes).items() if not k.endswith(SIDECAR_SUFFIX)
+    }
+    assert len(legacy) == 1
+    [(rel, body)] = legacy.items()
+    (box.cache / rel).parent.mkdir(parents=True, exist_ok=True)
+    (box.cache / rel).write_bytes(body)
+    box.legacy = rel
+    assert box.room_notes and box.room_assoc and rel not in box.room_entries
+    return box
+
+
+def _response_rels(entries: dict[str, bytes]) -> list[str]:
+    return [rel for rel in entries if not rel.endswith(SIDECAR_SUFFIX)]
+
+
+# Covers: MEM-043
+class TestPromoteAttributesBySidecar:
+    def test_room_notes_and_associate_entries_are_promoted_with_their_sidecars(self, full):
+        result = _promote(full, "--room", ROOM_ID)
+        assert result.returncode == 0, result.stderr
+        copied = _replay_files(full)
+        for rel in _response_rels({**full.room_notes, **full.room_assoc}):
+            assert rel in copied, rel
+        for rel in _response_rels(full.room_entries):
+            assert rel + SIDECAR_SUFFIX in copied, rel
+        assert copied == full.room_entries
+
+    def test_other_photo_and_sidecarless_entries_are_never_promoted(self, full):
+        result = _promote(full, "--room", ROOM_ID)
+        assert result.returncode == 0, result.stderr
+        copied = _replay_files(full)
+        assert not set(copied) & set(full.other_entries)
+        assert full.legacy not in copied
+        assert not (full.replay / "photos").exists()
+
+    def test_entry_without_sidecar_is_skipped_and_the_skip_count_printed(self, full):
+        result = _promote(full, "--room", ROOM_ID)
+        assert result.returncode == 0, result.stderr
+        assert "sidecar" in result.stderr.lower()
+        assert re.search(r"\b1\b", result.stderr), result.stderr
+        assert full.legacy not in _replay_files(full)
+
+    def test_manifest_row_for_every_promoted_entry_and_sidecar(self, full):
+        result = _promote(full, "--room", ROOM_ID)
+        assert result.returncode == 0, result.stderr
+        text = full.manifest.read_text(encoding="utf-8")
+        for rel in full.room_entries:
+            assert len(_rows(text, rel)) == 1, rel
+        for rel in [*full.other_entries, full.legacy]:
+            assert _rows(text, rel) == [], rel
+
+    def test_rerun_after_notes_and_associate_promotion_changes_nothing(self, full):
+        first = _promote(full, "--room", ROOM_ID)
+        assert first.returncode == 0, first.stderr
+        assert set(_replay_files(full)) >= set(full.room_notes)
+        before = _tree(full.fixtures)
+        second = _promote(full, "--room", ROOM_ID)
+        assert second.returncode == 0, second.stderr
+        assert _tree(full.fixtures) == before
+
+    def test_conflicting_notes_entry_exits_1_and_writes_nothing(self, full):
+        rel = sorted(_response_rels(full.room_notes))[0]
+        target = full.replay / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(b"different bytes already committed")
+        before = _tree(full.fixtures)
+        result = _promote(full, "--room", ROOM_ID)
+        assert result.returncode == 1
+        assert result.stderr.strip()
+        assert _tree(full.fixtures) == before
+
+    def test_dry_run_lists_notes_and_associate_entries_and_writes_nothing(self, full):
+        before = _tree(full.fixtures)
+        result = _promote(full, "--room", ROOM_ID, "--dry-run")
+        assert result.returncode == 0, result.stderr
+        stdout = result.stdout.replace("\\", "/")
+        for rel in {**full.room_notes, **full.room_assoc}:
+            assert f"replay/{rel}" in stdout, rel
+        for rel in [*full.other_entries, full.legacy]:
+            assert rel not in stdout
+        assert _tree(full.fixtures) == before

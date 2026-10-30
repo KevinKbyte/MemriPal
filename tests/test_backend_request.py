@@ -5,6 +5,7 @@ import os
 from unittest import mock
 
 import pytest
+from test_live_cache_sidecar import is_sidecar
 
 from memripal import backend as backend_module
 from memripal.backend import (
@@ -308,9 +309,11 @@ class TestMetaBackendWriteThrough:
             _meta(tmp_path, _ok(_chat_envelope({"phrases": ["book"]}))).call(req)
         dsts = [os.fspath(c.args[1]) for c in replace.call_args_list]
         assert os.fspath(target) in dsts
-        # Exactly the response entry plus the processed photo (MEM-014 live cache); no temp files.
+        # Exactly the response entry plus the processed photo (MEM-014 live cache); no temp files. The
+        # entry's MEM-043 photo-sha sidecar is pinned in test_live_cache_sidecar.py.
         sha = hashlib.sha256(req.image_jpeg).hexdigest()
-        assert _files_under(tmp_path) == sorted([target, tmp_path / "photos" / f"{sha}.jpg"])
+        files = [p for p in _files_under(tmp_path) if not is_sidecar(p)]
+        assert files == sorted([target, tmp_path / "photos" / f"{sha}.jpg"])
 
     def test_failed_replace_leaves_no_partial_or_temp_file(self, tmp_path):
         with mock.patch("os.replace", side_effect=OSError("disk full")):

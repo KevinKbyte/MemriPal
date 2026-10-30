@@ -6,6 +6,7 @@ from unittest import mock
 
 import httpx
 import pytest
+from test_live_cache_sidecar import is_sidecar
 
 from memripal.backend import (
     BackendCallFailed,
@@ -279,4 +280,5 @@ class TestSegProviderFailureAndCache:
         assert modal_path.is_file()
         assert modal_path.read_text(encoding="utf-8") == text
         assert not cache.path_for(req.cache_key()).exists()
-        assert _files_under(live / "segment") == [modal_path]
+        # The entry's MEM-043 photo-sha sidecar is pinned in test_live_cache_sidecar.py.
+        assert [p for p in _files_under(live / "segment") if not is_sidecar(p)] == [modal_path]
