@@ -217,6 +217,9 @@ by `static/flow.js` `wireApp`: `#load-demo` runs `runDemoPalace`; `app.js` backs
   generate this association". Prev disabled at step 1, Next at the last.
 - `runDemoPalace({auto}, deps)`: demo photo -> /loci (same bytes) -> /demo/notes.txt -> /split (notes mode, plain
   base64) -> `runEncode`; a failed step writes `#upload-status` ("Demo failed: <code>") and stops; never throws.
+- Kev decision Q24(ii), keep: non-auto `#load-demo` stays disabled until `#generate` (`flow.js` line 359
+  holds it across `runDemoPalace`): `reviewRoute` assigns the route only on Generate (`static/encode.js`
+  line 165) and assigns (not adds) page-root handlers, so an overlapping review would clobber them.
 - `palace_store`: `saveRoute(loci)` (non-array -> TypeError) / `loadRoute()` (null before any save) under key
   "route", which no `associationKey` can equal.
 - `style.css` linked; fits a 360 px phone: no width / min-width / flex-basis above 360 px, images `max-width: 100%`.
@@ -275,6 +278,12 @@ b) Client (`static/recall.js`):
   `withPasscode`), appends each transcript to the matcher, saves the rehearsal. A `RecallAudioError` keeps the run
   open typed, with "Speech relay failed (<code>)". `#recall-replay` replays `/demo/recall.json`, results labelled
   `REPLAY_LABEL`.
+- Kev decision Q24(iii), empty Done: the guard (`static/flow.js` line 455, in `recall-submit` from line 419)
+  keys on "no WAV", so a spoken run that fell back typed after a relay failure (`fallBackTyped`) with points
+  already got saves nothing. Narrowed: skip saving ONLY when the typed box is empty AND no result is got
+  (`!typed.trim() && !current.results().some((r) => r.got)`), else save. Empty plain-typed run, nothing
+  got -> still no save, prompt shown (app_ux_done_guard tests); spoken-empty path untouched; 102c relay
+  failure message stays visible.
 - `replayRecording(timeline, matcher, {wait})`: appends each chunk in order after waiting its `t_ms` gap; resolves
   to `matcher.results()`; no network. Optional `onMatch(indices)` per chunk (live board: see MEM-037).
 
