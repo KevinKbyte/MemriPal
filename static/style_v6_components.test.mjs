@@ -201,6 +201,11 @@ describe("MEM-044 A3 F12 route and loci numbering", () => {
 
   test("#loci keeps its ordered-list numbering (the canvas badge numbers 1..n)", () => {
     assert.match(HTML, /<ol id="loci">/, "#loci is no longer a plain <ol>");
+    // No #loci rule is fine (default <ol> decimal) only if no #loci, ol or li rule hides the markers.
+    for (const r of rulesWhere(/#loci|(^|[ >])(ol|li)$/)) {
+      const style = `${decl(r, "list-style") ?? ""} ${decl(r, "list-style-type") ?? ""}`;
+      assert.doesNotMatch(style, /none/, `${r.parts.join(", ")} hides the #loci numbers`);
+    }
     for (const r of rulesWhere(/(^|[ >])#loci( > | )?(li)?$/)) {
       const style = `${decl(r, "list-style") ?? ""} ${decl(r, "list-style-type") ?? ""}`;
       assert.doesNotMatch(style, /\bnone\b/, `${r.parts.join(", ")} hides the #loci numbers`);
@@ -302,7 +307,7 @@ describe("MEM-044 A3 component styling from tokens", () => {
     assert.ok(hits.length, "no ::file-selector-button rule using var(--...) tokens");
   });
 
-  test("#route li keeps label and controls on one row: grid, flex nowrap, or a full-width label", () => {
+  test("Drop never wraps alone", () => {
     const li = effective(ROUTE_LI);
     const label = effective(/^#route (> )?li > span:first-child$/);
     const display = li.display ?? "";
