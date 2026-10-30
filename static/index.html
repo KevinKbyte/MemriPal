@@ -11,68 +11,93 @@
 
   </head>
   <body>
+    <header class="topbar">
+      <h1 class="brand">MemriPal</h1>
+    </header>
     <main>
-      <h1>MemriPal</h1>
-      <p id="public-banner" hidden>live needs passcode / try Load demo</p>
+      <p id="public-banner" class="notice" hidden>live needs passcode / try Load demo</p>
       <p id="status">Checking backend...</p>
-      <p id="meta-notice" hidden>Your photo is sent to Meta's AI APIs to find places in it.</p>
-      <label for="photo">Take or choose a photo of a room</label>
-      <input id="photo" type="file" accept="image/*" capture="environment">
-      <label for="passcode">Live passcode (not needed for Load demo)</label>
-      <input id="passcode" type="password" autocomplete="off">
-      <button id="load-demo" type="button">Load demo</button>
-      <fieldset id="place-settings">
+      <section class="panel">
+        <p class="eyebrow">Start: a room photo or the demo</p>
+        <p id="meta-notice" class="notice" hidden>
+          Your photo is sent to Meta's AI APIs to find places in it.</p>
+        <div class="field">
+          <label for="photo">Take or choose a photo of a room</label>
+          <input id="photo" type="file" accept="image/*" capture="environment">
+        </div>
+        <div class="field">
+          <label for="passcode">Live passcode (not needed for Load demo)</label>
+          <input id="passcode" type="password" autocomplete="off">
+        </div>
+        <div class="btn-row">
+          <label class="check"><input id="auto" type="checkbox"> Auto: skip route review</label>
+          <button id="load-demo" class="btn btn-primary" type="button">Load demo</button>
+        </div>
+      </section>
+      <fieldset id="place-settings" class="panel">
         <legend>Place history (optional)</legend>
-        <label><input id="place-toggle" type="checkbox"> Use my location for place history</label>
-        <label for="place-typed">Or type a place</label>
-        <input id="place-typed" type="text" maxlength="255" autocomplete="off">
+        <label class="check">
+          <input id="place-toggle" type="checkbox"> Use my location for place history</label>
+        <div class="field">
+          <label for="place-typed">Or type a place</label>
+          <input id="place-typed" type="text" maxlength="255" autocomplete="off">
+        </div>
         <div id="places"></div>
       </fieldset>
-      <p id="upload-status" role="status"></p>
-      <img id="empty-state" src="/static/assets/empty-state.webp" alt="">
-      <div id="scene-wrap">
-        <canvas id="scene" width="0" height="0"></canvas>
+      <div class="panel">
+        <p id="upload-status" role="status"></p>
+        <img id="empty-state" src="/static/assets/empty-state.webp" alt="">
+        <div id="scene-wrap">
+          <canvas id="scene" width="0" height="0"></canvas>
+        </div>
+        <ol id="loci"></ol>
+        <p id="assoc-status" role="status"></p>
+        <div id="associations"></div>
       </div>
-      <ol id="loci"></ol>
-      <p id="assoc-status" role="status"></p>
-      <div id="associations"></div>
-      <label><input id="auto" type="checkbox"> Auto: skip route review</label>
-      <section id="route-review" hidden>
+      <section id="route-review" class="panel" hidden>
         <h2>Review your route</h2>
         <ol id="route"></ol>
-        <button id="route-undo" type="button" hidden>Undo drop</button>
-        <button id="generate" type="button">Generate</button>
+        <div class="btn-row">
+          <button id="route-undo" class="btn" type="button" hidden>Undo drop</button>
+          <button id="generate" class="btn btn-primary" type="button">Generate</button>
+        </div>
       </section>
       <div id="scenes"></div>
-      <section id="walk" hidden>
+      <section id="walk" class="panel" hidden>
         <h2>Walk your palace</h2>
         <div id="walk-step"></div>
-        <button id="walk-prev" type="button">Previous</button>
-        <button id="walk-next" type="button">Next</button>
+        <div class="btn-row">
+          <button id="walk-prev" class="btn" type="button">Previous</button>
+          <button id="walk-next" class="btn" type="button">Next</button>
+        </div>
       </section>
-      <section id="recall" hidden>
+      <section id="recall" class="panel" hidden>
         <h2>Recall your palace</h2>
-        <button id="recall-start" type="button">Start recall</button>
-        <button id="recall-replay" type="button">Play the replay of a recorded session</button>
+        <div class="btn-row">
+          <button id="recall-start" class="btn btn-primary" type="button">Start recall</button>
+          <button id="recall-replay" class="btn" type="button">Play the replay of a recorded session</button>
+        </div>
         <textarea id="recall-typed" rows="4" aria-label="Type what you remember" hidden></textarea>
-        <button id="recall-submit" type="button">Done</button>
+        <button id="recall-submit" class="btn" type="button">Done</button>
         <div id="recall-live"></div>
         <div id="recall-results"></div>
       </section>
-      <section id="history" hidden>
+      <section id="history" class="panel" hidden>
         <h2>Rehearsals</h2>
         <ol id="rehearsals"></ol>
-        <button id="rehearsal-undo" type="button" hidden>Undo delete</button>
+        <button id="rehearsal-undo" class="btn" type="button" hidden>Undo delete</button>
         <div id="history-view"></div>
         <h3>Hit rate per point</h3>
         <ul id="hit-rates"></ul>
       </section>
-      <section id="backup">
+      <section id="backup" class="panel">
         <h2>Backup</h2>
-        <button id="backup-export" type="button">Download backup</button>
+        <button id="backup-export" class="btn" type="button">Download backup</button>
         <p>The backup file contains your recall transcripts and place names.</p>
-        <label for="backup-import">Import a backup</label>
-        <input id="backup-import" type="file" accept="application/json,.json">
+        <div class="field">
+          <label for="backup-import">Import a backup</label>
+          <input id="backup-import" type="file" accept="application/json,.json">
+        </div>
         <p id="backup-status" role="status"></p>
       </section>
       <div id="scene-overlay" hidden></div>
