@@ -1,6 +1,7 @@
-// Covers: MEM-030
+// Covers: MEM-030, MEM-044
 // Requirement: the page fits a 360 px phone (D13): static/style.css is linked, no width /
-// min-width / flex-basis is fixed above 360 px (px, or rem/em at 16 px), and images shrink with
+// min-width / flex-basis is fixed above 360 px (px, or rem/em at 16 px) in style.css, the MEM-044 P1
+// painterly theme (static/theme-painterly.css) or inline styles, and images shrink with
 // max-width: 100%. The real 360 px no-horizontal-scroll check is the screenshot gate.
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -19,9 +20,11 @@ describe("responsive layout", () => {
     assert.match(read("./index.html"), /<link[^>]*rel="stylesheet"[^>]*href="\/static\/style\.css"/);
   });
 
-  test("no width, min-width or flex-basis above 360px in style.css or inline styles", () => {
+  test("no width, min-width or flex-basis above 360px in style.css, theme-painterly.css or inline styles", () => {
     const html = read("./index.html");
-    const blocks = [css(), ...[...html.matchAll(/style="([^"]*)"/g)].map((m) => m[1])];
+    assert.ok(existsSync(new URL("./theme-painterly.css", import.meta.url)), "static/theme-painterly.css missing");
+    const theme = read("./theme-painterly.css").replace(/\/\*[\s\S]*?\*\//g, "");
+    const blocks = [css(), theme, ...[...html.matchAll(/style="([^"]*)"/g)].map((m) => m[1])];
     for (const block of blocks) {
       for (const m of block.matchAll(/(?:^|[;{\s])(width|min-width|flex-basis)\s*:\s*([\d.]+)(px|rem|em)\b/g)) {
         const px = Number(m[2]) * (m[3] === "px" ? 1 : 16);

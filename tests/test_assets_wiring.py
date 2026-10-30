@@ -2,7 +2,8 @@
 # Requirement: the generated assets are wired into the page. The web manifest lists the PNG install
 # icons (192 and 512, each declaring its real pixel size) after the existing SVG icon, every icon and
 # the empty-state picture are served as images, index.html shows one decorative empty-state picture
-# directly above the photo canvas, and its style can never override the hidden attribute.
+# directly above the photo canvas, and its style can never override the hidden attribute. MEM-044 P1
+# links the painterly theme last; it is served as CSS and can never override hidden either.
 import json
 import re
 from html.parser import HTMLParser
@@ -29,11 +30,15 @@ PNG_ICONS = [
     {"src": "/static/assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
     {"src": "/static/assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
 ]
-# The <link> tags index.html carried before MEM-040; the wiring adds none.
-LINKS_BEFORE = [
+THEME = STATIC / "theme-painterly.css"
+THEME_SRC = "/static/theme-painterly.css"
+# The <link> tags of index.html: the 3 MEM-040 links (the asset wiring added none), then the MEM-044 P1
+# painterly theme as the 4th link and the LAST rel=stylesheet, so it cascades over style.css.
+LINKS = [
     {"rel": "stylesheet", "href": "/static/style.css"},
     {"rel": "manifest", "href": "/static/manifest.webmanifest"},
     {"rel": "icon", "href": "/static/icon.svg", "type": "image/svg+xml"},
+    {"rel": "stylesheet", "href": THEME_SRC},
 ]
 
 
@@ -91,9 +96,9 @@ def _empty_state_index(events) -> int:
     return hits[0]
 
 
-def _css_rules() -> list[tuple[str, str]]:
-    """(selector, body) pairs of style.css, comments stripped; innermost blocks only."""
-    css = re.sub(r"/\*.*?\*/", "", STYLE.read_text(encoding="utf-8"), flags=re.S)
+def _css_rules(sheet: Path = STYLE) -> list[tuple[str, str]]:
+    """(selector, body) pairs of a stylesheet (style.css by default), comments stripped; innermost blocks."""
+    css = re.sub(r"/\*.*?\*/", "", sheet.read_text(encoding="utf-8"), flags=re.S)
     return [(" ".join(sel.split()), body) for sel, body in re.findall(r"([^{}]+)\{([^{}]*)\}", css)]
 
 
@@ -179,11 +184,22 @@ def test_empty_state_directly_before_scene_wrap():
     )
 
 
-# Covers: MEM-040
-# Requirement: the wiring adds no <link> tag to index.html.
-def test_index_links_unchanged():
+# Covers: MEM-040, MEM-044
+# Requirement: index.html's <link> tags are the 3 MEM-040 links then the MEM-044 P1 painterly theme,
+# which is the last rel=stylesheet link.
+def test_index_links_end_with_painterly_theme():
     links = [a for kind, tag, a in _events() if kind == "start" and tag == "link"]
-    assert links == LINKS_BEFORE
+    assert links == LINKS
+    sheets = [a.get("href") for a in links if a.get("rel") == "stylesheet"]
+    assert sheets[-1:] == [THEME_SRC], f"last stylesheet is {sheets[-1:]}, not {THEME_SRC}"
+
+
+# Covers: MEM-044
+# Requirement: the painterly theme stylesheet is served 200 as text/css.
+def test_painterly_theme_served_as_css(client):
+    resp = client.get(THEME_SRC)
+    assert resp.status_code == 200, f"GET {THEME_SRC} -> {resp.status_code}"
+    assert _content_type(resp) == "text/css", _content_type(resp)
 
 
 # Covers: MEM-040
@@ -219,3 +235,18 @@ def test_hidden_wins_over_empty_state_display():
     hidden = [_decls(body) for sel, body in _css_rules() if sel == "[hidden]"]
     assert hidden, "style.css lost the global [hidden] rule"
     assert {"display": "none !important"} in hidden, f"[hidden] rule is {hidden}"
+
+
+# Covers: MEM-044
+# Requirement: hidden still wins with the MEM-044 P1 painterly theme linked after style.css: the theme
+# uses no !important, so nothing it sets can beat `[hidden] { display: none !important; }`, and none of
+# its [hidden] rules shows a hidden element.
+def test_hidden_wins_over_painterly_theme():
+    assert THEME.is_file(), f"{THEME} missing"
+    rules = _css_rules(THEME)
+    assert rules, f"{THEME.name} has no rules"
+    for sel, body in rules:
+        assert "!important" not in body, f"{THEME.name} {sel} uses !important"
+        if "[hidden]" in sel:
+            assert _decls(body).get("display", "none") == "none", f"{THEME.name} {sel} shows a hidden element"
+    assert {"display": "none !important"} in [_decls(b) for s, b in _css_rules() if s == "[hidden]"]
