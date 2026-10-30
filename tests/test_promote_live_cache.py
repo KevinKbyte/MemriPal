@@ -266,7 +266,7 @@ class TestPromoteIdempotentAndSafe:
         assert _tree(box.fixtures) == before
 
     def test_room_with_zero_attributed_entries_exits_1_and_copies_nothing(self, box):
-        # Q25: a room file with no sidecar-attributed live-cache entry is a failed promote, not a silent no-op.
+        # Q25: a room file with no sidecar-attributed live-cache entry fails the promote, not a silent no-op.
         empty_id = "empty-room"
         (box.fixtures / "rooms" / f"{empty_id}.webp").write_bytes(_image("WEBP", (10, 200, 30)))
         before = _tree(box.fixtures)
