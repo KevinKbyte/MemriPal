@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.19.1] - 2026-10-30
+
+### Changed
+
+- Each said-vs-palace row puts the place, "You said:" and "In your palace:" on their own lines, and the route
+  numbers each place in a fixed box so even "100." never runs into its label (MEM-044;
+  `static/style_v6_components.test.mjs`).
+- The numbered place badges on the scene use white text on #A1341A, about 7:1 contrast (MEM-044;
+  `static/style_v6_components.test.mjs`).
+- The Show/Hide toggles and the file chooser match the other buttons and respond on hover, and a route row's
+  Up/Down/Drop buttons wrap together so Drop never sits alone (MEM-044;
+  `static/style_v6_components.test.mjs`).
+
 ## [0.19.0] - 2026-10-30
 
 ### Added
