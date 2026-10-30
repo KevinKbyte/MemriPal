@@ -56,12 +56,16 @@ function httpStatusText(status) {
 
 /**
  * Upload the server's demo photo byte-for-byte: a browser re-encode would change the processed
- * sha and miss the fixture replay ("fixture_missing").
+ * sha and miss the fixture replay ("fixture_missing"). A page opened as /?room=<room_id> loads that
+ * generated test room instead (MEM-043); an empty ?room= is the same as no param (Q23).
  * @param {typeof fetch} fetchFn
+ * @param {string} [search] the page's location.search
  * @returns {Promise<Response>} the /loci response
  */
-export async function demoUpload(fetchFn) {
-  const demo = await fetchFn("/demo/photo.jpg");
+export async function demoUpload(fetchFn, search) {
+  const room = new URLSearchParams(search ?? "").get("room");
+  const url = room ? `/demo/photo.jpg?room=${encodeURIComponent(room)}` : "/demo/photo.jpg";
+  const demo = await fetchFn(url);
   if (!demo.ok) throw new HttpStatusError(httpStatusText(demo.status));
   return postLoci(fetchFn, await demo.arrayBuffer());
 }
@@ -262,7 +266,8 @@ export function lookupDemoPlace(deps) {
  */
 export function onLoadDemo(deps) {
   lookupDemoPlace(deps);
-  return showUpload(() => demoUpload(deps.fetch), "could not load the demo photo", deps);
+  const send = () => demoUpload(deps.fetch, globalThis.location?.search);
+  return showUpload(send, "could not load the demo photo", deps);
 }
 
 /** KAVE COGS channels, in the order the association panel shows them (MEM-022). */

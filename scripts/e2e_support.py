@@ -11,6 +11,7 @@ class Ctx:
     base: str
     out: Path
     public_url: str
+    home: str = "/"  # page path the steps open; /?room=<room_id> under e2e_drive.py --room (MEM-043)
     results: list[tuple[str, str, str]] = field(default_factory=list)
     events: list[dict] = field(default_factory=list)
     net: dict = field(default_factory=lambda: {"assoc": [], "scenes": [], "all": []})

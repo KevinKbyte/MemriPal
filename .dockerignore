@@ -13,6 +13,8 @@
 **/*.dpapi
 refs
 fixtures/raw
+# Generated test rooms are test fixtures only (MEM-043, ADR 0029): never in the image.
+fixtures/rooms
 docs
 tests
 scripts

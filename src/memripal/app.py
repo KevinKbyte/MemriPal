@@ -28,6 +28,7 @@ from memripal.associate import (
     record_ok,
 )
 from memripal.backend import BackendCallFailed, FixtureMissing, ModelBackend, select_backend
+from memripal.demo_room import room_photo
 from memripal.imaging import MAX_UPLOAD_BYTES, ImageRejected, process_upload, validate_processed
 from memripal.loci import Locus, find_loci
 from memripal.meta_client import MetaClient
@@ -52,6 +53,7 @@ REPLAY_DIR = REPO_ROOT / "fixtures" / "replay"
 # Gitignored: live (meta) responses and photos land here, never in the committed REPLAY_DIR.
 LIVE_CACHE_DIR = REPO_ROOT / "refs" / "private" / "live-cache"
 DEMO_PHOTO = REPO_ROOT / "fixtures" / "demo" / "photo.jpg"
+ROOMS_DIR = REPO_ROOT / "fixtures" / "rooms"  # test fixtures only, excluded from the image (ADR 0029)
 DEMO_NOTES = REPO_ROOT / "fixtures" / "demo" / "notes.txt"
 # Stands in for EXIF GPS: the synthetic demo photo must stay EXIF-free (MEM-005, MEM-025).
 DEMO_PLACE = REPO_ROOT / "fixtures" / "demo" / "place.json"
@@ -307,9 +309,11 @@ def create_app(backend: ModelBackend | None = None, place_provider=None, asr_cli
     def index() -> FileResponse:
         return FileResponse(STATIC_DIR / "index.html", media_type="text/html")
 
-    # Fixed path, no user-supplied component: only the committed demo photo is exposed.
+    # The committed demo photo, or a validated test room (MEM-043); empty ?room= == no param (Q23).
     @app.get("/demo/photo.jpg", include_in_schema=False)
-    def demo_photo() -> Response:
+    def demo_photo(room: str = "") -> Response:
+        if room:
+            return room_photo(ROOMS_DIR, room)
         if not DEMO_PHOTO.is_file():
             return _error(404, "demo_missing")
         return FileResponse(DEMO_PHOTO, media_type="image/jpeg")

@@ -1,13 +1,16 @@
 """Drive the MemriPal UI end to end in a real Chrome against a fixture-mode server it starts itself.
 
-Usage: uv run --with playwright python scripts/e2e_drive.py [--out DIR] [--base-url URL]
+Usage: uv run --with playwright python scripts/e2e_drive.py [--out DIR] [--base-url URL] [--room ID]
 Writes results.json, server.log and step screenshots to --out (default: a fresh dir under the system temp
 dir). Exits 0 only when all EXPECTED_STEPS steps pass, 1 on any failure, 2 when the server never got ready.
-The browser steps live in scripts/e2e_steps.py; everything here is browser-free.
+--room drives the same steps on /?room=<room_id>, a generated test room (MEM-043): DOM asserts only;
+screenshots are artifacts, never compared. The browser steps live in scripts/e2e_steps.py; everything here
+is browser-free.
 """
 
 import argparse
 import contextlib
+import functools
 import json
 import os
 import socket
@@ -19,6 +22,8 @@ import urllib.request
 from collections.abc import Callable, Iterator, Mapping
 from pathlib import Path
 from urllib.parse import urlsplit
+
+from memripal.demo_room import ROOM_ID
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 HOST = "127.0.0.1"
@@ -38,7 +43,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="e2e_drive.py", description=__doc__.splitlines()[0])
     parser.add_argument("--out", type=Path, default=None, help="output dir (default: under the temp dir)")
     parser.add_argument("--base-url", default=None, help="drive an already-running server; skip starting one")
+    parser.add_argument("--room", default=None, help="drive the steps on /?room=<room_id> (test room)")
     args = parser.parse_args(argv)
+    if args.room is not None and not ROOM_ID.fullmatch(args.room):
+        parser.error(f"--room must match {ROOM_ID.pattern}, got {args.room!r}")
     if args.base_url is not None:
         parts = urlsplit(args.base_url)
         if parts.scheme not in ("http", "https") or not parts.hostname:
@@ -140,13 +148,15 @@ def serve(out: Path) -> Iterator[str | None]:
                 proc.wait()
 
 
-def run_steps(base: str, out: Path) -> list[Result]:
+def run_steps(base: str, out: Path, room: str | None = None) -> list[Result]:
     # Lazy imports: this module (and its pure helpers) must load where playwright is absent.
     from e2e_checks import run_all
     from e2e_support import Ctx
     from playwright.sync_api import sync_playwright
 
-    ctx = Ctx(base=base, out=out, public_url=public_url(base))
+    # room is ROOM_ID-validated by parse_args, so it needs no URL encoding.
+    home = f"/?room={room}" if room else "/"
+    ctx = Ctx(base=base, out=out, public_url=public_url(base), home=home)
     with sync_playwright() as p:
         resolver = f"--host-resolver-rules=MAP {PUBLIC_HOST} {HOST}"
         browser = p.chromium.launch(channel="chrome", args=[resolver])
@@ -166,6 +176,8 @@ def main(argv: list[str], run: Callable[[str, Path], list[Result]] = run_steps) 
     args = parse_args(argv)
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
+    if args.room:
+        run = functools.partial(run, room=args.room)
     if args.base_url:
         results = run(args.base_url, out)
     else:

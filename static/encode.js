@@ -306,7 +306,7 @@ export async function runDemoPalace(opts, deps) {
     let lociResp = null;
     // showUpload owns the /loci status text and drawing; a clone keeps the payload for the rest.
     const send = async () => {
-      const resp = await demoUpload(deps.fetch);
+      const resp = await demoUpload(deps.fetch, globalThis.location?.search);
       lociResp = resp.clone();
       return resp;
     };

@@ -87,7 +87,7 @@ def s_empty(ctx, browser):
     try:
         page = bctx.new_page()
         instrument(ctx, page, "empty")
-        open_page(page, ctx.base + "/")
+        open_page(page, ctx.base + ctx.home)
         page.wait_for_timeout(1000)
         hidden = page.eval_on_selector("#history", "e => e.hidden") and not page.is_visible("#history")
         ctx.shot(page, "21_empty_history_hidden")
@@ -173,7 +173,7 @@ def s_narrow(ctx, browser):
     try:
         page = bctx.new_page()
         instrument(ctx, page, "360")
-        open_page(page, ctx.base + "/")
+        open_page(page, ctx.base + ctx.home)
         m = {"initial": hscroll(page)}
         ctx.shot(page, "16_360_initial")
         page.click("#load-demo")

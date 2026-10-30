@@ -7,7 +7,7 @@ from e2e_support import open_page, route_labels, step, texts, wait_status_ready
 
 @step("1 load page")
 def s_load(ctx, page):
-    open_page(page, ctx.base + "/")
+    open_page(page, ctx.base + ctx.home)
     status = page.text_content("#status")
     banner_hidden = page.eval_on_selector("#public-banner", "e => e.hidden")
     ctx.shot(page, "01_initial")
