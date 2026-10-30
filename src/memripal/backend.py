@@ -16,6 +16,8 @@ from typing import Any, Protocol
 PROMPT_VERSION = "v1"
 
 EXT = {"segment": ".txt", "spark_json": ".json", "image_edit": ".webp"}
+# Live-cache entry sidecar suffix: <entry file name>.sha holds the photo sha of the run (MEM-043 P1).
+SIDECAR_SUFFIX = ".sha"
 
 _PHOTO_SHA = re.compile(r"[0-9a-f]{64}")
 
@@ -85,6 +87,10 @@ class RequestKey:
 
     def digest(self) -> str:
         return _sha256_json(asdict(self))
+
+
+def sidecar_path(entry: Path) -> Path:
+    return entry.with_name(entry.name + SIDECAR_SUFFIX)
 
 
 def _atomic_write(path: Path, body: bytes) -> Path:
@@ -175,6 +181,10 @@ class ResponseCache:
 
     def put(self, key: CacheKey | RequestKey, body: bytes) -> Path:
         return _atomic_write(self.path_for(key), body)
+
+    def put_sidecar(self, entry: Path, photo_sha: str) -> Path:
+        """<entry>.sha naming the run's photo sha: promote_live_cache attributes entries by it (MEM-043)."""
+        return _atomic_write(sidecar_path(entry), (photo_sha + "\n").encode("ascii"))
 
     def put_photo(self, image_jpeg: bytes) -> Path:
         """Content-addressed (photos/<sha256>.jpg): an existing file already holds these bytes, so keep it."""
@@ -418,7 +428,9 @@ class MetaBackend:
             try:
                 # Photo first (kept for a later promote step), so no response entry lacks its photo.
                 self.cache.put_photo(req.image_jpeg)
-                self.cache.put(req.cache_key(), body)
+                key = req.cache_key()
+                # After the entry, so a sidecar never names an entry that failed to land.
+                self.cache.put_sidecar(self.cache.put(key, body), key.photo_sha)
             except OSError as exc:
                 # Best-effort: the value is valid, so a cache write failure (e.g. a Windows sharing
                 # violation from concurrent calls) never fails the request. Logs no key, path, or bytes.
