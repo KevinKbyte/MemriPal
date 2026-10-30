@@ -87,7 +87,8 @@ replayed offline in fixture mode after one live record. Starts after the core de
 a day. A live probe on one real room photo stays the realism check. New: `MetaClient.image_generate`,
 `scripts/gen_room_fixtures.py`, `scripts/promote_live_cache.py` (the promote step `backend.py` `_store` names),
 `fixtures/rooms/`, `e2e_drive.py --room`. Changed: `app.py` `/demo/photo.jpg`, the Load demo fetch, `.dockerignore`,
-`scripts/make_synthetic_fixtures.py` + `tests/test_fixtures_manifest.py` (M1), README script entries.
+`scripts/make_synthetic_fixtures.py` + `tests/test_fixtures_manifest.py` (M1), `backend.py` `_store`
+(P1 sidecar), README script entries.
 - T1 Testing only. `.dockerignore` excludes `fixtures/rooms` (`.gcloudignore` includes `.dockerignore`), so the Cloud
   Run image has no room file and `?room=` there -> 404 `room_missing`. No file under `static/` or `docs/submission/`
   and no README image references a room; README names rooms only in its script entries, as generated test fixtures.
@@ -135,18 +136,29 @@ a day. A live probe on one real room photo stays the realism check. New: `MetaCl
   `test_manifest_lists_every_fixture_file` covers every committed file. Accept: a foreign row + file seeded in the
   sandbox survive a generator run; both tests green with rooms and promoted files committed.
 - P1 `python scripts/promote_live_cache.py --room <room_id> [--dry-run]`: offline, no key. Copies from
-  `refs/private/live-cache/<method>/` into `fixtures/replay/<method>/` only entries recorded for the room's processed
-  photo (`process_upload(fixtures/rooms/<room_id>.webp).sha`); never `photos/`, never another photo's entry (private
-  live runs share that cache, ADR 0017). Cache file names are key digests, not photo shas: an entry the script cannot
-  attribute to the room is not copied. Target exists with equal bytes -> skipped; different bytes -> stderr, exit 1,
-  nothing written. Adds the M1 rows; copied files pass `precommit_scan.py`. `--dry-run` prints the paths, writes
-  nothing. Accept: a cache seeded with 2 photos' entries -> only the room's copied, 0 from `photos/`; a re-run copies
-  0; a conflicting target -> exit 1.
-- D1 `GET /demo/photo.jpg?room=<room_id>`. No param -> today's demo photo, unchanged. A room_id matching
-  `^[a-z0-9-]{1,32}$` that names an existing `fixtures/rooms/<room_id>.webp` -> those bytes unchanged (raw, ADR 0016:
-  a browser re-encode breaks sha replay), media type from `imaging.sniff`. Anything else (unknown id, `..`, `/`,
-  `%2F`) -> 404 `room_missing`; the path is built only from a validated id. Route guards unchanged. Accept: absent,
-  valid (byte-equal), unknown and traversal cases tested.
+  `refs/private/live-cache/<method>/` into `fixtures/replay/<method>/` only entries recorded for the room's
+  processed photo (`process_upload(fixtures/rooms/<room_id>.webp).sha`); never `photos/`, never another
+  photo's entry (private live runs share that cache, ADR 0017). Cache file names are key digests, not photo
+  shas: an entry the script cannot attribute to the room is not copied. Attribution (Kev Q23(ii); replaces
+  replaying the room photo, which reached only `find_loci` entries): write-time sidecars.
+  - Write: `MetaBackend._store` (or `ResponseCache.put`) also writes, per cache entry, a sidecar next to it
+    naming the photo sha of the run that produced it (`RequestKey.photo_sha` = `process_upload(photo).sha`),
+    for every method: loci, spark, re-ask, segment, notes, associate. One sidecar file per entry, atomic
+    (temp file, then `os.replace`), so concurrent writes cannot clash; an `OSError` is logged as the entry's
+    is, never failing the call.
+  - Promote: copies exactly the entries whose sidecar names the room sha, plus their sidecars; 0 from other
+    photos. An entry without a sidecar (incl. any recorded before sidecars landed) is skipped; stderr prints
+    the skip count.
+  Target exists with equal bytes -> skipped; different bytes -> stderr, exit 1, nothing written. Adds the M1
+  rows (entries and sidecars); copied files pass `precommit_scan.py`. `--dry-run` prints the paths, writes
+  nothing. Accept: a cache seeded with 2 photos' entries -> only the room's copied, 0 from `photos/`; a re-run
+  copies 0; a conflicting target -> exit 1.
+- D1 `GET /demo/photo.jpg?room=<room_id>`. No param, or an empty `?room=` (Kev Q23(iii): treated as no param)
+  -> today's demo photo, unchanged. A room_id matching `^[a-z0-9-]{1,32}$` that names an existing
+  `fixtures/rooms/<room_id>.webp` -> those bytes unchanged (raw, ADR 0016: a browser re-encode breaks sha
+  replay), media type from `imaging.sniff`. Anything else (a non-empty id outside the pattern, unknown id,
+  `..`, `/`, `%2F`) -> 404 `room_missing`; the path is built only from a validated id. Route guards unchanged.
+  Accept: absent, empty (default photo), valid (byte-equal), unknown and traversal cases tested.
 - D2 A page opened as `/?room=<room_id>` makes Load demo fetch `/demo/photo.jpg?room=<encodeURIComponent(room_id)>`;
   without the param the fetch URL is unchanged. Notes, place and recall demo fetches unchanged; the id is never
   written into the DOM. Accept: 2 client tests (with, without).
@@ -164,14 +176,19 @@ a day. A live probe on one real room photo stays the realism check. New: `MetaCl
     exit 2 with 0 calls; 6 variant outcomes. SIGNALS: none.
   - B3 M1, P1. CRITERIA: seeded foreign row survives a generator run; promote copies only the room's entries, 0 from
     `photos/`, re-run 0, conflict exit 1; `tests/test_fixtures_manifest.py` green. SIGNALS: none.
-  - B4 T1, D1, D2, X1. CRITERIA: 4 route cases; 2 client cases; 2 `--room` parse cases; `.dockerignore` assert;
-    default E2E 22/22. SIGNALS: `e2e_drive.py` exit 0; screenshot gate (diff touches `static/`).
+  - B3b P1 sidecars. CRITERIA: each of loci, spark, re-ask, segment, notes, associate writes 1 sidecar naming
+    its photo sha; sidecar write is temp + `os.replace`; a sidecar `OSError` fails 0 calls; promote over 2
+    photos' entries copies the room's entries + sidecars, 0 from the other photo; no-sidecar entry skipped,
+    count printed; re-run 0; conflict exit 1, 0 writes; `--dry-run` 0 writes; existing P1 tests green.
+    SIGNALS: none.
+  - B4 T1, D1, D2, X1. CRITERIA: 5 route cases; 2 client cases; 2 `--room` parse cases; `.dockerignore`
+    assert; default E2E 22/22. SIGNALS: `e2e_drive.py` exit 0; screenshot gate (diff touches `static/`).
   - B5 K1 (Kev). CRITERIA: 3-5 rooms committed with M1 rows; each promoted; `e2e_drive.py --room <room_id>` exit 0
     per room. SIGNALS: ownership clause confirmed; Meta usage about $1.
 
 Tests: tests/test_meta_client.py, tests/test_gen_room_fixtures.py, tests/test_promote_live_cache.py,
-tests/test_fixtures_manifest.py, tests/test_app.py, tests/test_e2e_drive.py, tests/test_deploy_artifacts.py,
-static/app.test.mjs
+tests/test_fixtures_manifest.py, tests/test_backend.py, tests/test_app.py, tests/test_e2e_drive.py,
+tests/test_deploy_artifacts.py, static/app.test.mjs
 
 ## MEM-044 v6 look adoption + painterly theme
 
