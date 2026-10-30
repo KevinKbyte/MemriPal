@@ -451,14 +451,18 @@ export function wireApp(deps) {
       }
     } else {
       const typed = String(box.value ?? "");
-      // An empty typed Done would save a 0/N run; keep the run open and ask for an answer instead.
+      // An empty Done with nothing got would save a 0/N run; keep the run open and ask for an answer
+      // instead. A spoken run that fell back typed may already hold got points: those still save (Q24).
       if (!typed.trim()) {
-        const kept = relayNote && relayNote.session === current ? [relayNote.el] : [];
-        const prompt = textEl(doc, "p", "Type what you remember first, then press Done.");
-        byId("recall-results")?.replaceChildren(...kept, prompt);
-        return;
+        if (!current.results().some((r) => r.got)) {
+          const kept = relayNote && relayNote.session === current ? [relayNote.el] : [];
+          const prompt = textEl(doc, "p", "Type what you remember first, then press Done.");
+          byId("recall-results")?.replaceChildren(...kept, prompt);
+          return;
+        }
+      } else {
+        current.submitTyped(typed);
       }
-      current.submitTyped(typed);
       box.value = "";
     }
     await endRun(current.matcher.transcript(), current.results(), false);
