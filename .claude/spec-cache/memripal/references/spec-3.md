@@ -152,7 +152,8 @@ a day. A live probe on one real room photo stays the realism check. New: `MetaCl
   Target exists with equal bytes -> skipped; different bytes -> stderr, exit 1, nothing written. Adds the M1
   rows (entries and sidecars); copied files pass `precommit_scan.py`. `--dry-run` prints the paths, writes
   nothing. Accept: a cache seeded with 2 photos' entries -> only the room's copied, 0 from `photos/`; a re-run
-  copies 0; a conflicting target -> exit 1.
+  copies 0; a conflicting target -> exit 1; a room with 0 attributed entries -> stderr "0 entries for room
+  <room_id>", exit 1, nothing copied (Q25).
 - D1 `GET /demo/photo.jpg?room=<room_id>`. No param, or an empty `?room=` (Kev Q23(iii): treated as no param)
   -> today's demo photo, unchanged. A room_id matching `^[a-z0-9-]{1,32}$` that names an existing
   `fixtures/rooms/<room_id>.webp` -> those bytes unchanged (raw, ADR 0016: a browser re-encode breaks sha

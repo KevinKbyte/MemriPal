@@ -8,6 +8,7 @@
 # License citing ADR 0029) and existing rows are kept. A target with equal bytes is skipped (a re-run
 # changes nothing, not even an mtime); a target with different bytes -> stderr, exit 1, nothing
 # written. --dry-run prints the target paths and writes nothing. Copied files pass precommit_scan.py.
+# A room with 0 attributed entries -> stderr "0 entries for room <room_id>", exit 1, nothing copied (Q25).
 #
 # Decision (Kev Q23(ii), replaces replaying the room photo, which reached only find_loci entries): a
 # cache entry ties to a room by the write-time sidecar the real MetaBackend wrote next to it, naming the
@@ -263,6 +264,17 @@ class TestPromoteIdempotentAndSafe:
         for rel in box.other_entries:
             assert rel not in stdout
         assert _tree(box.fixtures) == before
+
+    def test_room_with_zero_attributed_entries_exits_1_and_copies_nothing(self, box):
+        # Q25: a room file with no sidecar-attributed live-cache entry is a failed promote, not a silent no-op.
+        empty_id = "empty-room"
+        (box.fixtures / "rooms" / f"{empty_id}.webp").write_bytes(_image("WEBP", (10, 200, 30)))
+        before = _tree(box.fixtures)
+        result = _promote(box, "--room", empty_id)
+        assert result.returncode == 1, (result.returncode, result.stderr)
+        assert f"0 entries for room {empty_id}" in result.stderr, result.stderr
+        assert _tree(box.fixtures) == before
+        assert not box.replay.exists()
 
     @pytest.mark.parametrize("room_id", ["no-such-room", "../rooms", "Bad_ID"])
     def test_unknown_or_invalid_room_writes_nothing(self, box, room_id):
