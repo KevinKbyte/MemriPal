@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.18.1] - 2026-10-30
+
+### Fixed
+
+- A missing demo scene image shows plain-language copy instead of a raw error code (MEM-029;
+  `static/app_ux_scene_fixture_missing.test.mjs`).
+- Pressing Start recall before the server health check answers waits for the mode instead of guessing (MEM-032;
+  `static/app_ux_start_before_health.test.mjs`).
+- An empty Done after a speech relay failure keeps the failure message visible, and a run with points already marked
+  got still saves (MEM-032; `static/app_ux_empty_done_after_relay_fail.test.mjs`).
+- Overlapping Mark got it clicks keep the screen and the saved history in agreement (MEM-033;
+  `static/app_ux_mark_got_overlap.test.mjs`).
+
 ## [0.18.0] - 2026-10-30
 
 ### Changed
