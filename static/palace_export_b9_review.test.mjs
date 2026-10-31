@@ -10,7 +10,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 
-import { backup, dataUrl, entry, makeJpeg, rehearsal, snapshot, stores, uuid } from "./backup_fixtures_test.mjs";
+import { backup, dataUrl, entry, fakeLoadImage, makeJpeg, rehearsal, snapshot, stores, uuid } from "./backup_fixtures_test.mjs";
 import { createRouteStore } from "./route_store.js";
 import { RAW_CAMERA } from "./route_store_fakes_test.mjs";
 
@@ -86,6 +86,9 @@ describe("MEM-054 export always re-imports", () => {
 // Requirement: decode-bomb guard: a station photo whose JPEG SOF declares a side over 4096 px is
 // refused (message names 4096) before it reaches loadImage; exactly 4096 is accepted. A file with
 // over 50 routes is refused (message names 50) before any photo is decoded; exactly 50 is accepted.
+// The size cap fails closed: a photo with no readable JPEG size (no SOF before EOI/SOS) is refused
+// with "station photo has no readable JPEG size" before loadImage, even if a lenient decoder would
+// have accepted it.
 describe("MEM-054 import: decode-bomb caps", () => {
   test("photo SOF 4097 x 100 -> refused before loadImage, nothing written", async () => {
     const big = dataUrl(makeJpeg(4097, 100));
@@ -108,6 +111,22 @@ describe("MEM-054 import: decode-bomb caps", () => {
     const file = await goodFile();
     Object.assign(file.routes[0].stations[0], { photo: dataUrl(makeJpeg(4096, 4096)), box: null });
     assert.deepEqual(await importObj(file, stores()), { added: 1, present: 0, skipped: 0 });
+  });
+
+  test("photo with no readable JPEG size -> refused before loadImage, nothing written", async () => {
+    // SOI then EOI: a JPEG data URL whose SOF size cannot be read.
+    const sizeless = dataUrl(new Uint8Array([0xff, 0xd8, 0xff, 0xd9, 0x42, 0x42]));
+    const file = await goodFile();
+    Object.assign(file.routes[0].stations[0], { photo: sizeless, box: null });
+    const s = stores();
+    const lenient = { ...s, loadImage: async (src) => {
+      s.loadCalls.push(src);
+      return src === sizeless ? { naturalWidth: 100, naturalHeight: 100, width: 100, height: 100 } : fakeLoadImage(src);
+    } };
+    const before = snapshot(s);
+    await assert.rejects(importObj(file, lenient), (err) => /station photo has no readable JPEG size/.test(err.message));
+    assert.ok(!s.loadCalls.includes(sizeless), "sizeless photo never handed to loadImage");
+    assert.deepEqual(snapshot(s), before, "store unchanged");
   });
 
   test("51 routes -> refused before any photo decodes, nothing written", async () => {
