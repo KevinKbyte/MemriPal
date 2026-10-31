@@ -191,6 +191,11 @@ export async function importBackup(text, { store, rehearsals, routes, loadImage 
   let added = 0;
   let present = 0;
   let skipped = 0;
+  // Routes first: a failed route write throws before any association or rehearsal lands (no orphans).
+  for (const r of fileRoutes) {
+    if (await /** @type {NonNullable<typeof routes>} */ (routes).restoreRoute(r)) added += 1;
+    else present += 1;
+  }
   for (const a of entries) {
     if (!a) {
       skipped += 1;
@@ -214,10 +219,6 @@ export async function importBackup(text, { store, rehearsals, routes, loadImage 
       await rehearsals.restore(r);
       added += 1;
     }
-  }
-  for (const r of fileRoutes) {
-    if (await /** @type {NonNullable<typeof routes>} */ (routes).restoreRoute(r)) added += 1;
-    else present += 1;
   }
   return { added, present, skipped };
 }

@@ -313,8 +313,10 @@ export function createRouteStore(adapter, { now = Date.now, newId = () => crypto
         r.stations.push(st);
         writes.push(putPhoto(st.photo_ref, s.photo));
       }
+      // Cached only once persisted: a failed import write must leave no route for a retry to see as present.
+      const out = await persist(clone(r), [...writes, putRoute(r)]);
       map.set(id, r);
-      return persist(clone(r), [...writes, putRoute(r)]);
+      return out;
     }),
 
     /** @param {string} routeId @param {{ name?: string, kind?: string }} fields */

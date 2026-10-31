@@ -20,6 +20,10 @@ const LINE_MAX = 200; // route_capture.js MAX_LINE
 const JPEG_PREFIX = "data:image/jpeg;base64,";
 const JPEG_URL_RE = /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+/** Decode-bomb guard: a photo whose JPEG SOF declares a longer side never reaches loadImage. */
+export const MAX_IMPORT_PHOTO_SIDE = 4096;
+/** Decode-bomb guard: a file with more routes is refused before any photo decodes. */
+export const MAX_IMPORT_ROUTES = 50;
 
 /**
  * @typedef {ReturnType<typeof import("./route_store.js").createRouteStore>} RouteStore
@@ -59,6 +63,29 @@ function base64(bytes) {
 }
 
 /**
+ * {width, height} declared by the first SOF segment, or null when none is found before the scan data.
+ * @param {Uint8Array} b
+ */
+function jpegSize(b) {
+  if (b.length < 4 || b[0] !== 0xff || b[1] !== 0xd8) return null;
+  let i = 2;
+  while (i + 4 <= b.length) {
+    if (b[i] !== 0xff) return null;
+    const m = b[i + 1];
+    if (m === 0xff) { i += 1; continue; } // fill byte
+    if (m === 0xd9 || m === 0xda) return null;
+    if (m === 0x01 || (m >= 0xd0 && m <= 0xd7)) { i += 2; continue; } // standalone markers carry no length
+    // SOF0..SOF15 except DHT (c4), JPG (c8) and DAC (cc).
+    if (m >= 0xc0 && m <= 0xcf && m !== 0xc4 && m !== 0xc8 && m !== 0xcc) {
+      if (i + 9 > b.length) return null;
+      return { height: (b[i + 5] << 8) | b[i + 6], width: (b[i + 7] << 8) | b[i + 8] };
+    }
+    i += 2 + ((b[i + 2] << 8) | b[i + 3]);
+  }
+  return null;
+}
+
+/**
  * The allowlisted string fields of `v`, or null when it has none of them.
  * @param {unknown} v @param {string[]} keys
  */
@@ -79,8 +106,12 @@ async function stationOut(routes, thumbnail, st) {
   /** @param {number} v @param {number} k @param {number} max */
   const fit = (v, k, max) => Math.min(max, Math.max(0, Math.round(v * k)));
   const b = st.box;
+  // Corners are ordered here because import refuses x1 > x2 / y1 > y2, and every export must re-import.
   const box = isObject(b) && BOX_KEYS.every((k) => finite(b[k]))
-    ? { x1: fit(b.x1, kx, t.width), y1: fit(b.y1, ky, t.height), x2: fit(b.x2, kx, t.width), y2: fit(b.y2, ky, t.height) }
+    ? {
+      x1: fit(Math.min(b.x1, b.x2), kx, t.width), y1: fit(Math.min(b.y1, b.y2), ky, t.height),
+      x2: fit(Math.max(b.x1, b.x2), kx, t.width), y2: fit(Math.max(b.y1, b.y2), ky, t.height),
+    }
     : null;
   return {
     id: st.id,
@@ -96,6 +127,7 @@ async function stationOut(routes, thumbnail, st) {
 
 /**
  * E1 (v2): every saved route, named stations only; pending / error stations and drafts never leave.
+ * A saved route left with fewer than MIN_SAVE_STATIONS named stations is skipped, since import refuses it.
  * @param {RouteStore | undefined} routes @param {Thumbnail} thumbnail
  */
 export async function exportRoutes(routes, thumbnail) {
@@ -103,8 +135,10 @@ export async function exportRoutes(routes, thumbnail) {
   const out = [];
   for (const r of await routes.listRoutes()) {
     if (r.status !== "saved") continue;
+    const named = r.stations.filter((/** @type {any} */ st) => st.status === "named");
+    if (named.length < MIN_SAVE_STATIONS) continue;
     const stations = [];
-    for (const st of r.stations) if (st.status === "named") stations.push(await stationOut(routes, thumbnail, st));
+    for (const st of named) stations.push(await stationOut(routes, thumbnail, st));
     const lists = (r.lists ?? []).map((/** @type {any} */ l) => ({ id: l.id, name: l.name, status: l.status }));
     out.push({ id: r.id, name: r.name, kind: r.kind, created_at: r.created_at, lists, stations });
   }
@@ -140,6 +174,11 @@ async function stationIn(st, loadImage) {
   if (!shortText(name, NAME_MAX) || status !== "named") throw new Error("bad station");
   // Checked before decode, so no other scheme (javascript:, http:, png) ever reaches loadImage.
   if (typeof photo !== "string" || !JPEG_URL_RE.test(photo)) throw new Error("station photo is not a JPEG");
+  const bytes = Uint8Array.from(atob(photo.slice(JPEG_PREFIX.length)), (c) => c.charCodeAt(0));
+  const size = jpegSize(bytes);
+  if (size && Math.max(size.width, size.height) > MAX_IMPORT_PHOTO_SIDE) {
+    throw new Error(`station photo is over ${MAX_IMPORT_PHOTO_SIDE} px on a side`);
+  }
   /** @type {{naturalWidth: number, naturalHeight: number}} */
   let img;
   try {
@@ -156,7 +195,6 @@ async function stationIn(st, loadImage) {
     if (!ok) throw new Error("station box is outside its photo");
     boxOut = { x1: box.x1, y1: box.y1, x2: box.x2, y2: box.y2 };
   }
-  const bytes = Uint8Array.from(atob(photo.slice(JPEG_PREFIX.length)), (c) => c.charCodeAt(0));
   return {
     id, n, name, box: boxOut,
     profile: stringMapIn(profile, PROFILE_KEYS, "profile"),
@@ -185,6 +223,7 @@ async function routeIn(r, loadImage) {
   const out = [];
   for (const st of stations) out.push(await stationIn(st, loadImage));
   if (new Set(out.map((s) => s.id)).size !== out.length) throw new Error("bad route: duplicate station");
+  if (new Set(out.map((s) => s.n)).size !== out.length) throw new Error("bad route: duplicate station number");
   return { id, name, kind, created_at, lists: listsOut, stations: out };
 }
 
@@ -193,6 +232,7 @@ async function routeIn(r, loadImage) {
  * @param {unknown[]} routes @param {LoadImage} loadImage
  */
 export async function importRoutes(routes, loadImage) {
+  if (routes.length > MAX_IMPORT_ROUTES) throw new Error(`over ${MAX_IMPORT_ROUTES} routes`);
   const out = [];
   for (const r of routes) out.push(await routeIn(r, loadImage));
   return out;
