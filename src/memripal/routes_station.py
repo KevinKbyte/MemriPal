@@ -9,6 +9,9 @@ from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
 from memripal.backend import BackendCallFailed, FixtureMissing, ModelBackend
+
+# Shared with app.py so /station's upload types, size check and budget refusal match /loci's.
+from memripal.bodies import UPLOAD_TYPES, BudgetExhausted, _error, _length_error, _read_capped
 from memripal.imaging import MAX_UPLOAD_BYTES, ImageRejected, process_upload
 from memripal.station import BadReply, BlurFailed, parse_used_names, run_station
 
@@ -22,10 +25,6 @@ def make_station_router(
     *,
     max_concurrent: int = DEFAULT_MAX_CONCURRENT,
 ) -> APIRouter:
-    # Lazy: app.py will import this module to wire the router, so a top-level import would cycle. The
-    # same helpers keep /station's upload types, size check and budget refusal identical to /loci's.
-    from memripal.app import UPLOAD_TYPES, BudgetExhausted, _error, _length_error, _read_capped
-
     if max_concurrent < 1:
         raise ValueError("max_concurrent must be >= 1")
     slots = threading.BoundedSemaphore(max_concurrent)

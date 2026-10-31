@@ -28,6 +28,8 @@ from memripal.associate import (
 )
 from memripal.backend import BackendCallFailed, FixtureMissing, ModelBackend, select_backend
 from memripal.bodies import (
+    UPLOAD_TYPES,
+    BudgetExhausted,
     _associate_body,
     _box_ok,
     _error,
@@ -68,7 +70,6 @@ DEMO_NOTES = REPO_ROOT / "fixtures" / "demo" / "notes.txt"
 DEMO_PLACE = REPO_ROOT / "fixtures" / "demo" / "place.json"
 DEMO_RECALL = REPO_ROOT / "fixtures" / "demo" / "recall_timeline.json"
 
-UPLOAD_TYPES = {"image/jpeg", "image/png", "image/webp"}
 # Base64 of a max-size photo plus room for 20 KB of notes even when JSON-escaped as \uXXXX.
 SPLIT_BODY_CAP = 4 * -(-MAX_UPLOAD_BYTES // 3) + 256 * 1024
 JPEG_DATA_URL = "data:image/jpeg;base64,"
@@ -93,10 +94,6 @@ def _env_int(name: str, minimum: int) -> int | None:
     if not (raw.isascii() and raw.isdigit()) or int(raw) < minimum:
         raise ValueError(f"{name} must be an integer >= {minimum}")
     return int(raw)
-
-
-class BudgetExhausted(RuntimeError):
-    """The per-instance live call budget is spent; the call never reached the backend."""
 
 
 class _BudgetedBackend:

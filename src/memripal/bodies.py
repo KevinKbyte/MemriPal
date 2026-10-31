@@ -15,6 +15,11 @@ ASSOCIATE_KEYS = {"image", "item", "locus"}
 PLACE_KEYS = {"lat", "lon"}
 SCENES_KEYS = {"image", "box", "record", "sig"}
 BOX_KEYS = ("x1", "y1", "x2", "y2")
+UPLOAD_TYPES = {"image/jpeg", "image/png", "image/webp"}
+
+
+class BudgetExhausted(RuntimeError):
+    """The per-instance live call budget is spent; the call never reached the backend."""
 
 
 def _error(status: int, code: str) -> JSONResponse:
