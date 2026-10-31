@@ -308,6 +308,45 @@ class TestIpv6Prefix:
         assert _place(client, "203.0.113.10").status_code == 200
 
 
+# Requirement: on a dual-stack bind an IPv4 client arrives as an IPv4-mapped IPv6 address (::ffff:a.b.c.d);
+# it is keyed as its plain IPv4 address, never by the shared ::/64, so one IPv4 attacker cannot rate-limit or
+# lock out every other IPv4 user.
+class TestIpv4MappedIpv6:
+    def test_mapped_address_keys_as_plain_ipv4(self):
+        assert rl.client_key("::ffff:1.2.3.4") == "1.2.3.4"
+        assert rl.client_key("::ffff:1.2.3.4") == rl.client_key("1.2.3.4")
+        assert rl.client_key("::ffff:1.2.3.4") != rl.client_key("::ffff:1.2.3.5")
+
+    def test_distinct_mapped_peers_get_separate_rate_buckets(self, monkeypatch):
+        app = _app(FakeClock(), monkeypatch=monkeypatch, rate=1)
+        first = TestClient(app, base_url=LOOPBACK_URL, client=("::ffff:1.2.3.4", 50000))
+        second = TestClient(app, base_url=LOOPBACK_URL, client=("::ffff:1.2.3.5", 50000))
+        assert _place(first).status_code == 200
+        _assert_429(_place(first))
+        assert _place(second).status_code == 200
+
+    def test_lockout_of_one_mapped_peer_does_not_lock_out_another(self, monkeypatch):
+        monkeypatch.setenv("MEMRIPAL_PASSCODE", "right")
+        monkeypatch.setenv("MEMRIPAL_PASSCODE_MAX_FAILS", "3")
+        stub = LiveStub()
+        app = create_app(backend=stub, place_provider=PlaceStub(), clock=FakeClock())
+        attacker = TestClient(app, base_url=LOOPBACK_URL, client=("::ffff:1.2.3.4", 50000))
+        victim = TestClient(app, base_url=LOOPBACK_URL, client=("::ffff:1.2.3.5", 50000))
+
+        def split(client, passcode):
+            headers = {"Content-Type": JSON, "X-Memripal-Passcode": passcode}
+            return client.post("/split", content=SPLIT_BODY, headers=headers)
+
+        for _ in range(3):
+            assert split(attacker, "wrong").status_code == 401
+        locked = split(attacker, "right")
+        assert locked.status_code == 429, locked.text[:300]
+        assert locked.json() == {"error": "too_many_attempts"}
+        resp = split(victim, "right")
+        assert resp.status_code == 200, resp.text[:300]
+        assert stub.calls == 1
+
+
 # Requirement: limiter state for clients that have gone quiet is dropped once their window has passed, so
 # many one-off client IPs cannot grow the in-memory state without bound.
 class TestStaleSweep:
