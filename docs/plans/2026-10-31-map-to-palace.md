@@ -1,11 +1,11 @@
-# MemriPal: map-to-palace plan (v2, finished after adversary round 2 + finisher critique)
+# MemriPal: map-to-palace plan (v3: v2 + item 136 amendment: B14 above the cut, Boston demo place, Q4 HTML allowed)
 
 Date 2026-10-31. Repo memripal main a082c18 (0.20.1). Deadline Wed Nov 4 2026 9 PM ET (online; demo shows only built
 features, hackathon.md:92). Supersedes, for memripal product work, the open product items of
 done/memripal-2026-10-30-s2s-handoff.md and items 110-113 of memripal-2026-10-31-s2t-handoff.md (ledger in Part C).
 Recon facts with path:line: recon.md (same folder). Adversary reports: adv-*.md (round 1) and adv-*-r2.md (round 2),
-same folder; arbitration in Part D (round 1), Part E (round 2) and Part F (finisher critique). Supersedes plan-v1.md
-and plan-v1-r2.md.
+same folder; arbitration in Part D (round 1), Part E (round 2), Part F (finisher critique) and Part G (item 136
+amendment + its adversary round). Supersedes plan-v1.md and plan-v1-r2.md.
 
 ## Must-keep (user's verbatim asks; never deferred, cut or descoped without the user's explicit ask)
 Verbatim product framing (Kev, 2026-10-31): "this would make it less much forgetable considering there are many
@@ -26,7 +26,7 @@ implementation" + "you may have to consolidate and then deprecate some parts so 
 | MK | Ask (from the quotes above) | Where it is built and measured |
 |---|---|---|
 | MK1 | Many important day-to-day routes (commute, local grocery store) | B3 store + S1 list; B6 crit 11 (3 routes listed) |
-| MK2 | Routes NOT used day to day can be mapped too (restaurant to bring friends to) | kind Occasional, mapped by walking it once (B3, B6 crit 11); typed/planned stations without walking = B14 (below the cut, planned; see Q2) |
+| MK2 | Routes NOT used day to day can be mapped too (restaurant to bring friends to) | kind Occasional, mapped by walking it once (B3, B6 crit 11); typed/planned stations without walking = B14a-c (ABOVE the cut per Kev Q2 2026-10-31: app auto-selects landmarks along an unwalked route, user checks in candidates not preselected) |
 | MK3 | Walk the route confidently without pulling out Google Maps; more attentive to surroundings | S5 route view + in-order eyes-closed practice (B6) + sensory quick-taps (B5) |
 | MK4 | Memory benefit: a good way of storing the important things among infinite ones; palace augments other learnings in parallel | list on route from the user's own notes (B7), scenes, spoken recall lighting dots (B7 crit 10) |
 | MK5 | Less forgettable routes | "Learned n/N", practice history, per-station hit rates (B6 crit 7, 12) |
@@ -53,22 +53,22 @@ Two views are first-class and both appear in the demo:
 - List-on-route view (S6, S7, S8): one study list placed on the route's stations; scenes per station; spoken recall
   lights the same dots.
 
-Non-goals: replacing navigation, turn-by-turn directions, safety claims, interaction while moving, points for speed/
-distance/streaks, AR, generated video, Google Maps/Street View, basemap tiles, on-device models, any model outside the
-hackathon list, v1 (pre-pivot) backup import.
+Non-goals: replacing navigation, turn-by-turn directions, safety claims, interaction while moving, points for speed/distance/streaks, AR,
+generated video, Google Maps/Street View, basemap tiles, on-device models, any model outside the hackathon list, v1 (pre-pivot) backup
+import. The B14 planned-route polyline is a schematic SVG for picking stations, never navigation.
 
 Assumptions (state before code):
-- A1 Station coordinates come only from client-side EXIF GPS (opt-in, ADR 0022) or browser geolocation at capture
-  (opt-in). GPS is read from the raw File, then the photo is re-encoded (reencodeJpeg, app.js:97, strips EXIF) before
-  anything is stored or sent. Coordinates leave the device ONLY through B8 /baseline for a station the user ticked
-  (A2); no other endpoint receives them; backups never carry them. With neither source, the map is a schematic ordered
-  by capture index.
-- A2 Coordinate egress to Mapillary (Meta service) exists only in B8 (above the cut in v2), per-station opt-in, 4 dp,
-  consent copy names Meta, with its own ADR. A station without coords cannot request a baseline (button disabled).
-- A3 Demo route = a public, non-residential place (same neutral place as B2; Kev picks) WITH Mapillary coverage within
-  30 m of >= 3 of its stations (checked by the B8 live probe before K1), 6 stations, early morning, no faces/house
-  numbers; committed demo data carries no coordinates (schematic index layout); its baselines are the recorded
-  /baseline responses (image, author, link), never re-fetched. Never Kev's own block.
+- A1 Station coords come only from EXIF GPS (opt-in, ADR 0022), capture geolocation (opt-in) or a B14 candidate sample point (D12). GPS
+  is read from the raw File, then the photo is re-encoded (reencodeJpeg, app.js:97, strips EXIF) before anything is stored or sent. Coords
+  leave the device ONLY via B8 /baseline (ticked station), B14 (A2) and the existing MEM-025 place lookup (place.py, rounded); backups never
+  carry them; the store holds no route polyline. With no source, the map is a schematic ordered by capture index.
+- A2 Coordinate egress, all via the backend, 4 dp, own ADRs: Mapillary (Meta) through B8 (per-station opt-in; no coords -> button
+  disabled) and B14b /candidate; OpenStreetMap Nominatim + FOSSGIS OSRM through B14a /plan-route (typed text only, never device location).
+  B14 egress only on an explicit #plan-go press; consent copy names Meta (B8) and OpenStreetMap, FOSSGIS and Meta (#plan-consent).
+- A3 Demo route = Christian Science Plaza, Boston (Kev Q1; public, non-residential; fallback Copley Square edge at Trinity Church only,
+  re-probed before use; avoid Copley park centre, BPL, Marathon-finish block) WITH Mapillary coverage within 30 m of >= 3 stations (B8
+  live probe before K1), 6 stations, early morning, no faces/house numbers. Probe coords live only in the plan-note and probe-tool CLI
+  args; committed demo data has none (schematic index layout); baselines = recorded /baseline responses, never re-fetched. Never Kev's block.
 - A4 Existing /split, /associate, /scenes, recall matcher, live lighting, fixture replay, signed records are reused; the
   locus label becomes the station name.
 - A5 All 44 live ids stay (recon.md), each exactly once; screens S1-S9 are sections in the one index.html toggled via
@@ -77,13 +77,13 @@ Assumptions (state before code):
 - A7 No real v1 backup users exist (v1 came only from the pre-pivot single-palace demo, PALACE_ID "demo").
 
 ## Decisions fixed (each lands with its ADR inside its slice; ADR numbers assigned in land order)
-- D1 Mapillary baseline (MK7): above the cut (B8). Lean option (a) backend proxy over (b) img-src widening; the ADR
-  inside B8 records the choice. Baseline images are display-only: never sent to Muse Image, Spark or SAM (keeps the CC
-  BY-SA share-alike duty of ADR 0012 out of generated scenes).
-- D2 Scenes pass Muse Image bytes through unchanged + "AI-generated" chip; mime follows the reply format; reported
-  width/height stay the photo's (zoomFor works in fractions, scenes.js:42-58, so no box scaling). If the rendered
-  image's naturalWidth/naturalHeight aspect differs from the photo's by > 2%, the card uses identity zoom. ADR (amends
-  0024).
+- D1 Mapillary baseline (MK7): above the cut (B8). Lean option (a) backend proxy over (b) img-src widening; the ADR inside B8 records the
+  choice. Mapillary images are never sent to Muse Image or SAM; amended by ADR-next-d1 (B14b, lands after the B8 ADR): they may go to Spark
+  for B14b scoring/naming only, because Spark output is text, not a derivative image, so ADR 0012's CC BY-SA share-alike duty stays out of
+  generated scenes. Walked-station baselines (B8) stay display-only.
+- D2 Scenes pass Muse Image bytes through unchanged + "AI-generated" chip; mime follows the reply format; reported width/height stay the
+  photo's (zoomFor works in fractions, scenes.js:42-58, so no box scaling). If the rendered image's naturalWidth/naturalHeight aspect
+  differs from the photo's by > 2%, the card uses identity zoom. ADR (amends 0024).
 - D3 Station pipeline, fail-closed: SAM "person" and "license plate" in parallel (raw photo; SAM 3.1 is a Meta model and
   this is disclosed) through a STRICT parser -> deterministic Pillow pixelation (<= 8 blocks across each box's long
   side) -> Spark name+profile+landmark phrase on the pixelated JPEG -> ONE SAM box. Strict = "none found" only for an
@@ -97,26 +97,26 @@ Assumptions (state before code):
   rendered outside the capture strip. ADR.
 - D5 Reuse rule: one active list per route; retiring the active list frees the route immediately. (Cooldown + intrusion
   counting: below-cut B12 with its ADR.) Spec entry only, no ADR (single option).
-- D6 Backup v2 only: routes + lists; NEVER carries coordinates; explicit per-field allowlist; named stations of saved
-  routes only (pending stations and drafts are skipped); photos re-encoded to 640 px long side, quality 70 at export;
-  a separate MAX_BACKUP_BYTES = 8 MiB replaces the reuse of MAX_IMPORT_BYTES (1 MiB, tied to recall_relay
-  MAX_CHUNK_BYTES) for backup export/import. v1 files are refused with "Older backup format, not supported". ADR
-  (amends 0028).
-- D7 app.py line budget: B0 first moves the module-level body parsers (app.py:184-259) into a new module
-  src/memripal/bodies.py (app.py <= 515 after B0); new server routes live in new modules; app.py edits land one slice at
-  a time in the order B0 -> B1 -> B4 -> B7 -> B8, each rebased on the previous; cap stays 582.
-- D8 Station names <= 3 words, no digits; client sends the route's used names as an avoid-list; name clashes are
-  resolved by the user renaming (client check), never by failing the capture.
-- D9 Route practice scoring: match target = station name only (turn cue shown, never matched); the post-pass walks
-  stations in ROUTE order (n ascending) and counts station k only if it has a match whose span start (transcript token
-  index) is greater than the last counted station's span start; when a name matches more than once, the earliest such
-  span is used (greedy, deterministic; not a longest-subsequence search). Hits keyed by station id; denominator =
-  current station count; hits for ids no longer on the route are ignored. Spec entry (single option).
-- D10 Retry: per-station manual Retry only (no online-event auto-retry). Status classes: network error, 5xx incl. 502
-  blur_failed, 429 -> pending (retryable); other 4xx -> error with Drop. One request per station in flight (a second
-  send is refused). A walk that cannot reach 3 named stations stays a resumable draft.
-- D11 Backup import id collisions: a route or list whose id already exists in the store is skipped (never overwritten,
-  never duplicated); #backup-status reports "n added, m already present". Spec entry (single option).
+- D6 Backup v2 only: routes + lists; NEVER carries coordinates; explicit per-field allowlist; named stations of saved routes only (pending stations
+  and drafts are skipped); photos re-encoded to 640 px long side, quality 70 at export; a separate MAX_BACKUP_BYTES = 8 MiB replaces the reuse of
+  MAX_IMPORT_BYTES (1 MiB, tied to recall_relay MAX_CHUNK_BYTES) for backup export/import. v1 files are refused with "Older backup format, not
+  supported". ADR (amends 0028).
+- D7 app.py line budget: B0 first moves the module-level body parsers (app.py:184-259) into a new module src/memripal/bodies.py (app.py <= 515 after
+  B0); new server routes live in new modules; app.py edits land one slice at a time in the order B0 -> B1 -> B4 -> B7 -> B8 -> B14 wiring (one
+  router factory routes_plan.py for /plan-route + /candidate, <= 2 lines), each rebased on the previous; cap stays 582.
+- D8 Station names <= 3 words, no digits; client sends the route's used names as an avoid-list; name clashes are resolved by the user renaming
+  (client check), never by failing the capture.
+- D9 Route practice scoring: match target = station name only (turn cue shown, never matched); the post-pass walks stations in ROUTE order (n
+  ascending) and counts station k only if it has a match whose span start (transcript token index) is greater than the last counted station's span
+  start; when a name matches more than once, the earliest such span is used (greedy, deterministic; not a longest-subsequence search). Hits keyed by
+  station id; denominator = current station count; hits for ids no longer on the route are ignored. Spec entry (single option).
+- D10 Retry: per-station manual Retry only (no online-event auto-retry). Status classes: network error, 5xx incl. 502 blur_failed, 429 -> pending
+  (retryable); other 4xx -> error with Drop. One request per station in flight (a second send is refused). A walk that cannot reach 3 named stations
+  stays a resumable draft.
+- D11 Backup import id collisions: a route or list whose id already exists in the store is skipped (never overwritten, never duplicated);
+  #backup-status reports "n added, m already present". Spec entry (single option).
+- D12 Planned station (B14c, MEM-048 amendment): status pending|named|error|planned; save accepts named|planned; planned = sample-point coords (4
+  dp), name, profile, score, display baseline, no photo, empty taps; counts toward 3-8; D9 unchanged; walking it later: out of scope.
 
 ---
 
@@ -594,6 +594,10 @@ MEM ids: MEM-046.. assigned below (MEM-045 = brand-art, unmerged). ADRs 0031.. a
   coverage probe at the chosen demo place (>= 3 stations with an image within 30 m) before K1; Mapillary logo taken from
   Mapillary's official attribution assets (rights per hackathon.md:96).
 
+## B14a/B14b/B14c Plan a route without walking (MK2, Kev Q2). MEM-064/065/066, ADR-next-routing, ADR-next-d1
+- Geocode + walking-route proxy; POST /candidate (nearest Mapillary image + one Spark call); S10 one-checkbox Plan screen -> planned
+  stations (D12). Slice text, CRITERIA (30 / 14 / 34 cases) and SIGNALS: ledgers file, "Part G slices"; B7/B9/B10/B11 deltas there too.
+
 ---- CUT LINE (everything above ships by Mon Nov 2 EOD for Tue Nov 3 recording; below only if time remains) ----
 
 ## B12 Intrusion counting + optional list cooldown. MEM-057, ADR (reuse/intrusions)
@@ -608,16 +612,12 @@ MEM ids: MEM-046.. assigned below (MEM-045 = brand-art, unmerged). ADRs 0031.. a
 - CRITERIA: (1) 3 frames max; (2) no audio API used (static scan); (3) raw video bytes never uploaded (fetch spy).
 - SIGNALS: 1-hour Spark video-input probe (not a dependency).
 
-## B14 Planned (not walked) stations (serves MK2 for routes not yet walked; needs B8). MEM-059
-- Add a station by typed coordinates or by tapping the schematic between stations; baseline-only, badge-not-walked.
-- CRITERIA: (1) coords validation: out-of-range lat/lon and non-numbers refused, stored at <= 4 dp (5 cases);
-  (2) a planned station renders badge-not-walked on S3/S5; (3) route practice over a route with 2 planned + 4 walked
-  stations scores per D9 (in-order, N = 6); (4) planned stations count toward #finish-save's 3-8 rule (a route of 3
-  planned stations saves; 2 is refused); (5) suite green. SIGNALS: none.
+## B14 Planned (not walked) stations. MEM-059 **Superseded by MEM-064, MEM-066**
+- Criteria moved, none dropped (ledgers Part G); "tap the schematic to add a station" -> B15 (needs a basemap).
 
-## B15 Basemap through the same proxy (stretch). Only if B8 proves the proxy pattern cheap. ADR amendment.
-- CRITERIA: (1) tiles fetched only through the backend proxy (0 direct third-party requests in the fetch log); (2) CSP
-  unchanged (header test); (3) attribution text rendered on the map; (4) suite green.
+## B15 Basemap + map tap to add a planned station, through the same proxy (stretch). Only if B8 proves the proxy cheap. ADR amendment.
+- CRITERIA: (1) tiles fetched only through the backend proxy (0 direct third-party requests in the fetch log); (2) CSP unchanged (header
+  test); (3) attribution text rendered on the map; (4) a map tap between two stations adds a planned station (D12) in route order; (5) suite green.
 - SIGNALS: tile-source terms of use fetched and recorded in the ADR before RED.
 
 ## Order by demo value and schedule
@@ -658,168 +658,8 @@ fixed.)
 
 ---
 
-# PART C: consolidation ledger
-
-Status keys: KEEP (unchanged, own dispatch), KEEP-RESCOPED (kept, retargeted to the route design), DEPRECATED-by-pivot
-(reason; re-home noted, never silently dropped), DONE.
-
-## s2t (memripal-2026-10-31-s2t-handoff.md) new items
-- 110 Map-to-palace super-plan: this document (DONE when emitted to docs/plans/2026-10-31-map-to-palace.md).
-- 111 scenes.py provenance strip: -> B1.
-- 112 War-site demo place: -> B2 (text) + B10 (fixture retirement and new demo replays).
-- 113 Consolidation decisions: this Part C (DONE when emitted).
-
-## s2s (done/memripal-2026-10-30-s2s-handoff.md) open items
-- 109 MEM-045 brand-art review round: KEEP (brand art; independent of the pivot).
-- 97 README hero art + logo after 109: KEEP.
-- 108 ux-fixes-4 follow-ups: (a) tier-1 demo scene fixture replay test: DEPRECATED-by-pivot (pins the old room demo
-  photo) -> re-homed to B10 CRITERIA (2). (b) clamp badge x/y in drawResult: KEEP (canvas still draws the station box).
-  (c) 3-digit locus numbers overflow the badge: DEPRECATED-by-pivot (routes cap at 8 stations; v1 import dropped; no
-  100+ loci). (d) badge numbers hard to read at 360px: KEEP-RESCOPED (station badge; check in B11 visual-verify).
-  (e) only card 1 of the room demo has a demo scene: DEPRECATED-by-pivot (room demo archived; B10 records all 6).
-- 104 Kev prunes merged worktrees: KEEP (Kev-run).
-- 106 MEM-043 follow-ups: undecodable room file -> 500: KEEP (bug still in shipped /demo/photo.jpg?room=; HELD
-  post-hackathon); app.py near cap: KEEP-RESCOPED as B0 + D7 ordering + the per-slice app.py <= 582 criterion.
-- 94 Kev: gen_room_fixtures + live record per room: DEPRECATED-by-pivot (multi-loci room segmentation no longer used)
-  -> re-homed to B10 K1 (live record per station).
-- 100 Retro tasks R64..R92 (+ R93..R95 from s2t): KEEP (HELD post-hackathon).
-- 95 Item 89 candidates: KEEP (HELD; loci prompt-caching sub-point applies to the station prompt too).
-- 77 Kev: remove stale int-011 dir: KEEP (Kev-run).
-- 68 Kev: record video per demo-script + TODO(Kev): KEEP-RESCOPED (script rewritten in B10).
-- 70 Kev: live mic run in meta mode: KEEP.
-- 59 Kev: record real demo scene fixtures: KEEP-RESCOPED (demo route stations, B10 K1).
-- 54 Kev: docker build + Cloud Run deploy + MEMRIPAL_RECORD_KEY: KEEP (+ MEMRIPAL_MAPILLARY_TOKEN, B8 is above the cut
-  in v2; B4 crit 10 keeps raw photos off the instance disk).
-- 11 Kev: voice probe WAV: KEEP.
-- 12 Kev: live probe on one real room photo, loci >= 10: DEPRECATED-by-pivot -> re-homed to B4 SIGNALS.
-- 13 Kev: push main + make repo public: KEEP (gates: B10 CRITERIA (4), (6), (7)).
-- 83 app.js source-regex test for MEM-039 await: KEEP (HELD).
-- 66 MEMRIPAL_STT_PROVIDER unwired: KEEP (HELD).
-- 64 Shared signing test helper: KEEP (HELD).
-- 5 Promote script superseded by 93 (landed 0.19.0): DONE (close; B10 adds a --photo-sha mode to the same script).
-- 6 Concurrency cap for POST /loci: KEEP-RESCOPED (cap POST /station in B4; /baseline in B8).
-- 8 QUAL-014 remainder: KEEP (ASK-GATED Q18).
-- 9 ask-recommendation-check gloss hook: KEEP (agent-workflow, ASK-GATED).
-- 10 Global secret deny hook: KEEP (HELD).
-- 19 solo_ff_merge own-pid refusal capture: KEEP (HELD until it reproduces).
-- 45 Meta token budget on a 12-loci live run: DEPRECATED-by-pivot -> re-homed to B4 SIGNALS and B7 SIGNALS.
-- 47 agent-workflow master red golden test: KEEP (peer-owned).
-- 53 Retro tasks R1..R63: KEEP (HELD).
-
-## train-r63i (meta-global-2026-2026-10-30-train-r63i-handoff.md)
-- 6 R6 docgate output, 8 eb-w1-r3 conflict, 9 tell productivity owner, 11 F28 detach subcommand, 12 F29 claim probe,
-  F30: all KEEP in their own chain (agent-workflow tooling; not merged into this plan).
-
----
-
-# PART D: adversary round 1 arbitration Ledger (unchanged record; round-2 overrides in Part E, v2 overrides in Part F: SC-F1 "B8 below the cut" reversed by F1)
-
-| ID | Sev | Finding | Verdict | Reason / where it landed |
-|---|---|---|---|---|
-| COR-F1 | critical | Zone-centre fuzz exports the first/last station (home) at 4 dp | ACCEPT | Keep-locations option removed; backups never carry coords (D6, B9) |
-| COR-F2 | major | Null-box and baseline-only stations get 400 bad_box from /scenes | ACCEPT | Full-frame box fallback, scenes.js skip removed (B7) |
-| COR-F3 | major | "9 points -> 6 items" impossible; /split photo unnamed | ACCEPT | loci_count = station count, station 1 photo named, 422 shown with retry (B7) |
-| COR-F4 | major | Hard 3-8 rule blocks drafts, drops, v1 import (10-12) | ACCEPT, partly superseded | Drafts/drops kept; v1 import dropped in round 2 (R2 SC-F4), store now 0-8 |
-| COR-F5 | major | Server cannot check route uniqueness; head-noun clashes | ACCEPT | used_names avoid-list, <= 3 words, client rename (D8, B4, B5) |
-| COR-c1 | correctness | Pass-through still reports processed dims | ACCEPT, overruled in round 2 | Premise false: zoomFor uses fractions (R2 SC-F1) |
-| COR-s1 | simplicity | Define privacy zone once; drop 24 h wait | ACCEPT | Zone removed entirely; cooldown to B12 |
-| FM-F1 | critical | Blur step fails open (SAM [] reads as "no faces") | ACCEPT, hardened in round 2 | Strict parser (R2 FM-F1) |
-| FM-F2 | critical | Box-less stations never get a scene | ACCEPT | Full-frame box (B7) |
-| FM-F3 | major | Pass-through breaks overlay zoom | ACCEPT, overruled in round 2 | Overlay shows full image (R2 SC-F1) |
-| FM-F4 | major | 200 m zone covers whole demo/loop routes | ACCEPT | Auto zone removed |
-| FM-F5 | major | Offline "naming waits" promised but no queue | ACCEPT, rescoped in round 2 | Pending stations + manual retry; auto-retry dropped (R2 SC-F5) |
-| FM-c1 | correctness | Pillow drift breaks fixture keys | ACCEPT | Pillow pinned + golden sha (B4) |
-| FM-s1 | simplicity | Keep server resize, carry only provenance metadata | REJECT | item 111 purpose is unaltered bytes |
-| FM-s2 | simplicity | 24 h clock and B14/B15 too much | ACCEPT (24 h) | 24 h to B12 |
-| SEC-F1 | critical | Stripped backup leaks image_id/link, sign-text names, timestamps | ACCEPT | Field allowlist (B9, B4) |
-| SEC-F2 | major | Zone centre undefined; tap sends coords | ACCEPT | Zone removed; B8 per-station opt-in |
-| SEC-F3 | major | Demo route = Kev's block in a soon-public repo | ACCEPT | Public place, no coords (A3, B10) |
-| SEC-F4 | major | "Blurred first" copy false; no fail-closed | ACCEPT | Copy rewritten; fail-closed |
-| SEC-F5 | major | /baseline unauthenticated; token in URL | ACCEPT (in B8) | B8 crit 1 and 6 |
-| SEC-s1 | simplicity | Drop keep-locations backup option | ACCEPT | D6 |
-| SC-F1 | critical | B8 Mapillary costliest and unused by demo | ACCEPT | Below the cut, planned not dropped |
-| SC-F2 | major | 24 h reuse wait cannot be shown | ACCEPT | Retire frees immediately (D5) |
-| SC-F3 | major | 5 serial model calls; SAM sees unblurred photo | ACCEPT (modified) | 2 parallel blur phrases; copy reworded |
-| SC-F4 | major | Backup fuzz = second privacy system | ACCEPT | Zone code removed |
-| SC-F5 | minor | Timestamp ordering unneeded | ACCEPT | Capture order only (A6) |
-| SC-c1 | correctness | Copy contradicts D3; name rule kills capture | ACCEPT | Copy fixed; user rename (B5) |
-| SC-s1 | simplicity | Shrink Part A state table | ACCEPT (partial) | Own states per screen |
-
----
-
-# PART E: adversary round 2 arbitration Ledger
-
-Spot-verified by reading the primary checkout (meta-global-2026/memripal at a082c18, no execution): app.py is 581
-lines and `_passcode_error` is a closure at :291; parsers span :184-259; backend.py:430 calls put_photo(req.image_jpeg)
-in _store and cache_key hashes image_jpeg (:158); palace_export.js:10 MAX_IMPORT_BYTES = 1048576 and buildBackup /
-parseBackup enforce it (:165, :174); imaging.py LONG_SIDE 2048, JPEG_QUALITY 90; probe_metrics.parse_boxes returns
-only parsed tokens and _parse_token drops malformed ones silently; scenes.js zoomFor (:42-58) works in fractions and
-the overlay (:121-130) shows the full image; recall_match.js createMatcher has no order check; index.html:34 holds
-#auto. All cited premises held.
-
-| ID | Sev | Finding | Verdict | Reason / where it landed |
-|---|---|---|---|---|
-| COR-F1 | critical | 582-line app.py cap unreachable for B1+B4+B7; B4 fails its own criterion | ACCEPT | New B0 moves parsers to bodies.py (app.py <= 515); D7 serial app.py order B0 -> B1 -> B4 -> B7; router factory takes the closure |
-| COR-F2 | critical | v2 backup with 2048 px photos exceeds the 1 MiB cap; no backup at all | ACCEPT | D6/B9: 640 px q70 thumbnails + own MAX_BACKUP_BYTES 8 MiB (ADR); B9 crit 4 uses real-size photos (3x8) |
-| COR-F3 | major | Practice ignores order; turn word lowers coverage; "/6" hard-coded | ACCEPT | D9: name-only targets, in-order post-pass, N = station count (B6 crit 4, 6, 7) |
-| COR-F4 | major | Pending stations hold unblurred photo and get exported | ACCEPT (merged with FM-F2, SEC-F3) | D4/D6: pending and drafts skipped at export; B9 crit 3; 502 blur_failed = pending (D10, B3 crit 6) |
-| COR-F5 | major | v1 import yields photo-less routes unusable downstream | ACCEPT via SC-F4 | v1 import dropped: "not supported" status (B9 crit 7); no MK item depends on it (A7) |
-| COR-c | correctness | #auto placed in S1 and S4 | ACCEPT | #auto only in S1 #routes-settings; B3 crit 8 pins once |
-| COR-c | correctness | Station block not in PROMPT_ARGS -> replay key collisions | ACCEPT | B7 carries station in PROMPT_ARGS; B7 crit 2 |
-| COR-c | correctness | Per-axis box scaling wrong if Muse Image crops/pads | ACCEPT (via SC-F1) | Scaling removed; aspect mismatch > 2% -> identity zoom (D2, B1 crit 4) |
-| COR-s | simplicity | Drop B1 dims plumbing; use naturalWidth/naturalHeight | ACCEPT | B1 uses naturalWidth/Height only for the aspect check |
-| FM-F1 | critical | Strict helper still fail-open: parse_boxes returns [] for any token-free text | ACCEPT | D3 strict parser: empty body (or probe-recorded shape) only; dropped/rejected tokens -> BlurFailed; B4 crit 4-5 + probe signal |
-| FM-F2 | major | Pending raw photo with EXIF GPS reaches backup | ACCEPT | Pending bytes stored only after reencodeJpeg (GPS read first); B3 crit 5 EXIF scan; B9 crit 3 |
-| FM-F3 | major | Retry undefined for 502/429/404 online; no in-flight guard | ACCEPT | D10 status classes + one in-flight request; draft resumable; B3 crit 6-7 |
-| FM-F4 | major | Turn words cause false hits ("red bench left" lights "red door") | ACCEPT | Turn words never matched (D9); B6 crit 5 |
-| FM-F5 | minor | Learned n/6 per position goes stale after reorder/drop | ACCEPT | Hits keyed by station id, N = current count (B6 crit 7) |
-| FM-s | simplicity | Drop online auto-retry-all | ACCEPT | Same as SC-F5 |
-| SEC-F1 | critical | MetaBackend caches the raw photo on every live blur call, even on blur_failed | ACCEPT | D3 no-photo-cache flag on blur-phase requests; B4 crit 10 (photos/ holds only pixelated sha; 0 on blur_failed) |
-| SEC-F2 | major | Demo replay of /station needs raw photos committed; promote script room-only | ACCEPT | Demo uses committed /station responses, never POSTs /station; promote --photo-sha mode for downstream replays (B10 crit 1, 4, 8) |
-| SEC-F3 | major | Pending unblurred bytes exported | ACCEPT (merged with FM-F2) | As FM-F2 |
-| SEC-F4 | minor | "Backups never include locations" false: names can name places | ACCEPT | Copy: "never include map coordinates; names and photos can show where you walk" (Part A S9, B11 crit 7) |
-| SEC-F5 | minor | Fixed Gaussian radius may leave large faces recognisable | ACCEPT | Pixelation <= 8 blocks across box long side (D3); B4 crit 1 checks block count |
-| SEC-s | simplicity | Drop live record-and-replay of /station for the demo | ACCEPT | Same as SEC-F2 |
-| SC-F1 | major | B1 dims + client scaling changes nothing (zoomFor in fractions) | ACCEPT | Overrules round-1 COR-c1/FM-F3; B1 crit 3-4 replaced by same-output + aspect-mismatch tests |
-| SC-F2 | major | B2 regenerates room-demo fixtures that B10 discards | ACCEPT | B2 = text scrub + denylist; room-demo fixtures archived (not deleted) in B10, demo replays recorded once |
-| SC-F3 | major | Claude Design fragment merge on Mon breaks pinned markup/tests | ACCEPT | Part A asks for route.css + class contract + state table + id map, no HTML; B11 crit 2, 8 |
-| SC-F4 | minor | v1 import forces 0-12 cap for no real users | ACCEPT | v2 only; store caps at 8; Part C 108(c) updated |
-| SC-F5 | minor | Online auto-retry duplicates manual retry, double budget | ACCEPT | Manual Retry + in-flight flag only (D10) |
-| SC-c | correctness | B1 crit 4 tests an overlay zoom that does not exist; real gap is aspect mismatch | ACCEPT | Aspect-mismatch identity zoom (B1 crit 4) |
-
-No finding rejected or deferred. Overruled round-1 items: COR-c1 and FM-F3 (premise disproved by SC-F1). Must-keep
-check: MK1-MK5 all remain above the cut; MK3 and MK5 are now measured more strictly (in-order, id-keyed, N = count);
-the dropped v1 import and auto-retry serve no MK item.
-
----
-
-# PART F: finisher critique (v1-r2 -> v2)
-
-Read-only critique of plan-v1-r2 against prompt.md, recon.md and the s2t Synthesis (primary checkout memripal main
-a082c18, unchanged). Every finding was applied; none rejected.
-
-| ID | Kind | Finding in v1-r2 | Applied in v2 |
-|---|---|---|---|
-| F1 | gap (must-keep) | Kev's verbatim "have baseline picture from meta's mapillary" sat below the cut (round 1 SC-F1): a deferral the user never asked for; MK list omitted the pivot asks entirely | MK6-MK9 added with verbatim quotes; B8 moved above the cut with client UI, CRITERIA 9-11, D1/A1-A3 rewritten, D7 order extended, schedule + lanes updated |
-| F2 | contradiction | Cut line "Mon Nov 3 EOD"; 2026-11-02 is the Monday | Cut line and schedule say Mon Nov 2 / Tue Nov 3 |
-| F3 | contradiction | Part A said "Location stays on your device" and "hidden in this build" for the baseline while B8 egress is planned | #meta-notice, safety copy, S3 opt-in + status ids, S5 toggle, S9 backup copy rewritten; B11 crit 7 pins the opt-in text |
-| F4 | ambiguity | D9 "span start after previous counted hit" did not say whether hits are walked in transcript or route order (reverse order scores 6 or 1) | D9 walks route order, earliest qualifying span; B6 crit 4 values now follow uniquely |
-| F5 | gap | List-mode spoken recall lighting map dots (MK4, storyboard hero) had no criterion | B7 crit 10 |
-| F6 | gap | Storyboard beat "second list same route" (Synthesis) not in B7/B10 | B7 crit 11, B10 demo lists + crit 10 |
-| F7 | gap | Route delete and list retire arm -> confirm -> Undo (Part A + global UI rule) untested; S4 row drop untested | B6 crit 10, B7 crit 9, B3 crit 10 |
-| F8 | gap | MK1 "many routes" and MK5 "hit rates" had no countable check | B6 crit 11, 12 |
-| F9 | gap | B2 grep scope missed scripts/make_synthetic_fixtures.py and spec-2.md MEM-025 (recon.md lists both) | B2 scope + crit 1, 3 |
-| F10 | gap (security) | Backup import: no id-collision rule, no photo data-URL validation, no pre-parse size refusal | D11; B9 crit 9-11 |
-| F11 | gap (security) | /station had no upload type/size criterion; "concurrency cap (item 6)" assumed a /loci cap that never landed | B4 crit 12, 13 |
-| F12 | unverifiable | B11 crit 6 "visual-verified" is a judgment, not a count | Computed contrast check as crit 6; visual-verify moved to SIGNALS |
-| F13 | unverifiable | B14 criteria not countable; B15 had no CRITERIA/SIGNALS (FLOW-016) | Both now carry numbered CRITERIA + SIGNALS |
-| F14 | missing signal | B4 probe had no fallback if Kev's probe is late | Stricter empty-only rule until the probe lands |
-| F15 | risk | B10 recording depends on Claude Design delivery (B11) with no fallback | Record on existing CSS if B11 is late (sequencing, not a cut) |
-| F16 | precision | B10 crit 5 `git grep` "Emu" would hit "Emulator" | `-w` word match |
-| F17 | deviation | Part A drops the Synthesis's "static HTML fragment per screen" (binding unless Kev overrides) | Kept (SC-F3 rationale) and surfaced as Q4 |
-
-Must-keep check after v2: MK1-MK9 all above the cut, each with a slice and at least one numbered criterion. Below the
-cut (B12-B15) holds no verbatim ask; B14 is an extension of MK2 beyond the walk-once reading (Q2).
+Parts C-G (consolidation ledger, adversary arbitration ledgers, finisher critique, item 136 amendment round):
+[2026-10-31-map-to-palace-ledgers.md](2026-10-31-map-to-palace-ledgers.md).
 
 ## Open questions for Kev (none blocks Saturday's dispatch)
 - Q1 Which public, non-residential demo place (needs Mapillary coverage near >= 3 stations)? Gates the B8 probe and K1.
