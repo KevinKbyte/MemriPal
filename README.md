@@ -191,7 +191,7 @@ the photo's own GPS (else asks for your location, else you type a place) and sen
 `POST /place`, which asks Wikipedia for nearby articles and returns up to 3 chips "Near: <title>, <m> m". The place
 you confirm (title + short extract) grounds the association; coords are never logged, stored, or sent to Meta.
 Wikipedia does see the coords. Turning the toggle off stops lookups and discards the confirmed place. Offline demo:
-a recorded lookup at Little Round Top. Details: [ADR 0022](docs/decisions/0022-opt-in-place-context-server-lookup.md).
+a recorded lookup at a placeholder demo place. Details: [ADR 0022](docs/decisions/0022-opt-in-place-context-server-lookup.md).
 
 ## Setup
 

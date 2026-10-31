@@ -330,3 +330,21 @@ choose".
   coords); a station with a fact renders 1 `div.assoc-place-fact` with `span.model-chip` "Muse Spark" and `p.credit`
   "Place facts: Wikipedia, CC BY-SA", a station without -> 0; toggle label equals the quoted text; blockers (a)-(c)
   closed before the label ships; ADR committed in the adopting change.
+
+## MEM-047 Neutral demo place text scrub
+
+Plan B2 (docs/plans/2026-10-31-map-to-palace.md, item 112); amends MEM-025 example text (ADR 0022 amendment note,
+decision unchanged). The offline demo place carries neutral text, never war-site text.
+- `git grep -i -E` over the B2 war-site pattern across README.md, docs/, static/, src/, scripts/ and
+  .claude/spec-cache/ (CHANGELOG history, fixtures/ and the plan doc that quotes the pattern excluded) == 0 hits.
+- The MEM-025 heading stays in spec-2.md (exactly one); its example text is neutralised in place and this entry is
+  its amendment record (spec-2.md is at its line cap).
+- The demo place title is the placeholder "Demo route" (B10 replaces it with the chosen public place); every demo
+  place title and recorded extract passes a deterministic war-term denylist.
+- Deferred to B10: the generator constants (`scripts/make_synthetic_fixtures.py` PLACE_HITS + PLACE_EXTRACTS) and the
+  37 place-bound replay fixtures (1 `fixtures/replay/place/`, 36 `fixtures/replay/spark_json/`). Changing the
+  constants needs those fixtures regenerated (MEM-005 committed-equals-generated), which B2 must not do; B10 retires
+  and re-records them. Until then the scrub grep excludes the generator and the three generator tests are
+  xfail(strict).
+
+Tests: tests/test_demo_place_scrub.py

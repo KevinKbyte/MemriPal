@@ -73,7 +73,7 @@ c) POST /associate (MEM-021) optional `place`:
 - Without place: prompt args, prompt text and cache key byte-identical to pre-MEM-025 (digest pinned), so every
   recorded association fixture replays.
 
-d) Offline demo: synthetic room photo + demo place sidecar (Little Round Top, 39.7922,-77.2366) + recorded /place
+d) Offline demo: synthetic room photo + demo place sidecar (39.7922,-77.2366) + recorded /place
 replay (Kev Q8, 2026-10-27). A real own-room photo may replace the synthetic one later.
 
 Acceptance (plan CRITERIA):

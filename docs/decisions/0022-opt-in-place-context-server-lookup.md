@@ -10,7 +10,7 @@ check for any historical significance of picture being taken to use that as part
 
 ## Context
 
-A photo taken at a historic site (e.g. Little Round Top, Gettysburg) can ground the association in real place facts.
+A photo taken at a historic site (e.g. a public landmark) can ground the association in real place facts.
 [0009](0009-image-intake-and-photo-privacy.md) strips EXIF/GPS in the client re-encode before anything is sent, and
 location is sensitive, so any lookup must be opt-in, easy to turn off, and keep coords away from Meta and storage.
 
@@ -38,7 +38,7 @@ location is sensitive, so any lookup must be opt-in, easy to turn off, and keep 
 
 (a). Toggle off -> no /place call, the confirmed place is discarded, no auto place on /associate (a typed place is
 still allowed). Without a place, /associate prompt args and cache key are byte-identical to before (digest pinned).
-Offline demo: synthetic room photo + demo place sidecar (Little Round Top 39.7922,-77.2366) + recorded /place replay
+Offline demo: synthetic room photo + demo place sidecar (39.7922,-77.2366) + recorded /place replay
 (Kev Q8, 2026-10-27); a real own-room photo may replace it later.
 
 ## Why this over the others
@@ -56,3 +56,9 @@ Wikimedia exposure already caps; (c) fails whenever a picker strips GPS.
   (geolocation fallback).
 - Wikipedia extracts are CC BY-SA 4.0: shown and prompted text needs attribution (README Credits).
 - Place is part of the association cache key; existing fixtures replay unchanged.
+
+## Amendment 2026-10-31 (MEM-047)
+
+Example and demo place text neutralised (plan B2); the decision is unchanged. The demo place becomes the placeholder
+"Demo route" until B10 records the chosen public place; the generator constants and place-bound replay fixtures are
+scrubbed with that B10 regeneration.
