@@ -1,8 +1,8 @@
 # Covers: MEM-042
 # Requirement: C1 every response from create_app carries the app-wide XSS control: the exact
 # Content-Security-Policy from the spec (script-src 'self' 'wasm-unsafe-eval' so the SQLite wasm
-# compiles, item 159; never 'unsafe-eval'/'unsafe-inline') plus X-Content-Type-Options: nosniff, on the HTML shell,
-# a static JS file, an API JSON answer, a not-found answer and a host-guard refusal alike.
+# compiles, item 159; never 'unsafe-eval'/'unsafe-inline') plus X-Content-Type-Options: nosniff,
+# on the HTML shell, a static JS file, an API JSON answer, a not-found answer and a host-guard refusal alike.
 import pytest
 from fastapi.testclient import TestClient
 
