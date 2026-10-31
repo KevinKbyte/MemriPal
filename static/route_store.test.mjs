@@ -358,3 +358,27 @@ describe("finish review: row drop arm/cancel/confirm/undo (criterion 10)", () =>
     assert.deepEqual(await toBytes(await store.getPhoto(st.photo_ref)), ENCODED);
   });
 });
+
+// Covers: MEM-048
+// Requirement: an undoDelete whose storage write fails rejects and leaves the delete undoable: a later
+// undoDelete (once storage works) restores the route and its photos, and a reload (a new store over the
+// same KV adapter) reads the route back. A failed restore never strands the route in memory only.
+describe("route store: undoDelete retries after a failed restore write (B6 review)", () => {
+  test("puts fail: undoDelete rejects; storage back: a second undoDelete restores route + photos, also after a reload", async () => {
+    const kv = memoryAdapter();
+    const store = rs.createRouteStore(kv);
+    const { route } = await routeWith(store, 2);
+    const before = await store.getRoute(route.id);
+    await store.deleteRoute(route.id);
+    kv.state.failPuts = true;
+    await assert.rejects(store.undoDelete(), "a restore whose write fails rejects");
+    kv.state.failPuts = false;
+    const back = await store.undoDelete();
+    assert.deepEqual(back, before, "the retried undoDelete restores the route (not null: the delete is still undoable)");
+    const reloaded = rs.createRouteStore(kv);
+    assert.deepEqual(await reloaded.getRoute(route.id), before, "the restored route survives a reload");
+    for (const s of before.stations) {
+      assert.deepEqual(await toBytes(await reloaded.getPhoto(s.photo_ref)), ENCODED, `photo ${s.photo_ref} restored`);
+    }
+  });
+});

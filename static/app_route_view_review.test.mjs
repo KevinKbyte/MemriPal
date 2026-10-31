@@ -214,28 +214,64 @@ describe("S5 route delete: real store, storage delete fails after the route left
 });
 
 // Covers: MEM-051
-// Requirement: with the REAL route store, an Undo whose storage write fails after the store already put
-// the route back in memory is treated as restored: the route is listed and openable, and further Undo
-// presses never loop on "Couldn't restore the route. Try again."
-describe("S5 route Undo: real store, restore persist fails after the route is back in memory (B6 review)", () => {
-  test("adapter puts fail during Undo: Commute listed and reopened; no perpetual restore-error loop", async (t) => {
+// Requirement: with the REAL route store, an Undo whose storage write fails is NOT treated as restored
+// (the route would be gone on reload): S5 shows "Couldn't restore the route. Try again.", keeps Undo
+// visible and the stash, and puts no rehearsal back; a later Undo, once storage works, restores the
+// route (listed, openable, surviving a reload) and its rehearsals, then hides Undo.
+describe("S5 route Undo: real store, restore persist fails (B6 residual review)", () => {
+  test("puts fail during Undo: restore-error line, Undo kept, no rehearsal back; retry restores route + rehearsals", async (t) => {
     const rejections = watchRejections(t);
-    const { b, real, routeAdapter } = await start();
+    const { b, real, routeAdapter, rehAdapter } = await start();
     await openCommute(b);
     await confirmDelete(b);
     assert.equal(await real.getRoute("r1"), null, "delete landed");
+    assert.equal(routeRehearsals(rehAdapter), 0, "delete removed the route rehearsal");
     routeAdapter.state.failPuts = true;
     click(b, "route-view-undo");
     await settle(60);
-    assert.deepEqual(await real.getRoute("r1"), R1, "the store put r1 back in memory despite the failed write");
-    await until(() => cards(b).length === 1, "Commute card back on S1 after the Undo", TURNS);
-    await until(() => openable(b), "Commute reopened in #route-view after the Undo", TURNS);
-    if (!el(b, "route-view-undo").hidden) {
-      click(b, "route-view-undo");
-      await settle(60);
-    }
-    assert.doesNotMatch(visibleText(el(b, "route-view")), /couldn.t restore/i,
-      "no restore-error loop once the route is back in memory");
+    assert.match(visibleText(el(b, "route-view")), /couldn.t restore the route/i,
+      "a restore whose write failed says so instead of showing the route as restored");
+    assert.equal(el(b, "route-view-undo").hidden, false, "Undo stays available for a retry");
+    assert.equal(routeRehearsals(rehAdapter), 0, "no rehearsal restored while the route itself is not");
+    routeAdapter.state.failPuts = false;
+    click(b, "route-view-undo");
+    await until(() => cards(b).length === 1, "Commute card back on S1 after the retried Undo", TURNS);
+    await until(() => openable(b), "Commute reopened in #route-view after the retried Undo", TURNS);
+    assert.equal(el(b, "route-view-undo").hidden, true, "Undo hidden once the restore landed");
+    assert.deepEqual(await createRouteStore(routeAdapter).getRoute("r1"), R1, "r1 survives a reload");
+    assert.equal(routeRehearsals(rehAdapter), 1, "the route rehearsal is restored once");
+    assert.deepEqual(rejections, []);
+  });
+});
+
+// Covers: MEM-051
+// Requirement: a route delete whose rehearsal deletes fail partway (some rehearsals gone, some left)
+// still lets Undo put back every stashed rehearsal exactly once: no rehearsal lost, none duplicated.
+describe("S5 route delete: rehearsal delete fails mid-loop (B6 residual review NIT)", () => {
+  test("second rehearsal delete rejects: Undo restores r1 and both rehearsals, no duplicates", async (t) => {
+    const rejections = watchRejections(t);
+    const rehAdapter = kvAdapter([
+      routeRun("reh-r1-a", "2026-10-30T09:00:00.000Z"),
+      routeRun("reh-r1-b", "2026-10-31T08:00:00.000Z"),
+    ]);
+    const realDelete = rehAdapter.delete;
+    let deletes = 0;
+    rehAdapter.delete = async (key) => {
+      deletes += 1;
+      if (deletes === 2) throw new Error("rehearsal delete boom");
+      return realDelete(key);
+    };
+    const { b, real } = await start({ rehAdapter });
+    await openCommute(b);
+    await confirmDelete(b);
+    assert.equal(routeRehearsals(rehAdapter), 1, "one rehearsal deleted before the failure");
+    assert.equal(el(b, "route-view-undo").hidden, false, "Undo offered after the partial delete");
+    click(b, "route-view-undo");
+    await until(() => cards(b).length === 1, "Commute card back on S1 after Undo", TURNS);
+    assert.deepEqual(await real.getRoute("r1"), R1, "Undo restores r1");
+    const ids = [...rehAdapter.map.values()].filter((v) => typeof v === "string").map((v) => JSON.parse(v))
+      .filter((r) => r.mode === "route").map((r) => r.id).sort();
+    assert.deepEqual(ids, ["reh-r1-a", "reh-r1-b"], "both stashed rehearsals back, each exactly once");
     assert.deepEqual(rejections, []);
   });
 });
