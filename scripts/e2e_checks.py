@@ -35,6 +35,12 @@ def _collect_sigs(o, out):
             _collect_sigs(v, out)
 
 
+def _check_auto(page):
+    # MEM-048: #auto lives in the collapsed #routes-settings details; open it so the box is checkable.
+    page.eval_on_selector("#routes-settings", "d => { d.open = true; }")
+    page.check("#auto")
+
+
 @step("(d) signed associate/scenes")
 def s_signed(ctx, page):
     sigs = []
@@ -107,7 +113,7 @@ def s_reload(ctx, page, before_rows):
     rows_before_demo = texts(page, "#rehearsals li > span")
     recall_hidden = page.eval_on_selector("#recall", "e => e.hidden")
     ctx.shot(page, "12_after_reload")
-    page.check("#auto")
+    _check_auto(page)
     page.click("#load-demo")
     page.wait_for_selector("#recall:not([hidden])", timeout=180000)
     wait_history_rows(page)
@@ -208,7 +214,7 @@ def s_public(ctx, browser):
         status = page.text_content("#status")
         ctx.shot(page, "20_public_banner")
         # Load demo still works on the public host (fixture mode, no passcode).
-        page.check("#auto")
+        _check_auto(page)
         page.click("#load-demo")
         page.wait_for_selector("#walk:not([hidden])", timeout=180000)
         walk_ok = page.is_visible("#walk")

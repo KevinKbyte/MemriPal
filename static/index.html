@@ -18,6 +18,24 @@
     <main>
       <p id="public-banner" class="notice" hidden>live needs passcode / try Load demo</p>
       <p id="status">Checking backend...</p>
+      <section id="routes-home" class="panel">
+        <h2>Your routes</h2>
+        <p>Walk a route once, learn it for good, then use it to remember what matters.</p>
+        <ol id="routes-list"></ol>
+        <div class="btn-row">
+          <button id="routes-new" class="btn btn-primary" type="button">New walk</button>
+          <button id="load-demo" class="btn btn-primary" type="button">Load demo</button>
+        </div>
+        <details id="routes-settings">
+          <summary>Live settings</summary>
+          <div class="field">
+            <label for="passcode">Live passcode (not needed for Load demo)</label>
+            <input id="passcode" type="password" autocomplete="off">
+          </div>
+          <label class="check"><input id="auto" type="checkbox">
+            Skip the Finish walk review: save in capture order with a default name</label>
+        </details>
+      </section>
       <section class="panel">
         <p class="eyebrow">Start: a room photo or the demo</p>
         <p id="meta-notice" class="notice" hidden>
@@ -26,14 +44,20 @@
           <label for="photo">Take or choose a photo of a room</label>
           <input id="photo" type="file" accept="image/*" capture="environment">
         </div>
-        <div class="field">
-          <label for="passcode">Live passcode (not needed for Load demo)</label>
-          <input id="passcode" type="password" autocomplete="off">
+      </section>
+      <section id="capture-session" class="panel" hidden>
+        <h2>Walking: capture</h2>
+        <div id="capture-safety" class="notice" hidden>
+          <p>Stay aware of traffic and people around you. Stop before you take a photo.</p>
+          <button id="capture-safety-ok" class="btn" type="button">OK</button>
         </div>
+        <ol id="capture-strip"></ol>
+        <label class="check"><input id="capture-locate" type="checkbox">
+          Use my location for this walk (stays on this device)</label>
         <div class="btn-row">
-          <label class="check"><input id="auto" type="checkbox"> Auto: skip route review</label>
-          <button id="load-demo" class="btn btn-primary" type="button">Load demo</button>
+          <button id="capture-finish" class="btn" type="button" disabled>Finish walk</button>
         </div>
+        <p id="capture-count"></p>
       </section>
       <fieldset id="place-settings" class="panel">
         <legend>Place history (optional)</legend>
@@ -57,9 +81,19 @@
       </div>
       <section id="route-review" class="panel" hidden>
         <h2>Review your route</h2>
+        <div class="field">
+          <label for="finish-name">Route name</label>
+          <input id="finish-name" type="text" maxlength="40" autocomplete="off">
+        </div>
+        <fieldset id="finish-kind">
+          <legend>Kind</legend>
+          <label class="check"><input type="radio" name="finish-kind" value="daily" checked> Daily</label>
+          <label class="check"><input type="radio" name="finish-kind" value="occasional"> Occasional</label>
+        </fieldset>
         <ol id="route"></ol>
         <div class="btn-row">
           <button id="route-undo" class="btn" type="button" hidden>Undo drop</button>
+          <button id="finish-save" class="btn btn-primary" type="button">Save route</button>
           <button id="generate" class="btn btn-primary" type="button">Generate</button>
         </div>
       </section>

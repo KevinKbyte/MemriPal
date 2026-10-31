@@ -76,3 +76,5 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - Higher-order why/apply question written at encode time, self-assessed, never live-graded (D16).
 - Full-auto flag skips route review (D19).
 - Per-scene requests with the photo re-sent, over streaming scene generation in one request (Rejected alternatives).
+- [0031](0031-route-station-store.md) Route + station store on the phone via the injected KV adapter, pending station
+  written before upload, coords at 4 dp (over server storage, upload-first, or localStorage).

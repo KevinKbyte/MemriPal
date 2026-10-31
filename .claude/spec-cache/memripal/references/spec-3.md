@@ -385,3 +385,33 @@ check (`ASSOCIATE_KEYS`, `PLACE_KEYS`, `SCENES_KEYS`, `BOX_KEYS`). `app.py` impo
 - Status codes, error codes and accepted/rejected bodies are unchanged; the existing route suites pass unmodified.
 
 Tests: tests/test_bodies.py
+
+## MEM-048 Route + station store, capture order, pending stations, S1/S2/S4 markup
+
+ADR [0031](../../../../docs/decisions/0031-route-station-store.md). Map-to-palace plan
+(`docs/plans/2026-10-31-map-to-palace.md`) slice B3, D4, D10; Part A screens S1/S2/S4.
+- Store: `static/route_store.js` keeps routes `{id, name, kind daily|occasional, status draft|saved, created_at,
+  stations[{id, n, name, photo_ref, status pending|named, box?, profile?, taps?, coords?}], lists[{id, name, status
+  active|retired}]}` through the injected KV adapter (`idb_adapter.js` shape, ADR 0021); coords rounded to 4 dp at
+  write; no `captured_at` field. Accepts 0-8 stations (9th refused; drafts below 3 and drops allowed); `#finish-save`
+  enforces 3-8 named stations, none pending. Order = capture order (`n`); Up/Down at S4 reorders and persists.
+- Capture (D10, `static/route_capture.js`): the re-encoded (EXIF-free) photo is written as a pending station BEFORE
+  upload; success -> named (stored photo replaced by the server's pixelated JPEG); network error / 5xx incl. 502
+  blur_failed / 429 -> pending with badge-pending + `.capture-retry`; other 4xx -> error with Drop. One in-flight
+  request per station; capture disabled while an upload is in flight; no online-event auto-retry. The walk persists
+  as a draft route across reloads. A KV write failure keeps the in-memory station and shows an error on
+  `#upload-status`.
+- Markup (`static/index.html`): S1 `section#routes-home` with `ol#routes-list`, `button#routes-new`, `#load-demo` and
+  `details#routes-settings` (collapsed, "Live settings") holding `#passcode` and `#auto`, the only home of `#auto`;
+  S2 `section#capture-session` (starts hidden) with `#capture-safety` (starts hidden) + `button#capture-safety-ok`,
+  `ol#capture-strip`, checkbox `#capture-locate`, `button#capture-finish`, `#capture-count`; S4 inside the existing
+  `#route-review`: `input#finish-name`, `#finish-kind` (two label-wrapped radios Daily / Occasional,
+  name="finish-kind") and `button#finish-save`. All 44 live ids stay, each exactly once. The E2E drive opens
+  `#routes-settings` before checking `#auto`.
+- Accept: plan B3 CRITERIA 1-12 (store CRUD with delete-undo; 2/9 named refused and 3/8 accepted at save, 1 pending
+  refused; coords <= 4 decimals over 20 inputs; capture-order + Up/Down persistence; pending survives reload and
+  manual Retry calls fetch once; 502/429 pending, 400 error; double Retry in flight -> 1 call; 44 live ids + new ids;
+  capture disabled in flight; S4 row drop arm/cancel/confirm/undo; KV quota error kept in memory; suite green).
+
+Tests: static/route_store.test.mjs, static/route_store_capture.test.mjs, static/index_markup_routes.test.mjs,
+static/index_markup.test.mjs
