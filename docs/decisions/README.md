@@ -92,3 +92,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0037](0037-lint-in-pytest.md) Lint gate inside pytest: one `ruff-lint` session item runs `ruff check` on the
   whole repo, so the queue drain's pytest verify catches lint (over per-module items, a drain-side check, or a
   `merge_branch.sh`-only fix).
+- [0037](0037-route-first-flow.md) Route-first flow: linear set-route spine; capture anytime as an unfiled candidate
+  (hint before generation, "Your photo" alternative after); no typed geocoding; 3-8 on every add path (over a
+  map-first canvas or keeping capture-first).

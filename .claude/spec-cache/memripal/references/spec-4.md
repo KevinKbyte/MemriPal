@@ -88,3 +88,29 @@ Actors: `tests/conftest.py`, ruff, the agent-workflow queue drain, `scripts/merg
   uncaught; closed by the agent-workflow follow-up (drain runs a repo-declared check command).
 
 Tests: tests/test_lint_gate.py
+## MEM-071 Route-first flow: set the route, pick loci from alternatives, capture anytime (PLANNED)
+
+PLANNED, not built, unverified: design only (docs/design/route/). ADR [0037](../../../../docs/decisions/0037-route-first-flow.md).
+Decided-by: ADR-0037
+Root problem: the route design is capture-first, but Kev requires route-first: set the route, the app generates
+landmark loci with alternatives, the user swaps or adds them fine-grained, and own landmark photos supplement the
+route at any time (as a generation hint or a user-added stop).
+Actors: the user; Muse Spark (loci generation); `docs/design/route/{preview.html,route.css,route-contract.md}`.
+- S1 entry is route setup: `#routes-new` reads "New route".
+- S2 Set the route: start and end picked on the map or from familiar places (stations of past routes, on the phone),
+  end = loop by default, stops 3-8 (default 5), own photos used as hints toggle, "Find landmarks". No typed
+  geocoding; only landmark positions leave the phone, and only with the place setting on.
+- S3 Pick landmarks: every locus shows its chosen landmark plus an alternatives row; each alternative offers "Use
+  this" (swap) and "Add too" (insert beside); per-locus "Add all" adds only into free slots, labelled with the
+  count, disabled at 8 with the reason; a counter chip shows n/8; leftovers stay as alternatives with a notice.
+- S4 Fix the route (`#route-review`): name, kind, order, drop; rows tagged Suggested / Your photo. While a list is
+  memorised on the route, insert, drop and reorder are blocked ("Retire the list first"); a 1:1 swap keeps the
+  station id and warns its items need re-learning.
+- Capture is reachable from every screen (`.topbar-capture`) and never asks hint-or-stop: before Find landmarks a
+  capture is a generation hint; after, it is a "Your photo" alternative on the nearest locus; a capture opened from
+  a locus card lands on that locus.
+- S5 shows source tags (Suggested / Your photo) and Capture; S6-S9 unchanged apart from Capture.
+- Accept: S1 primary action is "New route"; every S3 locus card shows >= 1 alternative with Use this + Add too; Add
+  all at 6/8 with 3 candidates adds 2 and keeps 1 as an alternative; Add all at 8/8 is disabled with a reason;
+  capture button present on S1-S9; no capture screen shows a required hint-or-stop choice; check_route_css.py and
+  design_gate.py pass at 375 px.
