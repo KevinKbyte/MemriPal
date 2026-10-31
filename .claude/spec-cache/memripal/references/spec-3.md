@@ -607,3 +607,24 @@ and the additive rule stand.
   suite green).
 
 Tests: static/palace_export_v2.test.mjs, static/palace_export.test.mjs, static/palace_export_flow.test.mjs
+## MEM-067 Design verification tools (route CSS lint + design screenshots)
+
+Codifies the ad hoc `check_css.py`/`shoot.py` used to screenshot-verify the S1-S9 route design (`docs/design/route/`),
+so design work renders and verifies while it is built. Dev tools, not shipped.
+- `scripts/check_route_css.py <css> <contract>`: pure `check(css, contract) -> list[str]`, sorted unique problems:
+  non-ASCII; `var(--x)` not in `ALLOWED_TOKENS` (comments ignored); defining a custom property; hex / functional
+  (rgb/rgba/hsl/hsla/oklch/lab/lch) / named (white/black/transparent/red/blue) colour; `url`/`@font-face`/`@import`;
+  property in `BANNED_PROPS`; `display` without `:not([hidden])` (pseudo-elements exempt); id not in `ALLOWED_IDS`;
+  class absent from the contract (named in any backticked span split on whitespace `. # > , ;`, or `.c` literal);
+  bare element selector outside `ELEMENT_OK`. Prints `FAIL <problem>` per problem then `OK` (exit 0) or
+  `<n> problem(s)` (exit 1); wrong arg count -> usage on stderr, exit 2.
+- `scripts/screenshot_design.py <base_url> <outdir> [--screen S]... [--width NAME=WxH]... [--theme T]...`: defaults
+  screens `1 2 3 4 5,6 7 8 9` (comma groups pass through as `?s=`), widths `phone=375x812 wide=1000x800`, themes
+  `light dark`; a given flag replaces that default list, order kept. Order widths > themes > screens; url
+  `<base_url>?s=<screen>`, plus `&theme=dark` only for dark; file `s<screen, ',' -> '-'>_<width>_<theme>.png`;
+  full-page shot after `networkidle` + 300 ms. Prints `ERR <msg>` per page/console error then
+  `shots=<n> errors=<m>`; exit 1 on any error, else 0. Missing positionals, bad `--width` (no name or `=`,
+  non-integer or non-positive dimension, wrong shape) or theme outside {light, dark} -> exit 2, nothing shot.
+- Accept: `check_route_css.py docs/design/route/route.css docs/design/route/route-contract.md` prints `OK`, exit 0.
+
+Tests: tests/test_check_route_css.py, tests/test_screenshot_design.py
