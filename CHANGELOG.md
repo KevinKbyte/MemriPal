@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.10] - 2026-10-31
+
+### Added
+
+- S3 station card: name rules, tap tags, drop with Undo, used_names sent to /station (MEM-050).
+
 ## [0.20.9] - 2026-10-31
 
 ### Added
