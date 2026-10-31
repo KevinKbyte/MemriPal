@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.7] - 2026-10-31
+
+### Added
+
+- POST /station: fail-closed pixelation, route-station name and profile, one landmark box; regenerates on an
+  invalid live reply, no retry on transport errors; used-names header is ASCII-only JSON (MEM-049, B4).
+
 ## [0.20.6] - 2026-10-31
 
 ### Changed
