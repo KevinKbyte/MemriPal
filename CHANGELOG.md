@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.23] - 2026-10-31
+
+### Changed
+
+- CLAUDE.md: the visual-verify screenshot rule now also covers `docs/design/**` `.css`/`.html` diffs (design previews shot with scripts/screenshot_design.py, MEM-067), and points to the global render-first rule for design tasks.
+
 ## [0.20.22] - 2026-10-31
 
 ### Added
