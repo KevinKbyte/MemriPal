@@ -10,6 +10,7 @@ import { createIdbAdapter } from "./idb_adapter.js";
 import { createRehearsalStore } from "./rehearsals.js";
 import { createRouteStore } from "./route_store.js";
 import { migrateLocalStorage } from "./storage_migrate.js";
+import { createThumbnail } from "./thumbnail.js";
 
 export { isPublicHost, showPublicBanner } from "./public_banner.js";
 // MEM-044 F15: canvas badge colours (v6 --bad on white, >= 4.5:1); a canvas cannot read CSS tokens.
@@ -457,6 +458,11 @@ if (typeof document !== "undefined") {
       routes: globalThis.indexedDB
         ? createRouteStore(createIdbAdapter(globalThis.indexedDB, { dbName: "memripal-routes", storeName: "routes" }))
         : undefined,
+      // Lazy lookup: a browser without createImageBitmap fails the export, not page load.
+      thumbnail: createThumbnail({
+        createImageBitmap: (photo) => globalThis.createImageBitmap(photo),
+        createCanvas: (w, h) => Object.assign(document.createElement("canvas"), { width: w, height: h }),
+      }),
       getUserMedia: media ? media.getUserMedia.bind(media) : undefined,
       AudioContext: globalThis.AudioContext || /** @type {any} */ (globalThis).webkitAudioContext,
       location,
