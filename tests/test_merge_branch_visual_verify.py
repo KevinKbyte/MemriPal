@@ -19,6 +19,7 @@
 import importlib.util
 import json
 import os
+import shutil
 import sys
 from pathlib import Path
 from unittest import mock
@@ -277,3 +278,88 @@ class TestUiCaseTableMatchesAgentWorkflow:
             actual = [(path, hook.is_ui_path(path)) for path, _ in UI_CASES]
 
         assert actual == UI_CASES
+
+
+UV = shutil.which("uv")
+
+# Stub agent-workflow scripts/visual_verify_merge_gate.py: records the args refuse_reason()
+# received as JSON to $FAKE_VV_ARGS_FILE and returns $FAKE_VV_REASON (None when unset/empty).
+FAKE_GATE_MODULE = """import json
+import os
+import shutil
+
+
+def refuse_reason(primary, branch, target):
+    with open(os.environ["FAKE_VV_ARGS_FILE"], "w", encoding="utf-8") as out:
+        json.dump([primary, branch, target], out)
+    return os.environ.get("FAKE_VV_REASON") or None
+"""
+
+FAKE_AW_PYPROJECT = """[project]
+name = "fake-agent-workflow"
+version = "0.0.0"
+requires-python = ">=3.10"
+dependencies = []
+"""
+
+
+@pytest.fixture
+def default_vv(vv, tmp_path):
+    """`vv` with MEMRIPAL_VISUAL_VERIFY_CMD removed, the real `uv` restored on PATH, and
+    AGENT_WORKFLOW_DIR pointed at a fake agent-workflow checkout holding a stub gate module."""
+    primary, wt, env, log, _aw = vv
+    env.pop("MEMRIPAL_VISUAL_VERIFY_CMD")
+    env["PATH"] = os.environ.get("PATH", "")
+    fake_aw = tmp_path / "fake-aw"
+    (fake_aw / "scripts").mkdir(parents=True)
+    (fake_aw / "pyproject.toml").write_text(FAKE_AW_PYPROJECT, encoding="ascii", newline="\n")
+    gate = fake_aw / "scripts" / "visual_verify_merge_gate.py"
+    gate.write_text(FAKE_GATE_MODULE, encoding="ascii", newline="\n")
+    env["AGENT_WORKFLOW_DIR"] = fake_aw.as_posix()
+    args_file = tmp_path / "vv_args.json"
+    env["FAKE_VV_ARGS_FILE"] = args_file.as_posix()
+    return primary, wt, env, log, args_file
+
+
+# Covers: MEM-069
+# Requirement: with MEMRIPAL_VISUAL_VERIFY_CMD unset, merge_branch.sh's ff path consults the
+# REAL default lookup: it runs visual_verify_merge_gate.refuse_reason(<primary>, <branch>,
+# "main") from $AGENT_WORKFLOW_DIR/scripts/visual_verify_merge_gate.py via `uv run`. A
+# non-empty reason refuses the merge (exit 1, the reason on stderr, main untouched, primary
+# check.sh not run); None lets the fast-forward proceed. Skipped where `uv` is not on PATH.
+@pytest.mark.skipif(not UV, reason="default visual-verify lookup runs via `uv run`; uv not on PATH")
+class TestDefaultVisualVerifyLookup:
+    def test_reason_returned_refuses_ff_exit_1_reason_on_stderr(self, default_vv, tmp_path):
+        primary, wt, env, log, _args_file = default_vv
+        env["FAKE_VV_REASON"] = "STUB-GATE-REASON: no visual-verify record"
+        _commit_file(wt, env, "static/app.js", "ui();\n", "ui change")
+        main_before = _head(primary, env)
+
+        result = _run([wt.as_posix()], env, tmp_path)
+
+        assert result.returncode == 1, result.stdout + result.stderr
+        assert "STUB-GATE-REASON: no visual-verify record" in result.stderr
+        assert "static/app.js" in result.stderr
+        assert _head(primary, env) == main_before
+        assert "check:main" not in _calls(log)
+
+    def test_none_returned_fast_forwards(self, default_vv, tmp_path):
+        primary, wt, env, log, _args_file = default_vv
+        _commit_file(wt, env, "static/app.js", "ui();\n", "ui change")
+
+        result = _run([wt.as_posix()], env, tmp_path)
+
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert _head(primary, env) == _head(wt, env)
+        assert _calls(log)[-1] == "check:main"
+
+    def test_gate_receives_primary_branch_and_main(self, default_vv, tmp_path):
+        primary, wt, env, _log, args_file = default_vv
+        _commit_file(wt, env, "static/app.js", "ui();\n", "ui change")
+
+        result = _run([wt.as_posix()], env, tmp_path)
+
+        assert result.returncode == 0, result.stdout + result.stderr
+        got_primary, got_branch, got_target = json.loads(args_file.read_text(encoding="utf-8"))
+        assert os.path.samefile(got_primary, primary)
+        assert (got_branch, got_target) == ("feature", "main")
