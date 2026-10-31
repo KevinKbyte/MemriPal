@@ -1,0 +1,1319 @@
+/* route.css: additions only, loaded after style.css and theme-painterly.css.
+   Rules for this file:
+   - colours come only from the existing tokens; no new custom properties;
+   - every display value is scoped :not([hidden]) so the hidden attribute always wins;
+   - no transform, filter, contain, perspective, will-change or backdrop-filter anywhere,
+     so #scene-overlay (a direct child of main) stays viewport-fixed;
+   - S2/S3 text uses only --ink, --on-primary on --primary, --on-bad on --bad or --primary on
+     --surface (all >= 7:1 in light and dark); --muted is never used on S2/S3. */
+
+/* ---------- Shell ---------- */
+
+.app:not([hidden]) {
+  display: block;
+}
+
+.screen > .screen-title {
+  font: 600 1.5rem/1.15 var(--display);
+}
+
+.screen .sub-title {
+  margin: 0;
+  font: 600 1.125rem/1.2 var(--display);
+}
+
+.lede {
+  font-size: 1.0625rem;
+}
+
+/* Visually hidden but still focusable and read by screen readers (#photo, #loci). */
+.vh {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.status-line {
+  min-height: 1.55em;
+  font-weight: 600;
+}
+
+.field-error,
+.form-error {
+  padding: 0.5rem 0.75rem;
+  border: 2px solid var(--bad);
+  border-radius: 10px;
+  background: var(--bad-soft);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.form-error li + li {
+  margin-top: 0.25rem;
+}
+
+/* Phone first: primary actions fill the width so they sit under the thumb. */
+.screen > .btn,
+.screen > .arm,
+.screen > .confirm,
+.screen > .cancel,
+.screen > .undo {
+  justify-self: stretch;
+}
+
+@media (min-width: 600px) {
+  .screen > .btn,
+  .screen > .arm,
+  .screen > .confirm,
+  .screen > .cancel,
+  .screen > .undo {
+    justify-self: start;
+  }
+}
+
+.btn,
+.arm,
+.confirm,
+.cancel,
+.undo,
+.tap,
+.capture-retry {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+}
+
+/* Disabled controls keep full-contrast text; the dashed edge and fill carry the state. */
+.btn:disabled,
+.btn:disabled:hover,
+.btn-primary:disabled,
+.btn-primary:disabled:hover {
+  background: var(--surface-2);
+  border: 1px dashed var(--line);
+  color: var(--ink);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.screen a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+/* ---------- Shared chips and badges (ink text on soft fills: >= 7:1 everywhere) ---------- */
+
+.model-chip,
+.badge-live,
+.badge-replay,
+.chip-ai,
+.chip-imagined,
+.badge-pending,
+.badge-not-walked,
+.tag,
+.tag-kind,
+.tag-draft,
+.learned {
+  padding: 0.125rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font: 600 0.75rem/1.4 var(--mono);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.model-chip:not([hidden]),
+.badge-live:not([hidden]),
+.badge-replay:not([hidden]),
+.chip-ai:not([hidden]),
+.chip-imagined:not([hidden]),
+.badge-pending:not([hidden]),
+.badge-not-walked:not([hidden]),
+.tag:not([hidden]),
+.tag-kind:not([hidden]),
+.tag-draft:not([hidden]),
+.learned:not([hidden]) {
+  display: inline-block;
+}
+
+.screen > .model-chip,
+.screen > .badge-live,
+.screen > .badge-replay,
+.screen > .chip-ai {
+  justify-self: start;
+}
+
+.model-chip {
+  border-color: var(--primary);
+  background: var(--surface);
+}
+
+.badge-live {
+  border-color: var(--bad);
+  background: var(--bad);
+  color: var(--on-bad);
+}
+
+.badge-replay,
+.badge-not-walked {
+  border-style: dashed;
+  border-color: var(--primary);
+}
+
+.chip-ai,
+.badge-pending,
+.tag-draft {
+  border-color: var(--lamp-ink);
+  background: var(--lamp-soft);
+}
+
+.chip-imagined {
+  border-style: dashed;
+}
+
+.learned {
+  border-color: var(--ok);
+  background: var(--ok-soft);
+}
+
+.tag-kind {
+  background: var(--surface);
+}
+
+/* ---------- Arm -> confirm -> Undo (every delete or drop) ---------- */
+
+.arm {
+  border: 2px solid var(--bad);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.arm:hover {
+  background: var(--bad-soft);
+  color: var(--ink);
+}
+
+.confirm,
+.confirm:hover {
+  border: 2px solid var(--bad);
+  background: var(--bad);
+  color: var(--on-bad);
+}
+
+.cancel {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.undo {
+  border: 2px solid var(--primary);
+  background: var(--surface);
+  color: var(--primary);
+}
+
+.undo:hover {
+  background: var(--surface-2);
+  color: var(--primary);
+}
+
+/* ---------- Route map (inline SVG, viewBox 0 0 320 200) ---------- */
+
+.route-map:not([hidden]) {
+  display: block;
+}
+
+.route-map {
+  width: 100%;
+  height: auto;
+  max-height: 18rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.route-line {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.station-node circle {
+  fill: var(--surface);
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+
+.station-node text {
+  fill: var(--ink);
+  font: 700 11px/1 var(--mono);
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+
+.station-node.current circle {
+  fill: var(--primary);
+  stroke: var(--ink);
+  stroke-width: 3.5;
+}
+
+.station-node.current text {
+  fill: var(--on-primary);
+}
+
+.station-node.lit circle {
+  fill: var(--lamp-soft);
+  stroke: var(--lamp-ink);
+  stroke-width: 3.5;
+}
+
+.station-node.lit text {
+  fill: var(--ink);
+}
+
+.station-node.missed circle {
+  fill: var(--bad-soft);
+  stroke: var(--bad);
+  stroke-width: 2.5;
+  stroke-dasharray: 3 2;
+}
+
+.station-node.missed text {
+  fill: var(--ink);
+}
+
+.map-legend {
+  font-size: 0.875rem;
+}
+
+.legend-key:not([hidden]) {
+  display: inline-flex;
+}
+
+.legend-key {
+  align-items: center;
+  gap: 0.375rem;
+  margin-right: 0.875rem;
+}
+
+.legend-key::before {
+  content: "";
+  width: 0.875rem;
+  height: 0.875rem;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  background: var(--surface);
+}
+
+.legend-key.current::before {
+  background: var(--primary);
+}
+
+.legend-key.lit::before {
+  border-color: var(--lamp-ink);
+  background: var(--lamp-soft);
+}
+
+.legend-key.missed::before {
+  border: 2px dashed var(--bad);
+  background: var(--bad-soft);
+}
+
+/* ---------- Thumbnails ---------- */
+
+.thumb {
+  width: 3.5rem;
+  height: 3.5rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--surface-2);
+}
+
+/* ---------- S1 Routes home ---------- */
+
+.route-cards {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.route-cards:not([hidden]) {
+  display: grid;
+}
+
+.route-cards {
+  gap: 0.75rem;
+}
+
+.route-card:not([hidden]) {
+  display: grid;
+}
+
+.route-card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 0.75rem;
+  row-gap: 0.125rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.route-card > * {
+  grid-column: 1;
+  margin: 0;
+}
+
+.route-card > .route-card-name {
+  font: 600 1.25rem/1.2 var(--display);
+  overflow-wrap: anywhere;
+}
+
+.route-card > .route-card-meta,
+.route-card > .route-card-list {
+  color: var(--muted);
+}
+
+.route-card > .route-card-learned {
+  font: 600 0.875rem/1.5 var(--mono);
+}
+
+.route-card > .tag-draft {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  align-self: start;
+}
+
+.route-card > .route-card-open {
+  grid-column: 2;
+  grid-row: 2 / span 3;
+  align-self: end;
+  min-width: 5rem;
+}
+
+.empty-text {
+  text-align: center;
+  font: 600 1.125rem/1.3 var(--display);
+}
+
+.settings > summary {
+  min-height: 2.75rem;
+  padding: 0.625rem 0;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.settings[open] > summary {
+  margin-bottom: 0.5rem;
+}
+
+.settings > .field + .check,
+.settings > .check + .field {
+  margin-top: 0.75rem;
+}
+
+@media (min-width: 600px) {
+  .route-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ---------- S2 Walking: capture (7:1 text) ---------- */
+
+/* Capture sits in the bottom thumb zone: the section fills the screen, a 1fr spacer row pushes
+   the count/finish row and the Capture button down, and Capture sticks to the viewport bottom
+   when the strip grows past one screen. Row gap is 0 so hidden rows leave no stacked gaps. */
+#capture-session:not([hidden]) {
+  display: grid;
+}
+
+#capture-session {
+  min-height: calc(100vh - 9rem);
+  min-height: calc(100svh - 9rem);
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto auto auto auto 1fr auto auto;
+  grid-template-areas:
+    "head head"
+    "safety safety"
+    "meta meta"
+    "strip strip"
+    "status status"
+    "locate locate"
+    ". ."
+    "count finish"
+    "capture capture";
+  row-gap: 0;
+  column-gap: 0.75rem;
+  color: var(--ink);
+}
+
+#capture-session > * {
+  margin: 0 0 0.875rem;
+}
+
+#capture-session > .screen-title { grid-area: head; }
+#capture-session > #capture-safety { grid-area: safety; }
+#capture-session > #meta-notice { grid-area: meta; }
+#capture-session > #capture-strip { grid-area: strip; }
+#capture-session > #upload-status { grid-area: status; }
+#capture-session > .locate { grid-area: locate; }
+#capture-session > #capture-count { grid-area: count; align-self: center; }
+#capture-session > #capture-finish { grid-area: finish; align-self: center; }
+#capture-session > .capture-btn { grid-area: capture; margin-bottom: 0; }
+
+#capture-safety {
+  border-width: 2px;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+#capture-safety > .btn {
+  margin-top: 0.75rem;
+}
+
+#meta-notice {
+  color: var(--ink);
+}
+
+#capture-count {
+  font: 700 1.0625rem/1.3 var(--mono);
+}
+
+.capture-btn:not([hidden]) {
+  display: flex;
+}
+
+.capture-btn {
+  position: sticky;
+  bottom: 0.75rem;
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+  z-index: 1;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.5rem;
+  width: 100%;
+  font-size: 1.125rem;
+  text-align: center;
+  cursor: pointer;
+}
+
+/* #photo is visually hidden, so its focus ring is drawn on the Capture label. */
+.capture-btn:focus-within,
+#photo:focus-visible + .capture-btn {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.capture-btn:has(#photo:disabled),
+#photo:disabled + .capture-btn {
+  background: var(--surface-2);
+  border: 1px dashed var(--line);
+  color: var(--ink);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.strip {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: strip;
+}
+
+.strip:not([hidden]) {
+  display: grid;
+}
+
+.strip {
+  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+  gap: 0.625rem;
+}
+
+.strip-item:not([hidden]) {
+  display: flex;
+}
+
+.strip-item {
+  position: relative;
+  counter-increment: strip;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 0;
+  padding: 0.375rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.strip-item::before {
+  content: counter(strip);
+  position: absolute;
+  top: 0.625rem;
+  left: 0.625rem;
+  z-index: 1;
+  min-width: 1.5rem;
+  padding: 0 0.25rem;
+  border-radius: 6px;
+  background: var(--ink);
+  color: var(--surface);
+  font: 700 0.875rem/1.5rem var(--mono);
+  text-align: center;
+}
+
+.strip-item.dropped::before {
+  content: none;
+}
+
+.strip-item.dropped {
+  border-style: dashed;
+  background: var(--surface-2);
+}
+
+.strip-thumb {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--surface-2);
+}
+
+.strip-name {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.strip-item > .badge-pending {
+  align-self: start;
+}
+
+.strip-item > .btn,
+.strip-item > .capture-retry {
+  width: 100%;
+}
+
+.capture-retry {
+  border: 2px solid var(--primary);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* ---------- S3 Station card (7:1 text) ---------- */
+
+#station-card:not([hidden]) {
+  display: grid;
+}
+
+#station-card {
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-flow: row dense;
+  color: var(--ink);
+}
+
+#station-card > * {
+  grid-column: 1 / -1;
+}
+
+.photo-frame:not([hidden]) {
+  display: grid;
+}
+
+.photo-frame {
+  gap: 0.5rem;
+  justify-items: start;
+}
+
+.photo-frame > #scene:not([hidden]) {
+  display: block;
+}
+
+.photo-frame > #scene {
+  width: 100%;
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.baseline-optin {
+  font-weight: 600;
+  align-items: flex-start;
+}
+
+.baseline-optin > input {
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-top: 0.1rem;
+}
+
+.baseline-nolocation {
+  font-weight: 600;
+}
+
+.baseline:not([hidden]) {
+  display: grid;
+}
+
+.baseline {
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.baseline > img {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px dashed var(--primary);
+}
+
+.baseline-caption:not([hidden]) {
+  display: flex;
+}
+
+.baseline-caption {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.credit {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.credit-logo {
+  height: 1rem;
+  width: auto;
+  vertical-align: middle;
+}
+
+a.credit-link:not([hidden]) {
+  display: inline-flex;
+}
+
+a.credit-link {
+  align-items: center;
+  min-height: 2.75rem;
+}
+
+/* Your photo and the street photo sit side by side once there is room for both. */
+@media (min-width: 480px) {
+  #station-card {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #station-card:has(> #station-baseline:not([hidden])) > #scene-wrap {
+    grid-column: 1;
+  }
+
+  #station-card > #station-baseline {
+    grid-column: 2;
+  }
+}
+
+.name-input {
+  width: 100%;
+  font: 700 1.25rem/1.3 var(--display);
+}
+
+.profile:not([hidden]) {
+  display: grid;
+}
+
+.profile {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.25rem 0.75rem;
+  margin: 0;
+}
+
+.profile > dt {
+  font: 700 0.875rem/1.55 var(--mono);
+}
+
+.profile > dd {
+  margin: 0;
+}
+
+.taps {
+  margin: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--ink);
+}
+
+.taps > legend {
+  padding: 0 0.375rem;
+  font-weight: 700;
+}
+
+.tap-group:not([hidden]) {
+  display: flex;
+}
+
+.tap-group {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.tap-label {
+  flex: 1 1 100%;
+  font: 700 0.875rem/1.3 var(--mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tap {
+  padding: 0.375rem 0.875rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* Pressed is fill plus an inset ring, so the state never rests on colour alone. */
+.tap[aria-pressed="true"],
+.tap[aria-pressed="true"]:hover {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
+  box-shadow: inset 0 0 0 2px var(--on-primary);
+  font-weight: 800;
+}
+
+/* ---------- S4 Finish walk ---------- */
+
+.kind-pick {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.kind-pick > legend {
+  margin-bottom: 0.375rem;
+  padding: 0;
+  font-weight: 700;
+}
+
+.kind-pick:not([hidden]) {
+  display: flex;
+}
+
+.kind-pick {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.kind-option:not([hidden]) {
+  display: inline-flex;
+}
+
+.kind-option {
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0 0.875rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.kind-option:has(input:checked) {
+  border: 2px solid var(--primary);
+  background: var(--surface-2);
+}
+
+.order-note {
+  color: var(--muted);
+}
+
+/* style.css numbers #route rows with an absolute ::before counter; rows switch to a grid here. */
+#route > .station-row:not([hidden]) {
+  display: grid;
+}
+
+#route > .station-row {
+  grid-template-columns: 3.5rem repeat(3, minmax(0, 1fr));
+  gap: 0.375rem 0.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.5rem 0.5rem 2.5rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+#route > .station-row::before {
+  top: 0.6rem;
+}
+
+#route > .station-row > * {
+  grid-column: 2 / -1;
+  min-width: 0;
+}
+
+#route > .station-row > .thumb {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+}
+
+#route > .station-row > .row-name {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+#route > .station-row > .row-turn {
+  color: var(--muted);
+}
+
+#route > .station-row > .move-up,
+#route > .station-row > .move-down,
+#route > .station-row > .arm,
+#route > .station-row > .confirm,
+#route > .station-row > .cancel {
+  grid-column: auto;
+  padding-inline: 0.25rem;
+}
+
+#route > .station-row > .move-up {
+  grid-column: 1;
+}
+
+/* ---------- S5 Route view ---------- */
+
+.route-kind {
+  margin-left: 0.5rem;
+  font: 600 0.875rem/1 var(--mono);
+  color: var(--muted);
+}
+
+.station-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Thumbnail floats left so name, turn cue and chips flow beside it; flow-root contains it. */
+.station-item:not([hidden]) {
+  display: flow-root;
+}
+
+.station-item {
+  padding: 0.625rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.station-item > .thumb {
+  float: left;
+  margin-right: 0.75rem;
+}
+
+.station-item > .item-num {
+  margin-right: 0.375rem;
+  font: 700 0.875rem/1.5 var(--mono);
+}
+
+.station-item > .item-name {
+  font-weight: 700;
+}
+
+.station-item > .item-turn {
+  margin-left: 0.375rem;
+  color: var(--muted);
+}
+
+.station-item > .tag,
+.station-item > .learned,
+.station-item > .model-chip {
+  margin: 0.25rem 0.25rem 0 0;
+}
+
+.station-item > .item-baseline {
+  float: right;
+  width: 3rem;
+  height: 3rem;
+  margin-left: 0.5rem;
+  border: 1px dashed var(--primary);
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.toggle[aria-pressed="true"] {
+  border: 2px solid var(--primary);
+  background: var(--surface-2);
+}
+
+.place-facts {
+  margin: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.place-facts > legend {
+  padding: 0 0.375rem;
+  font-weight: 700;
+}
+
+.list-summary:not([hidden]) {
+  display: flex;
+}
+
+.list-summary {
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.list-summary > .summary-name {
+  font-weight: 700;
+}
+
+/* ---------- S6 List on route ---------- */
+
+.list-notes {
+  width: 100%;
+  min-height: 8rem;
+  resize: vertical;
+}
+
+.assoc-cards:not([hidden]) {
+  display: grid;
+}
+
+.assoc-cards {
+  gap: 0.75rem;
+}
+
+.assoc-card {
+  padding: 0.875rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.assoc-card[aria-busy="true"] {
+  border-style: dashed;
+}
+
+.assoc-card > * + * {
+  margin-top: 0.5rem;
+}
+
+.assoc-station {
+  margin: 0;
+  font: 600 1.125rem/1.2 var(--display);
+}
+
+.assoc-item {
+  font-weight: 700;
+}
+
+/* One station can hold several key points: the mnemonic or acronym packs them, the list shows what it holds. */
+.assoc-chunk {
+  font: 700 1.375rem/1.2 var(--display);
+  letter-spacing: 0.02em;
+  overflow-wrap: anywhere;
+}
+
+.assoc-points {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.assoc-points > li + li {
+  margin-top: 0.125rem;
+}
+
+/* A real fact about the place (history or a fun fact) used as the anchor for the hooks. */
+.assoc-place-fact {
+  padding: 0.5rem 0.75rem;
+  border-left: 4px solid var(--lamp-ink);
+  border-radius: 0 10px 10px 0;
+  background: var(--lamp-soft);
+  color: var(--ink);
+}
+
+.assoc-place-fact > .credit {
+  margin-top: 0.25rem;
+}
+
+.channels {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.channels:not([hidden]) {
+  display: flex;
+}
+
+.channels {
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.channel {
+  max-width: 100%;
+  padding: 0.25rem 0.625rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+  overflow-wrap: anywhere;
+}
+
+.channel-name {
+  margin-right: 0.25rem;
+  font: 700 0.75rem/1.4 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.channel > .chip-imagined {
+  margin-left: 0.25rem;
+}
+
+.card-progress {
+  font-weight: 600;
+}
+
+/* ---------- S7 Scene walk ---------- */
+
+.scene-cards:not([hidden]) {
+  display: grid;
+}
+
+.scene-cards {
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+}
+
+.scene-card {
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.scene-card > * + * {
+  margin-top: 0.5rem;
+}
+
+.scene-card[aria-busy="true"] {
+  border-style: dashed;
+}
+
+.scene-img:not([hidden]) {
+  display: block;
+}
+
+.scene-img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 10px;
+  object-fit: cover;
+  background: var(--surface-2);
+}
+
+.scene-station {
+  margin: 0;
+  font: 600 1.125rem/1.2 var(--display);
+}
+
+@media (min-width: 600px) {
+  .scene-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+#walk:not([hidden]) {
+  display: grid;
+}
+
+#walk {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+#walk > * {
+  grid-column: 1 / -1;
+}
+
+#walk > #walk-prev {
+  grid-column: 1;
+  justify-self: stretch;
+}
+
+#walk > #walk-next {
+  grid-column: 2;
+  justify-self: stretch;
+}
+
+.walk-step:not([hidden]) {
+  display: grid;
+}
+
+.walk-step {
+  gap: 0.5rem;
+}
+
+.walk-count {
+  font: 700 0.9375rem/1.3 var(--mono);
+}
+
+.walk-cue {
+  font-size: 1.0625rem;
+}
+
+.walk-item {
+  font: 600 1.25rem/1.3 var(--display);
+}
+
+/* ---------- S8 Recall ---------- */
+
+.recall-mode {
+  font: 600 1.0625rem/1.3 var(--display);
+}
+
+.live-board {
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.live-board > .badge-live,
+.live-board > .badge-replay,
+.live-board > .model-chip {
+  margin: 0 0.375rem 0.5rem 0;
+}
+
+.live-board ol {
+  margin: 0;
+  padding-left: 1.75rem;
+}
+
+.live-board li {
+  padding: 0.25rem 0.5rem;
+  border-left: 4px solid var(--surface);
+}
+
+.plain-code {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+/* ---------- S9 Results, history, backup ---------- */
+
+.rehearsal-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rehearsal:not([hidden]) {
+  display: flex;
+}
+
+.rehearsal {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem 0.75rem;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.reh-date,
+.reh-score {
+  font: 600 0.875rem/1.5 var(--mono);
+}
+
+.reh-mode {
+  flex: 1 1 8rem;
+  font-weight: 600;
+}
+
+.hit-rates {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hit-rate:not([hidden]) {
+  display: grid;
+}
+
+.hit-rate {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  padding: 0.375rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.hit-value {
+  font: 700 0.9375rem/1.5 var(--mono);
+}
+
+.privacy-note {
+  color: var(--muted);
+}
+
+/* ---------- Desktop: route map left, list/scenes right (same markup) ---------- */
+
+@media (min-width: 900px) {
+  .app:not([hidden]) {
+    display: grid;
+  }
+
+  .app {
+    max-width: 76rem;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    column-gap: 1.25rem;
+    align-items: start;
+  }
+
+  .app > * {
+    grid-column: 1 / -1;
+  }
+
+  .app > #route-view {
+    grid-column: 1;
+    grid-row: span 3;
+  }
+
+  .app > #list-panel,
+  .app > #scenes,
+  .app > #walk {
+    grid-column: 2;
+  }
+
+  /* Without S5 on screen the right-hand screens take the full width. */
+  .app:has(> #route-view[hidden]) > #list-panel,
+  .app:has(> #route-view[hidden]) > #scenes,
+  .app:has(> #route-view[hidden]) > #walk {
+    grid-column: 1 / -1;
+  }
+
+  .route-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
