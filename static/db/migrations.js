@@ -17,8 +17,13 @@ export async function runMigrations(db, migrations) {
     const step = migrations[i];
     // The version bump shares the migration's transaction so a failure can never leave it lying.
     await db.transaction(() => {
-      if (typeof step === "function") step(db);
-      else db.exec(step);
+      if (typeof step === "function") {
+        // Steps must be sync: an awaited write would land after the transaction commits.
+        const result = step(db);
+        if (typeof result?.then === "function") {
+          throw new Error(`migration ${i} returned a thenable; migration steps must be sync`);
+        }
+      } else db.exec(step);
       db.exec(`PRAGMA user_version = ${i + 1}`);
     });
   }

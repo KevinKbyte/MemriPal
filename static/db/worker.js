@@ -13,6 +13,8 @@ async function open() {
 }
 
 const dbPromise = open();
+// Open failures surface per request via the handler below; this only silences the unhandled rejection.
+dbPromise.catch(() => {});
 
 function handle(db, msg) {
   switch (msg.op) {

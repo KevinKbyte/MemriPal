@@ -11,17 +11,24 @@ function rpc(worker) {
     if (data.ok) entry.resolve(data.rows);
     else entry.reject(new Error(data.error));
   });
-  worker.addEventListener("error", (ev) => {
-    const err = new Error(`db worker error: ${ev?.message ?? "unknown"}`);
+  const rejectAll = (err) => {
     for (const entry of pending.values()) entry.reject(err);
     pending.clear();
-  });
+  };
+  worker.addEventListener("error", (ev) => rejectAll(new Error(`db worker error: ${ev?.message ?? "unknown"}`)));
+  // An undeserializable reply carries no id, so every in-flight request is failed rather than left hanging.
+  worker.addEventListener("messageerror", () => rejectAll(new Error("db worker messageerror: reply could not be deserialized")));
 
   const send = (msg) =>
     new Promise((resolve, reject) => {
       const id = nextId++;
       pending.set(id, { resolve, reject });
-      worker.postMessage({ id, ...msg });
+      try {
+        worker.postMessage({ id, ...msg });
+      } catch (err) {
+        pending.delete(id);
+        reject(err);
+      }
     });
 
   return {
