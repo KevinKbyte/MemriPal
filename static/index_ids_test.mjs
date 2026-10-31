@@ -1,4 +1,4 @@
-// Shared index.html id lists for the markup tests (MEM-044, MEM-048, MEM-050). Not a test file itself (no
+// Shared index.html id lists for the markup tests (MEM-044, MEM-048, MEM-050, MEM-051). Not a test file itself (no
 // describe/test); index_markup.test.mjs and index_markup_routes.test.mjs import it.
 
 // MEM-048 (plan B3, Part A S1/S2/S4): the 14 ids the final markup adds to the 44 live ids.
@@ -27,3 +27,16 @@ export const MEM050_IDS = [
 export const MEM050_MAY_START_HIDDEN = [
   "station-card", "station-name-error", "station-drop-confirm", "station-drop-cancel", "station-undo",
 ];
+
+// MEM-051 (plan B6, Part A S5/S8): S5 Route view ids B6 adds (B7 adds the list ids, B8 the baseline toggle)
+// and the S8 #recall-map / #recall-mode inside the existing #recall.
+export const MEM051_IDS = [
+  "route-view", "route-map", "route-view-stations", "route-view-practice",
+  "route-view-delete", "route-view-delete-confirm", "route-view-delete-cancel", "route-view-undo",
+  "recall-map", "recall-mode",
+];
+
+// MEM-051: #route-view is a screen (one shown at a time, S1 first); delete confirm/cancel stay hidden until
+// armed and Undo until a delete (Part A S5). #recall-map and #recall-mode sit in the already-hidden #recall.
+export const MEM051_MAY_START_HIDDEN = ["route-view", "route-view-delete-confirm", "route-view-delete-cancel",
+  "route-view-undo"];

@@ -168,7 +168,8 @@ function clock() {
 
 /**
  * Wire the page. opts: photo / recall / split / replies / health / healthReply (server hooks),
- * mic ({hold, deny}), closeRejects, rehAdapter (rehearsal store adapter; default an in-memory map).
+ * mic ({hold, deny}), closeRejects, rehAdapter (rehearsal store adapter; default an in-memory map),
+ * routes (a route_store.js store, passed to wireApp as deps.routes; omitted when not given).
  */
 export function boot(opts = {}) {
   assert.ok("wireApp" in flow, `static/flow.js must export wireApp (${flow.__missing ?? "not exported"})`);
@@ -191,6 +192,7 @@ export function boot(opts = {}) {
     wait: async () => {},
     setInterval: timers.setInterval,
     clearInterval: timers.clearInterval,
+    ...(opts.routes ? { routes: opts.routes } : {}),
   });
   return { p, server, rehAdapter, audio, mic, timers };
 }

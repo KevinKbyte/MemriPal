@@ -8,7 +8,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { MEM048_IDS, MEM050_IDS, MEM050_MAY_START_HIDDEN } from "./index_ids_test.mjs";
+import { MEM048_IDS, MEM050_IDS, MEM050_MAY_START_HIDDEN, MEM051_IDS } from "./index_ids_test.mjs";
 
 const HTML = readFileSync(new URL("./index.html", import.meta.url), "utf8");
 
@@ -221,5 +221,40 @@ describe("index.html: S3 station card ids and structure (MEM-050)", () => {
   test("#scene-wrap > #scene and #loci stay, each exactly once", () => {
     for (const id of ["scene-wrap", "scene", "loci"]) assert.equal(idCount(id), 1, `#${id} count`);
     assert.ok(inside(byId("scene"), "scene-wrap"), "#scene inside #scene-wrap");
+  });
+});
+
+// Covers: MEM-051
+// Requirement: static/index.html gains the B6 Part A markup for S5 Route view (#route-view section with
+// the #route-map SVG, #route-view-stations ol, #route-view-practice button and the delete controls
+// #route-view-delete / -confirm / -cancel and #route-view-undo) and S8's #recall-map SVG and #recall-mode
+// text inside the existing #recall; each id exactly once, both maps on the 320x200 viewBox (plan B6).
+describe("index.html: S5 Route view + S8 recall map ids (MEM-051)", () => {
+  for (const id of MEM051_IDS) {
+    test(`new id #${id} present exactly once`, () => {
+      assert.equal(idCount(id), 1, `#${id} count`);
+    });
+  }
+
+  test("#route-view is a section holding the map, stations, practice and delete controls", () => {
+    assert.equal(byId("route-view")?.tag, "section");
+    for (const id of ["route-map", "route-view-stations", "route-view-practice", "route-view-delete",
+      "route-view-delete-confirm", "route-view-delete-cancel", "route-view-undo"]) {
+      assert.ok(inside(byId(id), "route-view"), `#${id} inside #route-view`);
+    }
+    assert.equal(byId("route-view-stations")?.tag, "ol");
+    for (const id of ["route-view-practice", "route-view-delete", "route-view-delete-confirm",
+      "route-view-delete-cancel", "route-view-undo"]) {
+      assert.equal(byId(id)?.tag, "button", `#${id} is a button`);
+    }
+  });
+
+  test("#route-map and #recall-map are SVGs on viewBox 0 0 320 200; #recall-map and #recall-mode sit in #recall", () => {
+    for (const id of ["route-map", "recall-map"]) {
+      assert.equal(byId(id)?.tag, "svg", `#${id} is an svg`);
+      assert.equal(byId(id).attrs.viewbox, "0 0 320 200", `#${id} viewBox`);
+    }
+    assert.ok(inside(byId("recall-map"), "recall"), "#recall-map inside #recall");
+    assert.ok(inside(byId("recall-mode"), "recall"), "#recall-mode inside #recall");
   });
 });

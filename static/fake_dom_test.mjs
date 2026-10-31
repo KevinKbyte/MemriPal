@@ -2,7 +2,7 @@
 // itself (no describe/test); the *.test.mjs files import it.
 //
 // DOM surface the code under test may use (anything else is absent, as a test failure, not a
-// silent pass): doc.getElementById / createElement / createTextNode / createDocumentFragment /
+// silent pass): doc.getElementById / createElement / createElementNS / createTextNode / createDocumentFragment /
 // addEventListener / removeEventListener; element children via append / appendChild / prepend /
 // replaceChildren / remove; textContent; hidden; disabled; dataset (setAttribute("data-x") mirrors
 // into dataset); style (plain object; style.setProperty sets the camelCase key); classList;
@@ -225,6 +225,8 @@ export function fakePage(ids, opts = {}) {
   const doc = {
     getElementById: (id) => els[id] ?? null,
     createElement: (tag) => el(tag),
+    // SVG children (MEM-051 route map): same fake element, namespace recorded.
+    createElementNS: (ns, tag) => Object.assign(el(tag), { namespaceURI: String(ns) }),
     createTextNode: (t) => String(t),
     createDocumentFragment: () => el("#fragment"),
     addEventListener(type, fn) {
