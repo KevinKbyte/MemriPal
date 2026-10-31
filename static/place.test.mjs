@@ -398,7 +398,7 @@ describe("place on /associate", () => {
       const body = JSON.parse(init.body);
       bodies.push(body);
       const record = { item: body.item, locus: body.locus, question: "q", answer: "a" };
-      for (const c of app.KAVE_CHANNELS) record[c] = `${c} ${body.item} ${body.locus}`;
+      for (const c of app.MULTISENSORY_CHANNELS) record[c] = `${c} ${body.item} ${body.locus}`;
       return jsonResponse({ record, status: "valid" });
     };
     const deps = { doc: fakeDoc(), fetch, store: createPalaceStore(memoryAdapter()), image: IMAGE, place };

@@ -4,15 +4,15 @@
 // regenerates missing or invalid records, and model text reaches the page via textContent only.
 // Contract (RED; GREEN implements, ADR 0021):
 //   app.js exports
-//     KAVE_CHANNELS -- ["kinesthetic", "auditory", "visual", "emotional", "conceptual",
-//                       "olfactory", "gustatory", "spatial"], in that order
+//     MULTISENSORY_CHANNELS -- ["kinesthetic", "auditory", "visual", "emotional", "conceptual",
+//                               "olfactory", "gustatory", "spatial"], in that order
 //     runAssociations(pairs, deps) -> Promise; pairs = [{item, locus: {n, label}}]
 //       deps = {doc, fetch, store, image}: doc offers getElementById/createElement(/createTextNode),
 //       fetch is the fetch function, store is a palace_store.js createPalaceStore(adapter),
 //       image is the uploaded photo as a data URL (missing -> error in #assoc-status, no POST).
 //       Writes progress "<done> of <total>" to #assoc-status (done counts items with a stored
 //       record) and renders one #associations child per pair: item, locus label, the 8 channels
-//       in KAVE_CHANNELS order (name + text), then the D16 question and answer.
+//       in MULTISENSORY_CHANNELS order (name + text), then the D16 question and answer.
 //       Stored entry per pair under associationKey(item, locus.label): {record, status}.
 //       A failed request (non-2xx or network error) stores nothing for that pair.
 // POST /associate (slice S3b contract; the server answers 400 when image is missing):
@@ -184,11 +184,11 @@ function setup() {
 const stored = (store, item) => store.get(associationKey(item, labelFor(item)));
 
 // Covers: MEM-022
-// Requirement: the association panel lists the 8 KAVE COGS channels in order.
+// Requirement: the association panel lists the 8 multisensory channels in order.
 describe("association channels", () => {
-  test("app.js exports runAssociations and KAVE_CHANNELS in KAVE COGS order", () => {
+  test("app.js exports runAssociations and MULTISENSORY_CHANNELS in 8-sense order", () => {
     assert.equal(typeof app.runAssociations, "function");
-    assert.deepEqual(app.KAVE_CHANNELS, CHANNELS);
+    assert.deepEqual(app.MULTISENSORY_CHANNELS, CHANNELS);
   });
 
   test("index.html has the #assoc-status progress line and #associations panel", () => {
@@ -354,11 +354,11 @@ describe("runAssociations: resume", () => {
 });
 
 // Covers: MEM-022
-// Requirement: the panel shows each item's locus, the 8 KAVE COGS channels in order and the D16
+// Requirement: the panel shows each item's locus, the 8 multisensory channels in order and the D16
 // question and answer, and model text is only ever set via textContent: hostile markup in a
 // record is shown as literal text and never becomes an element.
 describe("association panel rendering", () => {
-  test("panel shows item, locus, 8 channels in KAVE order, then question and answer", async () => {
+  test("panel shows item, locus, 8 channels in multisensory order, then question and answer", async () => {
     const { page, store } = setup();
     const { fn } = answeringFetch();
     await app.runAssociations(pairsOf(1), { doc: page.doc, fetch: fn, store, image: IMAGE });

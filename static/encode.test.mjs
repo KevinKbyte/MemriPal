@@ -1,6 +1,6 @@
 // Covers: MEM-030
 // Requirement: the encode UI runs route review (arrow reorder; drop = confirm then Undo, never a
-// single click) -> generate (resumable) -> walk view (prev/next, scene, 8 KAVE channels); the
+// single click) -> generate (resumable) -> walk view (prev/next, scene, 8 multisensory channels); the
 // "auto" flag (D19) skips review with 0 clicks; "Load demo" runs the fixture palace end to end;
 // image src only from data:image/(png|jpeg|webp) base64 or Blob URLs; model text via textContent.
 // Contract (RED; GREEN implements, ADR 0021):
@@ -26,7 +26,7 @@
 //       stored under associationKey (resume); then POST /scenes per pair (scenes.js runScenes).
 //       Walk view: #walk hidden=false; #walk-step shows "<i> of <N>", item, locus label, the
 //       scene (<img> with a safe src, or the "Scene unavailable" text) and the 8 channels (name +
-//       text, KAVE order); #walk-prev / #walk-next step; disabled at the first / last step.
+//       text, multisensory order); #walk-prev / #walk-next step; disabled at the first / last step.
 //     runDemoPalace({auto}, deps) -> Promise; deps = {doc, fetch, store, loadImage}: GET
 //       /demo/photo.jpg -> POST /loci with those exact bytes -> GET /demo/notes.txt -> POST /split
 //       JSON exactly {photo: <base64 of the /loci data URL>, mode: "notes", text, loci_count:
@@ -310,13 +310,13 @@ describe("runEncode: auto flag and resume", () => {
 
 // Covers: MEM-030
 // Requirement: the walk view steps through the palace with prev/next, showing each step's item,
-// locus, scene and the 8 KAVE channels in order; only safe image srcs reach an <img> and model
+// locus, scene and the 8 multisensory channels in order; only safe image srcs reach an <img> and model
 // text is never parsed as HTML.
 describe("runEncode: walk view", () => {
   const sceneFor = (item) =>
     item === "eggs" ? { tier: 3, reason: "timeout" } : { tier: 1, image: SCENE(item), width: 800, height: 600 };
 
-  test("step 1 shows item, locus, scene and the 8 channels in KAVE order; prev disabled", async () => {
+  test("step 1 shows item, locus, scene and the 8 channels in multisensory order; prev disabled", async () => {
     const { p, store } = setup();
     await api("runEncode")(input({ auto: true }), { doc: p.doc, fetch: flowFetch(sceneFor).fn, store });
     const text = step(p);

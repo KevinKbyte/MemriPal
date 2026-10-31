@@ -1,6 +1,6 @@
 """Contract (MEM-021): `memripal.associate` validates one Spark association record per item.
 
-- `CHANNELS`: the 8 KAVE COGS channel keys, in order.
+- `CHANNELS`: the 8 multisensory channel keys, in order.
 - `ASSOCIATION_SCHEMA`: strict flat json_schema {item, locus, <8 channels>, scene_prompt_details, walk_cue,
   reencode_hint, question, answer}; every property a required string; additionalProperties false.
 - `validate_association(value, item, locus) -> str | None`: None when valid, else a short non-empty reason.
@@ -87,10 +87,10 @@ class CountingBackend:
 
 
 # Covers: MEM-021
-# Requirement: Spark is asked for the flat strict association schema: item, locus, 8 KAVE COGS channels,
+# Requirement: Spark is asked for the flat strict association schema: item, locus, 8 multisensory channels,
 # scene/walk/re-encode text and the D16 why/apply question + answer, all required strings, nothing else.
 class TestAssociationSchema:
-    def test_channels_are_the_eight_kave_cogs_channels(self, assoc):
+    def test_channels_are_the_eight_multisensory_channels(self, assoc):
         assert tuple(assoc.CHANNELS) == CHANNELS
 
     def test_schema_is_flat_strict_and_all_required_strings(self, assoc):
