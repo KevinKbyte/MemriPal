@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.6] - 2026-10-31
+
+### Changed
+
+- Untracked agent scratch directories that were auto-committed, and gitignored them.
+
 ## [0.20.5] - 2026-10-31
 
 ### Added
