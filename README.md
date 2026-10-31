@@ -3,7 +3,7 @@
 MemriPal is a place-based recall coach for speeches, not a study chatbot. It turns any place you know into a memory
 palace for a talk you must deliver (or exam facts, vocabulary). Photograph a familiar space (a room, a library aisle,
 a campus walk); SAM 3.1 segments distinct objects
-into an ordered walking route of loci; Muse Spark splits your study list into items and writes a validated KAVE COGS
+into an ordered walking route of loci; Muse Spark splits your study list into items and writes a validated 8-sense
 association tying each item to its locus; Muse Image renders each scene onto your photo. You then walk the route
 eyes closed and recall aloud; a deterministic matcher (no LLM) checks the Muse Voice Transcribe transcript, marks
 each locus you recall and lists the ones you miss, with per-locus hit rates and chronic misses across rehearsals, so
@@ -25,7 +25,7 @@ Everything in this repo was created during the Meta Global AI Developer Hackatho
 started 2026-10-26 12:24 PM ET per the official Discord announcement, after the 12:00 PM kickoff; the first commit
 `f59adc0` is 12:57 PM ET. Nothing is pre-existing.
 
-Not ours: the Meta models (below), Wikipedia place text and the KAVE COGS method ([Credits](#credits)).
+Not ours: the Meta models (below), Wikipedia place text and Anthony Metivier's sense-channel method ([Credits](#credits)).
 `refs/public/image_8586e3ad.jpeg` is an AI-generated reference image (commit `763a15a`), used by no code or fixture;
 demo fixtures are synthetic (`fixtures/MANIFEST.md`). Scene images are generated at runtime by Muse Image.
 
@@ -61,7 +61,7 @@ All via the Meta Model API (not original work); client in `src/memripal/meta_cli
 
 | Model (API id) | Job | Status |
 | --- | --- | --- |
-| Muse Spark (`muse-spark-1.3`) | Names objects in the photo; splits notes into items; writes the KAVE COGS association per item | built |
+| Muse Spark (`muse-spark-1.3`) | Names objects in the photo; splits notes into items; writes the 8-sense association per item | built |
 | SAM 3.1 (`sam-3.1`) | Segments each object phrase into boxes that become loci | built |
 | Muse Image (`muse-image-1.0`) | Renders each mnemonic scene onto the photo | built |
 | Muse Voice Transcribe (`muse-voice-transcribe-1.0`) | Speech-to-text for eyes-closed spoken recall | built |
@@ -321,7 +321,7 @@ GCP Cloud Run with Secret Manager keys: [docs/runbooks/deploy-gcp.md](docs/runbo
 
 ## Credits
 
-The KAVE COGS association channels follow the method of Anthony Metivier (Magnetic Memory Method), paraphrased; none
+Sense channels adapted from the KAVE COGS method by Anthony Metivier (Magnetic Memory Method), paraphrased; none
 of his material is copied.
 
 Place facts are Wikipedia article summaries, licensed CC BY-SA 4.0
