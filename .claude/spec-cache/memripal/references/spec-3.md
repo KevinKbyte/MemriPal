@@ -478,3 +478,31 @@ PWA; the public Cloud Run URL stays the judges' entry point. Supersedes in part 
   origin -> 0 `Access-Control-Allow-Origin`, `*` never granted, env list replaces defaults.
 
 Tests: tests/test_mobile_shell.py, tests/test_cors.py, scripts/build_mobile_web.test.mjs, static/api_base.test.mjs
+## MEM-050 S3 Station card: quick-taps, name edit, drop/Undo
+
+Map-to-palace plan (`docs/plans/2026-10-31-map-to-palace.md`) slice B5, Part A screen S3.
+Root problem: a walked station needs the user's own sensory notes and a unique, memorable name; a mistaken capture
+must be removable without losing data to one tap. Spark cannot know route uniqueness (the server checks shape only).
+Actors: walker on a 360px phone; `static/station_card.js` `createStationCard({doc, store, routeId, fetch})` ->
+`{show(stationId)}`; `route_store.js` (`renameStation`, `setStationTaps`, `dropStation`/`undoDrop`); `route_capture.js`
+upload.
+- Profile: `show()` fills `#station-name` with the name and `#station-profile` (dl) with Visual/Spatial/Conceptual.
+- Taps: five groups render as buttons with `aria-pressed`: `#tap-sound` (Traffic Birds Water Voices Quiet Music),
+  `#tap-smell` (Food Coffee Flowers Fumes Rain None), `#tap-feel` (Warm Cold Windy Uphill Stairs Shade), `#tap-mood`
+  (Calm Busy Bright Cosy Grand Odd), `#tap-turn` (Straight Left Right Arrive). One value per group; tapping the
+  pressed one clears it. Persisted as `station.taps = {sound?, smell?, feel?, mood?, turn?}` holding the label; shown
+  pressed after reload.
+- Name rule: non-empty, <= 3 words, no digits (B4 shape rule), and not equal (normalized: case/whitespace) to another
+  station's name nor sharing its last word. A bad name shows `#station-name-error` and `#station-save` does not save;
+  the station's own name never clashes with itself; fixing the name hides the error.
+- A Spark name clashing on arrival is shown in the input with the error; capture stays "named", 0 network retries.
+- Capture upload POST /station sends the route's other named station names as header `X-Memripal-Used-Names`, a JSON
+  array (non-ASCII \u-escaped).
+- Drop: `#station-drop` arms (`#station-drop-confirm` + `#station-drop-cancel` shown); cancel disarms with no change;
+  confirm removes; `#station-undo` restores the deep-equal station (same id, taps, position), then hides.
+- No rendered label or card copy contains "captured".
+- Markup: `section#station-card` (starts hidden) holds all 15 S3 ids, each once; `#station-name` text input
+  maxlength 40; `fieldset#station-taps` holds the 5 groups; error, confirm, cancel, undo start hidden.
+- Not in scope: `#station-baseline*` (B8). Not yet wired from `app.js` (no route capture flow exists there yet).
+
+Tests: static/station_card.test.mjs, static/index_markup_routes.test.mjs (MEM-050 block)
