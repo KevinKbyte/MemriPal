@@ -1,0 +1,532 @@
+<title>MemriPal Prototype</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500..700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="styles.css">
+<!-- Loaded up front: they only define MPSched/MPTags/MPReview, and an extra script load at the end of the body lets the #notes
+     fragment scroll race app.js and scroll the notes textarea. -->
+<script src="sched.js"></script>
+<script src="tags.js"></script>
+<script src="review.js"></script>
+
+<svg width="0" height="0" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B9D4E6"/><stop offset="1" stop-color="#E6EDEF"/></linearGradient>
+    <radialGradient id="lampglow"><stop offset="0" stop-color="#FFE7B0" stop-opacity=".55"/><stop offset="1" stop-color="#FFE7B0" stop-opacity="0"/></radialGradient>
+    <radialGradient id="halo"><stop offset="0" stop-color="#FFD27A" stop-opacity=".55"/><stop offset="1" stop-color="#FFD27A" stop-opacity="0"/></radialGradient>
+    <linearGradient id="wallshade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity=".08"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>
+  </defs>
+  <symbol id="room" viewBox="0 0 800 560">
+    <rect width="800" height="440" fill="#CBC2B4"/>
+    <rect width="800" height="440" fill="url(#wallshade)"/>
+    <rect y="440" width="800" height="120" fill="#8A6B50"/>
+    <path d="M0 472H800M0 506H800M0 540H800" stroke="#7A5D45" stroke-width="2"/>
+    <rect y="432" width="800" height="10" fill="#A99C88"/>
+    <ellipse cx="400" cy="500" rx="170" ry="38" fill="#9A4436"/>
+    <ellipse cx="400" cy="500" rx="142" ry="29" fill="none" stroke="#D9A86A" stroke-width="3"/>
+    <ellipse cx="400" cy="500" rx="98" ry="17" fill="#7E3329"/>
+    <rect x="300" y="80" width="170" height="160" fill="#EFEAE1"/>
+    <rect x="310" y="90" width="150" height="140" fill="url(#sky)"/>
+    <rect x="326" y="168" width="40" height="62" fill="#8FA3B3"/>
+    <rect x="394" y="148" width="52" height="82" fill="#7E93A5"/>
+    <path d="M385 90V230M310 160H460" stroke="#EFEAE1" stroke-width="6"/>
+    <rect x="30" y="130" width="110" height="310" fill="#6E513B"/>
+    <rect x="44" y="146" width="82" height="120" fill="#5E4431"/>
+    <rect x="44" y="282" width="82" height="140" fill="#5E4431"/>
+    <circle cx="124" cy="290" r="6" fill="#D9B45A"/>
+    <rect x="160" y="150" width="120" height="290" fill="#4F3B2C"/>
+    <rect x="166" y="156" width="108" height="278" fill="#2E241B"/>
+    <g id="books"></g>
+    <path d="M166 211H274M166 269H274M166 327H274M166 385H274" stroke="#5A4432" stroke-width="6"/>
+    <circle cx="520" cy="120" r="32" fill="#F3EFE7" stroke="#2F2F2F" stroke-width="5"/>
+    <path d="M520 120V98M520 120L534 128" stroke="#2F2F2F" stroke-width="4" stroke-linecap="round"/>
+    <rect x="590" y="90" width="160" height="100" fill="#4A3A2C"/>
+    <rect x="600" y="100" width="140" height="80" fill="#E7C98F"/>
+    <path d="M600 180L640 140L670 165L700 130L740 180Z" fill="#5C7D6A"/>
+    <circle cx="715" cy="118" r="10" fill="#F4E3B5"/>
+    <circle cx="735" cy="260" r="130" fill="url(#lampglow)"/>
+    <path d="M362 380H318L324 440H356Z" fill="#B0603B"/>
+    <g fill="#4E7A49">
+      <ellipse cx="340" cy="330" rx="14" ry="50"/>
+      <ellipse cx="316" cy="345" rx="12" ry="42" transform="rotate(-30 316 345)"/>
+      <ellipse cx="364" cy="345" rx="12" ry="42" transform="rotate(30 364 345)"/>
+    </g>
+    <g fill="#3C6339">
+      <ellipse cx="302" cy="366" rx="10" ry="30" transform="rotate(-60 302 366)"/>
+      <ellipse cx="378" cy="366" rx="10" ry="30" transform="rotate(60 378 366)"/>
+    </g>
+    <rect x="540" y="300" width="130" height="84" rx="18" fill="#356170"/>
+    <rect x="555" y="368" width="100" height="48" rx="10" fill="#3F6F80"/>
+    <rect x="520" y="350" width="40" height="82" rx="14" fill="#2C5260"/>
+    <rect x="650" y="350" width="40" height="82" rx="14" fill="#2C5260"/>
+    <rect x="530" y="428" width="8" height="12" fill="#2A1E15"/>
+    <rect x="672" y="428" width="8" height="12" fill="#2A1E15"/>
+    <path d="M705 230H765L753 275H717Z" fill="#E9D6A8"/>
+    <rect x="733" y="275" width="4" height="160" fill="#2F2F2F"/>
+    <ellipse cx="735" cy="438" rx="22" ry="5" fill="#2F2F2F"/>
+    <rect x="405" y="372" width="100" height="8" fill="#5A4432"/>
+    <rect x="415" y="380" width="6" height="60" fill="#4A3828"/>
+    <rect x="489" y="380" width="6" height="60" fill="#4A3828"/>
+    <path d="M434 336H462V366A6 6 0 0 1 456 372H440A6 6 0 0 1 434 366Z" fill="#EDE6D9"/>
+    <path d="M462 344H467A7 7 0 0 1 467 358H462" fill="none" stroke="#EDE6D9" stroke-width="4"/>
+    <rect x="480" y="248" width="20" height="30" rx="3" fill="#EFEAE1" stroke="#A99C88" stroke-width="2"/>
+    <rect x="487" y="255" width="6" height="10" rx="2" fill="#A99C88"/>
+    <path d="M58 452H110L104 500H64Z" fill="#5F7078"/>
+    <path d="M58 452H110" stroke="#46545B" stroke-width="5"/>
+    <rect x="648" y="0" width="4" height="30" fill="#2F2F2F"/>
+    <path d="M636 30H664L676 60H624Z" fill="#E9D6A8"/>
+    <ellipse cx="650" cy="63" rx="14" ry="5" fill="#F4E3B5"/>
+    <rect x="186" y="76" width="68" height="48" fill="#3A2C20"/>
+    <rect x="192" y="82" width="56" height="36" fill="#B9C7CF"/>
+    <path d="M192 118L210 100L222 110L234 96L248 118Z" fill="#6F8A76"/>
+  </symbol>
+
+  <symbol id="i-camera" viewBox="0 0 24 24"><path d="M3 8h3l2-3h8l2 3h3v11H3z"/><circle cx="12" cy="13" r="4"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/></symbol>
+  <symbol id="i-loader" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/></symbol>
+  <symbol id="i-ring" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" stroke-dasharray="3 3"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.6-4.5L4 8M4 4v4h4M4 13a8 8 0 0 0 14.6 4.5L20 16M20 20v-4h-4"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M3 3l18 18"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-replay" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l5 3.5-5 3.5z"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></symbol>
+  <symbol id="i-walk" viewBox="0 0 24 24"><circle cx="13" cy="4.5" r="1.8"/><path d="M10 21l2-6-3-3 1-5 4 3 3 1M9 12l-2 3M12 15l3 6"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-palace" viewBox="0 0 24 24"><path d="M3 10l9-6 9 6M5 10v9M19 10v9M9 19v-5h6v5M3 19h18"/><circle cx="12" cy="9.5" r="1.3"/></symbol>
+
+  <symbol id="i-ch-kinesthetic" viewBox="0 0 24 24"><path d="M8 13V5a1.5 1.5 0 0 1 3 0v6M11 11V4a1.5 1.5 0 0 1 3 0v7M14 11V6a1.5 1.5 0 0 1 3 0v8a6 6 0 0 1-6 6h-1a6 6 0 0 1-5-3l-2-4a1.5 1.5 0 0 1 2.5-1.5L8 14"/></symbol>
+  <symbol id="i-ch-auditory" viewBox="0 0 24 24"><path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2"/></symbol>
+  <symbol id="i-ch-visual" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-ch-emotional" viewBox="0 0 24 24"><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/></symbol>
+  <symbol id="i-ch-conceptual" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></symbol>
+  <symbol id="i-ch-olfactory" viewBox="0 0 24 24"><path d="M3 8h10a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h7"/></symbol>
+  <symbol id="i-ch-gustatory" viewBox="0 0 24 24"><path d="M12 3c-2 0-3 2-3 4s1 3.5 3 3.5 3-1.5 3-3.5-1-4-3-4zM12 10.5V21"/></symbol>
+  <symbol id="i-ch-spatial" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></symbol>
+
+  <symbol id="m-1" viewBox="0 0 24 24"><path d="M3 8h11l3 2v3l-3 2H3zM17 11.5h4M6 15l-1 5h4l1-5"/></symbol>
+  <symbol id="m-2" viewBox="0 0 24 24"><path d="M7 3v18M17 3v18M7 7h10M7 12h10M7 17h10"/></symbol>
+  <symbol id="m-3" viewBox="0 0 24 24"><circle cx="6" cy="16" r="3.5"/><circle cx="18" cy="16" r="3.5"/><path d="M6 16l4-7h5l3 7M10 9l2 7M14 6h3"/></symbol>
+  <symbol id="m-4" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18M6 14.5h5M15 14.5h3"/></symbol>
+  <symbol id="m-5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15 9h-4a2 2 0 0 0 0 4h2a2 2 0 0 1 0 4H9M12 6.5v1.5M12 16.5V18"/></symbol>
+  <symbol id="m-6" viewBox="0 0 24 24"><rect x="3" y="3" width="13" height="13" rx="1"/><rect x="8" y="8" width="13" height="13" rx="1" stroke-dasharray="2.5 2"/></symbol>
+  <symbol id="m-7" viewBox="0 0 24 24"><circle cx="6" cy="9" r="2.2"/><circle cx="12" cy="7.5" r="2.2"/><circle cx="18" cy="9" r="2.2"/><path d="M2.5 19c0-3 1.6-5 3.5-5s3.5 2 3.5 5M8.5 17c0-3 1.6-5.5 3.5-5.5s3.5 2.5 3.5 5.5M14.5 19c0-3 1.6-5 3.5-5s3.5 2 3.5 5"/></symbol>
+  <symbol id="m-8" viewBox="0 0 24 24"><path d="M4 20L18 6M15 4l5 5M18 6l2-2M4 20c2-4 5-4 7-7"/></symbol>
+  <symbol id="m-9" viewBox="0 0 24 24"><path d="M5 9h11v5a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5zM16 10.5h2a2 2 0 0 1 0 4h-2M8.5 3.5c-.8 1 .8 2 0 3M12.5 3.5c-.8 1 .8 2 0 3"/></symbol>
+  <symbol id="m-10" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 12.5l3 3 5-6.5"/></symbol>
+</svg>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="brand">
+      <svg class="i brand-mark" aria-hidden="true"><use href="#i-palace"></use></svg>
+      <span>MemriPal</span>
+      <span class="palace-name">&middot; Elm Street tool library talk</span>
+    </div>
+    <div class="jump">
+      <label for="jump" class="sr-only">Go to screen</label>
+      <select id="jump"></select>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <div class="rail">
+    <nav aria-label="Palace steps">
+      <ol id="rail-list"></ol>
+    </nav>
+    <nav class="rail-practice" aria-label="Practice">
+      <p class="rail-h">Practice</p>
+      <ol><li><a href="#review" id="rail-review"><svg class="i" aria-hidden="true"><use href="#i-refresh"></use></svg>Review<span class="rail-due" id="rail-due"></span></a></li></ol>
+    </nav>
+    <p class="rail-note"><svg class="i" aria-hidden="true"><use href="#i-lock"></use></svg><span>Saved only in this browser.</span></p>
+  </div>
+
+  <main id="main">
+    <!-- 1 UPLOAD -->
+    <section class="screen" id="s1" aria-labelledby="t1" hidden>
+      <div class="sh">
+        <p class="eyebrow">Step 1 of 8 &middot; Photo</p>
+        <h1 id="t1" tabindex="-1">Photograph a room you know by heart</h1>
+        <p class="lede">MemriPal finds 10 to 12 distinct objects in your photo. Each one becomes a stop on a walk, and each stop holds one point of your speech.</p>
+      </div>
+      <div class="statebar" data-for="1"></div>
+
+      <div class="banner" data-st="locked" role="note">
+        <div class="banner-row">
+          <svg class="i" aria-hidden="true"><use href="#i-lock"></use></svg>
+          <p><strong>Live mode needs a passcode - or try Load demo.</strong> You opened a public link, so photo analysis is locked.</p>
+        </div>
+        <form class="pass-form" id="pass-form" novalidate>
+          <label for="passcode">Passcode</label>
+          <div class="inline-field">
+            <input id="passcode" type="password" autocomplete="off" aria-describedby="pass-hint pass-err">
+            <button class="btn" type="submit">Unlock live mode</button>
+          </div>
+          <p id="pass-hint" class="hint">Ask the person who shared this link. Any passcode works in this prototype.</p>
+          <p id="pass-err" class="field-err" hidden>Enter the passcode to unlock live mode.</p>
+        </form>
+      </div>
+      <div class="banner ok" data-st="live" role="status">
+        <svg class="i" aria-hidden="true"><use href="#i-check"></use></svg>
+        <span>Live mode unlocked for this visit.</span>
+      </div>
+
+      <div class="panel" data-st="locked live">
+        <div class="notice" data-st="live">
+          <svg class="i" aria-hidden="true"><use href="#i-info"></use></svg>
+          <p><strong>Your photo is sent to Meta's AI APIs to find places in it.</strong> Location and camera details are removed first. Everything else stays in this browser.</p>
+        </div>
+        <input type="file" id="photo" class="file-input" accept="image/*" capture="environment" aria-describedby="photo-hint">
+        <label for="photo" class="dropzone">
+          <svg class="i" aria-hidden="true"><use href="#i-camera"></use></svg>
+          <span class="dz-title">Take a photo of the room</span>
+          <span class="dz-sub" id="photo-hint">Opens the camera on your phone. Stand in a corner so most of the room is in frame.</span>
+        </label>
+        <p class="locked-note" data-st="locked"><svg class="i" aria-hidden="true"><use href="#i-lock"></use></svg>Unlock live mode to use your own photo.</p>
+        <div class="or"><span>or</span></div>
+        <button class="btn btn-demo" type="button" data-act="demo"><svg class="i" aria-hidden="true"><use href="#i-replay"></use></svg>Load demo <span class="replay">Recorded replay</span></button>
+      </div>
+
+      <div class="panel" data-st="locked live">
+        <h2>What makes a good palace room</h2>
+        <ul class="tips">
+          <li><svg class="i" aria-hidden="true"><use href="#i-check"></use></svg><span>A room you could walk through with your eyes shut: your living room, office or kitchen.</span></li>
+          <li><svg class="i" aria-hidden="true"><use href="#i-check"></use></svg><span>Furniture and objects with clear, different shapes. Ten chairs make a poor palace.</span></li>
+          <li><svg class="i" aria-hidden="true"><use href="#i-check"></use></svg><span>Daylight or every lamp on, and nobody moving through the shot.</span></li>
+        </ul>
+      </div>
+
+      <div class="panel" data-st="finding" aria-live="polite">
+        <div class="frame ar-room scan" id="finding-frame">
+          <svg class="photo" viewBox="0 0 800 560" aria-hidden="true"><use href="#room"></use></svg>
+          <img id="user-photo" alt="" hidden>
+          <div class="scanline" aria-hidden="true"></div>
+        </div>
+        <ol class="steps">
+          <li class="done"><svg class="i" aria-hidden="true"><use href="#i-check"></use></svg>Removed location and camera details</li>
+          <li class="active"><svg class="i spin" aria-hidden="true"><use href="#i-loader"></use></svg>Sending to Meta's AI APIs to find places</li>
+          <li><svg class="i" aria-hidden="true"><use href="#i-ring"></use></svg>Choosing 10 to 12 distinct objects</li>
+        </ol>
+        <p class="hint">This usually takes 10 to 20 seconds.</p>
+      </div>
+
+      <div class="alert" data-st="error" role="alert">
+        <svg class="i" aria-hidden="true"><use href="#i-alert"></use></svg>
+        <div>
+          <p><strong>Only 6 distinct places found.</strong> A walk needs at least 10. Step back so more furniture is in frame, or turn on more lights, then try again.</p>
+          <div class="btn-row">
+            <input type="file" id="photo2" class="file-input" accept="image/*" capture="environment">
+            <label for="photo2" class="btn btn-primary"><svg class="i" aria-hidden="true"><use href="#i-camera"></use></svg>Retake photo</label>
+            <button class="btn" type="button" data-act="demo">Load demo</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2 LOCI -->
+    <section class="screen" id="s2" aria-labelledby="t2" hidden>
+      <div class="sh">
+        <p class="eyebrow">Step 2 of 8 &middot; Places</p>
+        <h1 id="t2" tabindex="-1">10 places found</h1>
+        <p class="lede" id="loci-lede">Numbered in walking order. Start at the door and go clockwise around the room.</p>
+        <div class="row"><span class="replay"><svg class="i" aria-hidden="true"><use href="#i-replay"></use></svg>Recorded replay</span><span class="replay" id="pref-badge" hidden><svg class="i" aria-hidden="true"><use href="#i-check"></use></svg>Pre-sorted using your preferences</span></div>
+      </div>
+      <div class="statebar" data-for="2"></div>
+      <div class="notice" id="proto-photo-note" hidden>
+        <svg class="i" aria-hidden="true"><use href="#i-info"></use></svg>
+        <p>This prototype has no backend, so your photo is swapped for the recorded demo room.</p>
+      </div>
+      <div class="panel">
+        <div class="frame ar-room" id="loci-fig" role="img" aria-label="Room photo with 10 numbered outlines."></div>
+        <div class="switch-row">
+          <button class="switch" type="button" role="switch" id="sw-labels" aria-checked="true" aria-labelledby="sw-labels-t" data-act="labels"><span class="knob"></span></button>
+          <span class="switch-text" id="sw-labels-t"><strong>Labels on photo</strong></span>
+        </div>
+        <div class="switch-row" data-st="found">
+          <button class="switch" type="button" role="switch" id="sw-others" aria-checked="false" aria-labelledby="sw-others-t" aria-describedby="sw-others-d" data-act="others"><span class="knob"></span></button>
+          <span class="switch-text"><strong id="sw-others-t">Show other objects</strong><span id="sw-others-d">5 more objects the scan found</span></span>
+        </div>
+        <p class="sr-only" aria-live="polite" id="loci-live"></p>
+        <div class="alert" data-st="toofew" role="alert">
+          <svg class="i" aria-hidden="true"><use href="#i-alert"></use></svg>
+          <div>
+            <p><strong>Only 6 places found. You need at least 10.</strong> Retake from a corner so more of the room shows, or load the demo.</p>
+            <div class="btn-row"><a class="btn btn-primary" href="#photo">Retake photo</a><button class="btn" type="button" data-act="demo">Load demo</button></div>
+          </div>
+        </div>
+        <ol class="loci-list" id="loci-list" data-st="found" aria-label="Places in walking order"></ol>
+      </div>
+      <div class="panel" data-st="found">
+        <div class="switch-row">
+          <button class="switch" type="button" role="switch" id="sw-learn" aria-checked="false" aria-labelledby="sw-learn-t" aria-describedby="sw-learn-d" data-act="learn"><span class="knob"></span></button>
+          <span class="switch-text"><strong id="sw-learn-t">Keep my room photos and learn how I arrange places</strong><span id="sw-learn-d">Off: photos are not kept. In this prototype everything stays in this browser.</span></span>
+        </div>
+        <div id="learn-card"></div>
+      </div>
+      <div class="actions">
+        <a class="btn" href="#photo"><svg class="i" aria-hidden="true"><use href="#i-camera"></use></svg>Retake photo</a>
+        <a class="btn btn-primary" href="#notes" data-st="found">Use these 10 places<svg class="i" aria-hidden="true"><use href="#i-right"></use></svg></a>
+      </div>
+    </section>
+
+    <!-- 3 NOTES -->
+    <section class="screen" id="s3" aria-labelledby="t3" hidden>
+      <div class="sh">
+        <p class="eyebrow">Step 3 of 8 &middot; Notes</p>
+        <h1 id="t3" tabindex="-1">Paste your speech notes</h1>
+        <p class="lede">MemriPal pulls out up to 12 key points in the order you'll say them. Each keeps the exact words from your notes, so you can check it.</p>
+      </div>
+      <div class="statebar" data-for="3"></div>
+      <div class="panel">
+        <div class="tabs" role="tablist" aria-label="How to add your points">
+          <button role="tab" id="tab-paste" aria-selected="true" aria-controls="panel-paste" type="button" data-act="tab" data-tab="paste">Paste notes</button>
+          <button role="tab" id="tab-list" aria-selected="false" aria-controls="panel-list" tabindex="-1" type="button" data-act="tab" data-tab="list">Type a list</button>
+        </div>
+        <div role="tabpanel" id="panel-paste" aria-labelledby="tab-paste" class="screen" style="gap:12px">
+          <label for="notes"><strong>Speech notes</strong> <span class="hint">(up to 20 KB)</span></label>
+          <textarea id="notes" rows="9" aria-describedby="notes-size"></textarea>
+          <div class="meta-row">
+            <span class="size" id="notes-size">0 KB of 20 KB</span>
+            <button class="btn btn-primary" type="button" data-act="extract" id="extract-btn"><svg class="i" aria-hidden="true"><use href="#i-refresh"></use></svg>Find key points</button>
+          </div>
+          <div class="alert" data-st="toolarge" role="alert">
+            <svg class="i" aria-hidden="true"><use href="#i-alert"></use></svg>
+            <div><p><strong>Your notes are 23.4 KB. The limit is 20 KB.</strong> Paste only this speech, or cut repeated sections and sources.</p></div>
+          </div>
+        </div>
+        <div role="tabpanel" id="panel-list" aria-labelledby="tab-list" class="screen" style="gap:12px" hidden>
+          <p class="hint">Rather type the points yourself? Up to 12 items, 100 characters each. Typed items have no quote to check, so they go straight to scenes.</p>
+          <ol class="typed" id="typed"></ol>
+          <div class="row"><button class="btn" type="button" data-act="add-typed" id="add-typed">Add an item</button><span class="hint" id="typed-count"></span></div>
+        </div>
+      </div>
+
+      <div class="panel" data-st="ready toolarge">
+        <div class="gen-head">
+          <h2>Key points</h2>
+          <p class="summary-line" id="kp-summary" aria-live="polite"></p>
+        </div>
+        <ol class="kp-list" id="kp-list"></ol>
+      </div>
+      <div class="empty" data-st="empty">
+        <strong>No key points yet</strong>
+        <p>Paste your notes above and choose Find key points. Bullet points, a script or a rough outline all work.</p>
+      </div>
+      <div class="actions">
+        <a class="btn" href="#places"><svg class="i" aria-hidden="true"><use href="#i-left"></use></svg>Places</a>
+        <a class="btn btn-primary" href="#scenes" id="notes-next">Make scenes<svg class="i" aria-hidden="true"><use href="#i-right"></use></svg></a>
+      </div>
+    </section>
+
+    <!-- 4 SCENES -->
+    <section class="screen" id="s4" aria-labelledby="t4" hidden>
+      <div class="sh">
+        <p class="eyebrow">Step 4 of 8 &middot; Scenes</p>
+        <h1 id="t4" tabindex="-1">A scene at every place</h1>
+        <p class="lede">Each point is pinned to one object with a vivid scene you can see, hear, smell and feel. If an image can't be made, you still get a clear outline of the place.</p>
+        <div class="row"><span class="replay"><svg class="i" aria-hidden="true"><use href="#i-replay"></use></svg>Recorded replay</span></div>
+      </div>
+      <div class="panel">
+        <div class="stop-picker" role="group" aria-label="Choose a stop" id="s4-stops"></div>
+        <div class="seg" role="group" aria-label="Preview render tier" id="s4-tiers"></div>
+        <div id="s4-view"></div>
+      </div>
+      <div class="panel">
+        <h2>All scenes</h2>
+        <ul class="scene-grid" id="scene-grid"></ul>
+        <dl class="tiers">
+          <div><dt>1 &middot; Whole-photo scene</dt><dd>The scene is painted into your photo. Used when the object is large enough to carry it.</dd></div>
+          <div><dt>2 &middot; Scene card</dt><dd>A close crop of the object beside its scene. Used for small objects like a clock or a mug.</dd></div>
+          <div><dt>3 &middot; Outline view</dt><dd>Your photo with the object outlined, numbered and labelled. Used whenever an image fails.</dd></div>
+        </dl>
+      </div>
+      <div class="actions">
+        <a class="btn" href="#notes"><svg class="i" aria-hidden="true"><use href="#i-left"></use></svg>Notes</a>
+        <a class="btn btn-primary" href="#route" id="scenes-next">Review the route<svg class="i" aria-hidden="true"><use href="#i-right"></use></svg></a>
+      </div>
+    </section>
+
+    <!-- 5 ROUTE -->
+    <section class="screen" id="s5" aria-labelledby="t5" hidden>
+      <div class="sh">
+        <p class="eyebrow">Step 5 of 8 &middot; Route</p>
+        <h1 id="t5" tabindex="-1">Check the route</h1>
+        <p class="lede">Points follow the walk from stop 1 to the last stop. Move a point and it lands on a different object, so that scene is made again.</p>
+      </div>
+      <div class="statebar" data-for="5"></div>
+      <div class="panel">
+        <div class="switch-row">
+          <button class="switch" type="button" role="switch" id="sw-auto" aria-checked="false" aria-labelledby="sw-auto-t" aria-describedby="sw-auto-d" data-act="auto"><span class="knob"></span></button>
+          <span class="switch-text"><strong id="sw-auto-t">Auto: skip this review</strong><span id="sw-auto-d">Next time, scenes go straight from notes to generating.</span></span>
+        </div>
+      </div>
+      <ol class="route" id="route" data-st="list" aria-label="Points in walking order"></ol>
+      <div class="empty" data-st="empty">
+        <strong>No points left on the route</strong>
+        <p>Undo the last removal, or go back to your notes to find key points again.</p>
+        <a class="btn" href="#notes">Back to notes</a>
+      </div>
+      <p class="sr-only" aria-live="polite" id="route-live"></p>
+      <div class="actions">
+        <a class="btn" href="#scenes"><svg class="i" aria-hidden="true"><use href="#i-left"></use></svg>Scenes</a>
+        <a class="btn btn-primary" href="#walk">Generate scenes<svg class="i" aria-hidden="true"><use href="#i-right"></use></svg></a>
+      </div>
+    </section>
+
+    <!-- 6 GENERATE + WALK -->
+    <section class="screen" id="s6" aria-labelledby="t6" hidden>
+      <div class="sh">
+        <p class="eyebrow">Step 6 of 8 &middot; Walk</p>
+        <h1 id="t6" tabindex="-1">Generate, then walk the palace</h1>
+        <p class="lede">Scenes are saved one by one. If you reload or lose signal, MemriPal makes only the ones that are missing or failed.</p>
+      </div>
+      <div class="statebar" data-for="6"></div>
+      <div class="panel" id="gen-panel">
+        <div class="notice" id="resume-note" hidden>
+          <svg class="i" aria-hidden="true"><use href="#i-refresh"></use></svg>
+          <p id="resume-text"></p>
+        </div>
+        <div class="alert" data-st="offline" role="alert">
+          <svg class="i" aria-hidden="true"><use href="#i-alert"></use></svg>
+          <div><p><strong>Connection lost. Generating is paused.</strong> Finished scenes are saved. When you're back online, choose Resume and only the rest are made.</p></div>
+        </div>
+        <div class="gen-head">
+          <p class="gen-count" id="gen-count" aria-live="polite"></p>
+          <div class="btn-row">
+            <span class="replay"><svg class="i" aria-hidden="true"><use href="#i-replay"></use></svg>Recorded replay</span>
+            <button class="btn btn-primary" type="button" id="gen-btn" data-act="gen"></button>
+          </div>
+        </div>
+        <div class="bar" role="progressbar" id="gen-bar" aria-label="Scenes ready" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0"><span></span></div>
+        <ol class="gen-list" id="gen-list"></ol>
+        <p class="hint">Try reloading the page while it runs. Progress is kept in this browser.</p>
+      </div>
+      <div class="panel">
+        <h2>Walk the palace</h2>
+        <div class="walk" id="walk"></div>
+      </div>
+      <div class="actions">
+        <a class="btn" href="#route" id="walk-back"><svg class="i" aria-hidden="true"><use href="#i-left"></use></svg>Route</a>
+        <a class="btn btn-primary" href="#recite"><svg class="i" aria-hidden="true"><use href="#i-mic"></use></svg>Recite out loud</a>
+      </div>
+    </section>
+
+    <!-- 7 RECALL -->
+    <section class="screen" id="s7" aria-labelledby="t7" hidden>
+      <div class="sh">
+        <p class="eyebrow">Step 7 of 8 &middot; Recite</p>
+        <h1 id="t7" tabindex="-1">Say your speech out loud</h1>
+        <p class="lede">Walk the room in your head and speak. Each place lights up when you say its point.</p>
+      </div>
+      <div class="statebar" data-for="7"></div>
+      <div class="panel">
+        <div class="switch-row">
+          <button class="switch" type="button" role="switch" id="sw-hide" aria-checked="false" aria-labelledby="sw-hide-t" aria-describedby="sw-hide-d" data-act="hide"><span class="knob"></span></button>
+          <span class="switch-text"><strong id="sw-hide-t">Hide palace</strong><span id="sw-hide-d">Blurs scenes and labels so you recall from memory, not from the screen.</span></span>
+        </div>
+        <ol class="tiles" id="tiles" aria-label="Places and recall status"></ol>
+      </div>
+      <div class="panel mic-panel" data-st="ready listening">
+        <button class="mic" type="button" id="mic" aria-pressed="false" data-act="mic"><svg class="i" aria-hidden="true"><use href="#i-mic"></use></svg><span class="sr-only" id="mic-sr">Start reciting</span></button>
+        <p class="mic-label" id="mic-label" aria-hidden="true">Tap to start reciting</p>
+        <div class="mic-meta">
+          <span class="live" data-st="listening">LIVE</span>
+          <span class="replay"><svg class="i" aria-hidden="true"><use href="#i-replay"></use></svg>Recorded replay</span>
+          <span class="timer" id="timer" data-st="listening">0:00</span>
+        </div>
+        <div class="strip" id="strip" aria-label="Live transcript"></div>
+        <p class="privacy"><svg class="i" aria-hidden="true"><use href="#i-lock"></use></svg>Audio is transcribed, never saved.</p>
+        <p class="hint" data-st="ready">This prototype plays a recorded recital instead of using your microphone.</p>
+      </div>
+      <div class="panel" data-st="denied">
+        <div class="alert" role="alert">
+          <svg class="i" aria-hidden="true"><use href="#i-alert"></use></svg>
+          <div><p><strong>Microphone access is blocked.</strong> Type the speech from memory instead. The palace checks typed words the same way. To use your voice, allow the microphone in your browser's site settings.</p></div>
+        </div>
+        <label for="typed-recall"><strong>Your speech, from memory</strong></label>
+        <textarea id="typed-recall" rows="6" placeholder="Start at the door..."></textarea>
+        <div class="row"><button class="btn btn-primary" type="button" data-act="check-typed">Check my recall</button></div>
+        <p class="privacy" style="justify-content:flex-start"><svg class="i" aria-hidden="true"><use href="#i-lock"></use></svg>Typed text is saved only in this browser.</p>
+      </div>
+      <div data-st="finished" id="end" class="screen"></div>
+      <p class="sr-only" aria-live="assertive" id="recall-live"></p>
+      <div class="actions">
+        <a class="btn" href="#walk"><svg class="i" aria-hidden="true"><use href="#i-left"></use></svg>Walk</a>
+        <a class="btn btn-primary" href="#history">History<svg class="i" aria-hidden="true"><use href="#i-right"></use></svg></a>
+      </div>
+    </section>
+
+    <!-- 8 HISTORY -->
+    <section class="screen" id="s8" aria-labelledby="t8" hidden>
+      <div class="sh">
+        <p class="eyebrow">Step 8 of 8 &middot; History</p>
+        <h1 id="t8" tabindex="-1">Rehearsal history</h1>
+        <p class="lede">See what you said against what's in the palace, and which points keep slipping.</p>
+      </div>
+      <div class="statebar" data-for="8"></div>
+      <div data-st="runs" class="screen">
+        <div class="panel">
+          <div class="gen-head"><h2>Runs</h2><span class="replay"><svg class="i" aria-hidden="true"><use href="#i-replay"></use></svg>Recorded replay</span></div>
+          <ul class="runs" id="runs"></ul>
+        </div>
+        <div class="panel">
+          <h2 id="cmp-title">What you said vs what's in the palace</h2>
+          <p class="legend"><span><mark style="background:var(--lamp-soft);color:var(--ink);border-bottom:2px solid var(--lamp-ink)">Highlighted</mark> words match your notes.</span></p>
+          <ol class="cmp" id="cmp"></ol>
+        </div>
+        <div class="panel">
+          <h2>Hit rate by point</h2>
+          <div id="hits-sum"></div>
+          <ol class="hits" id="hits"></ol>
+        </div>
+      </div>
+      <div class="empty" data-st="empty">
+        <strong>No rehearsals yet</strong>
+        <p>Recite your speech once and the comparison and hit rates show up here.</p>
+        <a class="btn btn-primary" href="#recite"><svg class="i" aria-hidden="true"><use href="#i-mic"></use></svg>Recite now</a>
+      </div>
+    </section>
+
+    <!-- 9 REVIEW -->
+    <section class="screen" id="s9" aria-labelledby="t9" hidden>
+      <div class="sh">
+        <p class="eyebrow">Practice &middot; Review</p>
+        <h1 id="t9" tabindex="-1">Review your palaces</h1>
+        <p class="lede">A few minutes a day. Reviews are spaced out so every point is fresh on the day it counts.</p>
+      </div>
+      <div class="statebar" data-for="9"></div>
+      <div data-st="list" data-rv-state="list" class="screen" id="rv-list"></div>
+      <div data-st="session" data-rv-state="session" class="screen" id="rv-session"></div>
+      <div data-st="done" data-rv-state="done" class="screen" id="rv-done"></div>
+      <div class="empty" data-st="empty" data-rv-state="empty">
+        <strong>No palaces yet</strong>
+        <p>Build a palace from a room photo and your speech notes, then come back here to review it.</p>
+        <a class="btn btn-primary" href="#photo"><svg class="i" aria-hidden="true"><use href="#i-camera"></use></svg>Build a palace</a>
+      </div>
+      <p class="sr-only" aria-live="polite" id="rv-live"></p>
+    </section>
+
+    <footer class="foot">
+      <p><svg class="i" aria-hidden="true"><use href="#i-lock"></use></svg><span>Your palace is saved only in this browser: the photo (with location and camera details removed), scenes, notes and rehearsal transcripts. Audio is never saved. If you turn on Learn my preferences, room photos and your place edits are kept too.</span></p>
+      <div id="reset-area" class="row"><button class="btn btn-quiet" type="button" data-act="reset">Reset this prototype</button></div>
+    </footer>
+  </main>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="app.js"></script>
