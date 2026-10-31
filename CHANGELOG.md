@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.8] - 2026-10-31
+
+### Added
+
+- Capacitor 8 Android shell: build:mobile bundles static/ into www/, API base via MEMRIPAL_API_BASE, native
+  meta CSP, CORS module; ADR 0032 (MEM-063).
+
 ## [0.20.7] - 2026-10-31
 
 ### Added
