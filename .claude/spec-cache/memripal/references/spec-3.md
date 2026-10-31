@@ -274,3 +274,59 @@ navigation, Review and tags stay out. `docs/design/v6/` is unchanged. The live C
 
 Tests: static/style_v6.test.mjs, static/index_markup.test.mjs, static/style_v6_components.test.mjs,
 static/theme_painterly.test.mjs, static/rehearsals.test.mjs, static/layout.test.mjs, tests/test_assets_wiring.py
+
+## MEM-061 Chunked mnemonics per station (PLANNED)
+
+PLANNED, not built: no code adopts it. An ADR in `docs/decisions/` is owed in the change that adopts chunking.
+Changes MEM-020 POST /split (notes mode returns 1..min(12, loci_count) points: up to one key point per station) and
+MEM-021 (one association record per (item, locus) pair): a station instead holds one mnemonic or acronym packing
+>= 1 point. Kev 2026-10-31: "against what user desires to remember. So user can create routes on the map, and then
+when they want to memorize something, they can paste what they want to memorize, and meta models can break down the
+information into key points/acronyms/mnemonics, and hook it memorably across the loci. The mnemonic translation is a
+way to chunk information so more info can be stored in each loci".
+- Flow: user creates a route on the map, pastes the text to memorize; Muse Spark breaks it into key points/acronyms/
+  mnemonics and packs each station's points into one mnemonic or acronym hooked across the loci.
+- UI (route UX design): each association card shows the mnemonic (`.assoc-chunk`) and the points it packs
+  (`ul.assoc-points`), or `p.assoc-item` when the station holds a single point; then the 8 channels (MEM-021
+  `CHANNELS`). `#list-notes` label: "Paste what you want to remember. Muse Spark breaks it into key points and packs
+  them into a mnemonic or acronym at each station, so one station can hold more than one point."
+- At adoption, recheck MEM-042 I1 (points per rehearsal <= 12) and I3 (record = exactly the 15 `associate.py`
+  `FIELDS`) against the chunk record shape, so backups still round-trip (R1).
+- Accept: a station card renders >= 2 points (`ul.assoc-points` li count) under one `.assoc-chunk`; a single-point
+  station renders 1 `p.assoc-item` and 0 `.assoc-chunk`; every card renders the 8 channels after its points; notes
+  with more points than stations -> every returned point in exactly 1 station card, 0 dropped; every `.assoc-chunk`
+  text non-blank; `#list-notes` label equals the quoted text; model text via textContent only (MEM-042 I6); ADR
+  committed in the adopting change.
+
+## MEM-062 Place facts as hooks (opt-in, landmark positions only) (PLANNED)
+
+PLANNED, not built: no code adopts it. An ADR in `docs/decisions/` is owed in the change that adopts place facts.
+Builds on MEM-025 (ADR [0022](../../../../docs/decisions/0022-opt-in-place-context-server-lookup.md)); when built,
+supersedes in part MEM-025 a): toggle placement and label, and the coordinate source (photo EXIF GPS /
+`navigator.geolocation` -> station landmark position). Kev 2026-10-31: "historical significance can now play a good
+part in it if user route crosses with historical landmarks it can help with the generation of the memorable KAVE COGS
+hooks to the loci" / "it doesnt need to just be historical significance, there can be fun facts about that location
+that ties in with the memory" / "we can have a toggle in the user settings if they want to opt in. and off by default.
+The location will also not even be exact location coords, it'll be at the landmarks shown by the map solution we
+choose".
+- Behaviour: a route station at or near a landmark with historical significance, or a fun fact about the location
+  that ties in with what is being remembered -> the model uses it to make that station's KAVE COGS channel hooks
+  (MEM-021 `CHANNELS`) to the locus.
+- Setting: opt-in, OFF by default. `#place-toggle` lives in S1 `#routes-settings` next to `#passcode` and `#auto`;
+  `#place-typed` and `#places` stay in S5 `#place-settings`. Toggle label: "Look up place facts for my stations (off
+  by default): sends each station's landmark position, not your exact location, to Wikipedia through MemriPal's
+  server."
+- Egress: only the station's landmark position from the chosen map source, never the user's exact GPS coordinates,
+  via MemriPal's server to Wikipedia GeoSearch.
+- Card: `div.assoc-place-fact` with a `span.model-chip` "Muse Spark" and a `p.credit` "Place facts: Wikipedia, CC
+  BY-SA".
+- Blockers: (a) map/landmark source not chosen (ADR pending); (b) the ADR 0022 server lookup takes photo EXIF/device
+  coordinates: code must switch to landmark positions before the privacy copy is true; (c)
+  `docs/plans/2026-10-31-map-to-palace.md` assumption A1 (station coordinates from EXIF GPS or browser geolocation)
+  must be reconciled.
+- Accept: fresh profile -> `#place-toggle` unchecked, inside `#routes-settings`; `#place-typed` and `#places` inside
+  `#place-settings`; toggle off -> 0 requests to the place lookup, 0 geolocation prompts; toggle on -> request payload
+  holds landmark id/position only, 0 raw device lat/lon (test: payload never equals the EXIF GPS or geolocation
+  coords); a station with a fact renders 1 `div.assoc-place-fact` with `span.model-chip` "Muse Spark" and `p.credit`
+  "Place facts: Wikipedia, CC BY-SA", a station without -> 0; toggle label equals the quoted text; blockers (a)-(c)
+  closed before the label ships; ADR committed in the adopting change.
