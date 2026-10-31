@@ -1,0 +1,7 @@
+@sqlite.org/sqlite-wasm 3.54.1-build1 (npm pack --ignore-scripts, tarball shasum b03a62e2836daf7c6cff569fac6285bc1eeed694)
+Node-only build for node --test (the browser build cannot fetch its wasm under Node).
+Lives outside static/ so it is never served or shipped in the mobile bundle.
+
+Copied files (sha256):
+da54eaac83545d548ed4d85a044a75854870a4c00b6565f0e342d2603e4d00e9  node.mjs      <- dist/node.mjs
+b8a92a19f441a90ff2339fe988fbe317c4adf3ed844096f12aee04aa72d58257  sqlite3.wasm  <- dist/sqlite3.wasm (resolved via new URL("sqlite3.wasm", import.meta.url))

@@ -1,8 +1,9 @@
 # Covers: MEM-063
 # Requirement: the Android-first Capacitor shell is configured to bundle the built web UI from www/
 # (appId com.memripal.app, appName MemriPal, androidScheme https) without pointing the WebView at a
-# remote server.url, the generated www/ is never committed, and the server's web CSP stays exactly as
-# strict as before (no connect-src loosening for the native shell).
+# remote server.url, the generated www/ is never committed, and the server's web CSP stays the exact
+# MEM-042 policy plus script-src 'self' 'wasm-unsafe-eval' (SQLite wasm, item 159) with no connect-src
+# loosening for the native shell.
 import json
 from pathlib import Path
 
@@ -11,7 +12,8 @@ from memripal.security_headers import SECURITY_HEADERS
 REPO = Path(__file__).resolve().parents[1]
 CAP_CONFIG = REPO / "capacitor.config.json"
 WEB_CSP = (
-    "default-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'; "
+    "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; img-src 'self' data: blob:; "
+    "object-src 'none'; base-uri 'none'; "
     "form-action 'none'; frame-ancestors 'none'"
 )
 
@@ -48,8 +50,9 @@ class TestGitignore:
 
 
 # Covers: MEM-063
-# Requirement: the web CSP is not loosened for mobile: still the exact MEM-042 policy, with no
-# explicit connect-src (default-src 'self' governs fetches on the web).
+# Requirement: the web CSP is not loosened for mobile: still the exact MEM-042 policy (plus only
+# script-src 'self' 'wasm-unsafe-eval' so the SQLite wasm compiles, item 159), with no explicit
+# connect-src (default-src 'self' governs fetches on the web).
 class TestWebCspUnchanged:
     def test_web_csp_exact(self):
         assert SECURITY_HEADERS["Content-Security-Policy"] == WEB_CSP

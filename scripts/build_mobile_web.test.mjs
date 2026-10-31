@@ -134,7 +134,8 @@ describe("build_mobile_web.mjs: bundle contents", () => {
 
 // Covers: MEM-063
 // Requirement: www/index.html carries a CSP meta whose connect-src is exactly 'self' plus the API
-// origin, so the native WebView can reach Cloud Run and nothing else; no wildcard, no eval.
+// origin, so the native WebView can reach Cloud Run and nothing else; no wildcard, no eval; script-src
+// is 'self' plus only 'wasm-unsafe-eval' (SQLite wasm compile, item 159).
 describe("build_mobile_web.mjs: native CSP meta", () => {
   before(() => buildOk());
 
@@ -164,6 +165,12 @@ describe("build_mobile_web.mjs: native CSP meta", () => {
     assert.deepEqual(d["default-src"], ["'self'"]);
     const scripts = d["script-src"] ?? d["default-src"];
     assert.ok(!scripts.includes("'unsafe-eval'") && !scripts.includes("'unsafe-inline'"));
+  });
+
+  test("script-src is exactly 'self' 'wasm-unsafe-eval' so the SQLite wasm compiles (item 159)", () => {
+    const meta = cspMeta(readFileSync(join(WWW, "index.html"), "utf8"));
+    assert.ok(meta, "www/index.html has no Content-Security-Policy meta");
+    assert.deepEqual(directives(meta.csp)["script-src"], ["'self'", "'wasm-unsafe-eval'"]);
   });
 
   test("a different API origin is injected verbatim (port kept)", () => {
