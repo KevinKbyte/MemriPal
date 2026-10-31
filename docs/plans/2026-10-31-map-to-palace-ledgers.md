@@ -318,3 +318,15 @@ Case totals (new): B14a 30, B14b 14, B14c 34, B7 +3, B9 +2, B10 +1, B11 +2 = 86 
   https://www.openstreetmap.org/fixthemap or https://www.mapillary.com/; 0 innerHTML/outerHTML/insertAdjacentHTML added under static/;
   0 docs/design references in static/ or the E2E fetch log; (10) DOM test: direct parenthood for #route > li, #route-view-stations > li,
   #plan-stations > li, #capture-strip > children, #scene-overlay and its ancestors.
+
+## Adversarial cheat sheet
+1. Primary technical risk: the privacy pipeline was still fail-open in three places: the SAM box parser read any
+   refusal or reformatted reply as "no people", MetaBackend cached every raw unblurred photo to disk (even on
+   blur_failed), and pending stations' unblurred photos (possibly with EXIF GPS) flowed into backups.
+2. Fix: a strict parser (only an empty or probe-recorded empty reply means "none"; anything else -> 502 blur_failed,
+   0 Spark calls); blur-phase requests skip put_photo, tested against a real MetaBackend cache dir; pending photos are
+   EXIF-stripped, kept local and excluded from v2 backups (which also gain thumbnails and their own 8 MiB cap); the
+   demo ships recorded /station responses instead of raw photos; pixelation replaces a fixed-radius blur.
+3. Lingering doubt: SAM 3.1's recall on faces and plates is not deterministic; a person SAM fails to box at all
+   (returning a valid empty reply) stays unpixelated, so "faces hidden" rests on model quality plus Kev's eyeball
+   probe, not on a guarantee.
