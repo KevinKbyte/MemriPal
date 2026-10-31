@@ -8,7 +8,8 @@ the Cloud Run deploy flags.
   passcode and before any model call, until the oldest counted failure is MEMRIPAL_LOCKOUT_S old (sliding;
   at exactly that age it has expired). Locked requests are not counted as new failures. Other IPs are
   unaffected. Both env vars: read once at create_app, non-integer or < 1 -> ValueError. Client IP and the
-  injected clock (create_app(..., clock=...)) are the same as the rate limiter's (tests/test_api_ratelimit.py).
+  injected clock (create_app(..., clock=...)) are the same as the rate limiter's
+  (tests/test_api_ratelimit.py).
 - Concurrency: POST /loci, /split, /associate, /recall/audio each hold at most MEMRIPAL_ROUTE_CONCURRENCY
   in-flight requests per app instance (the scenes.py bounded-slot pattern). A request that cannot get a slot
   within a bounded wait answers 503 {"error": "busy"} without calling the model or ASR. A slot is released on
