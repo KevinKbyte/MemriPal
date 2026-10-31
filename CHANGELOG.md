@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.18] - 2026-10-31
+
+### Added
+
+- SQLite storage layer (S1): vendored @sqlite.org/sqlite-wasm 3.54.1-build1, static/db/ migrations runner (PRAGMA user_version, sync-only steps, refuses newer DB), Worker RPC client with single-tab navigator.locks leader, opfs-sahpool worker, Node in-memory driver for tests; CSP adds script-src 'self' 'wasm-unsafe-eval' for wasm compile (MEM-039).
+
 ## [0.20.17] - 2026-10-31
 
 ### Added
