@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.17] - 2026-10-31
+
+### Added
+
+- Design-floor tooling: scripts/check_route_css.py mechanically checks route.css against the design prompt's hard constraints (tokens, ids, contract classes, banned properties, colours) and prints OK or each problem; scripts/screenshot_design.py screenshots the route preview per screen, width and theme and fails on page/console errors (MEM-067).
+
 ## [0.20.16] - 2026-10-31
 
 ### Fixed
