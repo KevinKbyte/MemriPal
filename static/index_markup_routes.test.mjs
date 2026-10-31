@@ -8,7 +8,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { MEM048_IDS } from "./index_ids_test.mjs";
+import { MEM048_IDS, MEM050_IDS, MEM050_MAY_START_HIDDEN } from "./index_ids_test.mjs";
 
 const HTML = readFileSync(new URL("./index.html", import.meta.url), "utf8");
 
@@ -157,5 +157,69 @@ describe("index.html: #finish-kind is two radios Daily / Occasional", () => {
       assert.ok(label, `radio ${r.attrs.value} has no label`);
       assert.match(textOf(label), want[r.attrs.value] ?? /^$/, `radio ${r.attrs.value} label text`);
     }
+  });
+});
+
+// Covers: MEM-050
+// Requirement: S3 Station card markup (plan B5, Part A S3): every S3 id exists exactly once next to the 44
+// live ids and the MEM-048 ids; #station-card is a section holding #station-name (text input, maxlength
+// 40) with #station-name-error, #station-profile (dl), the #station-taps fieldset with its five tap groups
+// #tap-sound #tap-smell #tap-feel #tap-mood #tap-turn, and the footer buttons #station-save,
+// #station-drop, #station-drop-confirm, #station-drop-cancel and #station-undo. The name error, the
+// confirm/cancel pair and Undo start hidden (progressive-disclosure delete). #scene-wrap, #scene and #loci
+// stay, each exactly once.
+describe("index.html: S3 station card ids and structure (MEM-050)", () => {
+  for (const id of MEM050_IDS) {
+    test(`S3 id #${id} present exactly once`, () => {
+      assert.equal(idCount(id), 1, `#${id} count`);
+    });
+  }
+
+  test("the S3 ids do not reuse a live or MEM-048 id", () => {
+    const overlap = MEM050_IDS.filter((id) => LIVE_IDS.includes(id) || NEW_IDS.includes(id));
+    assert.deepEqual(overlap, []);
+  });
+
+  test("#station-card is a section holding every other S3 id", () => {
+    assert.equal(byId("station-card")?.tag, "section");
+    for (const id of MEM050_IDS.filter((x) => x !== "station-card")) {
+      assert.ok(inside(byId(id), "station-card"), `#${id} inside #station-card`);
+    }
+  });
+
+  test("#station-name is a text input with maxlength 40; #station-profile is a dl", () => {
+    const name = byId("station-name");
+    assert.equal(name?.tag, "input");
+    assert.equal((name.attrs.type ?? "text").toLowerCase(), "text");
+    assert.equal(name.attrs.maxlength, "40");
+    assert.equal(byId("station-profile")?.tag, "dl");
+  });
+
+  test("#station-taps is a fieldset holding the five tap groups", () => {
+    assert.equal(byId("station-taps")?.tag, "fieldset");
+    for (const g of ["sound", "smell", "feel", "mood", "turn"]) {
+      assert.ok(inside(byId(`tap-${g}`), "station-taps"), `#tap-${g} inside #station-taps`);
+    }
+  });
+
+  test("save, drop, confirm, cancel and undo are buttons", () => {
+    for (const id of ["station-save", "station-drop", "station-drop-confirm", "station-drop-cancel", "station-undo"]) {
+      assert.equal(byId(id)?.tag, "button", `#${id} is a button`);
+    }
+  });
+
+  test("the name error, drop confirm/cancel and Undo start hidden; save and drop start visible", () => {
+    for (const id of ["station-name-error", "station-drop-confirm", "station-drop-cancel", "station-undo"]) {
+      assert.ok(byId(id) && "hidden" in byId(id).attrs, `#${id} starts hidden`);
+      assert.ok(MEM050_MAY_START_HIDDEN.includes(id));
+    }
+    for (const id of ["station-save", "station-drop"]) {
+      assert.ok(byId(id) && !("hidden" in byId(id).attrs), `#${id} starts visible`);
+    }
+  });
+
+  test("#scene-wrap > #scene and #loci stay, each exactly once", () => {
+    for (const id of ["scene-wrap", "scene", "loci"]) assert.equal(idCount(id), 1, `#${id} count`);
+    assert.ok(inside(byId("scene"), "scene-wrap"), "#scene inside #scene-wrap");
   });
 });
