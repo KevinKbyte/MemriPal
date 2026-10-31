@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.15] - 2026-10-31
+
+### Added
+
+- Route UX design deliverables (S1-S9) in docs/design/route/: route.css (additions only), route-contract.md (class contract, state tables, id map) and preview.html, screenshot-verified at phone and desktop widths in light and dark.
+
 ## [0.20.14] - 2026-10-31
 
 ### Fixed
