@@ -1,6 +1,6 @@
 # 0028: Palace backup as one JSON file with a validated, additive client-side import
 
-Status: Accepted
+Status: Accepted; amended by [0032](0032-backup-v2-routes-no-coordinates.md) (backup v2: routes, no coords, 8 MiB cap)
 Supersedes: the "Palace JSON import/export" rejection in [0003](0003-stateless-backend-client-state.md) (Options,
 Decision "no import/export", Consequences "there is no export") and its plan sources
 (`docs/plans/2026-10-26-memripal.md` D5, Rejected alternatives, Ledger S5 "import cut").

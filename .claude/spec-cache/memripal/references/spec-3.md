@@ -572,3 +572,38 @@ Actors: Muse Image backend (`image_edit`), `POST /scenes` (`src/memripal/app.py`
 - `src/memripal/app.py` <= 582 lines.
 
 Tests: tests/test_scenes_provenance.py, static/scenes_provenance.test.mjs
+## MEM-054 Backup v2: routes + lists, field allowlist, no coordinates, thumbnails, own byte cap
+
+ADR [0032](../../../../docs/decisions/0032-backup-v2-routes-no-coordinates.md) (amends 0028). Map-to-palace plan
+(`docs/plans/2026-10-31-map-to-palace.md`) slice B9, D6, D11. Replaces the MEM-042 E1 file shape; MEM-042 I3-I7, C1
+and the additive rule stand.
+- File (`static/palace_export.js`): `{v: 2, routes[], lists[], associations, rehearsals}`, exactly those keys.
+  `buildBackup(deps)`, `importBackup(text, deps) -> {added, present, skipped}`; deps `{store, rehearsals, routes
+  (createRouteStore), thumbnail, loadImage}`. Top-level `lists[]` is pinned only as an array until B7.
+- Export: saved routes only; within them named stations only (pending stations and draft routes skipped; pending
+  photo bytes never read). Route keys exactly `{id, name, kind, created_at, stations, lists}`, each list `{id, name,
+  status}`. Station keys exactly `{id, n, name, status, box, profile, taps, photo}`; absent box/profile/taps -> null.
+  Never exported: coords, per-station timestamps, EXIF, baseline (Mapillary) images/ids/links/credits.
+- Thumbnails: `thumbnail(bytes, {maxSide: 640, quality: 0.7})` re-encodes the stored photo to an EXIF-free JPEG,
+  long side <= 640; box scaled to the thumbnail.
+- Caps: `MAX_BACKUP_BYTES` = 8388608 (8 MiB) for export and import; `MAX_IMPORT_BYTES` stays 1048576 (recall-relay
+  chunk / record-signing meaning). Over the cap -> refused at export; import text over it refused before
+  `JSON.parse` (the file input checks size before `file.text()`); exactly the cap is read.
+- Import: v2 only; a v1 file -> "Older backup format, not supported", nothing written. Any route / station / photo
+  failure refuses the whole file, nothing written: routes or lists not an array, missing station name, non-integer
+  `n`, station status pending, unknown route kind, non-ISO `created_at`, 9 stations, box outside the thumbnail, any
+  extra station / route / top-level key, coords or lat keys. Photo must be a `data:image/jpeg;base64,` URL that
+  decodes via `loadImage`; png, `javascript:` or undecodable -> refused. Imported routes are written through
+  `deps.routes` with status "saved".
+- Collisions (D11): a route whose id is already stored is skipped, never overwritten or duplicated; the stored one
+  wins.
+- UI: `#backup-status` reads "n added, m already present", plus ", k skipped" when k > 0; else "Import failed:
+  <reason>". Note beside `#backup-export`: "Backups never include map coordinates or street photos. Station names
+  and photos can still show where you walk."
+- Accept: plan B9 CRITERIA 1-12 (allowlist key walk with 0 location-bearing keys; EXIF-free <= 640 px photos;
+  1 pending + 1 draft -> 0 of each; 3 x 8 real-size stations under 8 MiB and re-import; v2 round trip deep-equal,
+  coordinate-free; whole-file refusals; v1 refused, store unchanged; no baseline keys; same file twice -> "0 added,
+  n already present", store unchanged; png/javascript:/undecodable photo refused; over-cap refused before parse;
+  suite green).
+
+Tests: static/palace_export_v2.test.mjs, static/palace_export.test.mjs, static/palace_export_flow.test.mjs
