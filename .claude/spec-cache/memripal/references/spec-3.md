@@ -348,3 +348,27 @@ decision unchanged). The offline demo place carries neutral text, never war-site
   xfail(strict).
 
 Tests: tests/test_demo_place_scrub.py
+
+## MEM-053 Mapillary street-photo baseline per station (server core)
+
+Plan B8 (docs/plans/2026-10-31-map-to-palace.md), option (a) backend proxy; ADR amending 0012 and 0022 lands with the
+B8 wiring. Server core only: new modules `src/memripal/baseline.py` and `src/memripal/routes_baseline.py`; `app.py`
+is untouched until the B8 wiring slice (after B7, D7 order).
+- `BaselineProvider(token, transport=None).lookup(lat, lon)`: GET https://graph.mapillary.com/images radius search
+  (`lat`, `lng` at 4 dp, `radius` 30). Token from `MEMRIPAL_MAPILLARY_TOKEN`, sent only as `Authorization: OAuth
+  <token>`; never in a URL, never sent to the CDN, never logged. Picks the nearest image within 30 m that has a
+  `thumb_1024_url`; none -> `NoBaseline` (404 `no_baseline`).
+- Thumb fetch: https only, host ends with `.fbcdn.net`, redirects never followed (3xx fails), body capped at
+  `MAX_IMAGE_BYTES`, Pillow re-encode strips EXIF. Any breach or upstream error -> `BaselineFailed` (502 `upstream`).
+- Response: exactly {image (JPEG data URL), author (creator.username), image_url (https www.mapillary.com page with
+  the image id), licence}. The raw CDN URL never appears. Log records never carry the coords or the token.
+- Licence: Mapillary has no per-image licence field; all its imagery is CC BY-SA, so `licence` is the constant
+  `LICENCE` ("CC BY-SA 4.0"). The "non CC BY-SA skipped" half of criterion (4) is met by that constant.
+- `FixtureBaselineProvider(root)` replays `replay_path(root, lat, lon)` offline; a missing file -> `NoBaseline`.
+- `baseline_router(provider, passcode_error, *, call_budget=None, max_concurrent=4)` serves POST /baseline:
+  passcode 401 before the body is read; body exactly {lat, lon}, finite non-bool numbers in range, else 400
+  `bad_coords` with no provider call; coords rounded to 4 dp; own budget counter (429 `budget_exhausted`, rejected
+  bodies spend nothing); concurrency cap (429 `busy`).
+- Deferred: client criteria (7), (10) and (11) wait for the B5 S3 markup.
+
+Tests: tests/test_baseline.py, tests/test_baseline_api.py
