@@ -229,3 +229,33 @@ describe("build_mobile_web.mjs: rejects a missing or invalid API base", () => {
     });
   }
 });
+
+// Covers: MEM-063
+// Requirement: the API origin is injected into the CSP meta's content="..." attribute, so a host
+// containing `"` or `;` (both accepted by Node's URL as an exact origin) must fail the build before
+// www/ is touched -- it could otherwise break out of the attribute or append a CSP directive. Plain
+// DNS hosts and bracketed IPv6 literals stay valid.
+describe("build_mobile_web.mjs: rejects CSP-breaking characters in the API host", () => {
+  for (const bad of ['https://a";b.com', "https://a;b.com"]) {
+    test(`host ${JSON.stringify(bad)} exits non-zero and leaves www/ untouched`, () => {
+      mkdirSync(WWW, { recursive: true });
+      const marker = join(WWW, "host-guard-marker.txt");
+      writeFileSync(marker, "keep");
+      const r = build(bad);
+      assert.notEqual(r.status, 0, `build accepted ${bad}`);
+      assert.match(r.stderr, /MEMRIPAL_API_BASE/);
+      assert.ok(existsSync(marker), "www/ was cleaned despite the rejected API base");
+      buildOk();
+    });
+  }
+
+  for (const good of ["https://api.example.com", "https://[::1]:8443"]) {
+    test(`host ${JSON.stringify(good)} still builds with connect-src 'self' plus the origin`, () => {
+      buildOk(good);
+      const meta = cspMeta(readFileSync(join(WWW, "index.html"), "utf8"));
+      assert.ok(meta, "www/index.html has no Content-Security-Policy meta");
+      assert.deepEqual([...directives(meta.csp)["connect-src"]].sort(), ["'self'", good].sort());
+      buildOk();
+    });
+  }
+});
