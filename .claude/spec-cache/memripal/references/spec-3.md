@@ -416,6 +416,49 @@ ADR [0031](../../../../docs/decisions/0031-route-station-store.md). Map-to-palac
 Tests: static/route_store.test.mjs, static/route_store_capture.test.mjs, static/index_markup_routes.test.mjs,
 static/index_markup.test.mjs
 
+## MEM-051 Route view S5 + in-order route practice + recall map dots S8
+
+Map-to-palace plan (`docs/plans/2026-10-31-map-to-palace.md`) slice B6, D9 (spec entry, single option, no ADR); Part
+A screens S5/S8.
+- Map (`static/route_map.js`): `projectStations(stations)` -> `[{id, x, y}]` in route order inside the 320x200
+  viewBox (station coords when every station has them, else an evenly spaced index layout).
+  `renderRouteMap(svg, stations, doc)` replaces the svg's children with one polyline + one node per station
+  (`data-station-id`, numeric `cx`/`cy`, made via `createElementNS`) and returns `{nodes, light(counted),
+  finish(counted)}`: `light` leaves `.lit` exactly on counted nodes; `finish` adds `.lit` to counted and `.missed`
+  to the rest. Coords never rendered as text; JS sets no inline style except the existing zoom transform; no
+  innerHTML.
+- Practice (D9): `routePracticePoints(route)` -> points whose label and source_quote are the station name only
+  (turn cue shown, never matched). `createMatcher(points).starts()` gives each hit's window start (global
+  transcript token index, survives chunked appends; null if unmatched); `results()` keeps its five keys.
+  `countInOrder(starts)` (`recall_match.js`, pure) walks stations in route order and counts station k only when its
+  start is greater than the last counted start; earliest matching span per name (greedy, not a longest-subsequence
+  search). `renderLiveBoard(points, doc, {label, inOrder: matcher})` lights only counted rows, in the same relay
+  tick; without `inOrder` the board is unchanged (MEM-037).
+- Rehearsal (`static/rehearsals.js`): a route run saves `mode: "route"` and `hits` `{[stationId]: boolean}`; a
+  non-route save keeps exactly the MEM-033 fields. `learnedCount(route, records)` -> `{n, N}` from the latest
+  `mode "route"` record: n = ids set true AND still on the route, N = current station count (n never > N).
+  `routeHitRates(route, records)` -> `[{id, name, hits, runs, rate}]` in current route order, route records only;
+  a run counts for a station only when the record's hits has its id. Keyed by id, so Up/Down swaps keep Learned
+  and rates with the station.
+- UI: S1 renders one card per route (saved + draft) with kind, station count and "Learned n/N", the draft tagged
+  "Draft"; Open shows `#route-view` (S1 hidden) with stations in route order and `#route-map` nodes.
+  `#route-view-practice` shows `#recall` with route-mode `#recall-mode` text and unlit `#recall-map` nodes. Delete:
+  `#route-view-delete` arms, `#route-view-delete-cancel` restores unchanged, `#route-view-delete-confirm` removes
+  the route from store and S1, `#route-view-undo` restores store + rehearsals deep-equal. `#hit-rates` shows one
+  row per station id.
+- Markup (`static/index.html`): new ids exactly once: `section#route-view` holding `svg#route-map`,
+  `ol#route-view-stations` and buttons `#route-view-practice`, `#route-view-delete`, `#route-view-delete-confirm`,
+  `#route-view-delete-cancel`, `#route-view-undo`; `svg#recall-map` and `#recall-mode` inside `#recall`; both SVGs
+  `viewBox="0 0 320 200"`. `#route-view` and the delete confirm/cancel/undo may start hidden.
+- Accept: plan B6 CRITERIA 1-13 (projection + index layout; same-tick live lighting; 5/6 Done -> 1 `.missed`;
+  reverse -> 1, "1 3 2 4 5 6" -> 5; "red bench"/"red door" vs "red bench left" -> 1 lit; 2-of-3-word name match at
+  coverage 0.67 >= 0.6; mode "route" record, Learned 5/6, swap-stable, drop -> 4/5 or 5/5, "/4"; no inline style;
+  no coordinate digits in text; delete arm/cancel/confirm/undo; 3 saved + 1 draft -> 4 cards; hit rates 100%/50%
+  by id; suite green + screenshot).
+
+Tests: static/route_map.test.mjs, static/recall_order.test.mjs, static/rehearsals_route.test.mjs,
+static/app_route_view.test.mjs, static/index_markup_routes.test.mjs
+
 ## MEM-049 POST /station: fail-closed pixelation, name + profile, one landmark box
 
 Plan `docs/plans/2026-10-31-map-to-palace.md` B4. New `src/memripal/station.py` (core) and
