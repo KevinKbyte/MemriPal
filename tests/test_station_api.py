@@ -2,7 +2,8 @@
 # Requirement: POST /station (router from routes_station.make_station_router(backend, passcode_error,
 # *, max_concurrent=N), exercised on a standalone FastAPI app) takes raw image bytes with the /loci
 # upload types and byte cap, plus the route's used names as a JSON array in the X-Memripal-Used-Names
-# header (absent == []; <= 7 strings, each <= 3 words and <= 40 chars, else 400 bad_used_names). It
+# header (absent == []; ASCII-only JSON, non-ASCII sent as \uXXXX escapes, so raw UTF-8 bytes are 400;
+# <= 7 strings, each <= 3 words and <= 40 chars, else 400 bad_used_names). It
 # runs SAM "person" and "license plate" on the processed photo through a STRICT parser (an empty or
 # whitespace body is "none found"; a failed call, non-empty text with no box token, any dropped token,
 # any out-of-frame box or an over-cap body -> 502 blur_failed with 0 Spark calls), pixelates those
@@ -437,6 +438,31 @@ class TestStationConcurrencyCap:
         statuses = sorted(s for s, _ in results)
         assert statuses == [200] * cap + [429]
         assert [body for s, body in results if s == 429] == [{"error": "busy"}]
+
+
+class TestStationUsedNamesAscii:
+    # Covers: MEM-049
+    # Requirement: the used-names header is ASCII-only JSON; Starlette decodes header bytes as latin-1,
+    # so raw UTF-8 would arrive garbled yet shape-valid. Raw UTF-8 is 400 bad_used_names; the \uXXXX
+    # escaped form is 200 and the decoded name reaches Spark.
+    NAME = "Caf\u00e9"
+
+    def test_raw_utf8_header_is_400_bad_used_names_with_no_backend_call(self):
+        backend = FakeBackend()
+        raw = json.dumps([self.NAME], ensure_ascii=False).encode("utf-8")
+        headers = {"Content-Type": "image/jpeg", USED_NAMES_HEADER: raw}
+        resp = TestClient(_app(backend)).post("/station", content=UPLOAD, headers=headers)
+        assert resp.status_code == 400, resp.text
+        assert resp.json() == {"error": "bad_used_names"}
+        assert backend.calls == []
+
+    def test_escaped_header_is_200_and_the_decoded_name_reaches_spark(self, tmp_path):
+        client = FakeMetaClient({"person": PERSON_TOKEN, "license plate": "", LANDMARK: LANDMARK_TOKEN})
+        backend = MetaBackend("fake-key", cache_root=tmp_path / "cache", client=client)
+        resp = _post(TestClient(_app(backend)), used_names=json.dumps([self.NAME]))
+        assert resp.status_code == 200, resp.text
+        assert len(client.prompts) == 1
+        assert json.dumps([self.NAME]) in client.prompts[0]
 
 
 # Criterion (14) app.py <= 582 lines is deferred to the B4 create_app wiring slice (routes_station is
