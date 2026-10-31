@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.16] - 2026-10-31
+
+### Fixed
+
+- Route Undo whose storage write fails now shows "Couldn't restore the route. Try again." and keeps Undo; a retry restores the route (was: reported success, route lost on reload) (MEM-051).
+
 ## [0.20.15] - 2026-10-31
 
 ### Added
