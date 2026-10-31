@@ -1,5 +1,5 @@
-// Covers: MEM-042
-// Requirement: a palace backup is one JSON file {v: 1, palace_id: "demo", route, associations,
+// Covers: MEM-042, MEM-054
+// Requirement: (v2 envelope since MEM-054, plan B9 line 501; legacy route/palace_id keys gone) a palace backup is one JSON file {v: 1, palace_id: "demo", route, associations,
 // rehearsals} rebuilt from allow-lists; import parses it with JSON.parse, rejects the whole file on a
 // cap (I1) or shape (I2) failure, skips only the bad entry on an I3 / I4 / route failure, merges
 // additively (an existing entry wins) and round-trips an app-written store.
@@ -28,13 +28,14 @@ function api(name) {
 
 const importText = (text, s) => api("importBackup")(text, { store: s.store, rehearsals: s.rehearsals });
 const importObj = (obj, s) => importText(JSON.stringify(obj), s);
-const written = (s) => s.palaceAdapter.map.size + s.rehAdapter.map.size;
+const written = (s) => s.palaceAdapter.map.size + s.rehAdapter.map.size + s.routeAdapter.map.size;
 
 // Covers: MEM-042
 // Requirement: I1 caps are named in palace_export.js with the server's limits; pointOf is reused.
 describe("MEM-042 I1: named caps", () => {
   test("caps equal the server limits", () => {
     assert.equal(api("MAX_IMPORT_BYTES"), 1048576);
+    assert.equal(api("MAX_BACKUP_BYTES"), 8388608);
     assert.equal(api("MAX_IMPORT_ASSOCIATIONS"), 500);
     assert.equal(api("MAX_IMPORT_REHEARSALS"), 1000);
   });
@@ -64,10 +65,9 @@ describe("MEM-042 E1: export format", () => {
     const r = await s.rehearsals.save("demo", { transcript: "milk eggs", results: [{ ...POINT, audio: "pcm" }] });
     await s.rehearsals.save("other", { transcript: "elsewhere", results: [] });
     const out = await api("buildBackup")(s);
-    assert.deepEqual(Object.keys(out).sort(), ["associations", "palace_id", "rehearsals", "route", "v"]);
-    assert.equal(out.v, 1);
-    assert.equal(out.palace_id, "demo");
-    assert.deepEqual(out.route, route);
+    assert.deepEqual(Object.keys(out).sort(), ["associations", "lists", "rehearsals", "routes", "v"]);
+    assert.equal(out.v, 2);
+    assert.deepEqual(out.routes, [], "the legacy loci route is not a v2 route (plan line 501)");
     const byItem = Object.fromEntries(out.associations.map((a) => [a.record.item, a]));
     assert.equal(out.associations.length, 2, "the route is not an association");
     assert.deepEqual(byItem.milk, entry("milk", "lamp"), "no image key exported");
@@ -97,18 +97,10 @@ describe("MEM-042 E1: export format", () => {
     for (let i = 0; i < 501; i++) await many.store.put(associationKey(`item ${i}`, "lamp"), entry(`item ${i}`, "lamp"));
     await assert.rejects(api("buildBackup")(many), "501 associations");
 
+    // plan line 508: MAX_BACKUP_BYTES replaces MAX_IMPORT_BYTES as the export byte cap.
     const big = stores();
-    const long = "x".repeat(2000);
-    const bigEntry = (i) => ({
-      record: fullRecord(`item ${i}`, "lamp", { question: long, answer: long, walk_cue: long, reencode_hint: long }),
-      status: "valid",
-      sig: SIG,
-    });
-    // Entry i only grows with i, so count entries of at least entry 0's size exceed the byte cap.
-    const count = Math.floor(api("MAX_IMPORT_BYTES") / JSON.stringify(bigEntry(0)).length) + 1;
-    assert.ok(count <= api("MAX_IMPORT_ASSOCIATIONS"), "the byte cap, not the count cap, must be what trips");
-    for (let i = 0; i < count; i++) await big.store.put(associationKey(`item ${i}`, "lamp"), bigEntry(i));
-    await assert.rejects(api("buildBackup")(big), "over MAX_IMPORT_BYTES serialized");
+    await big.rehearsals.save("demo", { transcript: "x".repeat(api("MAX_BACKUP_BYTES")), results: [] });
+    await assert.rejects(api("buildBackup")(big), "over MAX_BACKUP_BYTES serialized");
   });
 });
 
@@ -123,17 +115,18 @@ describe("MEM-042 I1/I2: whole-file rejection", () => {
     ["not JSON", "{v: 1"],
     ["array top level", "[]"],
     ["null top level", "null"],
-    ["v 2", { ...good(), v: 2 }],
-    ["v string", { ...good(), v: "1" }],
-    ["palace_id other", { ...good(), palace_id: "other" }],
+    ["v 3", { ...good(), v: 3 }],
+    ["v string", { ...good(), v: "2" }],
+    ["v1 palace_id key", { ...good(), palace_id: "demo" }],
+    ["v1 route key", { ...good(), route: [] }],
     ["unknown top-level key", { ...good(), extra: 1 }],
     ["missing rehearsals", (() => { const b = good(); delete b.rehearsals; return b; })()],
     ["associations not array", { ...good(), associations: {} }],
-    ["route not array", { ...good(), route: null }],
+    ["routes not array", { ...good(), routes: null }],
+    ["lists not array", { ...good(), lists: "x" }],
     ["rehearsals not array", { ...good(), rehearsals: "x" }],
     ["501 associations", { ...good(), associations: Array.from({ length: 501 }, (_, i) => entry(`i${i}`, "lamp")) }],
     ["1001 rehearsals", { ...good(), rehearsals: Array.from({ length: 1001 }, () => rehearsal()) }],
-    ["13 loci", { ...good(), route: Array.from({ length: 13 }, (_, i) => locus(i + 1, `l${i}`)) }],
     ["13 points", { ...good(), rehearsals: [rehearsal({ points: Array.from({ length: 13 }, () => ({ ...POINT })) })] }],
   ];
   for (const [name, value] of cases) {
@@ -156,11 +149,10 @@ describe("MEM-042 I1/I2: whole-file rejection", () => {
   test("exactly at the caps is accepted", async () => {
     const s = stores();
     const file = backup({
-      route: Array.from({ length: 12 }, (_, i) => locus(i + 1, `l${i}`)),
       associations: Array.from({ length: 500 }, (_, i) => entry(`i${i}`, "lamp")),
       rehearsals: [rehearsal({ points: Array.from({ length: 12 }, () => ({ ...POINT })) })],
     });
-    assert.deepEqual(await importObj(file, s), { imported: 501, skipped: 0 });
+    assert.deepEqual(await importObj(file, s), { added: 501, present: 0, skipped: 0 });
   });
 });
 
@@ -188,7 +180,7 @@ describe("MEM-042 I3: association entries", () => {
   for (const [name, value] of Object.entries(bad)) {
     test(`skips: ${name}; the good entry beside it still imports`, async () => {
       const s = stores();
-      assert.deepEqual(await importObj(backup({ associations: [value, entry("good", "door")] }), s), { imported: 1, skipped: 1 });
+      assert.deepEqual(await importObj(backup({ associations: [value, entry("good", "door")] }), s), { added: 1, present: 0, skipped: 1 });
       assert.deepEqual([...s.palaceAdapter.map.keys()], [associationKey("good", "door")], "never stripped and stored");
     });
   }
@@ -198,7 +190,7 @@ describe("MEM-042 I3: association entries", () => {
     const text = JSON.stringify(backup({ associations: [entry("a", "lamp"), entry("b", "lamp"), entry("c", "door")] }))
       .replace('{"record":', '{"__proto__":{"polluted":true},"record":')
       .replace('"item":"b"', '"__proto__":{"polluted":true},"item":"b"');
-    assert.deepEqual(await importText(text, s), { imported: 1, skipped: 2 });
+    assert.deepEqual(await importText(text, s), { added: 1, present: 0, skipped: 2 });
     assert.equal({}.polluted, undefined);
     assert.deepEqual(await s.store.get(associationKey("c", "door")), entry("c", "door"));
   });
@@ -206,7 +198,7 @@ describe("MEM-042 I3: association entries", () => {
   test("boundaries accepted: item and locus 100 chars trimmed, spatial 300, question 2000, no sig", async () => {
     const s = stores();
     const rec = fullRecord(` ${"i".repeat(100)} `, "l".repeat(100), { spatial: "s".repeat(300), question: "q".repeat(2000) });
-    assert.deepEqual(await importObj(backup({ associations: [{ record: rec, status: "invalid" }] }), s), { imported: 1, skipped: 0 });
+    assert.deepEqual(await importObj(backup({ associations: [{ record: rec, status: "invalid" }] }), s), { added: 1, present: 0, skipped: 0 });
     assert.deepEqual(await s.store.get(associationKey(rec.item, rec.locus)), { record: rec, status: "invalid" });
   });
 
@@ -240,7 +232,7 @@ describe("MEM-042 I4: rehearsal entries", () => {
     test(`skips: ${name}`, async () => {
       const s = stores();
       const ok = rehearsal();
-      assert.deepEqual(await importObj(backup({ rehearsals: [make(), ok] }), s), { imported: 1, skipped: 1 });
+      assert.deepEqual(await importObj(backup({ rehearsals: [make(), ok] }), s), { added: 1, present: 0, skipped: 1 });
       assert.deepEqual(await s.rehearsals.list("demo"), [ok]);
     });
   }
@@ -251,42 +243,12 @@ describe("MEM-042 I4: rehearsal entries", () => {
     const text = JSON.stringify(backup({ rehearsals: [rehearsal(), ok] }))
       .replace('"transcript"', '"constructor":{"polluted":true},"transcript"')
       .replace('"label":"Lamp point"', '"__proto__":{"polluted":true},"label":"Lamp point","extra":"x"');
-    assert.deepEqual(await importText(text, s), { imported: 1, skipped: 1 });
+    assert.deepEqual(await importText(text, s), { added: 1, present: 0, skipped: 1 });
     const [stored] = await s.rehearsals.list("demo");
     assert.equal(stored.id, ok.id);
     assert.deepEqual(stored.points, [POINT]);
     assert.equal({}.polluted, undefined);
   });
-});
-
-// Covers: MEM-042
-// Requirement: Route: each locus exactly {n, label, phrase, box {x1, y1, x2, y2}, outline [[x, y]]}
-// with an integer n, string label/phrase and finite coordinates, else the route alone is skipped.
-describe("MEM-042 Route", () => {
-  test("a valid route is stored and reads back equal", async () => {
-    const s = stores();
-    const route = [locus(1, "lamp"), locus(2, "door")];
-    await importObj(backup({ route }), s);
-    assert.deepEqual(await s.store.loadRoute(), route);
-  });
-
-  const bad = {
-    "extra locus key": { ...locus(1, "lamp"), image: "x" },
-    "missing phrase": (() => { const l = locus(1, "lamp"); delete l.phrase; return l; })(),
-    "non-integer n": { ...locus(1, "lamp"), n: 1.5 },
-    "string coordinate": { ...locus(1, "lamp"), box: { x1: "1", y1: 2, x2: 3, y2: 4 } },
-    "extra box key": { ...locus(1, "lamp"), box: { x1: 1, y1: 2, x2: 3, y2: 4, z: 5 } },
-    "outline point not a pair": { ...locus(1, "lamp"), outline: [[1, 2, 3]] },
-    "non-number outline": { ...locus(1, "lamp"), outline: [[1, "2"]] },
-  };
-  for (const [name, bad1] of Object.entries(bad)) {
-    test(`skips the route: ${name}; associations still import`, async () => {
-      const s = stores();
-      const res = await importObj(backup({ route: [locus(2, "door"), bad1], associations: [entry("milk", "door")] }), s);
-      assert.equal(res.imported, 1);
-      assert.equal(await s.store.loadRoute(), null, "route skipped");
-    });
-  }
 });
 
 // Covers: MEM-042
@@ -298,18 +260,14 @@ describe("MEM-042 I5: additive merge", () => {
     const mine = { record: fullRecord("milk", "lamp", { answer: "mine" }), status: "valid", sig: SIG };
     await s.store.put(associationKey("milk", "lamp"), mine);
     const myRun = await s.rehearsals.save("demo", { transcript: "mine", results: [POINT] });
-    const myRoute = [locus(1, "lamp")];
-    await s.store.saveRoute(myRoute);
     const newRun = rehearsal();
     const file = backup({
-      route: [locus(1, "lamp"), locus(2, "door")],
       associations: [entry("milk", "lamp"), entry("eggs", "door"), { record: "bad", status: "valid" }],
       rehearsals: [{ ...myRun, transcript: "theirs" }, newRun],
     });
-    assert.deepEqual(await importObj(file, s), { imported: 2, skipped: 3 });
+    assert.deepEqual(await importObj(file, s), { added: 2, present: 2, skipped: 1 });
     assert.deepEqual(await s.store.get(associationKey("milk", "lamp")), mine);
     assert.deepEqual(await s.store.get(associationKey("eggs", "door")), entry("eggs", "door"));
-    assert.deepEqual(await s.store.loadRoute(), myRoute, "existing route wins");
     assert.deepEqual((await s.rehearsals.get(myRun.id)).transcript, "mine");
     assert.deepEqual(await s.rehearsals.get(newRun.id), newRun);
   });
@@ -318,7 +276,7 @@ describe("MEM-042 I5: additive merge", () => {
     const s = stores();
     const r = rehearsal();
     const file = backup({ associations: [entry("a", "lamp"), entry("a", "lamp", { status: "invalid" })], rehearsals: [r, { ...r, transcript: "dup" }] });
-    assert.deepEqual(await importObj(file, s), { imported: 2, skipped: 2 });
+    assert.deepEqual(await importObj(file, s), { added: 2, present: 2, skipped: 0 });
     assert.equal((await s.store.get(associationKey("a", "lamp"))).status, "valid");
     assert.equal((await s.rehearsals.get(r.id)).transcript, r.transcript);
   });
@@ -330,7 +288,6 @@ describe("MEM-042 I5: additive merge", () => {
 describe("MEM-042 R1: round trip", () => {
   test("export -> import into empty -> equal; re-import -> imported 0, skipped all", async () => {
     const src = stores();
-    await src.store.saveRoute([locus(1, "lamp"), locus(2, "door")]);
     await src.store.put(associationKey("milk", "lamp"), entry("milk", "lamp"));
     await src.store.put(associationKey("eggs", "door"), { record: fullRecord("eggs", "door"), status: "invalid" });
     await src.rehearsals.save("demo", { transcript: "milk", results: [POINT, { ...POINT, got: false, span: null }] });
@@ -338,11 +295,10 @@ describe("MEM-042 R1: round trip", () => {
     const text = JSON.stringify(await api("buildBackup")(src));
 
     const dst = stores();
-    assert.deepEqual(await importText(text, dst), { imported: 4, skipped: 0 });
+    assert.deepEqual(await importText(text, dst), { added: 4, present: 0, skipped: 0 });
     assert.deepEqual(new Map([...dst.palaceAdapter.map].sort()), new Map([...src.palaceAdapter.map].sort()));
-    assert.deepEqual(await dst.store.loadRoute(), await src.store.loadRoute());
     assert.deepEqual(await dst.rehearsals.list("demo"), await src.rehearsals.list("demo"));
-    assert.deepEqual(await importText(text, dst), { imported: 0, skipped: 4 });
+    assert.deepEqual(await importText(text, dst), { added: 0, present: 4, skipped: 0 });
   });
 });
 
@@ -368,7 +324,7 @@ describe("MEM-042 I4: hostile rehearsal points are skipped, never thrown", () =>
       const text = JSON.stringify(file).replace(`"${MARK}"`, json);
       let res;
       await assert.doesNotReject(async () => { res = await importText(text, s); }, "importBackup must not throw");
-      assert.deepEqual(res, { imported: 3, skipped: 1 });
+      assert.deepEqual(res, { added: 3, present: 0, skipped: 1 });
       assert.deepEqual(await s.store.get(associationKey("milk", "lamp")), entry("milk", "lamp"));
       assert.deepEqual(await s.rehearsals.list("demo"), [before, after], "only the hostile rehearsal is skipped");
       assert.equal(await s.rehearsals.get(bad.id), null);
@@ -386,7 +342,7 @@ describe("MEM-042 I3: unsigned valid entries import as invalid", () => {
     const s = stores();
     const unsigned = { record: fullRecord("milk", "lamp"), status: "valid" };
     const file = backup({ associations: [unsigned, entry("eggs", "door"), { record: fullRecord("jam", "rug"), status: "invalid" }] });
-    assert.deepEqual(await importObj(file, s), { imported: 3, skipped: 0 });
+    assert.deepEqual(await importObj(file, s), { added: 3, present: 0, skipped: 0 });
     assert.deepEqual(await s.store.get(associationKey("milk", "lamp")), { record: fullRecord("milk", "lamp"), status: "invalid" });
     assert.deepEqual(await s.store.get(associationKey("eggs", "door")), entry("eggs", "door"), "signed valid entry unchanged");
     assert.deepEqual(await s.store.get(associationKey("jam", "rug")), { record: fullRecord("jam", "rug"), status: "invalid" });
