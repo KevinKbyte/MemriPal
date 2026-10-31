@@ -113,3 +113,30 @@ describe("node_driver: transaction", () => {
     assert.deepEqual(await db.query("SELECT a FROM t"), [{ a: 2 }]);
   });
 });
+
+// Covers: MEM-039
+// Requirement: when SQLite has already rolled the transaction back by itself (e.g. SQLITE_FULL or
+// SQLITE_IOERR) before fn throws, the caller still sees fn's ORIGINAL error, not a secondary
+// "no transaction is active" from the cleanup ROLLBACK, and the database stays usable (S2 review W3).
+describe("node_driver: transaction after an engine auto-rollback", () => {
+  test("rethrows fn's original error when the transaction is no longer active", async () => {
+    const db = await open();
+    db.exec("CREATE TABLE t (a)");
+    const boom = new Error("disk full");
+    await assert.rejects(
+      async () =>
+        db.transaction(() => {
+          db.exec("INSERT INTO t VALUES (1)");
+          db.exec("ROLLBACK"); // stands in for SQLite's own auto-rollback on SQLITE_FULL/IOERR
+          throw boom;
+        }),
+      (err) => {
+        assert.equal(err, boom, `expected the original error, got: ${err?.message}`);
+        return true;
+      },
+    );
+    assert.deepEqual(await db.query("SELECT a FROM t"), []);
+    await db.transaction(() => db.exec("INSERT INTO t VALUES (2)"));
+    assert.deepEqual(await db.query("SELECT a FROM t"), [{ a: 2 }]);
+  });
+});

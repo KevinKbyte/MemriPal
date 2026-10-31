@@ -364,6 +364,64 @@ describe("sql route adapter: failed write leaves the old route intact", () => {
   });
 });
 
+/**
+ * Adapter over a client whose query() runs an armed hook once, right after the first query
+ * resolves: a deterministic stand-in for a write landing between a read's separate SELECTs.
+ */
+async function setupInterleaved() {
+  const { db, photos } = await setup();
+  const client = drv.asClient(db);
+  let hook = null;
+  const wrapped = {
+    ...client,
+    query: async (sql, params) => {
+      const rows = await client.query(sql, params);
+      const fn = hook;
+      hook = null;
+      if (fn) fn();
+      return rows;
+    },
+  };
+  const kv = mod.createSqlRouteAdapter(wrapped, photos);
+  return { kv, arm: (fn) => (hook = fn) };
+}
+
+// Covers: MEM-039
+// Requirement: a read is a consistent snapshot: when a write to a route lands while get/list is
+// reading it, the reader sees the route row and its stations from the same version (all old or all
+// new), never the old route fields with the new stations (S2 review W1, torn read).
+describe("sql route adapter: reads never tear across a concurrent write", () => {
+  const v1 = route("r1");
+  const v2 = route("r1", [station(4)], { name: "Renamed", status: "draft" });
+
+  test("get during a put returns the route and stations from one version", async () => {
+    const { kv, arm } = await setupInterleaved();
+    await kv.put("route:r1", value(v1));
+    let pending;
+    arm(() => (pending = kv.put("route:r1", value(v2))));
+    const got = await kv.get("route:r1");
+    await pending;
+    const want = got.route.name === v2.name ? v2 : v1;
+    assert.deepEqual(got, value(want), "get mixed one version's route row with another version's stations");
+    assert.deepEqual(await kv.get("route:r1"), value(v2));
+  });
+
+  test("list during a put returns each route with its stations from one version", async () => {
+    const { kv, arm } = await setupInterleaved();
+    await kv.put("route:a", value(route("a")));
+    await kv.put("route:r1", value(v1));
+    let pending;
+    arm(() => (pending = kv.put("route:r1", value(v2))));
+    const all = await kv.list();
+    await pending;
+    assert.deepEqual(all.find((v) => v.route.id === "a"), value(route("a")));
+    const got = all.find((v) => v.route.id === "r1");
+    const want = got.route.name === v2.name ? v2 : v1;
+    assert.deepEqual(got, value(want), "list mixed one version's route row with another version's stations");
+    assert.deepEqual(await kv.get("route:r1"), value(v2));
+  });
+});
+
 // Covers: MEM-039
 // Requirement: S2 adds the SQL adapter with no production caller: the app still stores routes in
 // IndexedDB until the S4 cutover, so app.js and flow.js do not import db/route_adapter.js.
