@@ -3,6 +3,7 @@
 Split out of app.py to keep it under its line budget. All state is in-memory and per app instance."""
 
 import asyncio
+import ipaddress
 import math
 import os
 import threading
@@ -34,6 +35,7 @@ class SlidingWindow:
         self.clock = clock
         # Touched only from the event loop (middleware and async route bodies), so no lock is needed.
         self._events: dict[str, deque[float]] = {}
+        self._next_sweep = -math.inf
 
     def retry_after(self, key: str) -> int | None:
         """Whole seconds (>= 1) until `key` is under the limit again, or None when it already is."""
@@ -52,7 +54,18 @@ class SlidingWindow:
         return max(1, math.ceil(events[0] + self.window_s - now))
 
     def record(self, key: str) -> None:
-        self._events.setdefault(key, deque()).append(self.clock())
+        now = self.clock()
+        # Amortized sweep, at most once per window: a one-off client's key would otherwise live forever.
+        if now >= self._next_sweep:
+            self._events = {k: ev for k, ev in self._events.items() if ev[-1] + self.window_s > now}
+            self._next_sweep = now + self.window_s
+        self._events.setdefault(key, deque()).append(now)
+
+    def clear(self, key: str) -> None:
+        self._events.pop(key, None)
+
+    def __len__(self) -> int:
+        return len(self._events)
 
 
 def from_env(env_int: Callable[[str, int], int | None], clock: Callable[[], float] | None):
@@ -66,15 +79,27 @@ def from_env(env_int: Callable[[str, int], int | None], clock: Callable[[], floa
     return rate, lockout, concurrency, bool(os.environ.get("K_SERVICE"))
 
 
+def client_key(addr: str) -> str:
+    """IPv6 clients keyed by their /64 (one subscriber's allocation), IPv4 per address, unparsable as-is."""
+    try:
+        ip = ipaddress.ip_address(addr)
+    except ValueError:
+        return addr
+    if ip.version == 6:
+        return str(ipaddress.ip_network(f"{ip}/64", strict=False))
+    return str(ip)
+
+
 def client_ip(scope, trust_xff: bool) -> str:
-    """Rightmost X-Forwarded-For entry on Cloud Run (leftmost ones are client-supplied), else the peer."""
+    """Key of the rightmost X-Forwarded-For entry on Cloud Run (leftmost are client-supplied), else peer."""
     if trust_xff:
         values = Headers(scope=scope).getlist("x-forwarded-for")
         entries = [e.strip() for v in values for e in v.split(",") if e.strip()]
         if entries:
-            return entries[-1]
+            # Assumes direct *.run.app ingress; behind an external HTTPS LB the rightmost entry is the LB.
+            return client_key(entries[-1])
     client = scope.get("client")
-    return client[0] if client else ""
+    return client_key(client[0]) if client else ""
 
 
 def retry_error(code: str, retry: int) -> JSONResponse:
