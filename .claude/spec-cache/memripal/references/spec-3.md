@@ -436,11 +436,14 @@ gains the `station` prompt template and the `NO_PHOTO_CACHE` gen_params flag. Pi
   byte-identical; deterministic. The pixelated JPEG (quality 90, no metadata) is the only photo Spark and the landmark
   segment see.
 - Spark reply {station_name, landmark_phrase, visual, spatial, conceptual}, exactly those keys, all non-empty strings
+  with no Unicode Cc/Cf chars (control/format: bidi overrides, zero-width)
   (name <= 40 chars, phrase <= 40, profile fields <= 400); `valid_station_name`: non-empty, <= 3 words, no digits.
-  Invalid -> one regenerate (attempt 1), then 502 `bad_reply`. Used names go into the prompt as a JSON list.
+  Invalid (incl. a live reply that is malformed JSON or fails `STATION_SCHEMA`, raised as `BackendReplyInvalid`, a
+  `BackendCallFailed` subclass) -> one regenerate (attempt 1), then 502 `bad_reply`. A transport failure (plain
+  `BackendCallFailed`) -> 502 `upstream`, no regenerate. Used names go into the prompt as a JSON list.
 - Landmark: one SAM segment on landmark_phrase, `select_loci(max_loci=1)`; none -> `box: null`.
 - 200 {image (JPEG data URL), width, height, photo_sha (of that JPEG), name, profile {visual, spatial, conceptual},
   box {x1, y1, x2, y2} | null}.
 - Deferred: criterion (14) (`app.py <= 582`, create_app wiring) belongs to the B4 wiring slice after B1.
 
-Tests: tests/test_station.py, tests/test_station_api.py
+Tests: tests/test_station.py, tests/test_station_api.py, tests/test_station_live_reply.py
