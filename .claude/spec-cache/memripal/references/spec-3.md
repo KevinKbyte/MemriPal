@@ -1,6 +1,6 @@
 # MemriPal spec (continuation)
 
-Continuation of [spec-2.md](spec-2.md), which is at its 500-line cap.
+Continuation of [spec-2.md](spec-2.md) (500-line cap). Continued in [spec-4.md](spec-4.md) (MEM-068 onward).
 
 ## MEM-041 v6 Review prototype kept as a design reference
 

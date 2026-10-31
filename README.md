@@ -248,8 +248,10 @@ Merge a worktree branch in one command: refuses a dirty tree, rebases onto `main
 `scripts/check.sh`, enqueues via the merge queue (`request_merge.py --wait`), then re-runs `scripts/check.sh` in the
 primary checkout. Exit 2 on bad usage; otherwise the first failing step's code. The queue is found at
 `$AGENT_WORKFLOW_DIR/scripts/request_merge.py` (e.g. `export AGENT_WORKFLOW_DIR=~/projects/agent-workflow`); with it
-unset or that file missing, the script skips the queue and fast-forwards `main` directly (`git merge --ff-only`),
-refusing if `main` moved.
+unset or that file missing, the script skips the queue and fast-forwards `main` directly (`git merge --ff-only`);
+if `main` moved meanwhile it drops the branch's tail bump commit, rebases, re-bumps to main + 1 and retries, up to 3
+rounds (ADR 0034). The ff and `MEMRIPAL_REQUEST_MERGE_CMD` paths refuse a UI diff without a visual-verify record
+(ADR 0035); the queue path gates in `request_merge.py`.
 
 ```bash
 sh scripts/merge_branch.sh <worktree>

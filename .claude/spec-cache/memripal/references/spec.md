@@ -376,8 +376,8 @@ Tests: tests/test_stt_provider.py
 - Enqueue: agent-workflow `request_merge.py --repo <worktree> --wait` (env MEMRIPAL_REQUEST_MERGE_CMD overrides;
   tests stub it); non-zero -> exit with that code. Resolution order: MEMRIPAL_REQUEST_MERGE_CMD; else
   `$AGENT_WORKFLOW_DIR/scripts/request_merge.py` if AGENT_WORKFLOW_DIR is set and the file exists; else solo
-  fallback, no queue: primary checkout `git merge --ff-only <branch>`; non-ff (main moved) -> exit with git's code.
-  No hardcoded agent-workflow path.
+  fallback, no queue: primary checkout `git merge --ff-only <branch>`; non-ff (main moved) -> re-bump retry, MEM-068.
+  No hardcoded agent-workflow path. Visual-verify gate on the ff + override paths: MEM-069 ([spec-4.md](spec-4.md)).
 - Primary checkout's `scripts/check.sh` (primary = first `git worktree list` entry); script exits with its code.
 
 Tests: tests/test_merge_branch.py

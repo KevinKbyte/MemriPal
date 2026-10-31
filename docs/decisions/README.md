@@ -61,6 +61,10 @@ the others that you asked about".
   reference-only (over full v6 JS adoption or linking v6 `styles.css` verbatim).
 - [0032](0032-capacitor-android-shell.md) Capacitor 8 Android shell bundling `static/` into `www/`, API base via
   `MEMRIPAL_API_BASE`, native meta CSP; CORS wiring pending (over a PWA or a remote `server.url`).
+- [0034](0034-merge-branch-rebump-retry.md) `merge_branch.sh` ff race: drop tail bump, rebase, re-bump 4 release
+  files to main + 1, re-check, retry, cap 3 rounds (over a mandatory merge queue or changelog fragments).
+- [0035](0035-merge-branch-visual-verify-gate.md) `merge_branch.sh` visual-verify gate on the ff + override paths,
+  default lookup `refuse_reason`, fails closed (over relying on `request_merge.py`'s preenqueue gates only).
 
 ## Minor decisions (no ADR)
 
