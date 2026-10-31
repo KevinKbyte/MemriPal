@@ -183,7 +183,7 @@ class TestAssociateWithPlace:
 
 # Covers: MEM-025
 # Requirement: without a place, /associate is unchanged: prompt args are exactly {item, locus}, the prompt
-# Meta sees is today's text, and the request key is byte-identical to before MEM-025, so recorded fixtures
+# Meta sees is today's template (plus only the out-of-digest MEM-022 taste clause, no place clause), and the request key is byte-identical to before MEM-025, so recorded fixtures
 # keep replaying.
 class TestAssociateWithoutPlaceUnchanged:
     def test_prompt_args_are_exactly_item_and_locus(self):
@@ -196,7 +196,8 @@ class TestAssociateWithoutPlaceUnchanged:
         api = _ChatApi()
         assert _post(_live(api), _body()).status_code == 200
         [prompt] = api.prompts()
-        assert prompt == assoc.ASSOCIATION_PROMPT.format(item=ITEM, locus=LOCUS)
+        assert prompt == assoc.association_prompt(ITEM, LOCUS)
+        assert prompt.startswith(assoc.ASSOCIATION_PROMPT.format(item=ITEM, locus=LOCUS))
         assert "PLACE FACTS" not in prompt
 
     def test_request_key_is_byte_identical_to_before(self, assoc):
