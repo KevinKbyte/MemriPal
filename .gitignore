@@ -12,3 +12,4 @@ docs/sdlc-runs/
 # agent scratch (R98, item 123)
 .claude/offload-workflows/
 .claude/worktree-dirt-archive/
+www/

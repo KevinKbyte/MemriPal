@@ -180,13 +180,13 @@ const STATUS_CODES = {
  * @param {{ fetch: typeof fetch, wav: Uint8Array, keywords: string[], passcode?: string | null }} opts
  * @returns {Promise<{ text: string }>}
  */
-export async function postRecallAudio({ fetch, wav, keywords, passcode }) {
+export async function postRecallAudio({ fetch: fetchFn, wav, keywords, passcode }) {
   /** @type {Record<string, string>} */
   const headers = { "Content-Type": "application/json" };
   if (passcode) headers["X-Memripal-Passcode"] = passcode;
   let resp;
   try {
-    resp = await fetch("/recall/audio", {
+    resp = await fetchFn("/recall/audio", {
       method: "POST",
       headers,
       body: JSON.stringify({ audio: toBase64(wav), keywords }),

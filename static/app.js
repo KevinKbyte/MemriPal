@@ -2,6 +2,7 @@
 // MemriPal frontend: backend health plus photo upload -> numbered memory loci (MEM-017).
 // Served as a raw ES module (no build step). Model-derived text is only ever set via textContent.
 
+import { withApiBase } from "./api_base.js";
 import { selectStore, withPasscode, wireApp } from "./flow.js";
 import { associationKey, createPalaceStore } from "./palace_store.js";
 import { browserGeolocate, createPlaceState, lookupPlace, readGps, wirePlace } from "./place.js";
@@ -419,7 +420,7 @@ function wireUpload() {
   const deps = {
     doc: document,
     loadImage,
-    fetch: fetch.bind(globalThis),
+    fetch: withApiBase(fetch.bind(globalThis)),
     encode: reencodeJpeg,
     place,
     geolocate: browserGeolocate,

@@ -1,0 +1,8 @@
+{
+  "appId": "com.memripal.app",
+  "appName": "MemriPal",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}

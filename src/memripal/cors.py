@@ -1,0 +1,29 @@
+"""Cross-origin access for the Capacitor shell (MEM-063): an exact origin allowlist, no credentials."""
+
+import os
+
+from fastapi import FastAPI
+from starlette.middleware.cors import CORSMiddleware
+
+# Capacitor WebView origins: Android (androidScheme https) and iOS.
+DEFAULT_ORIGINS = ("https://localhost", "capacitor://localhost")
+ALLOWED_HEADERS = ("X-Memripal-Passcode", "Content-Type")
+
+
+def cors_origins() -> list[str]:
+    """MEMRIPAL_CORS_ORIGINS as a trimmed list; blank/unset means DEFAULT_ORIGINS. '*' fails loudly."""
+    raw = os.environ.get("MEMRIPAL_CORS_ORIGINS", "")
+    origins = [o.strip() for o in raw.split(",") if o.strip()] or list(DEFAULT_ORIGINS)
+    if "*" in origins:
+        raise ValueError("MEMRIPAL_CORS_ORIGINS must list exact origins, not *")
+    return origins
+
+
+def add_cors(app: FastAPI) -> None:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins(),
+        allow_methods=["GET", "POST"],
+        allow_headers=list(ALLOWED_HEADERS),
+        allow_credentials=False,
+    )
