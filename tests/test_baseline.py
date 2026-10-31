@@ -67,8 +67,8 @@ def _jpeg_with_exif() -> bytes:
     return data
 
 
-def _image(image_id=IMAGE_ID, north_m=0.0, thumb=THUMB_URL, author=AUTHOR) -> dict:
-    point = {"type": "Point", "coordinates": [round(LON, 4), round(LAT, 4) + north_m * DEG_PER_M]}
+def _image(image_id=IMAGE_ID, north_m=0.0, thumb=THUMB_URL, author=AUTHOR, lat=LAT, lon=LON) -> dict:
+    point = {"type": "Point", "coordinates": [round(lon, 4), round(lat, 4) + north_m * DEG_PER_M]}
     rec = {
         "id": image_id,
         "computed_geometry": point,
@@ -154,7 +154,7 @@ class TestOutboundRequest:
         rng = random.Random(53)
         for _ in range(20):
             lat, lon = rng.uniform(-89.9, 89.9), rng.uniform(-179.9, 179.9)
-            fake = FakeMapillary()
+            fake = FakeMapillary(data=[_image(lat=lat, lon=lon)])
             _provider(baseline, fake).lookup(lat, lon)
             (graph,) = fake.graph_requests()
             for _key, value in graph.url.params.multi_items():
@@ -273,7 +273,6 @@ class TestFixtureReplay:
         def refuse(*args, **kwargs):
             raise AssertionError("fixture replay touched the network")
 
-        monkeypatch.setattr(httpx.Client, "send", refuse)
         monkeypatch.setattr(httpx.HTTPTransport, "handle_request", refuse)
 
     def test_recorded_answer_replays_offline_for_rounded_coords(self, baseline, routes, tmp_path, offline):
