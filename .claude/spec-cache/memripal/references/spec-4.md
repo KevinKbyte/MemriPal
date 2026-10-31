@@ -46,3 +46,26 @@ Decided-by: ADR [0035](../../../../docs/decisions/0035-merge-branch-visual-verif
   `AGENT_WORKFLOW_DIR` honored for the lookup only.
 
 Tests: tests/test_merge_branch_visual_verify.py
+## MEM-070 Design gate: tip-rendered design evidence + recorded approval (PLANNED)
+
+PLANNED, not built, unverified: no code adopts it. ADR [0036](../../../../docs/decisions/0036-design-gate.md).
+Decided-by: ADR-0036
+Root problem: design evidence a branch carries can be stale (a PNG from an earlier commit) or not evidence at all (a
+`README.md`), so a `docs/design/**` change can land without proof it renders at the merged commit.
+Actors: `scripts/design_gate.py`, `scripts/approve_design.py` (Kev only), the MEM-067 tools
+(`scripts/screenshot_design.py`, `scripts/check_route_css.py`).
+- Scope: a branch whose diff touches `docs/design/**`.
+- `scripts/design_gate.py` takes its OWN screenshots of the design preview at the branch tip via
+  `scripts/screenshot_design.py`; committed or caller-supplied PNGs are never the evidence. Fails on any of:
+  - a page or console error (`screenshot_design.py` `ERR` line, exit 1);
+  - `scripts/check_route_css.py <css> <contract>` (exactly 2 args) not exit 0;
+  - horizontal overflow at the 375 px width (rendered page wider than the viewport);
+  - axe contrast or tap-target violations > 0;
+  - an id or class used in a CSS selector, or named by the contract, absent from the rendered DOM.
+- Evidence refusal: evidence that is a `README.md`, or a PNG not produced at the current tip commit (an old PNG),
+  is refused.
+- Approval: a changed shot needs Kev's approval recorded by `scripts/approve_design.py`, an ask-listed command
+  (human-run, never agent-run). A changed shot without a recorded approval fails the gate.
+- Pass: fresh tip shots, every check clean, every changed shot approved.
+- Accept: README.md as evidence -> refused; PNG from an earlier commit -> refused; fresh tip shots with a changed
+  shot and no approval -> fail; fresh tip shots + approval -> pass; each check above failing alone -> fail.
