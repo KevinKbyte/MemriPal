@@ -1,8 +1,19 @@
 // Shared fakes for the route store tests (MEM-048). Not a test file itself (no describe/test); the
 // route_store*.test.mjs files import it.
 
+let adapterFactory = null;
+
+/**
+ * Swaps what memoryAdapter() returns (S2 matrix runners re-run the route store tests over the SQL
+ * adapter). f: () => KvAdapter with a `state.failPuts` flag; null restores the Map-backed fake.
+ */
+export function setAdapterFactory(f) {
+  adapterFactory = f;
+}
+
 /** Key-value adapter shaped like idb_adapter.js, backed by a Map; clones like structured-clone storage. */
 export function memoryAdapter() {
+  if (adapterFactory) return adapterFactory();
   const map = new Map();
   const state = { failPuts: false };
   return {

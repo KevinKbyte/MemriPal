@@ -264,3 +264,33 @@ describe("runMigrations: async steps are refused", () => {
     assert.deepEqual(await tables(db), []);
   });
 });
+
+// Covers: MEM-039
+// Requirement: refusing an async migration step never leaks an unhandled promise rejection (which
+// would crash or pollute the worker): when the refused step's own promise rejects later, that
+// rejection is swallowed, while the sync-only error still propagates to the caller (item 159 S2).
+describe("runMigrations: refused async step that rejects later", () => {
+  test("no unhandledRejection after setImmediate flushes; the sync-only error still propagates", async () => {
+    const unhandled = [];
+    const onUnhandled = (reason) => unhandled.push(reason);
+    process.on("unhandledRejection", onUnhandled);
+    try {
+      const db = await open();
+      await assert.rejects(
+        async () =>
+          run()(db, [
+            async () => {
+              await null;
+              throw new Error("late async failure");
+            },
+          ]),
+        (err) => err instanceof Error && /sync/i.test(err.message),
+      );
+      for (let i = 0; i < 10; i++) await new Promise((r) => setImmediate(r));
+      assert.deepEqual(unhandled.map(String), []);
+      assert.equal(await version(db), 0);
+    } finally {
+      process.off("unhandledRejection", onUnhandled);
+    }
+  });
+});

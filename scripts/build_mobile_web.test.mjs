@@ -92,6 +92,11 @@ describe("build_mobile_web.mjs: bundle contents", () => {
     assert.deepEqual(shipped.map((f) => relative(WWW, f)), []);
   });
 
+  test("the test-only node SQLite driver (static/db/node_driver.js) is not shipped", () => {
+    const shipped = walk(join(WWW, "static")).filter((f) => f.endsWith(join("db", "node_driver.js")));
+    assert.deepEqual(shipped.map((f) => relative(WWW, f)), []);
+  });
+
   test("www/static/runtime_config.js carries the API origin", () => {
     const cfg = join(WWW, "static", "runtime_config.js");
     assert.ok(existsSync(cfg), "www/static/runtime_config.js missing");
