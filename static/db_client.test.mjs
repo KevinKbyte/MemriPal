@@ -17,6 +17,9 @@
 //     transaction(stmts), stmts = [{ sql, params }], posts { id, op: "transaction", stmts } and the
 //     worker runs them in one SQLite transaction (a JS callback cannot cross postMessage).
 //     A worker "error" event rejects every pending request with an Error carrying its message.
+//     If worker.postMessage throws (e.g. DataCloneError) the call's Promise rejects with that error
+//     (no synchronous throw) and later calls are unaffected. A worker "messageerror" event (a reply
+//     that could not be deserialized) rejects every pending request instead of leaving it hanging.
 //   Worker events are read via onmessage/onerror or addEventListener; the fake supports both.
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -55,8 +58,14 @@ class FakeWorker {
     this.listeners = new Map();
     this.onmessage = null;
     this.onerror = null;
+    this.postError = null;
   }
   postMessage(msg) {
+    if (this.postError) {
+      const err = this.postError;
+      this.postError = null;
+      throw err;
+    }
     this.sent.push(structuredClone(msg));
   }
   addEventListener(type, fn) {
@@ -252,5 +261,94 @@ describe("openDb: worker RPC", () => {
     worker.emit("error", { message: "wasm compile failed", preventDefault() {} });
     await assert.rejects(p1, (err) => err instanceof Error && err.message.includes("wasm compile failed"));
     await assert.rejects(p2, (err) => err instanceof Error && err.message.includes("wasm compile failed"));
+  });
+});
+
+/** Settles p within ms or reports "hung"; the timer is always cleared so the test never leaks it. */
+async function within(p, ms = 250) {
+  let timer;
+  const hung = new Promise((resolve) => {
+    timer = setTimeout(() => resolve("hung"), ms);
+  });
+  try {
+    return await Promise.race([p.then((v) => ({ resolved: v }), (err) => ({ rejected: err })), hung]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Covers: MEM-039
+// Requirement: a request the page cannot even send to the worker (e.g. un-cloneable params) fails
+// that one call cleanly and leaves the channel usable for every later call.
+describe("openDb: postMessage failure", () => {
+  for (const op of ["exec", "query", "transaction"]) {
+    test(`${op}: a throwing postMessage rejects the returned promise with that error`, async () => {
+      const { worker, db } = await ready();
+      const cloneErr = new DOMException("could not be cloned", "DataCloneError");
+      worker.postError = cloneErr;
+      let p;
+      assert.doesNotThrow(() => {
+        p = op === "transaction" ? db.transaction([{ sql: "SELECT 1", params: [] }]) : db[op]("SELECT 1", []);
+      }, "the failure must surface as a rejection, not a synchronous throw");
+      await assert.rejects(p, (err) => err === cloneErr);
+    });
+  }
+
+  test("after a failed send, the next call is sent and resolves from its own reply", async () => {
+    const { worker, db } = await ready();
+    worker.postError = new DOMException("could not be cloned", "DataCloneError");
+    await assert.rejects(db.query("SELECT ?", [() => {}]));
+    const p = db.query("SELECT 2 AS n");
+    await settle();
+    assert.equal(worker.sent.length, 1);
+    worker.reply({ id: worker.sent[0].id, ok: true, rows: [{ n: 2 }] });
+    assert.deepEqual(await within(p), { resolved: [{ n: 2 }] });
+  });
+
+  test("after a failed send, a worker error event still rejects the live request", async () => {
+    const { worker, db } = await ready();
+    worker.postError = new DOMException("could not be cloned", "DataCloneError");
+    await assert.rejects(db.exec("SELECT 1"));
+    const live = db.query("SELECT 3 AS n");
+    await settle();
+    worker.emit("error", { message: "boom", preventDefault() {} });
+    const out = await within(live);
+    assert.ok(out.rejected instanceof Error && out.rejected.message.includes("boom"));
+  });
+});
+
+// Covers: MEM-039
+// Requirement: if the worker's reply cannot be deserialized (messageerror), every in-flight
+// database call fails instead of hanging forever.
+describe("openDb: worker messageerror", () => {
+  test("a messageerror event rejects every in-flight request", async () => {
+    const { worker, db } = await ready();
+    const p1 = db.query("SELECT 1");
+    const p2 = db.exec("SELECT 2");
+    const p3 = db.transaction([{ sql: "SELECT 3", params: [] }]);
+    await settle();
+    worker.emit("messageerror", { data: undefined });
+    for (const [name, p] of [
+      ["query", p1],
+      ["exec", p2],
+      ["transaction", p3],
+    ]) {
+      const out = await within(p);
+      assert.notEqual(out, "hung", `${name} must not hang after messageerror`);
+      assert.ok(out.rejected instanceof Error, `${name} must reject with an Error`);
+    }
+  });
+
+  test("a call made after the messageerror is still answered normally", async () => {
+    const { worker, db } = await ready();
+    const before = db.query("SELECT 1");
+    await settle();
+    worker.emit("messageerror", { data: undefined });
+    await within(before);
+    const after = db.query("SELECT 4 AS n");
+    await settle();
+    const msg = worker.sent.at(-1);
+    worker.reply({ id: msg.id, ok: true, rows: [{ n: 4 }] });
+    assert.deepEqual(await within(after), { resolved: [{ n: 4 }] });
   });
 });

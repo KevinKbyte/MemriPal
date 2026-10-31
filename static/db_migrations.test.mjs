@@ -4,9 +4,13 @@
 // so a failing migration never leaves a half-applied schema or a version that lies; a database
 // written by a newer app version is refused untouched instead of being corrupted (item 159 S1).
 // Contract (RED; GREEN implements in static/db/migrations.js):
-//   runMigrations(db, migrations) (sync or async; awaited here). db = {exec, query, transaction}
-//   (static/db/node_driver.js openMemoryDb() shape). migrations[i] is a SQL string or a function
-//   (db) => void; it brings user_version i -> i+1. Reads PRAGMA user_version first.
+//   runMigrations(db, migrations) (returns a Promise; awaited here). db = {exec, query, transaction}
+//   (static/db/node_driver.js openMemoryDb() shape; in the app, the worker's synchronous oo1 db).
+//   migrations[i] is a SQL string or a SYNC-only function (db) => void; it brings user_version
+//   i -> i+1. Reads PRAGMA user_version first.
+//   - a function step that returns a thenable (async step) is refused: runMigrations throws an
+//     Error naming the sync-only rule (message matches /sync/i), that step's writes and bump roll
+//     back, user_version stays at the last good value and later migrations do not run;
 //   - each pending migration runs in its own db.transaction together with the user_version bump;
 //   - a failing migration rolls back (its writes and its bump) and the error propagates;
 //     user_version stays at the last good value and later migrations do not run;
@@ -208,5 +212,55 @@ describe("runMigrations: database newer than the app", () => {
     await db.exec("PRAGMA user_version = 1");
     await assert.rejects(async () => run()(db, []), (err) => err instanceof DbNewerError);
     assert.equal(await version(db), 1);
+  });
+});
+
+// Covers: MEM-039
+// Requirement: migrations are synchronous only (they run inside the SQLite worker's single
+// transaction); an async migration step is refused with a clear error and rolled back so its work
+// can never land outside the transaction or after the version bump.
+describe("runMigrations: async steps are refused", () => {
+  async function expectRefused(step) {
+    const db = await open();
+    await assert.rejects(
+      async () => run()(db, ["CREATE TABLE a (id INTEGER PRIMARY KEY)", step, "CREATE TABLE c (x)"]),
+      (err) => err instanceof Error && /sync/i.test(err.message),
+    );
+    assert.equal(await version(db), 1, "user_version must stay at the last good step");
+    assert.deepEqual(await tables(db), ["a"], "the async step's writes and later steps must be absent");
+  }
+
+  test("an async function step throws a sync-only error and its writes roll back", async () => {
+    await expectRefused(async (d) => {
+      d.exec("CREATE TABLE half (x)");
+    });
+  });
+
+  test("a function step returning Promise.resolve() is refused the same way", async () => {
+    await expectRefused((d) => {
+      d.exec("CREATE TABLE half (x)");
+      return Promise.resolve();
+    });
+  });
+
+  test("a function step returning a bare thenable is refused the same way", async () => {
+    await expectRefused((d) => {
+      d.exec("CREATE TABLE half (x)");
+      return {
+        then(resolve) {
+          resolve();
+        },
+      };
+    });
+  });
+
+  test("an async step as the very first migration leaves a fresh db at user_version 0", async () => {
+    const db = await open();
+    await assert.rejects(
+      async () => run()(db, [async (d) => d.exec("CREATE TABLE half (x)")]),
+      (err) => err instanceof Error && /sync/i.test(err.message),
+    );
+    assert.equal(await version(db), 0);
+    assert.deepEqual(await tables(db), []);
   });
 });
