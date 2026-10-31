@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.12] - 2026-10-31
+
+### Added
+
+- Route view (S5): practise a route's stations in order, and delete a route with Undo that restores it even when the store write fails (MEM-051).
+
 ## [0.20.11] - 2026-10-31
 
 ### Added
