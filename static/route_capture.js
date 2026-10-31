@@ -4,6 +4,8 @@
 // it, a network error / 5xx / 429 keeps it pending for a manual Retry, any other 4xx marks it error
 // (Drop offered). One in-flight request per station, no automatic retry.
 
+import { apiUrl } from "./api_base.js";
+
 const MAX_NAME = 40;
 const MAX_LINE = 200;
 const JPEG_DATA_URL = "data:image/jpeg;base64,";
@@ -95,7 +97,7 @@ export function createCaptureSession({ store, routeId, fetch, encode, onStatus =
     onStatus(MSG.naming);
     let res;
     try {
-      res = await fetch("/station", { method: "POST", headers: { "Content-Type": "image/jpeg" }, body: photo });
+      res = await fetch(apiUrl("/station"), { method: "POST", headers: { "Content-Type": "image/jpeg" }, body: photo });
     } catch {
       return pending(MSG.offline);
     }
