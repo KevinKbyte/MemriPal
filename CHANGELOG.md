@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.22] - 2026-10-31
+
+### Added
+
+- Routes and stations stored in SQLite (OPFS worker) with soft delete and undo; photos stay in IndexedDB; route_store API unchanged (MEM-039).
+
 ## [0.20.21] - 2026-10-31
 
 ### Added
