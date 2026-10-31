@@ -2,7 +2,7 @@
 // MEM-042 Download backup / import a backup; every outcome is one textContent line in #backup-status.
 // Split out of flow.js (MEM-051) to keep the page wiring under the file-size cap.
 
-import { buildBackup, importBackup, MAX_IMPORT_BYTES } from "./palace_export.js";
+import { buildBackup, importBackup, MAX_BACKUP_BYTES, OLD_FORMAT } from "./palace_export.js";
 
 /**
  * @param {import("./flow.js").AppDeps} deps
@@ -37,12 +37,13 @@ export function wireBackup(deps, renderHistory) {
     if (!file) return;
     try {
       // Checked before reading, so an oversized file is never loaded into memory.
-      if (file.size > MAX_IMPORT_BYTES) throw new Error(`over ${MAX_IMPORT_BYTES} bytes`);
-      const { imported, skipped } = await importBackup(await file.text(), deps);
-      say(`Imported ${imported}, skipped ${skipped}`);
+      if (file.size > MAX_BACKUP_BYTES) throw new Error(`over ${MAX_BACKUP_BYTES} bytes`);
+      const { added, present, skipped } = await importBackup(await file.text(), deps);
+      say(`${added} added, ${present} already present${skipped ? `, ${skipped} skipped` : ""}`);
       await renderHistory();
     } catch (err) {
-      say(`Import failed: ${why(err)}`);
+      // The v1 refusal is a full sentence of its own (ADR 0032), not an import failure reason.
+      say(why(err) === OLD_FORMAT ? OLD_FORMAT : `Import failed: ${why(err)}`);
     }
   });
 }

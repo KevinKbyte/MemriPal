@@ -45,6 +45,7 @@ const MAX_RECALL_MS = 3 * 60 * 1000;
  *   setInterval?: (fn: () => void, ms: number) => unknown,
  *   clearInterval?: (handle: any) => void,
  *   routes?: ReturnType<typeof import("./route_store.js").createRouteStore>,
+ *   thumbnail?: import("./backup_routes.js").Thumbnail,
  * }} AppDeps
  */
 

@@ -290,6 +290,33 @@ export function createRouteStore(adapter, { now = Date.now, newId = () => crypto
         return persist(clone(r), [putRoute(r)]);
       }),
 
+    /**
+     * Backup v2 import (MEM-054): writes an already-validated route as saved, each station's photo
+     * under a fresh photo_ref. An id already stored wins (D11): nothing is written, null returned.
+     * @param {{ id: string, name: string, kind: string, created_at: string, lists: RouteList[],
+     *   stations: Array<{ id: string, n: number, name: string, box: Box | null,
+     *     profile: Record<string, string> | null, taps: Record<string, string> | null, photo: any }> }} input
+     * @returns {Promise<Route | null>}
+     */
+    restoreRoute: ({ id, name, kind, created_at, lists, stations }) => serial(async () => {
+      const map = await routes();
+      if (map.has(id)) return null;
+      const writes = [];
+      /** @type {Route} */
+      const r = { id, name, kind: kindOf(kind), status: "saved", created_at, lists: clone(lists), stations: [] };
+      for (const s of stations) {
+        /** @type {Station} */
+        const st = { id: s.id, n: s.n, name: s.name, photo_ref: newId(), status: "named" };
+        if (s.box) st.box = { ...s.box };
+        if (s.profile) st.profile = { ...s.profile };
+        if (s.taps) st.taps = { ...s.taps };
+        r.stations.push(st);
+        writes.push(putPhoto(st.photo_ref, s.photo));
+      }
+      map.set(id, r);
+      return persist(clone(r), [...writes, putRoute(r)]);
+    }),
+
     /** @param {string} routeId @param {{ name?: string, kind?: string }} fields */
     finishSave: (routeId, { name, kind }) => serial(async () => {
       const r = await mustGet(routeId);

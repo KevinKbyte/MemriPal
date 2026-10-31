@@ -1,22 +1,27 @@
 // @ts-check
-// Palace backup (MEM-042, ADR 0028): one JSON file {v, palace_id, route, associations, rehearsals}.
-// The file is untrusted: JSON.parse only, exact key sets, and every stored object is rebuilt key by
-// key from an allow-list, so __proto__ / constructor never reach the store or Object.prototype.
+// Palace backup v2 (MEM-042 + MEM-054, ADRs 0028 / 0032): one JSON file {v: 2, routes, lists,
+// associations, rehearsals}. The file is untrusted: JSON.parse only, exact key sets, and every stored
+// object is rebuilt key by key from an allow-list, so __proto__ / constructor never reach the store or
+// Object.prototype. Routes are exported / checked in backup_routes.js.
 
+import { exportRoutes, importRoutes } from "./backup_routes.js";
 import { associationKey } from "./palace_store.js";
 import { pointOf } from "./rehearsals.js";
 
-/** = recall_relay.py MAX_CHUNK_BYTES; checked on file.size before the file is read. */
+/** = recall_relay.py MAX_CHUNK_BYTES; kept for that meaning, no longer the backup cap (ADR 0032). */
 export const MAX_IMPORT_BYTES = 1048576;
+/** Export and import byte cap, sized to 3 routes x 8 thumbnails; checked before the file is read. */
+export const MAX_BACKUP_BYTES = 8388608;
+/** A v1 (ADR 0028) file: its routes have no photos, so it is refused rather than migrated. */
+export const OLD_FORMAT = "Older backup format, not supported";
 // Entries accumulate per item + locus pair across runs, so far above one route's 12.
 export const MAX_IMPORT_ASSOCIATIONS = 500;
 export const MAX_IMPORT_REHEARSALS = 1000;
-// loci.py max_loci and split.py MAX_POINTS.
-const MAX_ROUTE_LOCI = 12;
+// split.py MAX_POINTS.
 const MAX_POINTS = 12;
 
 const PALACE_ID = "demo";
-const TOP_KEYS = ["associations", "palace_id", "rehearsals", "route", "v"];
+const TOP_KEYS = ["associations", "lists", "rehearsals", "routes", "v"];
 // associate.py FIELDS.
 const FIELDS = [
   "item", "locus",
@@ -29,12 +34,15 @@ const SCENE_FIELD_MAX = 300; // MAX_SCENE_FIELD_CHARS
 const FIELD_MAX = 2000; // MAX_FIELD_CHARS
 const SIG_RE = /^[0-9a-f]{64}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const BOX_KEYS = ["x1", "y1", "x2", "y2"];
 
 /**
+ * routes is optional until the page wires a route store; without one no routes are read or written.
  * @typedef {ReturnType<typeof import("./palace_store.js").createPalaceStore>} Store
  * @typedef {ReturnType<typeof import("./rehearsals.js").createRehearsalStore>} Rehearsals
- * @typedef {{store: Store, rehearsals: Rehearsals}} BackupDeps
+ * @typedef {{
+ *   store: Store, rehearsals: Rehearsals, routes?: import("./backup_routes.js").RouteStore,
+ *   thumbnail?: import("./backup_routes.js").Thumbnail, loadImage: import("./backup_routes.js").LoadImage,
+ * }} BackupDeps
  */
 
 /** @param {unknown} v @returns {v is Record<string, any>} */
@@ -50,9 +58,6 @@ function exactKeys(obj, required, optional = []) {
   const keys = Object.keys(obj);
   return required.every((k) => keys.includes(k)) && keys.every((k) => required.includes(k) || optional.includes(k));
 }
-
-/** @param {unknown} v */
-const finite = (v) => typeof v === "number" && Number.isFinite(v);
 
 /**
  * I3: a fresh {record, status[, sig]} or null; an unknown key is never stripped (it would change the
@@ -109,36 +114,12 @@ function rehearsalOf(r) {
 }
 
 /**
- * Route: a fresh locus list (app.py _locus_json shape), or null when any locus fails.
- * @param {unknown[]} route
- */
-function routeOf(route) {
-  const out = [];
-  for (const l of route) {
-    if (!isObject(l) || !exactKeys(l, ["n", "label", "phrase", "box", "outline"])) return null;
-    const { n, label, phrase, box, outline } = l;
-    if (!Number.isInteger(n) || typeof label !== "string" || typeof phrase !== "string") return null;
-    if (!isObject(box) || !exactKeys(box, BOX_KEYS) || !BOX_KEYS.every((k) => finite(box[k]))) return null;
-    if (!Array.isArray(outline) || !outline.every((p) => Array.isArray(p) && p.length === 2 && p.every(finite))) return null;
-    out.push({
-      n,
-      label,
-      phrase,
-      box: { x1: box.x1, y1: box.y1, x2: box.x2, y2: box.y2 },
-      outline: outline.map((p) => [p[0], p[1]]),
-    });
-  }
-  return out;
-}
-
-/**
  * I1 count caps shared by export and import: the reason for the first one broken, else null.
- * @param {{route: unknown[], associations: unknown[], rehearsals: unknown[]}} b
+ * @param {{associations: unknown[], rehearsals: unknown[]}} b
  */
 function capError(b) {
   if (b.associations.length > MAX_IMPORT_ASSOCIATIONS) return `over ${MAX_IMPORT_ASSOCIATIONS} associations`;
   if (b.rehearsals.length > MAX_IMPORT_REHEARSALS) return `over ${MAX_IMPORT_REHEARSALS} rehearsals`;
-  if (b.route.length > MAX_ROUTE_LOCI) return `over ${MAX_ROUTE_LOCI} places in the route`;
   const crowded = b.rehearsals.some((r) => isObject(r) && Array.isArray(r.points) && r.points.length > MAX_POINTS);
   return crowded ? `over ${MAX_POINTS} points in a rehearsal` : null;
 }
@@ -151,18 +132,21 @@ const byteLength = (text) => new TextEncoder().encode(text).length;
  * would break an I1 cap, so every exported file imports.
  * @param {BackupDeps} deps
  */
-export async function buildBackup({ store, rehearsals }) {
-  const route = routeOf((await store.loadRoute()) ?? []) ?? [];
-  // list() returns values only; the route array fails associationOf like any other non-entry. A
-  // stored entry may carry an image beside its record; only the entry keys are exported.
+export async function buildBackup({ store, rehearsals, routes, thumbnail }) {
+  // list() returns values only; the legacy loci route array fails associationOf like any other
+  // non-entry and is not a v2 route. A stored entry may carry an image beside its record; only the
+  // entry keys are exported.
   /** @param {unknown} v */
   const entryKeys = (v) => (isObject(v) ? Object.fromEntries(["record", "status", "sig"].filter((k) => k in v).map((k) => [k, v[k]])) : v);
   const associations = (await store.list()).map((v) => associationOf(entryKeys(v))).filter((a) => a !== null);
   const runs = (await rehearsals.list(PALACE_ID)).map(rehearsalOf).filter((r) => r !== null);
-  const backup = { v: 1, palace_id: PALACE_ID, route, associations, rehearsals: runs };
-  const reason = capError(backup);
+  const reason = capError({ associations, rehearsals: runs });
   if (reason) throw new Error(reason);
-  if (byteLength(JSON.stringify(backup)) > MAX_IMPORT_BYTES) throw new Error(`over ${MAX_IMPORT_BYTES} bytes`);
+  // thumbnail is only called when a route store holds a saved route.
+  const backupRoutes = await exportRoutes(routes, /** @type {any} */ (thumbnail));
+  // lists[] is pinned only as an array until slice B7 defines list contents.
+  const backup = { v: 2, routes: backupRoutes, lists: [], associations, rehearsals: runs };
+  if (byteLength(JSON.stringify(backup)) > MAX_BACKUP_BYTES) throw new Error(`over ${MAX_BACKUP_BYTES} bytes`);
   return backup;
 }
 
@@ -171,7 +155,7 @@ export async function buildBackup({ store, rehearsals }) {
  * @param {string} text
  */
 function parseBackup(text) {
-  if (byteLength(text) > MAX_IMPORT_BYTES) throw new Error(`over ${MAX_IMPORT_BYTES} bytes`);
+  if (byteLength(text) > MAX_BACKUP_BYTES) throw new Error(`over ${MAX_BACKUP_BYTES} bytes`);
   /** @type {unknown} */
   let data;
   try {
@@ -179,51 +163,61 @@ function parseBackup(text) {
   } catch {
     throw new Error("not a JSON file");
   }
+  if (isObject(data) && data.v === 1) throw new Error(OLD_FORMAT);
   if (!isObject(data) || !exactKeys(data, TOP_KEYS)) throw new Error("not a MemriPal backup");
-  if (data.v !== 1) throw new Error("unsupported backup version");
-  if (data.palace_id !== PALACE_ID) throw new Error("not a backup of this palace");
-  const { route, associations, rehearsals } = data;
-  if (!Array.isArray(route) || !Array.isArray(associations) || !Array.isArray(rehearsals)) {
-    throw new Error("not a MemriPal backup");
-  }
-  const reason = capError({ route, associations, rehearsals });
+  if (data.v !== 2) throw new Error("unsupported backup version");
+  const { routes, lists, associations, rehearsals } = data;
+  if (![routes, lists, associations, rehearsals].every(Array.isArray)) throw new Error("not a MemriPal backup");
+  const reason = capError({ associations, rehearsals });
   if (reason) throw new Error(reason);
-  return { route, associations, rehearsals };
+  return { routes, associations, rehearsals };
 }
 
 /**
- * I3..I5: additive merge (an existing entry wins, the first duplicate in a file wins); only a bad
- * entry is skipped. A valid route is restored when none is stored, but never counted.
+ * I3..I5 + D11: additive merge (a stored entry, rehearsal or route id wins and counts as present; the
+ * first duplicate in a file wins); only a bad association / rehearsal is skipped, while any bad route
+ * refuses the whole file before anything is written.
  * @param {string} text
  * @param {BackupDeps} deps
- * @returns {Promise<{imported: number, skipped: number}>}
+ * @returns {Promise<{added: number, present: number, skipped: number}>}
  */
-export async function importBackup(text, { store, rehearsals }) {
+export async function importBackup(text, { store, rehearsals, routes, loadImage }) {
   const file = parseBackup(text);
-  // Every entry is validated before the first write, so no bad entry can leave a partial merge.
+  if (file.routes.length && !routes) throw new Error("this page cannot store routes yet");
+  // Every entry and route is validated before the first write, so nothing bad leaves a partial merge.
+  const fileRoutes = await importRoutes(file.routes, loadImage);
   const entries = file.associations.map(associationOf);
   const runs = file.rehearsals.map(rehearsalOf);
-  let imported = 0;
+  let added = 0;
+  let present = 0;
   let skipped = 0;
   for (const a of entries) {
-    const key = a ? associationKey(a.record.item, a.record.locus) : "";
-    if (!a || (await store.get(key)) !== undefined) {
+    if (!a) {
       skipped += 1;
+      continue;
+    }
+    const key = associationKey(a.record.item, a.record.locus);
+    if ((await store.get(key)) !== undefined) {
+      present += 1;
       continue;
     }
     // I3: an unsigned "valid" entry never reaches /scenes; "invalid" makes the next run re-sign it.
     await store.put(key, "sig" in a ? a : { record: a.record, status: "invalid" });
-    imported += 1;
+    added += 1;
   }
   for (const r of runs) {
-    if (!r || (await rehearsals.get(r.id)) !== null) {
+    if (!r) {
       skipped += 1;
-      continue;
+    } else if ((await rehearsals.get(r.id)) !== null) {
+      present += 1;
+    } else {
+      await rehearsals.restore(r);
+      added += 1;
     }
-    await rehearsals.restore(r);
-    imported += 1;
   }
-  const route = routeOf(file.route);
-  if (route && route.length && (await store.loadRoute()) === null) await store.saveRoute(route);
-  return { imported, skipped };
+  for (const r of fileRoutes) {
+    if (await /** @type {NonNullable<typeof routes>} */ (routes).restoreRoute(r)) added += 1;
+    else present += 1;
+  }
+  return { added, present, skipped };
 }
