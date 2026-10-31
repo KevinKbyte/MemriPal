@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.3] - 2026-10-31
+
+### Added
+
+- Mapillary street-photo baseline server core: nearest CC BY-SA image within 30 m of a station, coords rounded to
+  4 dp outbound, token only in the OAuth header, thumbnails https-only from the Mapillary CDN, size-capped and
+  EXIF-stripped; router not yet wired into the app (MEM-053; `tests/test_baseline.py`, `tests/test_baseline_api.py`).
+
 ## [0.20.2] - 2026-10-31
 
 ### Changed
