@@ -87,3 +87,5 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
   written before upload, coords at 4 dp (over server storage, upload-first, or localStorage).
 - [0033](0033-backup-v2-routes-no-coordinates.md) Backup v2: routes + lists by field allowlist, never coordinates,
   640 px thumbnails, own 8 MiB cap, v1 refused; amends 0028 (over denylist, coord fuzz, full photos, or v1 migration).
+- [0036](0036-design-gate.md) Design gate re-shoots `docs/design/**` at the branch tip itself; changed shots need
+  Kev's recorded approval (over trusting committed PNGs or a reviewer-only check).
