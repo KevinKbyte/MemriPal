@@ -3,7 +3,7 @@
 // .panel, .field, .btn, .btn-primary, .eyebrow and .notice around the live elements; every id of 748a5e1
 // is kept with its hidden attribute unchanged; 0 orphan classes (each index.html class has a style.css
 // rule) and 0 orphan selectors (each style.css class is in index.html or a class literal in static/*.js);
-// F13: the #auto label sits in #load-demo's container, before it; every text/file/password input has a
+// F13: #auto and its label sit inside #routes-settings (MEM-048; was #load-demo's container); every text/file/password input has a
 // <label for> inside one .field wrapper (display grid or block); main has no bare <label>/<input> child;
 // #auto stays a native visible checkbox; button and .btn (incl. the F7 Show/Hide aria-expanded toggles)
 // keep min-height >= 44px; no wrapper between main and #scene-overlay sets an A1-forbidden property.
@@ -199,18 +199,17 @@ describe("MEM-044 A2 v6 shell + control markup (static/index.html, F13)", () => 
     assert.deepEqual(orphans, [], `style.css classes used nowhere: ${orphans.join(" ")}`);
   });
 
-  test("F13: the #auto label sits in #load-demo's container, before #load-demo", () => {
-    const auto = byId("auto"), demo = byId("load-demo");
-    assert.ok(auto && demo, "#auto or #load-demo is missing");
+  // MEM-048 (plan B3) changed F13: #auto moved from #load-demo's container into #routes-settings,
+  // its only home.
+  test("F13: #auto and its label sit inside #routes-settings", () => {
+    const auto = byId("auto"), settings = byId("routes-settings");
+    assert.ok(auto, "#auto is missing");
+    assert.ok(settings, "#routes-settings is missing");
     const label = [auto, ...ancestors(auto)].find((e) => e.tag === "label")
       ?? ELS.find((e) => e.tag === "label" && e.attrs.for === "auto");
     assert.ok(label, "#auto has no <label>");
-    const box = demo.parent;
-    assert.ok(!["main", "body", "#root"].includes(box.tag),
-      `#load-demo's container is <${box.tag}>, not a wrapper`);
-    assert.ok(ancestors(label).includes(box),
-      `the #auto label is outside #load-demo's container ${desc(box)}`);
-    assert.ok(label.order < demo.order, "the #auto label comes after #load-demo");
+    assert.ok(ancestors(auto).includes(settings), `#auto is outside #routes-settings`);
+    assert.ok(ancestors(label).includes(settings), `the #auto label is outside #routes-settings`);
   });
 
   test("F13: every text/file/password input has a <label for> inside one .field wrapper with it", () => {

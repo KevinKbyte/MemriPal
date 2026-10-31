@@ -3,10 +3,8 @@
 // markup for S1 Routes home (#routes-home #routes-list #routes-new #routes-settings, which holds
 // #passcode and #auto, the only home of #auto), S2 Walking: capture (#capture-session #capture-safety
 // #capture-safety-ok #capture-strip #capture-locate #capture-finish #capture-count) and S4 Finish walk
-// (#finish-name #finish-kind #finish-save inside the existing #route-review). Per decision-graph node
-// DGN-001 (select-or-add), #finish-kind is a select of the existing kinds (daily, occasional) with an
-// explicit add-new option that reveals a labelled text input #finish-kind-new (hidden until chosen),
-// never a free-text-only field.
+// (#finish-name #finish-kind #finish-save inside the existing #route-review). #finish-kind is two
+// radios, Daily and Occasional, name="finish-kind" (plan line 253).
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -25,7 +23,7 @@ const NEW_IDS = [
   "routes-home", "routes-list", "routes-new", "routes-settings",
   "capture-session", "capture-safety", "capture-safety-ok", "capture-strip", "capture-locate",
   "capture-finish", "capture-count",
-  "finish-name", "finish-kind", "finish-save", "finish-kind-new",
+  "finish-name", "finish-kind", "finish-save",
 ];
 const VOID = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source",
   "track", "wbr"]);
@@ -136,44 +134,32 @@ describe("index.html: S1/S2/S4 structure", () => {
 });
 
 // Covers: MEM-048
-// Requirement: DGN-001 select-or-add for the route kind: a select of existing kinds plus an explicit
-// add-new path, labelled, with the add-new input hidden until chosen.
-describe("index.html: #finish-kind is select-or-add (DGN-001)", () => {
-  const kind = () => byId("finish-kind");
-  const options = () => (kind()?.children ?? []).flatMap((c) => (c.tag === "optgroup" ? c.children : [c]))
-    .filter((c) => c.tag === "option");
+// Requirement: the route kind is chosen with two radios, Daily and Occasional, name="finish-kind",
+// each labelled. DGN-001 (select-or-add) does not apply: kind is a closed enum with no backing list
+// of user-created entities and no add path, and the radios already constrain it before free text.
+describe("index.html: #finish-kind is two radios Daily / Occasional", () => {
+  const radios = () => all(byId("finish-kind") ?? { children: [] })
+    .filter((e) => e.tag === "input" && (e.attrs.type ?? "").toLowerCase() === "radio");
 
-  test("#finish-kind is a select", () => {
-    assert.equal(kind()?.tag, "select");
+  test("#finish-kind holds exactly two radios named finish-kind", () => {
+    assert.ok(byId("finish-kind"), "#finish-kind is missing");
+    const rs = radios();
+    assert.equal(rs.length, 2, "two radios");
+    for (const r of rs) assert.equal(r.attrs.name, "finish-kind");
   });
 
-  test("it offers the existing kinds daily and occasional", () => {
-    const values = options().map((o) => o.attrs.value);
-    assert.ok(values.includes("daily"), `options ${JSON.stringify(values)} include daily`);
-    assert.ok(values.includes("occasional"), `options ${JSON.stringify(values)} include occasional`);
+  test("the radio values are daily and occasional", () => {
+    assert.deepEqual(radios().map((r) => r.attrs.value).sort(), ["daily", "occasional"]);
   });
 
-  test("it has exactly one add-new option, distinct from the existing kinds", () => {
-    const addNew = options().filter((o) => /add|new/i.test(textOf(o)) && !["daily", "occasional"].includes(o.attrs.value));
-    assert.equal(addNew.length, 1, "one add-new option");
-    assert.ok(addNew[0].attrs.value, "the add-new option has a non-empty value");
-  });
-
-  test("the add-new text input #finish-kind-new is in #route-review, hidden, and labelled", () => {
-    const input = byId("finish-kind-new");
-    assert.equal(input?.tag, "input");
-    assert.equal(input.attrs.type ?? "text", "text");
-    assert.ok(inside(input, "route-review"));
-    const hiddenSelfOrWrapper = "hidden" in input.attrs || (() => {
-      for (let p = input.parent; p && p.attrs.id !== "route-review"; p = p.parent) if ("hidden" in p.attrs) return true;
-      return false;
-    })();
-    assert.ok(hiddenSelfOrWrapper, "#finish-kind-new (or its wrapper) starts hidden");
-    const labelled = all().some((e) => e.tag === "label" && e.attrs.for === "finish-kind-new") || "aria-label" in input.attrs;
-    assert.ok(labelled, "#finish-kind-new has a label");
-  });
-
-  test("#finish-kind has a label", () => {
-    assert.ok(all().some((e) => e.tag === "label" && e.attrs.for === "finish-kind"), "label for=finish-kind");
+  test("each radio is labelled Daily / Occasional", () => {
+    const want = { daily: /daily/i, occasional: /occasional/i };
+    for (const r of radios()) {
+      let label = null;
+      for (let p = r.parent; p; p = p.parent) if (p.tag === "label") label = label ?? p;
+      if (!label && r.attrs.id) label = all().find((e) => e.tag === "label" && e.attrs.for === r.attrs.id) ?? null;
+      assert.ok(label, `radio ${r.attrs.value} has no label`);
+      assert.match(textOf(label), want[r.attrs.value] ?? /^$/, `radio ${r.attrs.value} label text`);
+    }
   });
 });
