@@ -304,6 +304,7 @@ button[aria-expanded]:hover {
 
 /* The tier-1 scene is the whole photo, zoomed by an inline transform; the frame crops it. */
 .scene-frame {
+  position: relative;
   overflow: hidden;
   border-radius: 12px;
   box-shadow: var(--shadow);
@@ -313,6 +314,20 @@ button[aria-expanded]:hover {
   display: block;
   width: 100%;
   cursor: zoom-in;
+}
+
+/* MEM-046: fixed light-on-dark so the label reads over any scene, in both themes. Bottom-right in the
+   overlay too, clear of the top-right Close button and the (5,5) backdrop point. */
+.chip-ai {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font: 600 0.75rem/1.3 var(--mono);
+  color: #fff;
+  background: rgba(0, 0, 0, 0.75);
+  pointer-events: none;
 }
 
 /* The overlay is near-black in both modes, so its text is fixed white rather than --ink. */

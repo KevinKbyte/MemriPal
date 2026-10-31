@@ -40,7 +40,7 @@ from memripal.bodies import (
     _split_body,
 )
 from memripal.demo_room import room_photo
-from memripal.imaging import MAX_UPLOAD_BYTES, ImageRejected, process_upload, validate_processed
+from memripal.imaging import MAX_UPLOAD_BYTES, ImageRejected, process_upload, sniff, validate_processed
 from memripal.loci import Locus, find_loci
 from memripal.meta_client import MetaClient
 from memripal.place import FixturePlaceProvider, PlaceProvider
@@ -475,7 +475,8 @@ def create_app(backend: ModelBackend | None = None, place_provider=None, asr_cli
         return JSONResponse(
             {
                 "tier": 1,
-                "image": "data:image/jpeg;base64," + base64.b64encode(scene.image).decode("ascii"),
+                # Passed-through reply bytes (MEM-046): the mime follows the model's format.
+                "image": f"data:image/{sniff(scene.image)};base64," + base64.b64encode(scene.image).decode(),
                 "width": processed.width,
                 "height": processed.height,
             }

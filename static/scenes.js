@@ -9,6 +9,9 @@ export const MAX_SCENES_IN_FLIGHT = 3;
 // Leaves some room around the locus so the edited object is seen in its surroundings.
 const ZOOM_MARGIN = 0.8;
 
+// A rendered scene within 2% of the photo's aspect keeps the locus zoom (plan D2/B1).
+const ASPECT_TOLERANCE = 0.02;
+
 const SAFE_SRC = /^(data:image\/(png|jpeg|webp);base64,|blob:)/;
 
 /**
@@ -69,6 +72,13 @@ function textEl(doc, tag, text) {
   return e;
 }
 
+/** Every Muse Image scene the user sees is labelled as generated (MEM-046). @param {SceneDoc} doc */
+function aiChip(doc) {
+  const chip = textEl(doc, "span", "AI-generated");
+  chip.className = "chip-ai";
+  return chip;
+}
+
 /** The thumbnail that opened each overlay, so closing it hands keyboard focus back. */
 const openers = new WeakMap();
 
@@ -115,9 +125,17 @@ export function sceneView(doc, result, box, overlay, alt) {
   const img = /** @type {HTMLImageElement} */ (doc.createElement("img"));
   img.src = src;
   img.alt = alt;
-  const { scale, tx, ty } = zoomFor(box, Number(result.width), Number(result.height));
+  const width = Number(result.width);
+  const height = Number(result.height);
+  const { scale, tx, ty } = zoomFor(box, width, height);
   img.style.transformOrigin = "0 0";
   img.style.transform = `scale(${scale}) translate(${tx * 100}%, ${ty * 100}%)`;
+  // The scene is Muse Image's reply as-is (MEM-046), so its size may differ from the photo's: the box
+  // fractions only line up when the aspects match, otherwise show it unzoomed rather than mis-cropped.
+  img.addEventListener("load", () => {
+    const ratio = img.naturalWidth / img.naturalHeight / (width / height);
+    if (!(Math.abs(ratio - 1) <= ASPECT_TOLERANCE)) img.style.transform = "scale(1) translate(0%, 0%)";
+  });
   if (overlay) {
     const open = () => {
       const full = /** @type {HTMLImageElement} */ (doc.createElement("img"));
@@ -126,7 +144,7 @@ export function sceneView(doc, result, box, overlay, alt) {
       // No listener of its own: the click bubbles to the overlay's close handler.
       const close = /** @type {HTMLButtonElement} */ (textEl(doc, "button", "Close"));
       close.type = "button";
-      overlay.replaceChildren(full, close);
+      overlay.replaceChildren(full, aiChip(doc), close);
       overlay.setAttribute("role", "dialog");
       overlay.setAttribute("aria-modal", "true");
       overlay.setAttribute("aria-label", `${alt}, full size`);
@@ -143,7 +161,7 @@ export function sceneView(doc, result, box, overlay, alt) {
       open();
     });
   }
-  frame.append(img);
+  frame.append(img, aiChip(doc));
   return frame;
 }
 

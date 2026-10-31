@@ -3,15 +3,10 @@
 import logging
 import threading
 from dataclasses import dataclass
-from io import BytesIO
 from typing import Any
-
-from PIL import Image
 
 from memripal.backend import PROMPT_ARGS, BackendCallFailed, FixtureMissing, ModelBackend, ModelRequest
 from memripal.imaging import (
-    _DECODE_ERRORS,
-    JPEG_QUALITY,
     ImageRejected,
     Processed,
     _check_bytes,
@@ -64,22 +59,16 @@ def scene_prompt(record: dict) -> str:
     )
 
 
-def _fit(reply: Any, width: int, height: int) -> bytes:
-    """The untrusted reply as a fresh JPEG at (width, height); caps checked from the header before decode."""
+def _validated(reply: Any) -> bytes:
+    """The untrusted reply, unchanged, once its header parses within the caps.
+
+    Passed through, never decoded or re-encoded (MEM-046): the model's provenance metadata (XMP/EXIF)
+    must survive, and the bytes reach the page only as an image data URL.
+    """
     if not isinstance(reply, bytes):
         raise ImageRejected("not_bytes")
-    with _open_header(reply, _check_bytes(reply)) as img:
-        try:
-            img.load()
-            out = img.convert("RGB").resize((width, height), Image.Resampling.LANCZOS)
-        except _DECODE_ERRORS as exc:
-            raise ImageRejected("decode_error") from exc
-    # Always re-encoded, never passed through: no model-supplied metadata or container survives.
-    # resize() copies .info and Pillow re-emits its comment on save, so clear it.
-    out.info = {}
-    buf = BytesIO()
-    out.save(buf, "JPEG", quality=JPEG_QUALITY)
-    return buf.getvalue()
+    _open_header(reply, _check_bytes(reply)).close()
+    return reply
 
 
 def _fallback(reason: str) -> Scene:
@@ -122,7 +111,7 @@ def render_scene(backend: ModelBackend, processed: Processed, box: dict, record:
         _log.warning("scene call failed unexpectedly: %s", type(exc).__name__)
         return _fallback("internal")
     try:
-        image = _fit(reply, processed.width, processed.height)
+        image = _validated(reply)
     except ImageRejected as exc:
         return _fallback(str(exc))
     return Scene(tier=1, image=image, reason=None)
