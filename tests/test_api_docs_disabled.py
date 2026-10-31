@@ -1,6 +1,6 @@
 # Requirement: the app exposes no auto-generated API documentation surface: GET /docs, /redoc and
 # /openapi.json each answer 404, so the route map is not disclosed (security hardening, item 165).
-# Covers: none (no spec ID exists for docs-disabled yet; nearest is MEM-042 app-wide XSS/CSP control)
+# Covers: MEM-042
 import pytest
 from fastapi.testclient import TestClient
 
