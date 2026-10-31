@@ -1,6 +1,6 @@
 [project]
 name = "memripal"
-version = "0.20.3"
+version = "0.20.4"
 description = "Turn a photo of a familiar place into a memory palace."
 readme = "README.md"
 license = "MIT"

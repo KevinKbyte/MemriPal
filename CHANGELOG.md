@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.4] - 2026-10-31
+
+### Changed
+
+- Request-body parsers, the error helper and the capped body reader move from `app.py` to `src/memripal/bodies.py`
+  with no behaviour change; `app.py` drops from 581 to 491 lines (MEM-060; `tests/test_bodies.py`).
+
 ## [0.20.3] - 2026-10-31
 
 ### Added
