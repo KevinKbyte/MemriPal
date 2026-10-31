@@ -1,6 +1,9 @@
 // Module Worker owning the on-device SQLite database (opfs-sahpool VFS; browser-only).
 // Answers client.js requests { id, op, sql, params | stmts } with { id, ok, rows | error }.
 import sqlite3InitModule from "../vendor/sqlite-wasm/sqlite3.js";
+import { runMigrations } from "./migrations.js";
+import { wrapOo1 } from "./oo1.js";
+import { MIGRATIONS } from "./schema.js";
 
 const DB_FILE = "/memripal.sqlite3";
 
@@ -9,7 +12,10 @@ const bindOf = (params) => (params && params.length ? params : undefined);
 async function open() {
   const sqlite3 = await sqlite3InitModule();
   const pool = await sqlite3.installOpfsSAHPoolVfs({ name: "memripal-sahpool" });
-  return new pool.OpfsSAHPoolDb(DB_FILE);
+  const db = new pool.OpfsSAHPoolDb(DB_FILE);
+  // A DbNewerError (db from a newer app) rejects dbPromise, so every request fails instead of using it.
+  await runMigrations(wrapOo1(db), MIGRATIONS);
+  return db;
 }
 
 const dbPromise = open();

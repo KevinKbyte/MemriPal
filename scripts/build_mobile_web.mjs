@@ -36,7 +36,9 @@ function nativeCsp(api) {
   ].join("; ");
 }
 
-const isTest = (path) => path.endsWith(".test.mjs") || path.endsWith("_test.mjs");
+// db/node_driver.js is the test-only node SQLite driver; cpSync hands the filter OS-native separators.
+const isTest = (path) =>
+  path.endsWith(".test.mjs") || path.endsWith("_test.mjs") || path.replaceAll("\\", "/").endsWith("db/node_driver.js");
 
 function main() {
   const api = parseApiBase(process.env.MEMRIPAL_API_BASE);

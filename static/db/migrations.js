@@ -21,6 +21,9 @@ export async function runMigrations(db, migrations) {
         // Steps must be sync: an awaited write would land after the transaction commits.
         const result = step(db);
         if (typeof result?.then === "function") {
+          // The refused step may still reject later; nobody else holds its promise to handle that.
+          // Promise.resolve, not result.then: a bare thenable may call whichever callback it is given.
+          Promise.resolve(result).catch(() => {});
           throw new Error(`migration ${i} returned a thenable; migration steps must be sync`);
         }
       } else db.exec(step);
