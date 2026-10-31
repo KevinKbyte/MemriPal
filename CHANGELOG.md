@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.20] - 2026-10-31
+
+### Added
+
+- scripts/merge_branch.sh ff race auto-recovery: drops the trailing version-bump commit, rebases on main, re-bumps the 4 version files to main+1, re-runs the check and retries the ff, capped at 3 rounds; refuses a branch whose last commit is not a bump (MEM-068, ADR 0034).
+- scripts/merge_branch.sh visual-verify gate on the ff and MEMRIPAL_REQUEST_MERGE_CMD paths: a UI diff without a recorded visual-verify gate is refused; MEMRIPAL_VISUAL_VERIFY_CMD seam, default lookup via agent-workflow visual_verify_merge_gate fails closed (MEM-069, ADR 0035).
+
 ## [0.20.19] - 2026-10-31
 
 ### Added
