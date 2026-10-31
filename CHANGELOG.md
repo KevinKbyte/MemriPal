@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.11] - 2026-10-31
+
+### Added
+
+- Scene images pass the Muse Image reply through unchanged, with an AI-generated chip pinned to each scene image and the overlay (MEM-046).
+
 ## [0.20.10] - 2026-10-31
 
 ### Added
