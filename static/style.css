@@ -344,8 +344,17 @@ button[aria-expanded]:hover {
   cursor: zoom-out;
 }
 
-#scene-overlay img {
+#scene-overlay .scene-full-wrap {
+  position: relative;
+  display: inline-block;
   max-height: 100%;
+}
+
+/* Viewport-based cap: the wrapper's height is auto, so a % max-height would not resolve.
+   1rem = the overlay's 0.5rem padding on each side. Block display drops the inline gap. */
+#scene-overlay img {
+  display: block;
+  max-height: calc(100vh - 1rem);
 }
 
 /* Top-right only (never left/inset), so viewport point (5,5) stays backdrop. Fixed light-on-dark

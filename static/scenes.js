@@ -144,7 +144,11 @@ export function sceneView(doc, result, box, overlay, alt) {
       // No listener of its own: the click bubbles to the overlay's close handler.
       const close = /** @type {HTMLButtonElement} */ (textEl(doc, "button", "Close"));
       close.type = "button";
-      overlay.replaceChildren(full, aiChip(doc), close);
+      // The chip is absolute; this relative wrapper pins it to the image, not the fixed overlay.
+      const wrap = doc.createElement("span");
+      wrap.className = "scene-full-wrap";
+      wrap.append(full, aiChip(doc));
+      overlay.replaceChildren(wrap, close);
       overlay.setAttribute("role", "dialog");
       overlay.setAttribute("aria-modal", "true");
       overlay.setAttribute("aria-label", `${alt}, full size`);
