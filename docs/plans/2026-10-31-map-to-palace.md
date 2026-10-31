@@ -621,62 +621,60 @@ MEM ids: MEM-046.. assigned below (MEM-045 = brand-art, unmerged). ADRs 0031.. a
 - SIGNALS: tile-source terms of use fetched and recorded in the ADR before RED.
 
 ## Order by demo value and schedule
-(Day check: 2026-10-31 is a Saturday, so Mon = Nov 2, Tue = Nov 3, Wed = Nov 4. v1-r2's cut line said "Mon Nov 3";
-fixed.)
-- Sat Oct 31: dispatch B0, B2, B3, B4's station.py core and B8's baseline.py core (after the live Mapillary doc fetch)
-  in parallel; B1 when B0 lands; send Part A to Claude Design; Kev picks the public demo place (Q1), supplies the
-  Mapillary token (Q3), runs the B4 empty-reply probe and the B8 coverage probe at the candidate place.
-- Sun Nov 1: B4 router wiring (rebased on B1), B5, B6 (hero), B9, B8 client (S3 opt-in + figure, S5 thumbnails).
-- Mon Nov 2: B7 (rebased on B4), then B8 router wiring (rebased on B7), B11 (when design lands); Kev K1 capture walk
-  at the public place (daylight, early morning), recording /station and /baseline per station.
-- Tue Nov 3: B10, deploy (item 54, with MEMRIPAL_MAPILLARY_TOKEN), live mic run (item 70), record video (item 68).
-- Wed Nov 4: buffer, B11 if it slipped past recording, submission checklist, push public (item 13). Below-cut slices
-  only if Tue finished (B12 first: it completes the prompt's "intrusion counting").
-- Slip rule: if a slice above the cut slips, the schedule moves (Wed buffer absorbs it) and Kev is told which beat of
-  the storyboard is at risk; no MK item is removed without Kev's explicit ask.
+(Day check: 2026-10-31 is a Saturday, so Mon = Nov 2, Tue = Nov 3, Wed = Nov 4. v1-r2's cut line said "Mon Nov 3"; fixed.)
+- Sat Oct 31: dispatch B0, B2, B3, B4's station.py core, B8's baseline.py core (after the live Mapillary doc fetch) and B14a core (routing.py on
+  fixtures) in parallel; B1 when B0 lands; send Part A to Claude Design; Kev supplies the Mapillary token (Q3), runs the B4 empty-reply probe and
+  the remote B8 coverage probe at Christian Science Plaza.
+- Sun Nov 1: B4 router wiring (rebased on B1), B5, B6 (hero), B9, B8 client (S3 opt-in + figure, S5 thumbnails), B14b core (after B4 and B8 cores),
+  B14c on the frozen B14a/B14b fixtures; noon: place decision for the plan beat.
+- Mon Nov 2: B7 (rebased on B4), then B8 router wiring (rebased on B7; its last commit wires routes_plan.py), B11 (when design lands), B7/B9
+  planned-station deltas; Kev K1 capture walk at the plaza (daylight, early morning; needs the Boston trip, Q5), recording /station and /baseline
+  per station; fallback take of the plan beat Mon night.
+- Tue Nov 3: B10 (adds the live plan beat), deploy (item 54, with MEMRIPAL_MAPILLARY_TOKEN, max instances 1), live mic run (item 70), record video
+  (item 68).
+- Wed Nov 4: buffer, B11 if it slipped past recording, submission checklist, push public (item 13). Below-cut slices only if Tue finished (B12
+  first: it completes the prompt's "intrusion counting").
+- Slip rule: if a slice above the cut slips, the schedule moves (Wed buffer absorbs it) and Kev is told which beat of the storyboard is at risk; no
+  MK item is removed without Kev's explicit ask.
 
 ## Risks
-- Station name vs validator: names must appear word for word in an association channel; <= 3 words + avoid-list keep
-  the regenerate loop (ADR 0020) from firing often.
+- TOP: walked demo capture K1 needs Kev at Christian Science Plaza in Boston (a trip; "a bit far"). Only the B14 plan beat records remotely. If no
+  trip happens by Mon Nov 2, the walked beats (route learning on captured photos, baseline next to the user's photo) are at risk: escalate to Kev
+  (Q5), do not swap the place or cut a beat silently. Upside: a Sun-noon trip decision frees the Mon plan.
+- Station name vs validator: names must appear word for word in an association channel; <= 3 words + avoid-list keep the regenerate loop (ADR 0020)
+  from firing often.
 - Muse Image on outdoor photos: clutter; pre-render the demo route and caption recorded replay.
-- SAM outage at capture time blocks naming (fail-closed by design); pending stations keep the photo locally for a
-  manual retry; the walk stays a resumable draft.
-- Strict blur parser may refuse a valid empty SAM reply format not seen in the probe: fails closed (user retries),
-  never open; the probe in B4 SIGNALS pins the empty shape first.
-- Station photos and names themselves can show where a person walks; disclosed in backup copy, not technically
-  prevented.
-- B8 above the cut adds ~1 slice to a 4-day schedule and depends on Kev's Mapillary token and on coverage at the demo
-  place. Mitigation: core + client run on fixtures in parallel from Sat; only the live probe and K1 need the token;
-  place choice (Q1) requires coverage. If coverage or token never arrives, escalate to Kev (do not cut MK7 silently).
-- Mapillary API shape and thumbnail hosts (expiring fbcdn URLs, recon.md) are unverified until the B8 doc fetch; the
-  host allowlist is written from that fetch, not from memory.
-- IndexedDB quota on phones with many routes: photos are pixelated JPEGs (<= 2048 px); B3 crit 11 handles a failed
-  write without losing the in-memory station.
-- Design deviation from the s2t Synthesis (binding unless Kev overrides): the Synthesis asked Claude Design for static
-  HTML fragments; Part A asks for none (round 2 SC-F3: merging fragments breaks pinned markup). Flagged as Q4 for Kev;
-  Part A ships as written unless Kev says otherwise.
+- SAM outage at capture time blocks naming (fail-closed by design); pending stations keep the photo locally for a manual retry; the walk stays a
+  resumable draft.
+- Strict blur parser may refuse a valid empty SAM reply format not seen in the probe: fails closed (user retries), never open; the probe in B4
+  SIGNALS pins the empty shape first.
+- Station photos and names themselves can show where a person walks; disclosed in backup copy, not technically prevented.
+- B8 above the cut adds ~1 slice and depends on Kev's Mapillary token and coverage at the plaza. Mitigation: core + client run on fixtures from Sat;
+  only the live probe and K1 need the token. If coverage or token never arrives, escalate to Kev (do not cut MK7 silently). B14 also needs >= 3
+  candidates with an image there or the plan beat fails.
+- Mapillary API shape and thumbnail hosts (expiring fbcdn URLs, recon.md) are unverified until the B8 doc fetch; the host allowlist is written from
+  that fetch, not from memory.
+- IndexedDB quota on phones with many routes: photos are pixelated JPEGs (<= 2048 px); B3 crit 11 handles a failed write without losing the
+  in-memory station.
+- Kev Q4 2026-10-31 allows Claude Design HTML fragments. They are reference only (docs/design/, never served), hand-merged by the B11 engineer;
+  pinned ids, parent-child pairs and Part A copy are test-guarded (B11 crit 7-10).
+- Mon Nov 2 carries B14 wiring + B7/B9 deltas on top of B7, B8 wiring, B11 and K1; slip rule applies. B14 live beat depends on OSM + FOSSGIS +
+  Mapillary + Spark + token + network: fallback take recorded Mon night (A3 forbids committing a replay).
+- FOSSGIS German terms not read; heavy use banned; a demo is light use and the kill switch covers a takedown. Nominatim "no personal data" vs a
+  typed home address is mitigated by copy, not prevented.
+- Spark scores are subjective; the user's checkbox override is the product answer, not a bug. Mapillary's own blurring is the only face/plate
+  protection on candidate images sent to Spark (no SAM by D1); Spark is told never to describe people.
+- If late, cut order: (1) candidate cap 16 -> 10 (also if the B4 budget probe runs hot); (2) S10 ships on shared route.css classes without the
+  design addendum; (3) escalate to Kev before cutting any beat.
 
----
-
-Parts C-G (consolidation ledger, adversary arbitration ledgers, finisher critique, item 136 amendment round):
-[2026-10-31-map-to-palace-ledgers.md](2026-10-31-map-to-palace-ledgers.md).
+Parts C-G and the adversarial cheat sheet: [2026-10-31-map-to-palace-ledgers.md](2026-10-31-map-to-palace-ledgers.md).
 
 ## Open questions for Kev (none blocks Saturday's dispatch)
-- Q1 Which public, non-residential demo place (needs Mapillary coverage near >= 3 stations)? Gates the B8 probe and K1.
-- Q2 Does "routes where they dont use day to day can be mapped" mean walked once (built above the cut) or also mapped
-  without walking (B14, below the cut)? If the latter, B14 moves above the cut on your word.
-- Q3 Mapillary client token for MEMRIPAL_MAPILLARY_TOKEN (gates B8 live probe, K1 baselines, deploy).
-- Q4 OK to ask Claude Design for CSS + class contract + state table + id map but NO HTML fragments (deviates from the
-  s2t Synthesis wording)?
-
-## Adversarial cheat sheet
-1. Primary technical risk: the privacy pipeline was still fail-open in three places: the SAM box parser read any
-   refusal or reformatted reply as "no people", MetaBackend cached every raw unblurred photo to disk (even on
-   blur_failed), and pending stations' unblurred photos (possibly with EXIF GPS) flowed into backups.
-2. Fix: a strict parser (only an empty or probe-recorded empty reply means "none"; anything else -> 502 blur_failed,
-   0 Spark calls); blur-phase requests skip put_photo, tested against a real MetaBackend cache dir; pending photos are
-   EXIF-stripped, kept local and excluded from v2 backups (which also gain thumbnails and their own 8 MiB cap); the
-   demo ships recorded /station responses instead of raw photos; pixelation replaces a fixed-radius blur.
-3. Lingering doubt: SAM 3.1's recall on faces and plates is not deterministic; a person SAM fails to box at all
-   (returning a valid empty reply) stays unpixelated, so "faces hidden" rests on model quality plus Kev's eyeball
-   probe, not on a guarantee.
+- Q1 ANSWERED (Kev 2026-10-31): "Yeah that's a bit far but we can try Boston" -> Christian Science Plaza (A3).
+- Q2 ANSWERED: "#2. People can use it to memorize route to somewhere important that they don't want to have to rely on GPS for by having our app
+  select landmarks automatically (and can be adjusted by user if they want to, alongside candidates that might not have been selected from the start
+  the user may find that to be more memorable and select that instead for the lock on the route rather than the preselected ones that Meta models
+  may think are better" -> B14a/B14b/B14c above the cut.
+- Q3 Mapillary client token for MEMRIPAL_MAPILLARY_TOKEN (gates B8 live probe, K1 baselines, deploy, B14 live beat).
+- Q4 ANSWERED: "Allow HTML" -> Part A deliverable 5; fragments reference-only (B11 crit 9-10).
+- Q5 When is the K1 Boston trip to the plaza (needed by Mon Nov 2 for the walked beats)?
