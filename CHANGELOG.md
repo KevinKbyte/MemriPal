@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.9] - 2026-10-31
+
+### Added
+
+- Plan amendment: B14 route planning (B14a-c, MEM-064..066), Boston demo place, Q4 HTML fragments; Parts C-F and below-cut slices moved to docs/plans/2026-10-31-map-to-palace-ledgers.md.
+
 ## [0.20.8] - 2026-10-31
 
 ### Added
