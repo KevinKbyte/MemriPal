@@ -57,6 +57,7 @@ class SlidingWindow:
         now = self.clock()
         # Amortized sweep, at most once per window: a one-off client's key would otherwise live forever.
         if now >= self._next_sweep:
+            # ev[-1] is safe: no key holds an empty deque (retry_after deletes emptied keys, clear pops).
             self._events = {k: ev for k, ev in self._events.items() if ev[-1] + self.window_s > now}
             self._next_sweep = now + self.window_s
         self._events.setdefault(key, deque()).append(now)
@@ -85,6 +86,8 @@ def client_key(addr: str) -> str:
         ip = ipaddress.ip_address(addr)
     except ValueError:
         return addr
+    if ip.version == 6 and ip.ipv4_mapped:
+        return str(ip.ipv4_mapped)
     if ip.version == 6:
         return str(ipaddress.ip_network(f"{ip}/64", strict=False))
     return str(ip)

@@ -214,7 +214,7 @@ def create_app(
         # Header values arrive latin-1 decoded; re-encoding recovers the raw bytes the client sent.
         sent = request.headers.get(PASSCODE_HEADER, "").encode("latin-1")
         if hmac.compare_digest(sent, passcode.encode("utf-8")):
-            lockout.clear(ip)
+            lockout.clear(ip)  # Trade-off: clears all sharers' failures (NAT, /64); rate limit still caps.
             return None
         lockout.record(ip)
         return _error(401, "passcode_required")
