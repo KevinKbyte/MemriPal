@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">MemriPal</string>
+    <string name="title_activity_main">MemriPal</string>
+    <string name="package_name">com.memripal.app</string>
+    <string name="custom_url_scheme">com.memripal.app</string>
+</resources>

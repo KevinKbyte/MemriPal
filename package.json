@@ -1,0 +1,12 @@
+{
+  "name": "memripal-mobile",
+  "private": true,
+  "scripts": {
+    "build:mobile": "node scripts/build_mobile_web.mjs"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/cli": "^8.6.0",
+    "@capacitor/core": "^8.6.0"
+  }
+}

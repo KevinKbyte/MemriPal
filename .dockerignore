@@ -19,3 +19,7 @@ docs
 tests
 scripts
 static/*.test.mjs
+# Capacitor shell (MEM-063): mobile-only build inputs/outputs, never in the server image.
+www
+node_modules
+android

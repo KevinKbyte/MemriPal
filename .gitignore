@@ -13,3 +13,7 @@ docs/sdlc-runs/
 .claude/offload-workflows/
 .claude/worktree-dirt-archive/
 www/
+node_modules/
+android/app/build/
+android/.gradle/
+android/build/
