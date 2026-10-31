@@ -5,12 +5,18 @@
 // keep their order, unknown or malformed fields survive, and routes list in creation order (an
 // update keeps its place). Photo bytes stay in the photo KV (IndexedDB), never in SQL. A failed
 // write leaves the previously stored route intact.
+// Soft delete (plan AMENDMENT, Kev 2026-10-31): the adapter never issues SQL DELETE. Deleting a route
+// stamps deleted_at on it and its live stations; a station dropped from a re-put route becomes a
+// tombstone (deleted_at set, pos NULL). Reads skip deleted rows. Re-putting a deleted route (or a
+// dropped station) revives the same row. Routes list by ord; insert and revive set ord = max + 1, so a
+// deleted then re-stored route lists last, matching the in-memory Map adapter.
 // Contract (RED; GREEN implements in static/db/route_adapter.js):
 //   createSqlRouteAdapter(db, photoKv) -> { get(key), put(key, value), delete(key), list() }, async.
 //     db = async client shape (static/db/client.js; tests: asClient(syncDb) from node_driver.js)
 //     over a database migrated with static/db/schema.js MIGRATIONS.
 //     "route:<id>" <-> { type: "route", route }; get of a missing key -> undefined.
-//     list() -> stored routes as { type: "route", route } in insertion order.
+//     list() -> live routes as { type: "route", route } ordered by routes.ord.
+//     delete("route:<id>") -> routes.deleted_at (and its live stations' deleted_at) set to a TEXT stamp.
 //     "photo:<ref>" keys go to photoKv unchanged (same key, same value); other prefixes throw TypeError.
 //     A station's photo_ref is stored in stations.photo_id.
 //     A key whose value is undefined reads back absent; a null value reads back null.
@@ -139,7 +145,7 @@ describe("sql route adapter: round trip", () => {
 
 // Covers: MEM-039
 // Requirement: routes list in the order they were first stored; updating a route keeps its place;
-// a deleted then re-stored route goes to the end; delete removes the route and its stations.
+// a deleted then re-stored route goes to the end; delete hides the route and its stations from reads.
 describe("sql route adapter: list order and delete", () => {
   test("list returns routes in insertion order and an update keeps the position", async () => {
     const { kv } = await setup();
@@ -155,21 +161,111 @@ describe("sql route adapter: list order and delete", () => {
     assert.deepEqual(await listed(kv), []);
   });
 
-  test("delete removes the route and its stations; re-storing it lists it last", async () => {
-    const { db, kv } = await setup();
+  test("delete hides the route and its stations; re-storing it lists it last", async () => {
+    const { kv } = await setup();
     for (const id of ["a", "b", "c"]) await kv.put(`route:${id}`, value(route(id)));
     await kv.delete("route:a");
     assert.equal(await kv.get("route:a"), undefined);
     assert.deepEqual(await listed(kv), ["b", "c"]);
-    assert.deepEqual(await db.query("SELECT COUNT(*) AS n FROM stations WHERE route_id = 'a'"), [{ n: 0 }]);
     await kv.put("route:a", value(route("a")));
     assert.deepEqual(await listed(kv), ["b", "c", "a"]);
+    assert.deepEqual(await kv.get("route:a"), value(route("a")));
   });
 
   test("deleting a missing route does not throw", async () => {
     const { kv } = await setup();
     await kv.delete("route:nope");
     assert.deepEqual(await listed(kv), []);
+  });
+});
+
+// Covers: MEM-039
+// Requirement: nothing is hard-deleted (Kev 2026-10-31; full purge is a later Settings feature):
+// deleting a route keeps its rows stamped deleted_at, a station dropped from a route stays as a
+// tombstone with no position, and re-storing either revives the same row at the end of the list.
+describe("sql route adapter: soft delete keeps rows", () => {
+  const live = (db, table, where) =>
+    db.query(`SELECT COUNT(*) AS n FROM ${table} WHERE ${where} AND deleted_at IS NULL`);
+  const dead = (db, table, where) =>
+    db.query(`SELECT COUNT(*) AS n FROM ${table} WHERE ${where} AND deleted_at IS NOT NULL`);
+
+  test("delete keeps the route row and its station rows, stamped with a TEXT deleted_at", async () => {
+    const { db, kv } = await setup();
+    await kv.put("route:a", value(route("a")));
+    await kv.delete("route:a");
+    assert.deepEqual(await dead(db, "routes", "id = 'a'"), [{ n: 1 }]);
+    assert.deepEqual(await dead(db, "stations", "route_id = 'a'"), [{ n: 3 }]);
+    assert.deepEqual(await live(db, "stations", "route_id = 'a'"), [{ n: 0 }]);
+    const stamps = await db.query("SELECT deleted_at FROM routes WHERE id = 'a'");
+    assert.equal(typeof stamps[0].deleted_at, "string");
+  });
+
+  test("a station dropped by a re-put stays as a tombstone with pos NULL and is not read back", async () => {
+    const { db, kv } = await setup();
+    await kv.put("route:r1", value(route("r1")));
+    const next = route("r1", [station(3), station(1)]);
+    await kv.put("route:r1", value(next));
+    assert.deepEqual(await db.query(
+      "SELECT pos, deleted_at IS NOT NULL AS gone FROM stations WHERE route_id = 'r1' AND id = 's2'"),
+    [{ pos: null, gone: 1 }]);
+    assert.deepEqual(await db.query(
+      "SELECT id, pos FROM stations WHERE route_id = 'r1' AND deleted_at IS NULL ORDER BY pos"),
+    [{ id: "s3", pos: 0 }, { id: "s1", pos: 1 }]);
+    assert.deepEqual(await kv.get("route:r1"), value(next));
+  });
+
+  test("re-adding a tombstoned station revives the same row with its new position", async () => {
+    const { db, kv } = await setup();
+    await kv.put("route:r1", value(route("r1")));
+    await kv.put("route:r1", value(route("r1", [station(1), station(3)])));
+    const back = route("r1", [station(2, { name: "Back" }), station(1), station(3)]);
+    await kv.put("route:r1", value(back));
+    assert.deepEqual(await kv.get("route:r1"), value(back));
+    assert.deepEqual(await db.query("SELECT pos, deleted_at FROM stations WHERE route_id = 'r1' AND id = 's2'"),
+      [{ pos: 0, deleted_at: null }]);
+  });
+
+  test("reviving a deleted route reuses its row (seq unchanged) and leaves unlisted stations deleted", async () => {
+    const { db, kv } = await setup();
+    await kv.put("route:a", value(route("a")));
+    const [{ seq }] = await db.query("SELECT seq FROM routes WHERE id = 'a'");
+    await kv.delete("route:a");
+    const revived = route("a", [station(2)]);
+    await kv.put("route:a", value(revived));
+    assert.deepEqual(await db.query("SELECT seq, deleted_at FROM routes WHERE id = 'a'"), [{ seq, deleted_at: null }]);
+    assert.deepEqual(await kv.get("route:a"), value(revived));
+    assert.deepEqual(await live(db, "stations", "route_id = 'a'"), [{ n: 1 }]);
+    assert.deepEqual(await dead(db, "stations", "route_id = 'a'"), [{ n: 2 }]);
+  });
+
+  test("ord follows list order: insert and revive take max(ord) + 1, an update keeps ord", async () => {
+    const { db, kv } = await setup();
+    const ords = async () => Object.fromEntries(
+      (await db.query("SELECT id, ord FROM routes")).map((r) => [r.id, r.ord]));
+    for (const id of ["c", "a", "b"]) await kv.put(`route:${id}`, value(route(id)));
+    const first = await ords();
+    assert.ok(first.c < first.a && first.a < first.b, JSON.stringify(first));
+    await kv.put("route:c", value(route("c", [], { name: "Updated" })));
+    assert.equal((await ords()).c, first.c);
+    await kv.delete("route:c");
+    await kv.put("route:c", value(route("c")));
+    const after = await ords();
+    assert.ok(after.c > after.b, JSON.stringify(after));
+    assert.deepEqual(await listed(kv), ["a", "b", "c"]);
+  });
+
+  test("deleted routes never appear in list, even interleaved with live ones", async () => {
+    const { kv } = await setup();
+    for (const id of ["a", "b", "c", "d"]) await kv.put(`route:${id}`, value(route(id)));
+    await kv.delete("route:b");
+    await kv.delete("route:d");
+    assert.deepEqual(await listed(kv), ["a", "c"]);
+  });
+
+  test("static/db/route_adapter.js contains no hard-delete SQL statement", () => {
+    const src = readFileSync(new URL("./db/route_adapter.js", import.meta.url), "utf8");
+    const hardDelete = new RegExp(["\\bdelete", "\\s+", "from\\b"].join(""), "i");
+    assert.doesNotMatch(src, hardDelete, "route_adapter.js must soft-delete (UPDATE ... SET deleted_at) only");
   });
 });
 
@@ -243,6 +339,21 @@ describe("sql route adapter: failed write leaves the old route intact", () => {
     await assert.rejects(async () => kv.put("route:r1", value(broken)));
     assert.deepEqual(await kv.get("route:r1"), value(old));
     assert.deepEqual(await db.query("SELECT COUNT(*) AS n FROM stations WHERE route_id = 'r1'"), [{ n: 3 }]);
+  });
+
+  test("a write that fails mid-transaction leaves old stations live at their old positions, no tombstones", async () => {
+    const { db, kv } = await setup();
+    const old = route("r1");
+    await kv.put("route:r1", value(old));
+    for (const ev of ["INSERT", "UPDATE"]) {
+      await db.exec(`CREATE TRIGGER fail_${ev} BEFORE ${ev} ON stations WHEN NEW.id = 'boom'
+        BEGIN SELECT RAISE(ABORT, 'forced failure'); END`);
+    }
+    const boom = { ...station(9), id: "boom" };
+    await assert.rejects(async () => kv.put("route:r1", value(route("r1", [station(1), boom], { name: "X" }))));
+    assert.deepEqual(await kv.get("route:r1"), value(old));
+    assert.deepEqual(await db.query("SELECT id, pos, deleted_at FROM stations WHERE route_id = 'r1' ORDER BY id"),
+      [{ id: "s1", pos: 0, deleted_at: null }, { id: "s2", pos: 1, deleted_at: null }, { id: "s3", pos: 2, deleted_at: null }]);
   });
 
   test("a new route whose write fails is not stored", async () => {
