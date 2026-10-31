@@ -17,6 +17,7 @@ from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import Headers
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from memripal import ratelimit as rl
 from memripal.associate import (
     FIELDS,
     MAX_FIELD_CHARS,
@@ -166,7 +167,9 @@ def _locus_json(lc: Locus) -> dict:
     }
 
 
-def create_app(backend: ModelBackend | None = None, place_provider=None, asr_client=None) -> FastAPI:
+def create_app(
+    backend: ModelBackend | None = None, place_provider=None, asr_client=None, clock=None
+) -> FastAPI:
     if backend is None:
         backend = select_backend(None, fixtures_root=REPLAY_DIR, live_cache_root=LIVE_CACHE_DIR)
     if place_provider is None:
@@ -182,6 +185,7 @@ def create_app(backend: ModelBackend | None = None, place_provider=None, asr_cli
     call_budget = _env_int("MEMRIPAL_CALL_BUDGET", 0)
     max_body = _env_int("MEMRIPAL_MAX_BODY_BYTES", 1)
     signing_key = record_key()
+    rate, lockout, concurrency, trust_xff = rl.from_env(_env_int, clock)
     live = backend.mode != "fixture"
     if live and call_budget is not None:
         backend = _BudgetedBackend(backend, call_budget)
@@ -189,6 +193,8 @@ def create_app(backend: ModelBackend | None = None, place_provider=None, asr_cli
     app = FastAPI(title="MemriPal")
     if max_body is not None:
         app.add_middleware(_BodyCap, cap=max_body)
+    # Runs after the host check and before the body cap, passcode, body read and model.
+    app.add_middleware(rl.ApiGuard, limiter=rate, concurrency=concurrency, trust_xff=trust_xff)
     # Added late so it runs early: an unlisted host is refused before any other check.
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=[*ALLOWED_HOSTS, *extra_hosts])
     # Outermost (MEM-042 C1), so host refusals and 404s carry the headers too.
@@ -202,10 +208,14 @@ def create_app(backend: ModelBackend | None = None, place_provider=None, asr_cli
         if passcode is None:
             # Unconfigured: local run_live use stays open, anything public fails closed.
             return None if request.url.hostname in ALLOWED_HOSTS else _error(401, "passcode_required")
+        ip = rl.client_ip(request.scope, trust_xff)
+        if (retry := lockout.retry_after(ip)) is not None:
+            return rl.retry_error("too_many_attempts", retry)
         # Header values arrive latin-1 decoded; re-encoding recovers the raw bytes the client sent.
         sent = request.headers.get(PASSCODE_HEADER, "").encode("latin-1")
         if hmac.compare_digest(sent, passcode.encode("utf-8")):
             return None
+        lockout.record(ip)
         return _error(401, "passcode_required")
 
     @app.get("/healthz")

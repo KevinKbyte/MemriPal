@@ -19,6 +19,7 @@ HOST="${SERVICE}-${PROJECT_NUMBER}.${REGION}.run.app"
 HOSTS="${HOST}${EXTRA_HOSTS:+,$EXTRA_HOSTS}"
 
 # --max-instances=1 makes the per-instance call budget the whole-service budget (ADR 0004).
+# --concurrency and --timeout bound parallel and hanging requests per instance (MEM-034).
 # The body cap equals the largest route cap (POST /split), so no legitimate request is refused.
 # ^;^ switches the gcloud list delimiter so the comma-separated host list stays one value.
 # The empty "" after META_API_KEY= is removed by the shell; it keeps scripts/precommit_scan.py
@@ -29,6 +30,8 @@ gcloud run deploy "$SERVICE" \
   --source . \
   --allow-unauthenticated \
   --max-instances=1 \
+  --concurrency=20 \
+  --timeout=120 \
   --set-env-vars="^;^MEMRIPAL_MODE=fixture;MEMRIPAL_CALL_BUDGET=300;MEMRIPAL_MAX_BODY_BYTES=21233664;MEMRIPAL_ALLOWED_HOSTS=${HOSTS}" \
   --set-secrets=MEMRIPAL_PASSCODE=memripal-passcode:latest,META_API_KEY=""meta-api-key:latest
 
