@@ -8,6 +8,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { MEM048_IDS } from "./index_ids_test.mjs";
 
 const HTML = readFileSync(new URL("./index.html", import.meta.url), "utf8");
 
@@ -19,12 +20,7 @@ const LIVE_IDS = [
   "recall-submit", "recall-live", "recall-results", "history", "rehearsals", "rehearsal-undo",
   "history-view", "hit-rates", "backup", "backup-export", "backup-import", "backup-status", "scene-overlay",
 ];
-const NEW_IDS = [
-  "routes-home", "routes-list", "routes-new", "routes-settings",
-  "capture-session", "capture-safety", "capture-safety-ok", "capture-strip", "capture-locate",
-  "capture-finish", "capture-count",
-  "finish-name", "finish-kind", "finish-save",
-];
+const NEW_IDS = MEM048_IDS;
 const VOID = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source",
   "track", "wbr"]);
 

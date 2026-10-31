@@ -1,7 +1,8 @@
 // Covers: MEM-044
 // Requirement: static/index.html carries the v6 shell and control markup (MEM-044 A2, F13): topbar brand,
 // .panel, .field, .btn, .btn-primary, .eyebrow and .notice around the live elements; every id of 748a5e1
-// is kept with its hidden attribute unchanged; 0 orphan classes (each index.html class has a style.css
+// is kept with its hidden attribute unchanged (MEM-048: the only ids added are its 14 Part A ids, and only
+// its Part A start-hidden ids may carry hidden); 0 orphan classes (each index.html class has a style.css
 // rule) and 0 orphan selectors (each style.css class is in index.html or a class literal in static/*.js);
 // F13: #auto and its label sit inside #routes-settings (MEM-048; was #load-demo's container); every text/file/password input has a
 // <label for> inside one .field wrapper (display grid or block); main has no bare <label>/<input> child;
@@ -10,6 +11,7 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
+import { MEM048_IDS, MEM048_MAY_START_HIDDEN } from "./index_ids_test.mjs";
 
 const read = (f) => readFileSync(new URL(f, import.meta.url), "utf8");
 const HTML = read("./index.html");
@@ -170,14 +172,29 @@ const inJs = (c) => new RegExp(`["'\`]([^"'\`\\n]*\\s)?${c}(\\s[^"'\`\\n]*)?["'\
 // Covers: MEM-044
 // Requirement: MEM-044 A2 v6 shell + control markup in static/index.html (see the file header).
 describe("MEM-044 A2 v6 shell + control markup (static/index.html, F13)", () => {
-  test("the id set equals 748a5e1's: every id kept, each exactly once, none added", () => {
+  // MEM-048 (plan B3) amended this test: 748a5e1's ids must survive (subset, each exactly once), and the
+  // only additions allowed are the 14 MEM-048 Part A ids (exact allowlist).
+  test("every 748a5e1 id kept exactly once; the only ids added are MEM-048's", () => {
     const ids = ELS.map((e) => e.attrs.id).filter((id) => id !== undefined);
-    assert.deepEqual([...ids].sort(), [...BASE_IDS].sort(), `index.html ids: ${ids.join(" ")}`);
+    const count = (id) => ids.filter((x) => x === id).length;
+    const lost = BASE_IDS.filter((id) => count(id) !== 1);
+    assert.deepEqual(lost, [], `748a5e1 ids missing or duplicated: ${lost.join(" ")}`);
+    const allowed = new Set([...BASE_IDS, ...MEM048_IDS]);
+    const unexpected = ids.filter((id) => !allowed.has(id));
+    assert.deepEqual(unexpected, [], `ids outside 748a5e1 + MEM-048: ${unexpected.join(" ")}`);
+    const dupes = [...new Set(ids.filter((id) => count(id) > 1))];
+    assert.deepEqual(dupes, [], `duplicated ids: ${dupes.join(" ")}`);
   });
 
-  test("the initially-hidden id set equals 748a5e1's", () => {
+  // MEM-048 (plan B3) amended this test: 748a5e1's hidden ids stay hidden and its visible ids stay visible;
+  // a new element may carry hidden only if it is a MEM-048 id Part A says starts hidden.
+  test("748a5e1's hidden ids unchanged; only Part A start-hidden MEM-048 ids added as hidden", () => {
     const hidden = ELS.filter((e) => "hidden" in e.attrs).map((e) => e.attrs.id ?? desc(e));
-    assert.deepEqual([...hidden].sort(), [...BASE_HIDDEN].sort(), `hidden: ${hidden.join(" ")}`);
+    const lostHidden = BASE_HIDDEN.filter((id) => !hidden.includes(id));
+    assert.deepEqual(lostHidden, [], `748a5e1 hidden ids no longer hidden: ${lostHidden.join(" ")}`);
+    const mayHide = new Set([...BASE_HIDDEN, ...MEM048_MAY_START_HIDDEN]);
+    const extra = hidden.filter((id) => !mayHide.has(id));
+    assert.deepEqual(extra, [], `hidden but not allowed to start hidden: ${extra.join(" ")}`);
   });
 
   test("v6 shell classes topbar, brand, panel, field, btn, btn-primary, eyebrow, notice are used", () => {
