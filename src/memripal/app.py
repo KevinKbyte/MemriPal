@@ -190,7 +190,7 @@ def create_app(
     if live and call_budget is not None:
         backend = _BudgetedBackend(backend, call_budget)
 
-    app = FastAPI(title="MemriPal")
+    app = FastAPI(title="MemriPal", docs_url=None, redoc_url=None, openapi_url=None)
     if max_body is not None:
         app.add_middleware(_BodyCap, cap=max_body)
     # Runs after the host check and before the body cap, passcode, body read and model.
