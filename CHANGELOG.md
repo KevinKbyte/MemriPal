@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.19] - 2026-10-31
+
+### Added
+
+- API hardening (MEM-034): per-IP sliding-window rate limit on limited routes, passcode lockout (MEMRIPAL_PASSCODE_MAX_FAILS=5, MEMRIPAL_LOCKOUT_S=300) cleared on success, per-route concurrency cap (MEMRIPAL_ROUTE_CONCURRENCY=4), stale-key sweep, IPv6 keyed by /64 and IPv4-mapped IPv6 keyed as IPv4; Cloud Run deploy --concurrency=20 --timeout=120.
+
 ## [0.20.18] - 2026-10-31
 
 ### Added
