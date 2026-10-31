@@ -2,7 +2,8 @@
   "name": "memripal-mobile",
   "private": true,
   "scripts": {
-    "build:mobile": "node scripts/build_mobile_web.mjs"
+    "build:mobile": "node scripts/build_mobile_web.mjs",
+    "test": "node --test \"static/*.test.mjs\" \"scripts/*.test.mjs\""
   },
   "devDependencies": {
     "@capacitor/android": "^8.6.0",
