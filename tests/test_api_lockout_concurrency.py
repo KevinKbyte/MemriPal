@@ -236,6 +236,54 @@ class TestPasscodeLockout:
             create_app(backend=LiveStub(), clock=FakeClock())
 
 
+# Requirement: a correct passcode clears that IP's failure count, so a user who mistypes a few times and then
+# gets in is not locked out by a later handful of typos; other IPs' successes never clear it.
+class TestLockoutResetOnSuccess:
+    def _live(self, monkeypatch, fails="5"):
+        monkeypatch.setenv("MEMRIPAL_PASSCODE", PASSCODE)
+        monkeypatch.setenv("MEMRIPAL_PASSCODE_MAX_FAILS", fails)
+        monkeypatch.setenv("MEMRIPAL_LOCKOUT_S", "300")
+        stub = LiveStub()
+        return stub, TestClient(create_app(backend=stub, clock=FakeClock()), base_url=LOOPBACK_URL)
+
+    def test_success_resets_the_failure_count(self, monkeypatch):
+        stub, client = self._live(monkeypatch)
+        for _ in range(4):
+            assert _split(client, "wrong").status_code == 401
+        assert _split(client, PASSCODE).status_code == 200
+        for i in range(4):
+            resp = _split(client, "wrong")
+            assert resp.status_code == 401, f"wrong attempt {i + 1} after success: {resp.text[:200]}"
+        resp = _split(client, PASSCODE)
+        assert resp.status_code == 200, resp.text[:300]
+        assert stub.calls == 2
+
+    def test_another_ips_success_does_not_reset_the_count(self, monkeypatch):
+        monkeypatch.setenv("K_SERVICE", "memripal")
+        _, client = self._live(monkeypatch)
+        for _ in range(4):
+            assert _split(client, "wrong", xff="203.0.113.9").status_code == 401
+        assert _split(client, PASSCODE, xff="198.51.100.7").status_code == 200
+        assert _split(client, "wrong", xff="203.0.113.9").status_code == 401
+        _assert_locked(_split(client, PASSCODE, xff="203.0.113.9"))
+
+
+# Requirement: behind Cloud Run the passcode lockout keys an IPv6 client by its /64 prefix, so rotating the
+# low 64 bits cannot buy fresh guesses; another /64 is unaffected.
+class TestLockoutIpv6Prefix:
+    def test_same_ipv6_64_shares_one_lockout(self, monkeypatch):
+        monkeypatch.setenv("K_SERVICE", "memripal")
+        monkeypatch.setenv("MEMRIPAL_PASSCODE", PASSCODE)
+        monkeypatch.setenv("MEMRIPAL_PASSCODE_MAX_FAILS", "3")
+        stub = LiveStub()
+        client = TestClient(create_app(backend=stub, clock=FakeClock()), base_url=LOOPBACK_URL)
+        for addr in ("2001:db8::1", "2001:db8::2", "2001:db8::3"):
+            assert _split(client, "wrong", xff=addr).status_code == 401
+        _assert_locked(_split(client, PASSCODE, xff="2001:db8::ffff"))
+        assert _split(client, PASSCODE, xff="2001:db8:0:1::1").status_code == 200
+        assert stub.calls == 1
+
+
 class BlockingBackend:
     """Live backend whose model call parks until released, then fails; counts calls."""
 

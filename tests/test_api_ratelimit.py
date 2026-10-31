@@ -26,6 +26,7 @@ import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 
+from memripal import ratelimit as rl
 from memripal.app import create_app
 
 LOOPBACK_URL = "http://127.0.0.1"
@@ -279,3 +280,65 @@ class TestClientIp:
         assert _place(client, "203.0.113.9").status_code == 200
         _assert_429(_place(client, "198.51.100.7"))
         _assert_429(_place(client))
+
+
+# Requirement: behind Cloud Run an IPv6 client is keyed by its /64 prefix (one subscriber typically owns a
+# whole /64), so rotating the low 64 bits cannot mint fresh rate buckets; distinct /64s and IPv4 addresses
+# keep separate buckets.
+class TestIpv6Prefix:
+    def test_same_ipv6_64_shares_one_bucket(self, monkeypatch):
+        monkeypatch.setenv("K_SERVICE", "memripal")
+        client = _client(_app(FakeClock(), monkeypatch=monkeypatch, rate=1))
+        assert _place(client, "2001:db8::1").status_code == 200
+        _assert_429(_place(client, "2001:db8::ffff"))
+        _assert_429(_place(client, "198.51.100.7, 2001:db8:0:0:abcd:ef01:2345:6789"))
+
+    def test_different_ipv6_64s_get_separate_buckets(self, monkeypatch):
+        monkeypatch.setenv("K_SERVICE", "memripal")
+        client = _client(_app(FakeClock(), monkeypatch=monkeypatch, rate=1))
+        assert _place(client, "2001:db8::1").status_code == 200
+        _assert_429(_place(client, "2001:db8::1"))
+        assert _place(client, "2001:db8:0:1::1").status_code == 200
+
+    def test_ipv4_is_still_keyed_per_address(self, monkeypatch):
+        monkeypatch.setenv("K_SERVICE", "memripal")
+        client = _client(_app(FakeClock(), monkeypatch=monkeypatch, rate=1))
+        assert _place(client, "203.0.113.9").status_code == 200
+        _assert_429(_place(client, "203.0.113.9"))
+        assert _place(client, "203.0.113.10").status_code == 200
+
+
+# Requirement: limiter state for clients that have gone quiet is dropped once their window has passed, so
+# many one-off client IPs cannot grow the in-memory state without bound.
+class TestStaleSweep:
+    """Seam: len(SlidingWindow) is the number of keys it currently tracks. record() sweeps keys whose events
+    have all expired; the sweep may be amortized but runs at least once per window_s of clock time. The
+    passcode lockout uses the same SlidingWindow (window_s = MEMRIPAL_LOCKOUT_S), so this covers it too."""
+
+    def test_expired_keys_are_swept_on_a_later_record(self):
+        clock = FakeClock(1000.0)
+        window = rl.SlidingWindow(limit=1, window_s=60, clock=clock)
+        for i in range(500):
+            window.record(f"10.0.{i // 256}.{i % 256}")
+        assert len(window) == 500
+        clock.now = 1061.0
+        window.record("192.0.2.1")
+        assert len(window) == 1
+
+    def test_tracked_state_does_not_grow_across_windows(self):
+        clock = FakeClock(1000.0)
+        window = rl.SlidingWindow(limit=1, window_s=300, clock=clock)
+        for round_no in range(5):
+            for i in range(200):
+                window.record(f"r{round_no}-{i}")
+            assert len(window) <= 200, round_no
+            clock.now += 301.0
+
+    def test_keys_still_inside_their_window_are_kept(self):
+        clock = FakeClock(1000.0)
+        window = rl.SlidingWindow(limit=1, window_s=300, clock=clock)
+        window.record("203.0.113.9")
+        clock.now = 1299.0
+        window.record("198.51.100.7")
+        assert len(window) == 2
+        assert window.retry_after("203.0.113.9") == 1
