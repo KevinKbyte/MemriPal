@@ -192,9 +192,8 @@ export function createRouteView({ doc, routes, rehearsals, onPractice }) {
     if (!stash) return;
     try {
       if (stash.routeGone) {
-        // undoDelete puts the route back in memory before its write can fail; the store is the truth.
-        await routes.undoDelete().catch(() => null);
-        if (!(await routes.getRoute(stash.id))) throw new Error("nothing to restore");
+        // A failed restore write rejects and leaves the delete undoable, so the catch keeps Undo for a retry.
+        if (!(await routes.undoDelete())) throw new Error("nothing to restore");
       }
       stash.routeGone = false;
       for (const r of stash.records) await rehearsals.restore(r);

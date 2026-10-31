@@ -188,14 +188,22 @@ export function createRouteStore(adapter, { now = Date.now, newId = () => crypto
       await persist(null, [() => adapter.delete(ROUTE_KEY(id)), ...r.stations.map((s) => dropPhoto(s.photo_ref))]);
     }),
 
-    /** Restores the last deleted route; null when there is nothing to undo. */
+    /** Restores the last deleted route; null when there is nothing to undo. A failed write rejects and stays undoable. */
     undoDelete: () => serial(async () => {
       if (!lastDeleted) return null;
       const { route: r, photos: held } = lastDeleted;
-      lastDeleted = null;
-      (await routes()).set(r.id, r);
+      const cache = await routes();
+      cache.set(r.id, r);
       const writes = [...held].map(([ref, bytes]) => putPhoto(ref, bytes));
-      return persist(clone(r), [...writes, putRoute(r)]);
+      try {
+        await persist(null, [...writes, putRoute(r)]);
+      } catch (err) {
+        // Roll the cache back so a failed restore never reads as restored.
+        cache.delete(r.id);
+        throw err;
+      }
+      lastDeleted = null;
+      return clone(r);
     }),
 
     /**
