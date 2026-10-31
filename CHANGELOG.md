@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.5] - 2026-10-31
+
+### Added
+
+- Client route + station store and capture session: routes keep up to 8 stations in capture order, pending
+  stations retry, and the finish step names the route and picks its kind with two radios (MEM-048;
+  `static/route_store.test.mjs`, `static/route_capture.test.mjs`, ADR 0031).
+- Route markup: S1 routes home, S2 capture session, S4 finish fields; passcode and auto-capture move into the
+  collapsible Live settings panel (MEM-048).
+
 ## [0.20.4] - 2026-10-31
 
 ### Changed
