@@ -98,7 +98,7 @@ def parse_used_names(header: str | None) -> list[str] | None:
     """The X-Memripal-Used-Names header as a validated list; absent == []; None when invalid."""
     if header is None:
         return []
-    if len(header) > MAX_USED_NAMES_HEADER:
+    if len(header) > MAX_USED_NAMES_HEADER or not header.isascii():
         return None
     try:
         names = json.loads(header)
