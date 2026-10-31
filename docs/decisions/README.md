@@ -59,6 +59,8 @@ the others that you asked about".
   replayed via promoted live records (over demo art, synthetic or stock rooms, regeneration, or committed variants).
 - [0030](0030-adopt-v6-css-markup-only.md) v6 look adopted as CSS + markup retargeted to live ids, v6 JS
   reference-only (over full v6 JS adoption or linking v6 `styles.css` verbatim).
+- [0031](0031-capacitor-android-shell.md) Capacitor 8 Android shell bundling `static/` into `www/`, API base via
+  `MEMRIPAL_API_BASE`, native meta CSP; CORS wiring pending (over a PWA or a remote `server.url`).
 
 ## Minor decisions (no ADR)
 
@@ -70,7 +72,8 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - Secret scan is a regex pre-commit hook, not gitleaks (D8).
 - Round-2 plan adversaries skipped: round 1 converged (D9).
 - Cut line: only S9 is cuttable; Q1 cut order S9, D16, D18 history view, D4 live lighting (D10).
-- Phone capture via `capture=environment`; no service worker (stale-deploy risk); native Android deferred (D13).
+- Phone capture via `capture=environment`; no service worker (stale-deploy risk); native Android deferred (D13;
+  superseded in part by 0031).
 - Loci spacing (< ~5% of diagonal collapse) and same-type duplicates disambiguated by position (D14).
 - Notes mode: <= 12 key points, each an exact substring of the notes (D15).
 - Higher-order why/apply question written at encode time, self-assessed, never live-graded (D16).

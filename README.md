@@ -282,6 +282,23 @@ powershell -File scripts/run_live.ps1 [-KeyFile <path>] uv run python scripts/pr
   `--dry-run` (no key, no calls), then:
   `powershell -File scripts/run_live.ps1 [-KeyFile <path>] uv run python scripts/gen_assets.py`.
 
+## Mobile (Android)
+
+Capacitor 8 shell that bundles `static/` into the app; the public web URL is unchanged
+([ADR 0031](docs/decisions/0031-capacitor-android-shell.md)). Prerequisites: Node + npm, a JDK and the Android SDK
+(`ANDROID_HOME` set), Android Studio. Run Capacitor commands with `CI=1`, else its telemetry prompt hangs.
+
+```bash
+npm install
+MEMRIPAL_API_BASE=https://<cloud-run-host> npm run build:mobile
+CI=1 npx cap sync android
+CI=1 npx cap open android
+```
+
+`build:mobile` writes the gitignored `www/` and needs `MEMRIPAL_API_BASE` as a bare https origin (no path, query or
+credentials); anything else exits 1 before `www/` is touched. Build and run the APK from Android Studio. The server
+does not send CORS headers yet (`memripal.cors.add_cors` is not wired in), so the app cannot reach the API until it is.
+
 ## Deploy
 
 GCP Cloud Run with Secret Manager keys: [docs/runbooks/deploy-gcp.md](docs/runbooks/deploy-gcp.md).
