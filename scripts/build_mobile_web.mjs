@@ -27,6 +27,7 @@ function parseApiBase(raw) {
 function nativeCsp(api) {
   return [
     "default-src 'self'",
+    "script-src 'self' 'wasm-unsafe-eval'",
     "img-src 'self' data: blob:",
     `connect-src 'self' ${api}`,
     "object-src 'none'",

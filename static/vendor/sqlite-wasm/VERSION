@@ -1,0 +1,6 @@
+@sqlite.org/sqlite-wasm 3.54.1-build1 (npm pack, tarball shasum b03a62e2836daf7c6cff569fac6285bc1eeed694)
+Pinned >= 3.54: earlier releases carry the opfs-sahpool locking bug.
+
+Copied files (sha256):
+0dcdd860e6ec672623b13b8b8e41bb6c78be7a5df80ec553fc4f69160161c8af  sqlite3.js    <- dist/index.mjs (renamed: Python mimetypes on Windows maps .mjs to text/plain, which nosniff blocks as a module script)
+b8a92a19f441a90ff2339fe988fbe317c4adf3ed844096f12aee04aa72d58257  sqlite3.wasm  <- dist/sqlite3.wasm (resolved via new URL("sqlite3.wasm", import.meta.url))
