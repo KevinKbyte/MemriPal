@@ -40,6 +40,10 @@ class BackendTimeout(BackendCallFailed, TimeoutError):
     """A live call timed out in transport; still a BackendCallFailed for callers that do not care which."""
 
 
+class BackendReplyInvalid(BackendCallFailed):
+    """The call succeeded but its reply was malformed or schema-invalid; a regenerate may help."""
+
+
 def _check_photo_sha(photo_sha: object) -> None:
     if not isinstance(photo_sha, str) or not _PHOTO_SHA.fullmatch(photo_sha):
         raise ValueError("photo_sha must be 64 lowercase hex chars")
@@ -319,7 +323,8 @@ def _prompt_for(template_id: str, args: dict) -> str:
     if template_id == "station":
         from memripal.station import station_prompt
 
-        return station_prompt(args["used_names"])
+        # Absent == no used names, matching parse_used_names' absent-header rule.
+        return station_prompt(args.get("used_names", []))
     raise ValueError(f"unknown prompt template: {template_id!r}")
 
 
@@ -421,9 +426,9 @@ class MetaBackend:
         try:
             value = parse(result.body)
         except (ValueError, KeyError, IndexError, TypeError) as exc:
-            raise BackendCallFailed(f"{req.method} response incomplete or malformed") from exc
+            raise BackendReplyInvalid(f"{req.method} response incomplete or malformed") from exc
         if not valid(value):
-            raise BackendCallFailed(f"{req.method} response does not match its schema")
+            raise BackendReplyInvalid(f"{req.method} response does not match its schema")
         return self._store(store_req, value)
 
     def _store(self, req: ModelRequest, value: Any) -> Any:

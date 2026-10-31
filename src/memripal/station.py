@@ -9,7 +9,14 @@ from io import BytesIO
 
 from PIL import Image
 
-from memripal.backend import NO_PHOTO_CACHE, PROMPT_ARGS, BackendCallFailed, ModelBackend, ModelRequest
+from memripal.backend import (
+    NO_PHOTO_CACHE,
+    PROMPT_ARGS,
+    BackendCallFailed,
+    BackendReplyInvalid,
+    ModelBackend,
+    ModelRequest,
+)
 from memripal.imaging import JPEG_QUALITY, Processed
 from memripal.loci import (
     MAX_PHRASE_LEN,
@@ -74,7 +81,8 @@ def _clean_text(value: object, cap: int) -> bool:
     if not isinstance(value, str):
         return False
     text = value.strip()
-    return 0 < len(text) <= cap and not any(unicodedata.category(c) == "Cc" for c in text)
+    # Cf too: bidi overrides and zero-width chars can spoof a name that looks clean.
+    return 0 < len(text) <= cap and not any(unicodedata.category(c) in ("Cc", "Cf") for c in text)
 
 
 def _short_name(value: object) -> bool:
@@ -195,7 +203,12 @@ def name_station(backend: ModelBackend, photo: Processed, used_names: list[str])
             gen_params={**SPARK_GEN_PARAMS, PROMPT_ARGS: {"used_names": list(used_names)}},
             schema=STATION_SCHEMA,
         )
-        checked = _checked_reply(backend.call(req))
+        # A malformed/schema-invalid reply is a reply-contract failure like a bad shape: regenerate.
+        # Transport failures (plain BackendCallFailed) propagate unretried.
+        try:
+            checked = _checked_reply(backend.call(req))
+        except BackendReplyInvalid:
+            checked = None
         if checked is not None:
             return checked
     raise BadReply("station reply invalid after regenerate")
