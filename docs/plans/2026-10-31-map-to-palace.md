@@ -4,8 +4,8 @@ Date 2026-10-31. Repo memripal main a082c18 (0.20.1). Deadline Wed Nov 4 2026 9 
 features, hackathon.md:92). Supersedes, for memripal product work, the open product items of
 done/memripal-2026-10-30-s2s-handoff.md and items 110-113 of memripal-2026-10-31-s2t-handoff.md (ledger in Part C).
 Recon facts with path:line: recon.md (same folder). Adversary reports: adv-*.md (round 1) and adv-*-r2.md (round 2),
-same folder; arbitration in Part D (round 1), Part E (round 2), Part F (finisher critique) and Part G (item 136
-amendment + its adversary round). Supersedes plan-v1.md and plan-v1-r2.md.
+same folder; arbitration in 2026-10-31-map-to-palace-ledgers.md: Part D (round 1), Part E (round 2), Part F (finisher critique), Part G
+(item 136 amendment, its adversary round, live B14a/B14b/B14c slice text). Supersedes plan-v1.md and plan-v1-r2.md.
 
 ## Must-keep (user's verbatim asks; never deferred, cut or descoped without the user's explicit ask)
 Verbatim product framing (Kev, 2026-10-31): "this would make it less much forgetable considering there are many
@@ -314,10 +314,10 @@ Rules for every slice: RED test first with `// Covers: MEM-0xx` (node) or `# Cov
 (docs/decisions/, README index); new server routes in new modules; app.py edits in the D7 order only, each slice's criterion `app.py <= 582`;
 markup uses Part A ids and is the final markup (Claude Design adds CSS + classes; its HTML fragments are reference only, B11); static/ diffs
 carry a screenshot + visual-verify record; one commit per fix; bump + CHANGELOG at land. Adversary-premise rule: ledgers file, "Part G slices".
-Lanes: SERVER (B0 -> B1 -> B4 app.py wiring -> B7 server -> B8 router wiring), CLIENT (B3, B5, B6, B9, B8 client),
-JOIN (B7 after B4+B5; B10 after B2+B6+B7+B8, soft-after B11; B11 whenever Claude Design returns, after B3). B0, B2, B3,
-the station.py core of B4 and the baseline.py core of B8 (no app.py edit; needs only the live API doc fetch) dispatch
-first, in parallel; B1 dispatches when B0 lands; B4's router wiring rebases on B1; B8's wiring rebases on B7.
+Lanes: SERVER (B0 -> B1 -> B4 app.py wiring -> B7 server -> B8 router wiring -> B14 wiring), CLIENT (B3, B5, B6, B9, B8 client, B14c after
+B3 on frozen B14a/B14b fixtures), JOIN (B7 after B4+B5; B10 after B2+B6+B7+B8+B14c, soft-after B11; B11 when Claude Design returns, after B3).
+B0, B2, B3 and the no-app.py cores (station.py of B4, baseline.py of B8 after the live API doc fetch, routing.py of B14a) dispatch first, in
+parallel; B14b core after B4 + B8 cores; B1 when B0 lands; B4's wiring rebases on B1, B8's on B7; B14 wiring (routes_plan.py) ends B8's.
 
 MEM ids: MEM-046.. assigned below (MEM-045 = brand-art, unmerged). ADRs 0031.. assigned in land order.
 
