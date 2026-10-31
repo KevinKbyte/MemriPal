@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.13] - 2026-10-31
+
+### Added
+
+- Backup v2: export carries routes and lists by field allowlist with 640 px station thumbnails and never coordinates; 8 MiB cap; v1 backups refused with a plain message; station photos without a readable JPEG size are refused (MEM-054, ADR 0033).
+
 ## [0.20.12] - 2026-10-31
 
 ### Added
