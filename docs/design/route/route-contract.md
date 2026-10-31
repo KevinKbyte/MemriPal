@@ -49,6 +49,8 @@ A fieldset cannot collapse without script or `<details>`. The CSS styles it open
 
 | Where | Classes | Notes |
 |---|---|---|
+| `<header>` | `topbar` | From style.css; sticky top bar. |
+| title `h1` in the topbar | `brand` | From style.css; widened with `.app` at >= 900px so the title lines up with the content column. |
 | `<main>` | `app` | One column on a phone; 2-column grid at >= 900px. Nothing above `#scene-overlay` gets transform/filter/contain. |
 | every screen root (S1-S9 sections, `#walk`) | `panel screen` | `.panel` from style.css. `#scenes` is a plain div (`scene-cards`), not a panel. |
 | screen heading `h2` | `screen-title` | --display. |

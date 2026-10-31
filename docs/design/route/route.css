@@ -55,6 +55,10 @@
   font-weight: 600;
 }
 
+.form-error {
+  list-style: none;
+}
+
 .form-error li + li {
   margin-top: 0.25rem;
 }
@@ -75,6 +79,20 @@
   .screen > .cancel,
   .screen > .undo {
     justify-self: start;
+  }
+
+  .screen:not(#capture-session) > .btn,
+  .screen:not(#capture-session) > .arm,
+  .screen:not(#capture-session) > .confirm,
+  .screen:not(#capture-session) > .cancel,
+  .screen:not(#capture-session) > .undo {
+    width: 100%;
+    max-width: 20rem;
+  }
+
+  #walk > #walk-prev,
+  #walk > #walk-next {
+    max-width: none;
   }
 }
 
@@ -392,17 +410,16 @@
 }
 
 .route-card > .tag-draft {
-  grid-column: 2;
-  grid-row: 1;
-  justify-self: end;
-  align-self: start;
+  justify-self: start;
+  margin-top: 0.25rem;
 }
 
+/* Fixed width so every card's Open matches and column 1 keeps the same room. */
 .route-card > .route-card-open {
   grid-column: 2;
-  grid-row: 2 / span 3;
+  grid-row: 1 / span 5;
   align-self: end;
-  min-width: 5rem;
+  width: 5.5rem;
 }
 
 .empty-text {
@@ -424,6 +441,36 @@
 .settings > .field + .check,
 .settings > .check + .field {
   margin-top: 0.75rem;
+}
+
+.settings > .check + .check {
+  margin-top: 0.5rem;
+}
+
+.check {
+  gap: 0.75rem;
+  min-height: 2.75rem;
+}
+
+.field > input[type="file"] {
+  background: none;
+}
+
+#empty-state {
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface-2);
+}
+
+:root[data-theme="dark"] #empty-state {
+  opacity: 0.72;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) #empty-state {
+    opacity: 0.72;
+  }
 }
 
 @media (min-width: 600px) {
@@ -539,7 +586,7 @@
 }
 
 .strip {
-  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
   gap: 0.625rem;
 }
 
@@ -634,8 +681,13 @@
 }
 
 .photo-frame {
+  align-content: start;
   gap: 0.5rem;
   justify-items: start;
+}
+
+.photo-frame > .model-chip {
+  align-self: start;
 }
 
 .photo-frame > #scene:not([hidden]) {
@@ -834,6 +886,27 @@ a.credit-link {
   cursor: pointer;
 }
 
+.check > input[type="checkbox"],
+.kind-option > input[type="radio"] {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  accent-color: var(--primary);
+}
+
+.kind-option > input[type="radio"] {
+  appearance: none;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--surface);
+}
+
+.kind-option > input[type="radio"]:checked {
+  background: var(--primary);
+  box-shadow: inset 0 0 0 3px var(--surface);
+}
+
 .kind-option:has(input:checked) {
   border: 2px solid var(--primary);
   background: var(--surface-2);
@@ -849,7 +922,7 @@ a.credit-link {
 }
 
 #route > .station-row {
-  grid-template-columns: 3.5rem repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0.375rem 0.5rem;
   margin-bottom: 0.75rem;
   padding: 0.5rem 0.5rem 0.5rem 2.5rem;
@@ -886,12 +959,42 @@ a.credit-link {
 #route > .station-row > .arm,
 #route > .station-row > .confirm,
 #route > .station-row > .cancel {
-  grid-column: auto;
   padding-inline: 0.25rem;
+  white-space: nowrap;
 }
 
-#route > .station-row > .move-up {
-  grid-column: 1;
+/* Phone: four equal tracks. At rest Up | Down | Drop (x2); armed adds a row Drop it (x2) | Keep (x2). */
+#route > .station-row > .move-up { grid-column: 1; }
+#route > .station-row > .move-down { grid-column: 2; }
+#route > .station-row > .arm { grid-column: 3 / span 2; }
+#route > .station-row > .confirm { grid-column: 1 / span 2; }
+#route > .station-row > .cancel { grid-column: 3 / span 2; }
+
+/* Wide: buttons sit right of the name in fixed equal tracks so rows align at rest and armed. */
+@media (min-width: 760px) {
+  #route > .station-row {
+    grid-template-columns: 3.5rem minmax(0, 1fr) repeat(4, 5.75rem);
+  }
+
+  #route > .station-row > .row-name,
+  #route > .station-row > .row-turn {
+    grid-column: 2;
+  }
+
+  #route > .station-row > .move-up,
+  #route > .station-row > .move-down,
+  #route > .station-row > .arm,
+  #route > .station-row > .confirm,
+  #route > .station-row > .cancel {
+    grid-row: 1 / span 2;
+    align-self: center;
+  }
+
+  #route > .station-row > .move-up { grid-column: 3; }
+  #route > .station-row > .move-down { grid-column: 4; }
+  #route > .station-row > .confirm { grid-column: 5; }
+  #route > .station-row > .arm,
+  #route > .station-row > .cancel { grid-column: 6; }
 }
 
 /* ---------- S5 Route view ---------- */
@@ -1104,11 +1207,14 @@ a.credit-link {
 }
 
 .scene-cards {
+  align-items: start;
   gap: 0.75rem;
   margin: 0 0 1rem;
 }
 
+/* Positioned so style.css's absolute .chip-ai pins inside its card, not the page. */
 .scene-card {
+  position: relative;
   padding: 0.75rem;
   border: 1px solid var(--line);
   border-radius: 14px;
@@ -1142,8 +1248,13 @@ a.credit-link {
 
 @media (min-width: 600px) {
   .scene-cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
   }
+}
+
+#walk-step > .scene-img {
+  max-width: min(100%, 36rem);
+  justify-self: center;
 }
 
 #walk:not([hidden]) {
@@ -1315,5 +1426,21 @@ a.credit-link {
 
   .route-cards {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  /* Topbar title lines up with the widened content column. */
+  .brand {
+    max-width: 76rem;
+  }
+
+  /* Single-column form screens stay at a readable width inside the wide grid. */
+  .app > #station-card,
+  .app > #route-review,
+  .app > #recall,
+  .app > #history,
+  .app > #backup {
+    width: 100%;
+    max-width: 48rem;
+    justify-self: center;
   }
 }
