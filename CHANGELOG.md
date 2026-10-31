@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.2] - 2026-10-31
+
+### Changed
+
+- Demo-place prose in README, ADR 0022 and spec-2 is neutral (no named real-world site); the synthetic fixture
+  generator scrub is deferred to plan slice B10 behind strict xfail tests (MEM-047; `tests/test_demo_place_scrub.py`).
+
 ## [0.20.1] - 2026-10-30
 
 ### Fixed
