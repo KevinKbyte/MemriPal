@@ -12,6 +12,7 @@
  * @typedef {{ label: string, source_quote: string, got: boolean, override: boolean, span: string | null }} RehearsalPoint
  * @typedef {{
  *   id: string, palace_id: string, timestamp: string, transcript: string, points: RehearsalPoint[],
+ *   mode?: "route", hits?: Record<string, boolean>,
  * }} Rehearsal
  */
 
@@ -44,7 +45,7 @@ export function createRehearsalStore(adapter, { now = Date.now, newId = () => cr
   return {
     /**
      * @param {string} palaceId
-     * @param {{ transcript?: unknown, results?: unknown[] }} run
+     * @param {{ transcript?: unknown, results?: unknown[], mode?: unknown, hits?: unknown }} run
      * @returns {Promise<Rehearsal>}
      */
     async save(palaceId, run) {
@@ -56,6 +57,12 @@ export function createRehearsalStore(adapter, { now = Date.now, newId = () => cr
         transcript: String(run?.transcript ?? ""),
         points: (Array.isArray(run?.results) ? run.results : []).map(pointOf),
       };
+      // Route runs (MEM-051) key hits by station id so rates follow a station through an Up/Down reorder.
+      if (run?.mode === "route") {
+        const hits = run.hits && typeof run.hits === "object" ? run.hits : {};
+        record.mode = "route";
+        record.hits = Object.fromEntries(Object.entries(hits).filter(([, v]) => typeof v === "boolean"));
+      }
       await put(record);
       return record;
     },
@@ -115,6 +122,28 @@ export function hitRates(records) {
   return [...tally].map(([label, { hits, runs }]) => {
     const rate = hits / runs;
     return { label, hits, runs, rate, chronic: runs >= CHRONIC_MIN_RUNS && rate < CHRONIC_MAX_RATE };
+  });
+}
+
+/**
+ * Per-station rates over route runs only; a run counts for a station only when its hits has that id, so a
+ * station added later is not charged for runs it was absent from, and dropped ids are ignored.
+ * @param {{ stations: { id: string, name?: string }[] }} route
+ * @param {Rehearsal[]} records
+ * @returns {{ id: string, name: string, hits: number, runs: number, rate: number }[]} current route order
+ */
+export function routeHitRates(route, records) {
+  const runs = (Array.isArray(records) ? records : []).filter((r) => r?.mode === "route" && r.hits);
+  return (route?.stations ?? []).map((s) => {
+    let hits = 0;
+    let n = 0;
+    for (const r of runs) {
+      const h = /** @type {Record<string, boolean>} */ (r.hits);
+      if (!Object.hasOwn(h, s.id)) continue;
+      n += 1;
+      if (h[s.id] === true) hits += 1;
+    }
+    return { id: s.id, name: String(s.name ?? ""), hits, runs: n, rate: n > 0 ? hits / n : 0 };
   });
 }
 

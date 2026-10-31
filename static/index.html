@@ -36,6 +36,17 @@
             Skip the Finish walk review: save in capture order with a default name</label>
         </details>
       </section>
+      <section id="route-view" class="panel" hidden>
+        <svg id="route-map" class="route-map" viewBox="0 0 320 200" role="img" aria-label="Route map"></svg>
+        <ol id="route-view-stations"></ol>
+        <div class="btn-row">
+          <button id="route-view-practice" class="btn btn-primary" type="button">Practice this route</button>
+          <button id="route-view-delete" class="btn" type="button">Delete route</button>
+          <button id="route-view-delete-confirm" class="btn" type="button" hidden>Confirm delete</button>
+          <button id="route-view-delete-cancel" class="btn" type="button" hidden>Cancel</button>
+          <button id="route-view-undo" class="btn" type="button" hidden>Undo delete</button>
+        </div>
+      </section>
       <section class="panel">
         <p class="eyebrow">Start: a room photo or the demo</p>
         <p id="meta-notice" class="notice" hidden>
@@ -137,6 +148,8 @@
       </section>
       <section id="recall" class="panel" hidden>
         <h2>Recall your palace</h2>
+        <p id="recall-mode"></p>
+        <svg id="recall-map" class="route-map" viewBox="0 0 320 200" role="img" aria-label="Route map"></svg>
         <div class="btn-row">
           <button id="recall-start" class="btn btn-primary" type="button">Start recall</button>
           <button id="recall-replay" class="btn" type="button">Play the replay of a recorded session</button>

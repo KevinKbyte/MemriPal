@@ -2,14 +2,17 @@
 // Live recall lighting (MEM-037): a board of the palace points that light while Kev speaks, fed by a relay
 // that posts a short audio slice per tick through the unchanged recall relay (not streaming ASR).
 
+import { countInOrder } from "./recall_match.js";
+
 export const LIVE_SLICE_MS = 5000;
 
 /**
  * @param {{ label: string }[]} points
  * @param {Pick<Document, "createElement">} doc
- * @param {{ label: string }} opts badge text: "LIVE" or "recorded replay"
+ * @param {{ label: string, inOrder?: { starts: () => (number | null)[] } }} opts badge text: "LIVE" or
+ *   "recorded replay"; inOrder (route practice, MEM-051) lights only rows counted in route order
  */
-export function renderLiveBoard(points, doc, { label }) {
+export function renderLiveBoard(points, doc, { label, inOrder }) {
   const badge = doc.createElement("p");
   badge.className = "live-badge";
   badge.textContent = label;
@@ -27,6 +30,16 @@ export function renderLiveBoard(points, doc, { label }) {
     el,
     /** @param {number[]} indices */
     light(indices) {
+      if (inOrder) {
+        // A later hit can uncount an earlier one, so every row is recomputed, not just the new indices.
+        const counted = countInOrder(inOrder.starts());
+        rows.forEach((row, i) => {
+          row.classList.toggle("lit", counted[i] === true);
+          if (counted[i]) row.dataset.state = "got";
+          else delete row.dataset.state;
+        });
+        return;
+      }
       for (const i of indices) {
         const row = Number.isInteger(i) ? rows[i] : undefined;
         if (!row) continue;

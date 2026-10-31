@@ -424,3 +424,44 @@ li.said-missed {
 .said-quote {
   display: block;
 }
+
+/* MEM-051: route map dots on the 320x200 viewBox; an unused map (demo recall) takes no room. */
+.route-map {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--surface-2);
+  border-radius: 8px;
+}
+
+.route-map:empty {
+  display: none;
+}
+
+.route-line {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 2;
+}
+
+.route-node {
+  fill: var(--surface);
+  stroke: var(--primary);
+  stroke-width: 2;
+}
+
+.route-node.lit {
+  fill: var(--lamp);
+  stroke: var(--lamp-ink);
+}
+
+.route-node.missed {
+  fill: var(--bad-soft);
+  stroke: var(--bad);
+}
+
+/* S1 route card: name, then kind / station count / Learned on one muted line. */
+.route-meta {
+  display: block;
+  color: var(--muted);
+}

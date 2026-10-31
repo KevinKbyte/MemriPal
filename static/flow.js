@@ -9,7 +9,7 @@ import { errorCode, runDemoPalace } from "./encode.js";
 import { createHistory } from "./history.js";
 import { createIdbAdapter } from "./idb_adapter.js";
 import { chunkSamples, encodeWav, postRecallAudio, recordClip, TARGET_SAMPLE_RATE } from "./mic_wav.js";
-import { buildBackup, importBackup, MAX_IMPORT_BYTES } from "./palace_export.js";
+import { wireBackup } from "./backup_ui.js";
 import { localStorageAdapter } from "./palace_store.js";
 import { pointOf } from "./rehearsals.js";
 import { showPublicBanner } from "./public_banner.js";
@@ -17,6 +17,8 @@ import { REPLAY_LABEL, replayRecording, startRecall } from "./recall.js";
 import { createMatcher } from "./recall_match.js";
 import { markPointGot, renderEndScreen } from "./recall_end.js";
 import { createLiveRelay, renderLiveBoard } from "./recall_live.js";
+import { routePracticePoints } from "./route_map.js";
+import { createRouteView, routeRun } from "./route_view.js";
 
 // The model routes the live server gates on the passcode (MEM-034); /demo/* fixtures stay open.
 const PASSCODE_ROUTES = new Set(["/loci", "/split", "/associate", "/scenes", "/recall/audio"]);
@@ -42,6 +44,7 @@ const MAX_RECALL_MS = 3 * 60 * 1000;
  *   place?: ReturnType<typeof import("./place.js").createPlaceState>,
  *   setInterval?: (fn: () => void, ms: number) => unknown,
  *   clearInterval?: (handle: any) => void,
+ *   routes?: ReturnType<typeof import("./route_store.js").createRouteStore>,
  * }} AppDeps
  */
 
@@ -141,50 +144,6 @@ function textEl(doc, tag, text) {
   return e;
 }
 
-/**
- * MEM-042 Download backup / import a backup; every outcome is one textContent line in #backup-status.
- * @param {AppDeps} deps
- * @param {() => Promise<void>} renderHistory
- */
-function wireBackup(deps, renderHistory) {
-  const { doc } = deps;
-  const status = doc.getElementById("backup-status");
-  /** @param {string} text */
-  const say = (text) => {
-    if (status) status.textContent = text;
-  };
-  /** @param {unknown} err */
-  const why = (err) => (err instanceof Error ? err.message : "unexpected error");
-  doc.getElementById("backup-export")?.addEventListener("click", async () => {
-    try {
-      const backup = await buildBackup(deps);
-      const href = URL.createObjectURL(new Blob([JSON.stringify(backup)], { type: "application/json" }));
-      const a = /** @type {HTMLAnchorElement} */ (doc.createElement("a"));
-      a.href = href;
-      a.download = "memripal-backup.json";
-      a.click();
-      URL.revokeObjectURL(href);
-      say("");
-    } catch (err) {
-      say(`Export failed: ${why(err)}`);
-    }
-  });
-  const input = /** @type {HTMLInputElement | null} */ (doc.getElementById("backup-import"));
-  input?.addEventListener("change", async () => {
-    const file = input.files && input.files[0];
-    if (!file) return;
-    try {
-      // Checked before reading, so an oversized file is never loaded into memory.
-      if (file.size > MAX_IMPORT_BYTES) throw new Error(`over ${MAX_IMPORT_BYTES} bytes`);
-      const { imported, skipped } = await importBackup(await file.text(), deps);
-      say(`Imported ${imported}, skipped ${skipped}`);
-      await renderHistory();
-    } catch (err) {
-      say(`Import failed: ${why(err)}`);
-    }
-  });
-}
-
 /** @param {AppDeps} deps */
 export function wireApp(deps) {
   const { doc, rehearsals } = deps;
@@ -239,11 +198,24 @@ export function wireApp(deps) {
     if (done) done.disabled = !open;
   };
   setRunOpen(false);
-  /** @param {string} label */
-  const showBoard = (label) => {
-    const board = renderLiveBoard(points, doc, { label });
+  // Route practice (MEM-051): the route being practiced and its #recall-map; null on the demo palace.
+  /** @type {{ route: import("./route_store.js").Route, map: import("./route_view.js").RouteMap } | null} */
+  let practice = null;
+  // The recorded replay is the demo palace's session: hidden in route practice so it never saves a route run.
+  const showReplay = (/** @type {boolean} */ shown) => { const r = byId("recall-replay"); if (r) r.hidden = !shown; };
+  /** @param {string} label @param {{ starts: () => (number | null)[] }} matcher */
+  const showBoard = (label, matcher) => {
+    const board = renderLiveBoard(points, doc, { label, inOrder: practice ? matcher : undefined });
     byId("recall-live")?.replaceChildren(board.el);
-    return board;
+    const map = practice?.map;
+    if (!map || !practice) return board;
+    const { route } = practice;
+    /** @param {number[]} got */
+    const light = (got) => {
+      board.light(got);
+      map.light(routeRun(route, matcher.starts()).counted);
+    };
+    return { el: board.el, light };
   };
   // Ends any recording in progress, its live relay and the mic; resolves to the untaken WAV, or null if none.
   const stopSpeaking = () => {
@@ -282,25 +254,45 @@ export function wireApp(deps) {
   // Stored runs are listed on open, before (and without) Load demo.
   void renderHistory();
   wireBackup(deps, renderHistory);
+  const routeView = deps.routes
+    ? createRouteView({ doc, routes: deps.routes, rehearsals, onPractice: (route, map) => {
+      discardSpeaking();
+      session = null;
+      setRunOpen(false);
+      points = routePracticePoints(route);
+      practice = { route, map };
+      showReplay(false);
+      byId("recall-live")?.replaceChildren();
+      byId("recall-results")?.replaceChildren();
+    } })
+    : null;
+  void routeView?.renderHome();
 
   /**
    * @param {string} transcript
    * @param {import("./recall_match.js").RecallResult[]} results
    * @param {boolean} replay
+   * @param {(number | null)[]} starts
    */
-  const endRun = async (transcript, results, replay) => {
+  const endRun = async (transcript, results, replay, starts) => {
     session = null;
     setRunOpen(false);
+    const route = practice?.route;
+    const done = route ? routeRun(route, starts) : null;
+    if (practice && done) practice.map.finish(done.counted);
+    const palaceId = route ? route.id : DEMO_PALACE_ID;
     /** @type {import("./rehearsals.js").Rehearsal} */
     let record;
     let saved = true;
     try {
-      record = await rehearsals.save(DEMO_PALACE_ID, { transcript, results });
+      record = await rehearsals.save(palaceId, done ? { transcript, results, mode: "route", hits: done.hits } : { transcript, results });
     } catch {
       // The store is unavailable (the history says so); the end screen still shows this run, unsaved.
       saved = false;
-      record = { id: "", palace_id: DEMO_PALACE_ID, timestamp: new Date().toISOString(), transcript, points: results.map(pointOf) };
+      record = { id: "", palace_id: palaceId, timestamp: new Date().toISOString(), transcript, points: results.map(pointOf) };
     }
+    // A route run's history is its route's Learned and hit rates, not the demo palace's list.
+    const refresh = route && routeView ? () => routeView.refresh(route) : renderHistory;
     const label = replay ? [textEl(doc, "p", `Results: ${REPLAY_LABEL}`)] : [];
     /** @param {string} [note] */
     const show = (note) =>
@@ -341,10 +333,10 @@ export function wireApp(deps) {
           }
         }
       }
-      await renderHistory();
+      await refresh();
     };
     show();
-    await renderHistory();
+    await refresh();
   };
 
   onClick("load-demo", async () => {
@@ -361,6 +353,11 @@ export function wireApp(deps) {
     if (button) button.disabled = false;
     if (!split) return;
     points = split;
+    practice = null;
+    showReplay(true);
+    const mode = byId("recall-mode");
+    if (mode) mode.textContent = "";
+    byId("recall-map")?.replaceChildren();
     const panel = byId("recall");
     if (panel) panel.hidden = false;
     await renderHistory();
@@ -389,7 +386,7 @@ export function wireApp(deps) {
       const current = session;
       const recording = await recordClip({ stream: session.stream, AudioContext: deps.AudioContext, maxMs: MAX_RECALL_MS });
       clip = recording;
-      const board = showBoard("LIVE");
+      const board = showBoard("LIVE", current.matcher);
       const keywords = points.map((p) => p.label);
       /** @type {LiveRun} */
       const run = {
@@ -465,14 +462,14 @@ export function wireApp(deps) {
       }
       box.value = "";
     }
-    await endRun(current.matcher.transcript(), current.results(), false);
+    await endRun(current.matcher.transcript(), current.results(), false, current.matcher.starts());
   });
 
   // One replay at a time: a second click while one runs would save the same session twice.
   let replaying = false;
   // Offline demo: the recorded session from the server, matched locally; never the speech relay.
   onClick("recall-replay", async () => {
-    if (replaying) return;
+    if (replaying || practice) return;
     replaying = true;
     try {
       await replayDemo();
@@ -490,8 +487,8 @@ export function wireApp(deps) {
     }
     const { timeline } = replay;
     const matcher = createMatcher(points);
-    const board = showBoard("recorded replay");
+    const board = showBoard("recorded replay", matcher);
     const results = await replayRecording(timeline, matcher, { wait: deps.wait, onMatch: board.light });
-    await endRun(matcher.transcript(), results, true);
+    await endRun(matcher.transcript(), results, true, matcher.starts());
   };
 }

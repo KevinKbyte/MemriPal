@@ -143,7 +143,9 @@ export function createMatcher(points) {
     const targets = /** @type {Target[]} */ ([target(quote), target(label)].filter((t) => t !== null));
     /** @type {string | null} */
     const span = null;
-    return { label, source_quote: quote, targets, got: false, override: false, span };
+    /** @type {number | null} */
+    const start = null;
+    return { label, source_quote: quote, targets, got: false, override: false, span, start };
   });
   let text = "";
   let chunks = 0;
@@ -170,6 +172,8 @@ export function createMatcher(points) {
         if (w === null) return;
         p.got = true;
         p.span = text.slice(tokens[w.i].s, tokens[w.j].e);
+        // tokens spans every chunk so far, so w.i is a global token index (D9 in-order scoring).
+        p.start = w.i;
         matched.push(index);
       });
       return matched;
@@ -197,7 +201,26 @@ export function createMatcher(points) {
     transcript() {
       return text;
     },
+    /** @returns {(number | null)[]} matched window start per point; null when not matched by speech */
+    starts() {
+      return state.map((p) => p.start);
+    },
   };
+}
+
+/**
+ * Route order post-pass (D9): station k counts only when spoken after the last counted station. Greedy on
+ * each name's earliest span, not a longest-subsequence search.
+ * @param {(number | null)[]} starts
+ * @returns {boolean[]}
+ */
+export function countInOrder(starts) {
+  let last = -Infinity;
+  return starts.map((s) => {
+    if (typeof s !== "number" || s <= last) return false;
+    last = s;
+    return true;
+  });
 }
 
 /**

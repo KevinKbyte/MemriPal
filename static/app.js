@@ -6,7 +6,9 @@ import { withApiBase } from "./api_base.js";
 import { selectStore, withPasscode, wireApp } from "./flow.js";
 import { associationKey, createPalaceStore } from "./palace_store.js";
 import { browserGeolocate, createPlaceState, lookupPlace, readGps, wirePlace } from "./place.js";
+import { createIdbAdapter } from "./idb_adapter.js";
 import { createRehearsalStore } from "./rehearsals.js";
+import { createRouteStore } from "./route_store.js";
 import { migrateLocalStorage } from "./storage_migrate.js";
 
 export { isPublicHost, showPublicBanner } from "./public_banner.js";
@@ -451,6 +453,10 @@ if (typeof document !== "undefined") {
       ...wireUpload(),
       store: createPalaceStore(palaceAdapter),
       rehearsals: createRehearsalStore(rehearsalAdapter),
+      // Routes hold photo bytes, too large for the localStorage fallback: no IndexedDB, no route cards.
+      routes: globalThis.indexedDB
+        ? createRouteStore(createIdbAdapter(globalThis.indexedDB, { dbName: "memripal-routes", storeName: "routes" }))
+        : undefined,
       getUserMedia: media ? media.getUserMedia.bind(media) : undefined,
       AudioContext: globalThis.AudioContext || /** @type {any} */ (globalThis).webkitAudioContext,
       location,
