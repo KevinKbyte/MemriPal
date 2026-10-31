@@ -6,7 +6,8 @@
   ints in processed-photo pixels (the POST /loci shape). Exactly one `backend.call(ModelRequest(
   method="image_edit", image_jpeg=processed.jpeg, ...))` per scene: tier 1 is a whole-photo edit and
   render_scene never retries.
-- Tier 1: `image` bytes decode as PNG/JPEG/WEBP at exactly (processed.width, processed.height); reason None.
+- Tier 1: `image` is the PNG/JPEG/WEBP reply bytes unchanged (MEM-046 pass-through, no resize or
+  re-encode); reason None.
 - Tier 3 (canvas overlay, drawn by the client): image None, reason a short [a-z_] code carrying no model or
   exception text. Any failure -> tier 3, never raises: FixtureMissing, BackendCallFailed (timeout, content
   policy 400), TimeoutError, any other exception, and a hostile reply (over imaging.MAX_UPLOAD_BYTES, not an
@@ -184,9 +185,9 @@ class TestScenePrompt:
         assert "<class" not in prompt
 
 
-# Covers: MEM-027
-# Requirement: tier 1 is one whole-photo Muse Image edit of the processed photo, its output resized to the
-# input photo's exact dimensions; different records never share a replay key.
+# Covers: MEM-027, MEM-046
+# Requirement: tier 1 is one whole-photo Muse Image edit of the processed photo, its output passed through
+# byte-for-byte as the model returned it (MEM-046); different records never share a replay key.
 class TestTierOne:
     def test_one_image_edit_call_on_the_whole_processed_photo(self):
         backend = FakeBackend()
@@ -203,12 +204,12 @@ class TestTierOne:
         [_img(32, 24, "WEBP"), _img(128, 96, "PNG"), _img(100, 100, "JPEG"), _img(W, H, "WEBP")],
         ids=["smaller-webp", "larger-png", "square-jpeg", "same-size"],
     )
-    def test_output_is_resized_to_input_dims(self, reply):
+    def test_output_is_the_reply_unchanged(self, reply):
         scene = _render(FakeBackend(reply))
         assert scene.tier == 1
-        fmt, size = _decoded(scene.image)
+        assert scene.image == reply
+        fmt, _ = _decoded(scene.image)
         assert fmt in {"PNG", "JPEG", "WEBP"}
-        assert size == (PROCESSED.width, PROCESSED.height)
 
     def test_distinct_records_get_distinct_cache_keys(self):
         backend = FakeBackend()

@@ -7,13 +7,12 @@
   MAX_CONCURRENT_SCENES slots held, a further scene is tier 3 reason "busy" with no model call. A slot is
   released on every path (success, any backend exception, a hostile reply), and a "busy" scene never
   releases a slot it did not take.
-- Tier 1 output is a fresh JPEG with no model-supplied comment: no COM (0xFFFE) segment, whether the reply
-  carried a JPEG COM segment or a PNG tEXt "comment".
+- Tier 1 output is the reply bytes unchanged (MEM-046 supersedes the MEM-027 comment strip): a JPEG COM
+  segment or PNG tEXt "comment" rides along as opaque image bytes, delivered only as an image data URL.
 """
 
 import importlib
 import io
-import struct
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
@@ -143,21 +142,6 @@ def _render_while_all_slots_held(backend):
         return pool.submit(_render, backend).result(timeout=JOIN_S / 2)
 
 
-def _jpeg_markers(data: bytes) -> list[int]:
-    """Marker bytes of every JPEG segment from SOI up to and including SOS."""
-    assert data[:2] == b"\xff\xd8", "not a JPEG"
-    markers, i = [], 2
-    while i + 4 <= len(data):
-        assert data[i] == 0xFF, f"bad marker at byte {i}"
-        marker = data[i + 1]
-        markers.append(marker)
-        if marker == 0xDA:
-            break
-        (length,) = struct.unpack(">H", data[i + 2 : i + 4])
-        i += 2 + length
-    return markers
-
-
 # Covers: MEM-027
 # Requirement: a hostile reply that makes Pillow raise anything other than OSError (a zTXt decompression
 # bomb raises ValueError) is tier 3 "decode_error", and render_scene never raises.
@@ -211,10 +195,11 @@ class TestBoundedSlotWait:
         assert scene.tier == 1, scene.reason
 
 
-# Covers: MEM-027
-# Requirement: no model-supplied comment survives into a tier-1 scene: the output JPEG has no COM segment
-# whether the reply carried a JPEG comment or a PNG tEXt "comment".
-class TestReplyCommentStripped:
+# Covers: MEM-027, MEM-046
+# Requirement: a reply carrying a model-supplied comment (JPEG COM segment or PNG tEXt "comment") is still a
+# tier-1 scene, passed through byte-for-byte as the model returned it (MEM-046 supersedes the MEM-027
+# re-encode that stripped it); the bytes reach the page only as an image, never as text.
+class TestReplyCommentPassesThrough:
     @pytest.mark.parametrize(
         "reply",
         [
@@ -223,11 +208,7 @@ class TestReplyCommentStripped:
         ],
         ids=["jpeg-com", "png-text-comment"],
     )
-    def test_tier1_jpeg_has_no_comment_segment(self, reply):
+    def test_tier1_scene_is_the_reply_unchanged(self, reply):
         scene = _render(FakeBackend(reply))
         assert scene.tier == 1, scene.reason
-        assert 0xFE not in _jpeg_markers(scene.image)
-        assert COMMENT_MARKER.encode() not in scene.image
-        with Image.open(io.BytesIO(scene.image)) as img:
-            assert img.format == "JPEG"
-            assert not img.info.get("comment")
+        assert scene.image == reply

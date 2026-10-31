@@ -108,10 +108,12 @@ def _assert_tier3(scene):
 
 # Covers: MEM-027
 # Requirement: a live tier-1 scene is one POST /images/edits carrying the server-built template prompt and
-# the whole processed photo, bounded by a 30 s timeout, with the output resized to the input dims.
+# the whole processed photo, bounded by a 30 s timeout, with the edited image passed through unchanged
+# (MEM-046).
 class TestLiveTierOne:
     def test_single_edit_request_with_server_prompt_and_whole_photo(self):
-        api = _ImageApi(_edit_reply(_img(32, 24, "WEBP")))
+        edited = _img(32, 24, "WEBP")
+        api = _ImageApi(_edit_reply(edited))
         scene = _render(_live(api))
         assert scene.tier == 1, scene.reason
         assert len(api.requests) == 1
@@ -119,8 +121,7 @@ class TestLiveTierOne:
         payload = api.payloads()[0]
         assert payload["prompt"] == scenes().scene_prompt(good_record())
         assert payload["images"][0]["image_url"] == to_data_url(PROCESSED.jpeg)
-        with Image.open(io.BytesIO(scene.image)) as img:
-            assert img.size == (PROCESSED.width, PROCESSED.height)
+        assert scene.image == edited
 
     def test_edit_request_carries_a_30_second_timeout(self):
         api = _ImageApi(_edit_reply(_img(32, 24, "WEBP")))
@@ -203,13 +204,13 @@ class TestLiveHostileReply:
 
 # Covers: MEM-027
 # Requirement: a live tier-1 scene is written through to the live cache and replays offline from it via
-# FixtureBackend (record-then-replay), with the same output dims.
+# FixtureBackend (record-then-replay), replaying the same image bytes.
 class TestLiveRecordThenReplay:
     def test_write_through_then_fixture_replay(self, tmp_path):
-        api = _ImageApi(_edit_reply(_img(32, 24, "WEBP")))
+        edited = _img(32, 24, "WEBP")
+        api = _ImageApi(_edit_reply(edited))
         assert _render(_live(api, cache_root=tmp_path)).tier == 1
         replayed = _render(FixtureBackend(tmp_path))
         assert replayed.tier == 1, replayed.reason
         assert len(api.requests) == 1
-        with Image.open(io.BytesIO(replayed.image)) as img:
-            assert img.size == (PROCESSED.width, PROCESSED.height)
+        assert replayed.image == edited

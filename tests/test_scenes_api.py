@@ -9,9 +9,10 @@
   exactly four ints (bools refused) with 0 <= x1 < x2 <= width and 0 <= y1 < y2 <= height -> 400 {"error":
   "bad_box"}; record failing `validate_association` against its own item/locus (incl. an unknown field) -> 400
   {"error": "bad_record"}. Error bodies carry no model or input text.
-- 200 tier 1: exactly {"tier": 1, "image": "data:image/(png|jpeg|webp);base64,...", "width", "height"} at the
-  input photo's dims. 200 tier 3: exactly {"tier": 3, "reason": <short code>} on any model failure, including
-  a fixture miss (never 404/502/500). Host guard applies.
+- 200 tier 1: exactly {"tier": 1, "image": "data:image/(png|jpeg|webp);base64,...", "width", "height"};
+  width/height are the input photo's dims, the image is the model reply unchanged (MEM-046). 200 tier 3:
+  exactly {"tier": 3, "reason": <short code>} on any model failure, including a fixture miss (never
+  404/502/500). Host guard applies.
 """
 
 import base64
@@ -145,7 +146,7 @@ def _assert_tier1(resp):
     match = DATA_URL.fullmatch(payload["image"])
     assert match, payload["image"][:40]
     with Image.open(io.BytesIO(base64.b64decode(match.group(2)))) as img:
-        assert img.size == (W, H)
+        assert img.format.lower() == match.group(1)
 
 
 def _assert_tier3(resp):
