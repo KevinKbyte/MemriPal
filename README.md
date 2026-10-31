@@ -285,7 +285,7 @@ powershell -File scripts/run_live.ps1 [-KeyFile <path>] uv run python scripts/pr
 ## Mobile (Android)
 
 Capacitor 8 shell that bundles `static/` into the app; the public web URL is unchanged
-([ADR 0031](docs/decisions/0031-capacitor-android-shell.md)). Prerequisites: Node + npm, a JDK and the Android SDK
+([ADR 0032](docs/decisions/0032-capacitor-android-shell.md)). Prerequisites: Node + npm, a JDK and the Android SDK
 (`ANDROID_HOME` set), Android Studio. Run Capacitor commands with `CI=1`, else its telemetry prompt hangs.
 
 ```bash

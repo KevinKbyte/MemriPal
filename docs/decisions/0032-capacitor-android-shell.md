@@ -1,4 +1,4 @@
-# 0031: Capacitor Android shell over a PWA; the web URL stays for judges
+# 0032: Capacitor Android shell over a PWA; the web URL stays for judges
 
 Status: Accepted
 Date: 2026-10-31

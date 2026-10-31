@@ -450,7 +450,7 @@ gains the `station` prompt template and the `NO_PHOTO_CACHE` gen_params flag. Pi
 Tests: tests/test_station.py, tests/test_station_api.py, tests/test_station_live_reply.py
 ## MEM-063 Capacitor Android shell (web URL unchanged)
 
-ADR [0031](../../../../docs/decisions/0031-capacitor-android-shell.md). Kev 2026-10-31: Capacitor, Android first, over a
+ADR [0032](../../../../docs/decisions/0032-capacitor-android-shell.md). Kev 2026-10-31: Capacitor, Android first, over a
 PWA; the public Cloud Run URL stays the judges' entry point. Supersedes in part plan D13 (native Android deferred).
 - Config: `capacitor.config.json` appId `com.memripal.app`, appName `MemriPal`, webDir `www`, `server.androidScheme`
   `https`, no `server.url`. `package.json` private, script `build:mobile`, devDeps `@capacitor/cli`/`core`/`android`
