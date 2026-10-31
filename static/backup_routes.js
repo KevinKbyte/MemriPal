@@ -176,7 +176,9 @@ async function stationIn(st, loadImage) {
   if (typeof photo !== "string" || !JPEG_URL_RE.test(photo)) throw new Error("station photo is not a JPEG");
   const bytes = Uint8Array.from(atob(photo.slice(JPEG_PREFIX.length)), (c) => c.charCodeAt(0));
   const size = jpegSize(bytes);
-  if (size && Math.max(size.width, size.height) > MAX_IMPORT_PHOTO_SIDE) {
+  // No readable size means the cap cannot be checked; refuse rather than fail open into loadImage.
+  if (!size) throw new Error("station photo has no readable JPEG size");
+  if (Math.max(size.width, size.height) > MAX_IMPORT_PHOTO_SIDE) {
     throw new Error(`station photo is over ${MAX_IMPORT_PHOTO_SIDE} px on a side`);
   }
   /** @type {{naturalWidth: number, naturalHeight: number}} */
