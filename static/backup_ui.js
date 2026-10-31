@@ -42,7 +42,7 @@ export function wireBackup(deps, renderHistory) {
       say(`${added} added, ${present} already present${skipped ? `, ${skipped} skipped` : ""}`);
       await renderHistory();
     } catch (err) {
-      // The v1 refusal is a full sentence of its own (ADR 0032), not an import failure reason.
+      // The v1 refusal is a full sentence of its own (ADR 0033), not an import failure reason.
       say(why(err) === OLD_FORMAT ? OLD_FORMAT : `Import failed: ${why(err)}`);
     }
   });

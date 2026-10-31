@@ -1,5 +1,5 @@
 // @ts-check
-// Palace backup v2 (MEM-042 + MEM-054, ADRs 0028 / 0032): one JSON file {v: 2, routes, lists,
+// Palace backup v2 (MEM-042 + MEM-054, ADRs 0028 / 0033): one JSON file {v: 2, routes, lists,
 // associations, rehearsals}. The file is untrusted: JSON.parse only, exact key sets, and every stored
 // object is rebuilt key by key from an allow-list, so __proto__ / constructor never reach the store or
 // Object.prototype. Routes are exported / checked in backup_routes.js.
@@ -8,7 +8,7 @@ import { exportRoutes, importRoutes } from "./backup_routes.js";
 import { associationKey } from "./palace_store.js";
 import { pointOf } from "./rehearsals.js";
 
-/** = recall_relay.py MAX_CHUNK_BYTES; kept for that meaning, no longer the backup cap (ADR 0032). */
+/** = recall_relay.py MAX_CHUNK_BYTES; kept for that meaning, no longer the backup cap (ADR 0033). */
 export const MAX_IMPORT_BYTES = 1048576;
 /** Export and import byte cap, sized to 3 routes x 8 thumbnails; checked before the file is read. */
 export const MAX_BACKUP_BYTES = 8388608;

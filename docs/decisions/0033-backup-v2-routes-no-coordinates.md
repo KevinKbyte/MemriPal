@@ -1,4 +1,4 @@
-# 0032: Backup v2 carries routes and lists by field allowlist, never coordinates, with 640 px thumbnails and its own 8 MiB cap
+# 0033: Backup v2 carries routes and lists by field allowlist, never coordinates, with 640 px thumbnails and its own 8 MiB cap
 
 Status: Accepted
 Amends: [0028](0028-palace-backup-export-import.md) options (a) scope and (b) images, and its byte cap.

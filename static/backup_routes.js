@@ -1,5 +1,5 @@
 // @ts-check
-// Backup v2 routes (MEM-054, ADR 0032): what of a walked route leaves the phone, and the import-side
+// Backup v2 routes (MEM-054, ADR 0033): what of a walked route leaves the phone, and the import-side
 // check of a file's routes. Both sides use the same per-field allowlists, so coordinates, timestamps,
 // baselines and any field added to the store later never reach a backup or the store from one.
 

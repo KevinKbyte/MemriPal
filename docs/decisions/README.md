@@ -81,5 +81,5 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - Per-scene requests with the photo re-sent, over streaming scene generation in one request (Rejected alternatives).
 - [0031](0031-route-station-store.md) Route + station store on the phone via the injected KV adapter, pending station
   written before upload, coords at 4 dp (over server storage, upload-first, or localStorage).
-- [0032](0032-backup-v2-routes-no-coordinates.md) Backup v2: routes + lists by field allowlist, never coordinates,
+- [0033](0033-backup-v2-routes-no-coordinates.md) Backup v2: routes + lists by field allowlist, never coordinates,
   640 px thumbnails, own 8 MiB cap, v1 refused; amends 0028 (over denylist, coord fuzz, full photos, or v1 migration).

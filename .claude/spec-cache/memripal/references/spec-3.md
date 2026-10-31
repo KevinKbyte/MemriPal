@@ -574,7 +574,7 @@ Actors: Muse Image backend (`image_edit`), `POST /scenes` (`src/memripal/app.py`
 Tests: tests/test_scenes_provenance.py, static/scenes_provenance.test.mjs
 ## MEM-054 Backup v2: routes + lists, field allowlist, no coordinates, thumbnails, own byte cap
 
-ADR [0032](../../../../docs/decisions/0032-backup-v2-routes-no-coordinates.md) (amends 0028). Map-to-palace plan
+ADR [0033](../../../../docs/decisions/0033-backup-v2-routes-no-coordinates.md) (amends 0028). Map-to-palace plan
 (`docs/plans/2026-10-31-map-to-palace.md`) slice B9, D6, D11. Replaces the MEM-042 E1 file shape; MEM-042 I3-I7, C1
 and the additive rule stand.
 - File (`static/palace_export.js`): `{v: 2, routes[], lists[], associations, rehearsals}`, exactly those keys.

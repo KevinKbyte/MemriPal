@@ -1,5 +1,5 @@
 // Covers: MEM-054
-// Requirement: Backup v2 review fixes (plan B9, ADR 0032). Every file buildBackup writes re-imports
+// Requirement: Backup v2 review fixes (plan B9, ADR 0033). Every file buildBackup writes re-imports
 // cleanly (a saved route left with < 3 named stations, or a stored box with x1 > x2, is skipped or
 // normalized at export rather than producing a file import refuses). Import is guarded against decode
 // bombs: a photo whose JPEG SOF declares more than 4096 px on a side is refused before loadImage, and a
