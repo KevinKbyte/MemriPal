@@ -71,7 +71,7 @@ Assumptions (state before code):
   args; committed demo data has none (schematic index layout); baselines = recorded /baseline responses, never re-fetched. Never Kev's block.
 - A4 Existing /split, /associate, /scenes, recall matcher, live lighting, fixture replay, signed records are reused; the
   locus label becomes the station name.
-- A5 All 44 live ids stay (recon.md), each exactly once; screens S1-S9 are sections in the one index.html toggled via
+- A5 All 44 live ids stay (recon.md), each exactly once; screens S1-S10 are sections in the one index.html toggled via
   [hidden].
 - A6 Station order = capture order; the user fixes order with Up/Down at Finish walk. No timestamp ordering.
 - A7 No real v1 backup users exist (v1 came only from the pre-pivot single-palace demo, PALACE_ID "demo").
@@ -149,29 +149,29 @@ A route = 3-8 ordered stations (typically 6). A station = one landmark the user 
 Models shown in the UI (a small model chip at every AI step): "Muse Spark", "SAM 3.1", "Muse Image",
 "Muse Voice Transcribe" (and "Mapillary", imagery source, not a model, only in the baseline slot). Scenes made by
 Muse Image carry a visible "AI-generated" chip.
-Safety copy: the user captures and reviews only while standing still; one-time notice before the first walk: "Capture
-only when you have stopped. Stay on public ground; never enter private property or roadways. Frame the landmark, not
-people." Location is opt-in and stays on the device, except one station's location is sent to Mapillary when the user ticks
-that station's baseline box; say so where location is used.
+Safety copy: the user captures and reviews only while standing still; one-time notice before the first walk: "Capture only when you
+have stopped. Stay on public ground; never enter private property or roadways. Frame the landmark, not people." Location is opt-in;
+say so where location is used, with this line: "Location stays on this device, except: a station's location goes to Mapillary if you
+tick its street-photo box, and a route you plan goes to OpenStreetMap routing and geocoding services and to Mapillary, via our backend."
 
-DELIVERABLES (exactly these four, nothing else)
-1. ONE CSS file named route.css containing only ADDITIONS. Use only these existing custom properties (do not define new
-   ones, do not hard-code colours): --bg --surface --surface-2 --ink --muted --line --primary --on-primary --lamp
-   --lamp-ink --lamp-soft --ok --ok-soft --bad --bad-soft --on-bad --focus --shadow --display --body --mono.
-   Light and dark both come from these tokens (the page already switches them under prefers-color-scheme).
-2. A class contract per screen S1-S9 (Markdown table, NOT HTML): for each id listed under that screen, the element type
-   it already is, the classes your CSS expects on it, and the classes expected on its direct children. Selectors in
-   route.css may use only ids from this prompt, your contract's classes, and the shared classes listed under HARD
-   CONSTRAINTS. Do not require extra wrapper elements; if a layout truly needs one, name it as a class on an element
-   that already exists.
-3. A state table: for each screen, which elements are visible/hidden (by the hidden attribute) in ONLY the states listed
-   under that screen. Write it as a Markdown table per screen.
-4. An id map table: old id -> new location/role (screen) for every existing id listed under EXISTING IDS, plus every new
-   id with its screen and one-line role.
+DELIVERABLES (exactly these five, nothing else)
+1. ONE CSS file named route.css containing only ADDITIONS. Use only these existing custom properties (do not define new ones, do not hard-code
+   colours): --bg --surface --surface-2 --ink --muted --line --primary --on-primary --lamp --lamp-ink --lamp-soft --ok --ok-soft --bad --bad-soft
+   --on-bad --focus --shadow --display --body --mono. Light and dark both come from these tokens (the page already switches them under
+   prefers-color-scheme).
+2. A class contract per screen S1-S10 (Markdown table): for each id listed under that screen, the element type it already is, the classes your CSS
+   expects on it, and the classes expected on its direct children. Selectors in route.css may use only ids from this prompt, your contract's
+   classes, and the shared classes listed under HARD CONSTRAINTS. Do not require extra wrapper elements; if a layout truly needs one, name it as a
+   class on an element that already exists.
+3. A state table per screen S1-S10 (Markdown): which elements are visible/hidden (by the hidden attribute) in ONLY the states listed there.
+4. An id map table: old id -> new location/role (screen) for every existing id listed under EXISTING IDS, plus every new id (S1-S10) with its
+   screen and one-line role.
+5. One static HTML fragment per screen S1-S10 using only the ids listed in this prompt: no script, no style attributes, no on* handlers, no
+   external URLs except the attribution links. Reference markup only: the engineer hand-copies classes and structure.
 
 HARD CONSTRAINTS
-- NO HTML fragments, NO JavaScript, no mock data, no localStorage, no navigation framework, no step rail (#s1-#s9 or
-  similar ids).
+- HTML fragments allowed (docs/design/, hand-copied, never runtime-loaded); NO JavaScript, no mock data, no localStorage, no navigation
+  framework, no step rail (#s1-#s10 or similar ids).
 - The page CSP is: default-src 'self'; img-src 'self' data: blob:. Therefore: no external fonts, CDNs or images, no
   remote map tiles, no @font-face, no url() to remote hosts. Only two self-hosted images may be referenced:
   /static/assets/empty-state.webp (exists) and /static/assets/mapillary-logo.svg (engineer supplies it).
@@ -217,11 +217,11 @@ S1 Routes home  (ids prefix routes-)
 - States: empty (empty-state + New walk + Load demo), ready (list), offline (Load demo still enabled).
 
 S2 Walking: capture  (prefix capture-)
-- #capture-session (section): #capture-safety notice (first walk only) with #capture-safety-ok button; #meta-notice
-  copy "Photos are sent to Meta's AI models: SAM 3.1 finds faces and plates, which are pixelated before Muse Spark names
-  the landmark and before anything is stored. Location stays on your device unless you ask for a street photo of a
-  station."; #capture-strip (ol, captured station
-  thumbnails, wraps at 360px, numbered; a pending station shows badge-pending and a per-item retry button
+- #capture-session (section): #capture-safety notice (first walk only) with #capture-safety-ok button; #meta-notice copy "Photos are sent
+  to Meta's AI models: SAM 3.1 finds faces and plates, which are pixelated before Muse Spark names the landmark and before anything is
+  stored. Location stays on your device unless you ask for a street photo of a station or plan a route; then it goes to Mapillary and to
+  OpenStreetMap routing and geocoding services via our backend."; #capture-strip (ol, captured station thumbnails, wraps at 360px,
+  numbered; a pending station shows badge-pending and a per-item retry button
   .capture-retry); #upload-status (role=status) for "Naming the landmark..."; capture control in the bottom thumb zone:
   a label.btn.btn-primary.capture-btn "Capture station" for the existing #photo file input (visually hidden but
   focusable); #capture-locate checkbox "Use my location for this walk (stays on this device)"; #capture-finish button
@@ -280,17 +280,15 @@ S6 List on route  (prefix list-)
 S7 Scene walk  (existing #scenes and #walk)
 - #scenes: one card per station: scene img (chip-ai always), station name, item. #walk with #walk-step ("Station 3 of
   6", scene, walk cue, item) and #walk-prev / #walk-next (44px, bottom). #scene-overlay stays a direct child of <main>.
-- States: uploading (per-card "Painting..." + chip "Muse Image"), ready, error (text-only scene card),
-  recorded-replay.
+- States: uploading (per-card "Painting..." + chip "Muse Image"), ready, error (text-only scene card), recorded-replay.
 
 S8 Recall  (existing #recall; new #recall-map, prefix recall-)
-- #recall: #recall-mode text ("Route practice: say them in order" or "List: <name>"); #recall-map SVG (dots light as
-  the user speaks); #recall-start (primary, "Start, then close your eyes"), #recall-replay ("Play the replay of a
-  recorded session"), #recall-typed (typed fallback, hidden by default), #recall-submit ("Done"), #recall-live (live
-  board with badge-live or badge-replay), #recall-results; chip "Muse Voice Transcribe" next to the live board; line
-  "Matching is plain code, no AI."
-- States: ready, LIVE (badge-live, mic on), recorded-replay (badge-replay), error ("Speech relay failed" + typed
-  fallback visible), offline (typed fallback + replay only).
+- #recall: #recall-mode text ("Route practice: say them in order" or "List: <name>"); #recall-map SVG (dots light as the user speaks);
+  #recall-start (primary, "Start, then close your eyes"), #recall-replay ("Play the replay of a recorded session"), #recall-typed (typed
+  fallback, hidden by default), #recall-submit ("Done"), #recall-live (live board with badge-live or badge-replay), #recall-results; chip
+  "Muse Voice Transcribe" next to the live board; line "Matching is plain code, no AI."
+- States: ready, LIVE (badge-live, mic on), recorded-replay (badge-replay), error ("Speech relay failed" + typed fallback visible), offline
+  (typed fallback + replay only).
 
 S9 Results and history  (existing #history, #backup)
 - #history: #rehearsals (ol: date, mode, got/missed), #rehearsal-undo, #history-view, #hit-rates ("Hit rate per
@@ -299,23 +297,23 @@ S9 Results and history  (existing #history, #backup)
   still show where you walk.", #backup-import, #backup-status.
 - States: empty, ready, error.
 
-GLOBAL
-- Typography: --display for headings, --body for text, --mono for counts. Painterly theme tokens are already on the
-  page; stay within them.
-```
+S10 Plan a route without walking  (prefix plan-; S1 gains #routes-plan "Plan a route without walking"; states: empty, loading, ready, error)
+- #plan (section): #plan-from, #plan-to (text inputs: "A landmark or street corner, not your home address"), #plan-go ("Plan"), #plan-status,
+  #plan-consent copy "Planning sends the places you type and points along the route to OpenStreetMap, FOSSGIS and Meta (Mapillary, Muse Spark)
+  via our backend."; #plan-map (schematic SVG polyline, viewBox "0 0 320 200", no tiles); #plan-stations (ol, route order; row = checkbox,
+  Mapillary thumbnail + credit, name, score); #plan-use ("Use these stations"); #plan-attribution (ODbL text + "Fix the map" link).
 
----
+GLOBAL
+- Typography: --display for headings, --body for text, --mono for counts. Painterly theme tokens are already on the page; stay within them.
+```
 
 # PART B: implementation slices (TDD, vertical)
 
-Rules for every slice: RED test first with `// Covers: MEM-0xx` (node) or `# Covers: MEM-0xx` docstring tag (pytest);
-spec entry added to .claude/spec-cache/memripal/references/spec-3.md (spec-4.md once spec-3 passes 500 lines); ADR in the
-same change for any 2+-option choice (docs/decisions/, README index); new server routes in new modules; app.py edits in
-the D7 order only, each slice's criterion `app.py <= 582`; markup uses Part A ids and is the final markup (Claude
-Design adds CSS + classes only, B11); static/ diffs carry a screenshot + visual-verify record; one commit per fix; bump
-+ CHANGELOG at land.
-Every adversary finding was read-only; each slice's first RED test exercises the cited code path, so a premise that
-turns out false surfaces at RED (record it in the slice's commit, do not silently drop the criterion).
+Rules for every slice: RED test first with `// Covers: MEM-0xx` (node) or `# Covers: MEM-0xx` docstring tag (pytest); spec entry added to
+.claude/spec-cache/memripal/references/spec-3.md (spec-4.md once spec-3 passes 500 lines); ADR in the same change for any 2+-option choice
+(docs/decisions/, README index); new server routes in new modules; app.py edits in the D7 order only, each slice's criterion `app.py <= 582`;
+markup uses Part A ids and is the final markup (Claude Design adds CSS + classes; its HTML fragments are reference only, B11); static/ diffs
+carry a screenshot + visual-verify record; one commit per fix; bump + CHANGELOG at land. Adversary-premise rule: ledgers file, "Part G slices".
 Lanes: SERVER (B0 -> B1 -> B4 app.py wiring -> B7 server -> B8 router wiring), CLIENT (B3, B5, B6, B9, B8 client),
 JOIN (B7 after B4+B5; B10 after B2+B6+B7+B8, soft-after B11; B11 whenever Claude Design returns, after B3). B0, B2, B3,
 the station.py core of B4 and the baseline.py core of B8 (no app.py edit; needs only the live API doc fetch) dispatch
@@ -600,17 +598,8 @@ MEM ids: MEM-046.. assigned below (MEM-045 = brand-art, unmerged). ADRs 0031.. a
 
 ---- CUT LINE (everything above ships by Mon Nov 2 EOD for Tue Nov 3 recording; below only if time remains) ----
 
-## B12 Intrusion counting + optional list cooldown. MEM-057, ADR (reuse/intrusions)
-- Recall matcher also matches retired lists' items on the same route; such matches render in #history-intrusions and
-  never count as hits. Optional cooldown before a route takes a new list (injected clock) decided in this ADR.
-- CRITERIA: (1) transcript naming a retired item -> 1 intrusion, 0 hits for it; (2) current item -> hit; (3) no retired
-  lists -> #history-intrusions hidden; (4) suite green.
-- SIGNALS: none.
-
-## B13 Optional video at a station: client keyframes. MEM-058
-- <video> file -> 1-3 canvas keyframes -> /station as images; audio track never read or sent.
-- CRITERIA: (1) 3 frames max; (2) no audio API used (static scan); (3) raw video bytes never uploaded (fetch spy).
-- SIGNALS: 1-hour Spark video-input probe (not a dependency).
+## B12 Intrusion counting + optional list cooldown. MEM-057, ADR (reuse/intrusions); B13 Optional video at a station. MEM-058
+- Slice text, CRITERIA and SIGNALS: ledgers file, "Below-cut slices B12, B13".
 
 ## B14 Planned (not walked) stations. MEM-059 **Superseded by MEM-064, MEM-066**
 - Criteria moved, none dropped (ledgers Part G); "tap the schematic to add a station" -> B15 (needs a basemap).

@@ -230,6 +230,8 @@ every slice's last criterion. "Tap the schematic to add a station" -> B15 (needs
 Case totals (new): B14a 30, B14b 14, B14c 34, B7 +3, B9 +2, B10 +1, B11 +2 = 86 (amendment v0: 93).
 
 ## Part G slices (live slice text; the plan's Part B points here; above the cut)
+Adversary-premise rule (moved from Part B rules): every adversary finding was read-only; each slice's first RED test exercises the cited code
+path, so a premise that turns out false surfaces at RED (record it in the slice's commit, do not silently drop the criterion).
 
 ### B14a Geocode + walking-route proxy (server). MEM-064, ADR-next-routing
 - Providers (no key, no CSP change, backend-only): OSM Nominatim (address -> lat/lon) and FOSSGIS OSRM foot (routing.openstreetmap.de).
@@ -312,12 +314,32 @@ Case totals (new): B14a 30, B14b 14, B14c 34, B7 +3, B9 +2, B10 +1, B11 +2 = 86 
   CLI args; `git grep` of the five probe coordinates in memripal == 0. Crit 6 amended: 0 lat/lon/coords keys in demo data + fixtures
   except tests/fixtures/plan/, where every coordinate lies within 1 degree of 0,0. Probe tool recreated under scripts/ with test + README.
 - B11 +2 (Q4): crit 2 = route.css selectors use only Part A ids, contract-table classes UNION fragment classes, or shared classes; crit 7
-  gains the Part A safety copy, #meta-notice and #plan-consent strings; crit 8 = B3/B5/B6/B7/B8/B14c tests green with 0 id-list, copy or
+  gains these Part A strings, exact: safety location line "Location stays on this device, except: a station's location goes to Mapillary if
+  you tick its street-photo box, and a route you plan goes to OpenStreetMap routing and geocoding services and to Mapillary, via our
+  backend."; #meta-notice "Photos are sent to Meta's AI models: SAM 3.1 finds faces and plates, which are pixelated before Muse Spark names
+  the landmark and before anything is stored. Location stays on your device unless you ask for a street photo of a station or plan a route;
+  then it goes to Mapillary and to OpenStreetMap routing and geocoding services via our backend."; #plan-consent "Planning sends the places
+  you type and points along the route to OpenStreetMap, FOSSGIS and Meta (Mapillary, Muse Spark) via our backend."; crit 8 =
+  B3/B5/B6/B7/B8/B14c tests green with 0 id-list, copy or
   id-selector edits (className -> classList.contains edits listed in the commit); (9) static scans: every docs/design/*.html id is a Part A
   id; 0 script/style/link/iframe/object/form elements, 0 on*/style attributes; URLs only in a[href] with prefix
   https://www.openstreetmap.org/fixthemap or https://www.mapillary.com/; 0 innerHTML/outerHTML/insertAdjacentHTML added under static/;
   0 docs/design references in static/ or the E2E fetch log; (10) DOM test: direct parenthood for #route > li, #route-view-stations > li,
   #plan-stations > li, #capture-strip > children, #scene-overlay and its ancestors.
+
+## Below-cut slices B12, B13 (moved from the plan's Part B; only if time remains)
+
+### B12 Intrusion counting + optional list cooldown. MEM-057, ADR (reuse/intrusions)
+- Recall matcher also matches retired lists' items on the same route; such matches render in #history-intrusions and
+  never count as hits. Optional cooldown before a route takes a new list (injected clock) decided in this ADR.
+- CRITERIA: (1) transcript naming a retired item -> 1 intrusion, 0 hits for it; (2) current item -> hit; (3) no retired
+  lists -> #history-intrusions hidden; (4) suite green.
+- SIGNALS: none.
+
+### B13 Optional video at a station: client keyframes. MEM-058
+- <video> file -> 1-3 canvas keyframes -> /station as images; audio track never read or sent.
+- CRITERIA: (1) 3 frames max; (2) no audio API used (static scan); (3) raw video bytes never uploaded (fetch spy).
+- SIGNALS: 1-hour Spark video-input probe (not a dependency).
 
 ## Adversarial cheat sheet
 1. Primary technical risk: the privacy pipeline was still fail-open in three places: the SAM box parser read any
