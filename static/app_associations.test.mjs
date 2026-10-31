@@ -403,3 +403,44 @@ describe("association panel rendering", () => {
     }
   });
 });
+
+// Covers: MEM-022
+// Requirement: taste is optional (Kev's 'Optional taste'): a record with no gustatory key or a blank
+// gustatory channel shows no taste row, while the other 7 channels still show in order; a record that
+// has taste text still shows the gustatory row.
+describe("association panel: optional taste row", () => {
+  const OTHERS = CHANNELS.filter((c) => c !== "gustatory");
+  const dtNames = (page) => page.created.filter((e) => e.tagName === "DT").map((e) => e.textContent.toLowerCase());
+
+  /** Panel for one pair whose record is shaped by edit(record). */
+  async function renderWith(edit) {
+    const { page, store } = setup();
+    const fetch = async (url, init) => {
+      const { item } = JSON.parse(init.body);
+      const rec = record(item, labelFor(item));
+      edit(rec);
+      return jsonResponse({ record: rec, status: "valid" });
+    };
+    await app.runAssociations(pairsOf(1), { doc: page.doc, fetch, store, image: IMAGE });
+    assert.equal(page.panel.children.length, 1, "one card rendered");
+    return page;
+  }
+
+  const cases = {
+    "no gustatory key": (r) => delete r.gustatory,
+    "empty gustatory": (r) => (r.gustatory = ""),
+    "blank gustatory": (r) => (r.gustatory = "   "),
+  };
+  for (const [name, edit] of Object.entries(cases)) {
+    test(`${name}: no taste row; the other 7 channels show in order`, async () => {
+      const page = await renderWith(edit);
+      assert.deepEqual(dtNames(page), OTHERS);
+      assert.ok(!page.panel.textContent.toLowerCase().includes("gustatory"), "no gustatory label anywhere");
+    });
+  }
+
+  test("taste text present: the gustatory row still shows, all 8 in order", async () => {
+    const page = await renderWith(() => {});
+    assert.deepEqual(dtNames(page), CHANNELS);
+  });
+});

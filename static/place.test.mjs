@@ -392,6 +392,8 @@ describe("place on /associate", () => {
 
   /** One runAssociations pass on a fresh store (so it always POSTs); returns the parsed body. */
   async function associateBody(place) {
+    // Checked here, not in the fetch stub: runAssociations swallows a throw from inside fetch.
+    assert.ok(Array.isArray(app.MULTISENSORY_CHANNELS), "app.js exports MULTISENSORY_CHANNELS");
     const bodies = [];
     const fetch = async (url, init) => {
       assert.equal(String(url), "/associate");

@@ -4,7 +4,8 @@
 - `ASSOCIATION_SCHEMA`: strict flat json_schema {item, locus, <8 channels>, scene_prompt_details, walk_cue,
   reencode_hint, question, answer}; every property a required string; additionalProperties false.
 - `validate_association(value, item, locus) -> str | None`: None when valid, else a short non-empty reason.
-  Rules, compared after whitespace/punctuation/case normalization: (1) all 8 channels non-empty; (2) the
+  Rules, compared after whitespace/punctuation/case normalization: (1) the 7 non-taste channels non-empty
+  (MEM-022: gustatory is optional, absent or blank); (2) the
   item appears in >= 1 channel; (3) the locus short label appears in >= 1 channel; (4) echoed `item` and
   `locus` match the request. D16: `question` and `answer` are required and non-empty. Untrusted-reply
   hardening: a non-dict, a missing or unknown field, a non-string value, or an oversized reply is rejected
@@ -15,6 +16,7 @@
 
 import copy
 import importlib
+import re
 
 import pytest
 
@@ -251,3 +253,47 @@ class TestInputCaps:
         backend = CountingBackend()
         assoc.associate(backend, PROCESSED, "x" * 100, LOCUS)
         assert backend.calls >= 1
+
+
+def without_taste(**over):
+    rec = good_record(**over)
+    del rec["gustatory"]
+    return rec
+
+
+# Covers: MEM-022
+# Requirement: taste is the one optional channel (Kev's 'Optional taste'): a record with no gustatory key or a
+# blank gustatory channel is valid, a gustatory value that is present is still a capped string, each of the
+# other 7 channels stays required and non-empty, and the Spark prompt tells the model taste is optional and
+# used only when it fits.
+class TestOptionalTaste:
+    def test_record_without_gustatory_key_is_valid(self, assoc):
+        assert assoc.validate_association(without_taste(), ITEM, LOCUS) is None
+
+    @pytest.mark.parametrize("blank", ["", "   "], ids=["empty", "spaces"])
+    def test_blank_gustatory_is_valid(self, assoc, blank):
+        assert assoc.validate_association(good_record(gustatory=blank), ITEM, LOCUS) is None
+
+    @pytest.mark.parametrize("name", [c for c in CHANNELS if c != "gustatory"])
+    def test_missing_non_taste_channel_still_fails_and_names_it(self, assoc, name):
+        rec = without_taste()
+        del rec[name]
+        reason = assoc.validate_association(rec, ITEM, LOCUS)
+        assert isinstance(reason, str) and name in reason
+
+    @pytest.mark.parametrize("name", [c for c in CHANNELS if c != "gustatory"])
+    def test_blank_non_taste_channel_still_fails_without_taste(self, assoc, name):
+        reason = assoc.validate_association(without_taste(**{name: "  "}), ITEM, LOCUS)
+        assert isinstance(reason, str) and name in reason
+
+    @pytest.mark.parametrize("value", [7, None, "A" * 2001], ids=["int", "null", "oversized"])
+    def test_present_gustatory_is_still_a_capped_string(self, assoc, value):
+        reason = assoc.validate_association(good_record(gustatory=value), ITEM, LOCUS)
+        assert isinstance(reason, str) and "gustatory" in reason
+
+    def test_prompt_marks_taste_optional_used_only_when_it_fits(self, assoc):
+        prompt = assoc.association_prompt(ITEM, LOCUS)
+        sentences = [s for s in re.split(r"(?<=[.!?])\s+", prompt) if re.search(r"gustatory|taste", s, re.I)]
+        assert any(
+            re.search(r"\boptional\b", s, re.I) and re.search(r"\bonly when\b", s, re.I) for s in sentences
+        ), sentences
