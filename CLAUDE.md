@@ -12,6 +12,9 @@ Assign ADR numbers at dispatch, in planned land order; on a collision the later-
 ## Dispatch and merge
 
 - Dispatch every ready brief before inspecting merge logs; log triage never blocks ready work.
-- Diff touches `static/` -> before `request_merge`, screenshot the UI (`scripts/screenshot_ui.py`, landing on branch
-  `screenshot-ui`) and record it with agent-workflow's `scripts/sdlc_phase_gate.py record --repo <wt> --run <run>
+- Diff touches `static/` or `docs/design/**` `.css`/`.html` -> before `request_merge`, screenshot the UI
+  (`scripts/screenshot_ui.py`, landing on branch `screenshot-ui`; design previews: `scripts/screenshot_design.py`,
+  MEM-067) and record it with agent-workflow's `scripts/sdlc_phase_gate.py record --repo <wt> --run <run>
   --phase Verify --gate visual-verify --evidence <png>`; the merge queue's visual-verify gate reads that record.
+- Design tasks render a preview page and screenshot it before writing past a skeleton: global rule
+  `~/.claude/rules/design-tasks-render-first.md`.
