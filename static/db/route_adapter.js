@@ -2,8 +2,9 @@
 // "route:<id>" <-> { type: "route", route } lives in the routes + stations tables (schema.js);
 // "photo:<ref>" keys pass through to photoKv (photo bytes stay in IndexedDB). Soft delete only: rows are
 // stamped deleted_at, never removed (full purge is a later Settings feature with its own approval).
-// A value that does not fit its column (wrong type, extra keys) is kept in raw_json, so every route
-// reads back as written.
+// A value that does not fit its column (wrong type, extra keys) is kept in raw_json, so a route of
+// JSON-safe values reads back as written (raw_json goes through JSON.stringify: undefined, NaN, Date,
+// Map and the like do not round-trip).
 
 const ROUTE = "route:";
 const PHOTO = "photo:";
@@ -97,13 +98,24 @@ const LIVE_STATIONS = "SELECT * FROM stations WHERE deleted_at IS NULL";
  * @param {{ get: Function, put: Function, delete: Function }} photoKv
  */
 export function createSqlRouteAdapter(db, photoKv) {
+  // get/list read a route and its stations in two SELECTs; serialising every route op through one
+  // queue keeps a write from landing between them (a torn read: old route row, new stations).
+  let tail = Promise.resolve();
+  const serial = (fn) => {
+    const run = tail.then(fn);
+    tail = run.catch(() => {});
+    return run;
+  };
+
   return {
     async get(key) {
       const id = routeIdOf(key);
       if (id === null) return photoKv.get(key);
-      const [row] = await db.query("SELECT * FROM routes WHERE id = ? AND deleted_at IS NULL", [id]);
-      if (!row) return undefined;
-      return readRoute(row, await db.query(`${LIVE_STATIONS} AND route_id = ? ORDER BY pos`, [id]));
+      return serial(async () => {
+        const [row] = await db.query("SELECT * FROM routes WHERE id = ? AND deleted_at IS NULL", [id]);
+        if (!row) return undefined;
+        return readRoute(row, await db.query(`${LIVE_STATIONS} AND route_id = ? ORDER BY pos`, [id]));
+      });
     },
 
     async put(key, value) {
@@ -123,36 +135,38 @@ export function createSqlRouteAdapter(db, photoKv) {
       const now = new Date().toISOString();
       // Tombstone every live station first, then revive/insert the listed ones at their new positions:
       // a dropped station stays deleted, and a reorder never collides on the live (route_id, pos) index.
-      await db.transaction([
+      await serial(() => db.transaction([
         { sql: ROUTE_UPSERT, params: routeParams(route) },
         {
           sql: "UPDATE stations SET deleted_at = ?, pos = NULL WHERE route_id = ? AND deleted_at IS NULL",
           params: [now, id],
         },
         ...stations.map((s, pos) => ({ sql: STATION_UPSERT, params: stationParams(id, s, pos) })),
-      ]);
+      ]));
     },
 
     async delete(key) {
       const id = routeIdOf(key);
       if (id === null) return photoKv.delete(key);
       const now = new Date().toISOString();
-      await db.transaction([
+      await serial(() => db.transaction([
         { sql: "UPDATE routes SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL", params: [now, id] },
         { sql: "UPDATE stations SET deleted_at = ? WHERE route_id = ? AND deleted_at IS NULL", params: [now, id] },
-      ]);
+      ]));
     },
 
-    async list() {
-      const routes = await db.query("SELECT * FROM routes WHERE deleted_at IS NULL ORDER BY ord");
-      const rows = await db.query(
-        `${LIVE_STATIONS} AND route_id IN (SELECT id FROM routes WHERE deleted_at IS NULL) ORDER BY route_id, pos`);
-      const byRoute = new Map();
-      for (const s of rows) {
-        if (!byRoute.has(s.route_id)) byRoute.set(s.route_id, []);
-        byRoute.get(s.route_id).push(s);
-      }
-      return routes.map((r) => readRoute(r, byRoute.get(r.id) ?? []));
+    list() {
+      return serial(async () => {
+        const routes = await db.query("SELECT * FROM routes WHERE deleted_at IS NULL ORDER BY ord");
+        const rows = await db.query(
+          `${LIVE_STATIONS} AND route_id IN (SELECT id FROM routes WHERE deleted_at IS NULL) ORDER BY route_id, pos`);
+        const byRoute = new Map();
+        for (const s of rows) {
+          if (!byRoute.has(s.route_id)) byRoute.set(s.route_id, []);
+          byRoute.get(s.route_id).push(s);
+        }
+        return routes.map((r) => readRoute(r, byRoute.get(r.id) ?? []));
+      });
     },
   };
 }

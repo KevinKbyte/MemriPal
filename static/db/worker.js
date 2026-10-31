@@ -30,7 +30,8 @@ function handle(db, msg) {
     case "query":
       return db.selectObjects(msg.sql, bindOf(msg.params));
     case "transaction":
-      db.transaction(() => {
+      // wrapOo1's transaction, not oo1's own: it keeps the original error after an engine auto-rollback.
+      wrapOo1(db).transaction(() => {
         for (const s of msg.stmts) db.exec({ sql: s.sql, bind: bindOf(s.params) });
       });
       return [];

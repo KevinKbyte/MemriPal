@@ -21,7 +21,13 @@ export function wrapOo1(raw) {
         raw.exec("COMMIT");
         return out;
       } catch (err) {
-        raw.exec("ROLLBACK");
+        // SQLite may already have rolled back by itself (SQLITE_FULL, SQLITE_IOERR); a failing cleanup
+        // ROLLBACK then must not mask fn's error, which is the one the caller needs.
+        try {
+          raw.exec("ROLLBACK");
+        } catch {
+          // no transaction left to roll back
+        }
         throw err;
       }
     },
