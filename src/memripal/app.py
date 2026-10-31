@@ -4,7 +4,6 @@ POST /recall/audio and the demo recall replay (MEM-032), deploy guards (MEM-034)
 
 import base64
 import hmac
-import json
 import logging
 import os
 import threading
@@ -28,11 +27,21 @@ from memripal.associate import (
     record_ok,
 )
 from memripal.backend import BackendCallFailed, FixtureMissing, ModelBackend, select_backend
+from memripal.bodies import (
+    _associate_body,
+    _box_ok,
+    _error,
+    _length_error,
+    _place_body,
+    _read_capped,
+    _scenes_body,
+    _split_body,
+)
 from memripal.demo_room import room_photo
 from memripal.imaging import MAX_UPLOAD_BYTES, ImageRejected, process_upload, validate_processed
 from memripal.loci import Locus, find_loci
 from memripal.meta_client import MetaClient
-from memripal.place import FixturePlaceProvider, PlaceProvider, valid_coords
+from memripal.place import FixturePlaceProvider, PlaceProvider
 from memripal.recall_relay import (
     MAX_CHUNK_BYTES,
     MAX_TRANSCRIPT_CHARS,
@@ -45,7 +54,7 @@ from memripal.recall_relay import (
 from memripal.record_sign import record_key, sig_ok, sign_record
 from memripal.scenes import render_scene
 from memripal.security_headers import SecurityHeaders
-from memripal.split import MAX_POINTS, SplitRejected, check_notes, split_list, split_notes
+from memripal.split import SplitRejected, check_notes, split_list, split_notes
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 STATIC_DIR = REPO_ROOT / "static"
@@ -65,24 +74,15 @@ SPLIT_BODY_CAP = 4 * -(-MAX_UPLOAD_BYTES // 3) + 256 * 1024
 JPEG_DATA_URL = "data:image/jpeg;base64,"
 # A max-size photo as a data URL plus room for item and locus even when JSON-escaped.
 ASSOCIATE_BODY_CAP = 4 * -(-MAX_UPLOAD_BYTES // 3) + 64 * 1024
-ASSOCIATE_KEYS = {"image", "item", "locus"}
 PLACE_BODY_CAP = 1024
-PLACE_KEYS = {"lat", "lon"}
 # A max-size photo as a data URL plus a max-size record even when every char is JSON-escaped as \uXXXX.
 SCENES_BODY_CAP = 4 * -(-MAX_UPLOAD_BYTES // 3) + 6 * MAX_FIELD_CHARS * len(FIELDS) + 64 * 1024
-SCENES_KEYS = {"image", "box", "record", "sig"}
-BOX_KEYS = ("x1", "y1", "x2", "y2")
 
 # DNS-rebinding guard; the public deploy (ADR 0010) appends its host via MEMRIPAL_ALLOWED_HOSTS.
 ALLOWED_HOSTS = ("127.0.0.1", "localhost")
 PASSCODE_HEADER = "X-Memripal-Passcode"
 
 logger = logging.getLogger(__name__)
-
-
-def _error(status: int, code: str) -> JSONResponse:
-    # Only a fixed short code: model/exception text never reaches the client.
-    return JSONResponse({"error": code}, status_code=status)
 
 
 def _env_int(name: str, minimum: int) -> int | None:
@@ -167,96 +167,6 @@ def _locus_json(lc: Locus) -> dict:
         "box": {"x1": lc.box.x1, "y1": lc.box.y1, "x2": lc.box.x2, "y2": lc.box.y2},
         "outline": [[x, y] for x, y in lc.outline],
     }
-
-
-async def _read_capped(request: Request, cap: int = MAX_UPLOAD_BYTES) -> bytes | None:
-    """Body bytes, or None once the running count passes `cap` (chunked bodies have no length)."""
-    chunks: list[bytes] = []
-    total = 0
-    async for chunk in request.stream():
-        total += len(chunk)
-        if total > cap:
-            return None
-        chunks.append(chunk)
-    return b"".join(chunks)
-
-
-def _split_body(raw: bytes) -> dict | None:
-    """The parsed /split body, or None if it is not an object with the four well-typed fields."""
-    try:
-        body = json.loads(raw)
-    except ValueError:
-        return None
-    if not isinstance(body, dict):
-        return None
-    loci_count = body.get("loci_count")
-    if (
-        not isinstance(body.get("photo"), str)
-        or body.get("mode") not in ("list", "notes")
-        or not isinstance(body.get("text"), str)
-        or not isinstance(loci_count, int)
-        or isinstance(loci_count, bool)
-        or not 1 <= loci_count <= MAX_POINTS
-    ):
-        return None
-    return body
-
-
-def _associate_body(raw: bytes) -> dict | None:
-    """The parsed /associate body, or None unless it is {image, item, locus} strings plus optional place."""
-    try:
-        body = json.loads(raw)
-    except ValueError:
-        return None
-    if not isinstance(body, dict) or set(body) - {"place"} != ASSOCIATE_KEYS:
-        return None
-    if not all(isinstance(body[k], str) for k in ASSOCIATE_KEYS):
-        return None
-    return body
-
-
-def _scenes_body(raw: bytes) -> dict | None:
-    """The parsed /scenes body, or None unless it is exactly {image, box, record, sig} with a string image."""
-    try:
-        body = json.loads(raw)
-    except ValueError:
-        return None
-    if not isinstance(body, dict) or set(body) != SCENES_KEYS or not isinstance(body["image"], str):
-        return None
-    return body
-
-
-def _box_ok(box: object, width: int, height: int) -> bool:
-    """Exactly four ints (bools refused) with 0 <= x1 < x2 <= width and 0 <= y1 < y2 <= height."""
-    if not isinstance(box, dict) or set(box) != set(BOX_KEYS):
-        return False
-    if not all(isinstance(box[k], int) and not isinstance(box[k], bool) for k in BOX_KEYS):
-        return False
-    return 0 <= box["x1"] < box["x2"] <= width and 0 <= box["y1"] < box["y2"] <= height
-
-
-def _place_body(raw: bytes) -> tuple[float, float] | None:
-    """(lat, lon) when the body is exactly {lat, lon} as finite in-range numbers, else None."""
-    try:
-        body = json.loads(raw)
-    except ValueError:
-        return None
-    if not isinstance(body, dict) or set(body) != PLACE_KEYS or not valid_coords(body["lat"], body["lon"]):
-        return None
-    return body["lat"], body["lon"]
-
-
-def _length_error(request: Request, cap: int) -> JSONResponse | None:
-    """An error for a malformed or over-cap Content-Length header, else None (absent is fine)."""
-    length = request.headers.get("content-length")
-    if length is None:
-        return None
-    # str.isdigit() accepts e.g. U+00B2, which int() rejects; require plain ASCII digits.
-    if not (length.isascii() and length.isdigit()):
-        return _error(400, "bad_content_length")
-    if int(length) > cap:
-        return _error(413, "too_large")
-    return None
 
 
 def create_app(backend: ModelBackend | None = None, place_provider=None, asr_client=None) -> FastAPI:

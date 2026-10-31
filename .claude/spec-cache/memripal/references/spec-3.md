@@ -372,3 +372,16 @@ is untouched until the B8 wiring slice (after B7, D7 order).
 - Deferred: client criteria (7), (10) and (11) wait for the B5 S3 markup.
 
 Tests: tests/test_baseline.py, tests/test_baseline_api.py
+
+## MEM-060 Request-body parsers in their own module
+
+Refactor, no behaviour change (map-to-palace plan slice B0; frees the `src/memripal/app.py` line budget for the D7
+wiring). The request-body helpers move from `app.py` to new `src/memripal/bodies.py`: `_error`, `_read_capped`,
+`_split_body`, `_associate_body`, `_scenes_body`, `_box_ok`, `_place_body`, `_length_error`, plus the key sets they
+check (`ASSOCIATE_KEYS`, `PLACE_KEYS`, `SCENES_KEYS`, `BOX_KEYS`). `app.py` imports them; `bodies.py` never imports
+`app.py` (no cycle).
+- Each moved parser is defined exactly once, in `bodies.py`.
+- `app.py` <= 515 lines.
+- Status codes, error codes and accepted/rejected bodies are unchanged; the existing route suites pass unmodified.
+
+Tests: tests/test_bodies.py
