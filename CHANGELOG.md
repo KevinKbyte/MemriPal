@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.21] - 2026-10-31
+
+### Added
+
+- scripts/design_gate.py design gate: re-shoots docs/design/** at the branch tip and checks the render (page errors, route CSS lint, 375 px overflow, axe contrast and tap targets, selector and contract ids present); refuses README-only or stale-PNG evidence. scripts/approve_design.py records Kev's approval of changed shots (MEM-070, ADR 0036).
+
 ## [0.20.20] - 2026-10-31
 
 ### Added
