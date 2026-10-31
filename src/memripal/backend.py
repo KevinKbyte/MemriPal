@@ -292,6 +292,9 @@ PROMPT_ARGS = "prompt_args"
 # Reserved gen_params key: False keeps the photo out of a spark_json call (POST /split, ADR 0019) while
 # the photo still keys the cache; absent means the image is sent.
 SEND_IMAGE = "send_image"
+# Reserved gen_params key: True keeps the request's photo out of photos/ (the /station blur phase sends the
+# raw, un-pixelated photo; MEM-049 D3); the response entry still lands, as it holds boxes only.
+NO_PHOTO_CACHE = "no_photo_cache"
 # Per-request read bound for a scene edit (ADR 0007); kept out of gen_params, as it never shapes the answer.
 IMAGE_EDIT_TIMEOUT_S = 30
 
@@ -313,6 +316,10 @@ def _prompt_for(template_id: str, args: dict) -> str:
         from memripal.scenes import scene_prompt
 
         return scene_prompt(args["record"])
+    if template_id == "station":
+        from memripal.station import station_prompt
+
+        return station_prompt(args["used_names"])
     raise ValueError(f"unknown prompt template: {template_id!r}")
 
 
@@ -364,8 +371,10 @@ class MetaBackend:
         image_url = to_data_url(req.image_jpeg)
         store_req = req
         if req.method == "segment":
+            gen_params = dict(req.gen_params)
+            gen_params.pop(NO_PHOTO_CACHE, None)
             result = self._client.segment(
-                image_data_url=image_url, phrase=req.subject, model=req.model, **req.gen_params
+                image_data_url=image_url, phrase=req.subject, model=req.model, **gen_params
             )
             parse, valid = responses_text, lambda v: isinstance(v, str)
         elif req.method == "spark_json":
@@ -426,8 +435,10 @@ class MetaBackend:
             else:
                 body = json.dumps(value).encode("utf-8")
             try:
-                # Photo first (kept for a later promote step), so no response entry lacks its photo.
-                self.cache.put_photo(req.image_jpeg)
+                # Photo first (kept for a later promote step), so no response entry lacks its photo;
+                # a NO_PHOTO_CACHE request's photo is never written (MEM-049 D3).
+                if not req.gen_params.get(NO_PHOTO_CACHE):
+                    self.cache.put_photo(req.image_jpeg)
                 key = req.cache_key()
                 # After the entry, so a sidecar never names an entry that failed to land.
                 self.cache.put_sidecar(self.cache.put(key, body), key.photo_sha)

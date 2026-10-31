@@ -415,3 +415,32 @@ ADR [0031](../../../../docs/decisions/0031-route-station-store.md). Map-to-palac
 
 Tests: static/route_store.test.mjs, static/route_store_capture.test.mjs, static/index_markup_routes.test.mjs,
 static/index_markup.test.mjs
+
+## MEM-049 POST /station: fail-closed pixelation, name + profile, one landmark box
+
+Plan `docs/plans/2026-10-31-map-to-palace.md` B4. New `src/memripal/station.py` (core) and
+`src/memripal/routes_station.py` (`make_station_router(backend, passcode_error, *, max_concurrent)`); `backend.py`
+gains the `station` prompt template and the `NO_PHOTO_CACHE` gen_params flag. Pillow pinned `==13.0.0` (golden sha).
+- Request: raw image bytes, same `UPLOAD_TYPES` and byte cap as /loci (415 / 413). Used names ride in the
+  `X-Memripal-Used-Names` header as a JSON array (absent == []): <= 7 strings, each non-empty, <= 3 words, <= 40
+  chars, no control chars, header <= 2048 chars; else 400 `bad_used_names`, 0 backend calls. Header, not a multipart
+  field, so the body stays the raw photo /loci already accepts.
+- Order: passcode (401 before the body is read) -> type -> length -> used names -> concurrency cap
+  (`max_concurrent`, over it 429 `busy`; the client keeps the station pending) -> body.
+- Blur (D3): SAM "person" + "license plate" in parallel on the processed photo with `NO_PHOTO_CACHE`, so
+  `MetaBackend._store` never writes the raw photo (the boxes-only entry may land). Strict parser: empty/whitespace
+  body == none found; a failed call, over-cap body, text with no token, an unmatched `<|`, a token missing a field, or
+  a `sanitize_box` reject -> 502 `blur_failed`, 0 Spark calls. The live-probe empty shape is a later test-first
+  amendment.
+- `pixelate(img, boxes)`: per box, round(side * 8 / long side) blocks (min 1), NEAREST down then up; outside pixels
+  byte-identical; deterministic. The pixelated JPEG (quality 90, no metadata) is the only photo Spark and the landmark
+  segment see.
+- Spark reply {station_name, landmark_phrase, visual, spatial, conceptual}, exactly those keys, all non-empty strings
+  (name <= 40 chars, phrase <= 40, profile fields <= 400); `valid_station_name`: non-empty, <= 3 words, no digits.
+  Invalid -> one regenerate (attempt 1), then 502 `bad_reply`. Used names go into the prompt as a JSON list.
+- Landmark: one SAM segment on landmark_phrase, `select_loci(max_loci=1)`; none -> `box: null`.
+- 200 {image (JPEG data URL), width, height, photo_sha (of that JPEG), name, profile {visual, spatial, conceptual},
+  box {x1, y1, x2, y2} | null}.
+- Deferred: criterion (14) (`app.py <= 582`, create_app wiring) belongs to the B4 wiring slice after B1.
+
+Tests: tests/test_station.py, tests/test_station_api.py
