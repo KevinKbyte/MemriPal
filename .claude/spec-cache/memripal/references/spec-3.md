@@ -506,3 +506,26 @@ upload.
 - Not in scope: `#station-baseline*` (B8). Not yet wired from `app.js` (no route capture flow exists there yet).
 
 Tests: static/station_card.test.mjs, static/index_markup_routes.test.mjs (MEM-050 block)
+## MEM-046 Scene provenance pass-through + AI-generated chip
+
+Amends ADR 0024; supersedes the MEM-027 re-encode/comment-strip behaviour. Map-to-palace plan
+(`docs/plans/2026-10-31-map-to-palace.md`) slice B1.
+Root problem: re-encoding the Muse Image reply to a fresh JPEG at photo size stripped the model's provenance metadata
+(XMP/EXIF) and the UI never said a scene was AI-generated.
+Actors: Muse Image backend (`image_edit`), `POST /scenes` (`src/memripal/app.py`), `render_scene`
+(`src/memripal/scenes.py`), scene panel + overlay (`static/scenes.js`), the user.
+- Tier-1 `Scene.image` is byte-identical (sha256) to the Muse Image reply, XMP/EXIF included; never decoded, resized
+  or re-encoded. The reply is validated from header + caps only (`imaging._check_bytes`, `imaging._open_header`).
+- `POST /scenes` tier-1 data URL mime follows the reply format: webp -> `image/webp`, png -> `image/png`, jpeg ->
+  `image/jpeg`.
+- Response `width`/`height` stay the input photo's dims regardless of reply size.
+- Undecodable, over-cap or hostile reply stays tier 3 with the existing reason codes (`empty`, `bad_magic`,
+  `decode_error`, `too_large`, `pixel_bomb`, `not_bytes`).
+- Client: on tier-1 img load, if |natural aspect / photo aspect - 1| > 0.02 the img transform becomes identity zoom
+  (`scale(1) translate(0%, 0%)`; `""` or `none` accepted); within 2% (e.g. 1024x768 or 1000x740 for an 800x600
+  photo) it keeps `zoomFor(box, width, height)`.
+- Exactly one element with class `chip-ai` and text "AI-generated" inside each tier-1 scene card (`#scenes >
+  section`) and inside `#scene-overlay` while open (also after close + reopen).
+- `src/memripal/app.py` <= 582 lines.
+
+Tests: tests/test_scenes_provenance.py, static/scenes_provenance.test.mjs
