@@ -355,6 +355,22 @@ button[aria-expanded]:hover {
   margin: 0 0 0.5rem;
 }
 
+/* MEM-050 S3: the station profile reads like the walk step; a pressed quick-tap takes the primary fill. */
+#station-profile dt {
+  font-weight: bold;
+}
+
+#station-profile dd {
+  margin: 0 0 0.5rem;
+}
+
+button[aria-pressed="true"],
+button[aria-pressed="true"]:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+
 /* MEM-037: a recalled point lights on the live board. */
 .live-board li.lit {
   font-weight: bold;

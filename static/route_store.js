@@ -232,6 +232,24 @@ export function createRouteStore(adapter, { now = Date.now, newId = () => crypto
       return persist(clone(st), [...writes, putRoute(r)]);
     }),
 
+    /** S3 name edit (MEM-050); the card validates the name first. */
+    renameStation: (/** @type {string} */ routeId, /** @type {string} */ stationId, /** @type {string} */ name) =>
+      serial(async () => {
+        const r = await mustGet(routeId);
+        const st = r.stations[indexOf(r, stationId)];
+        st.name = String(name).trim();
+        return persist(clone(st), [putRoute(r)]);
+      }),
+
+    /** S3 quick-taps (MEM-050): replaces the station's taps, one label per group. */
+    setStationTaps: (/** @type {string} */ routeId, /** @type {string} */ stationId, /** @type {Record<string, string>} */ taps) =>
+      serial(async () => {
+        const r = await mustGet(routeId);
+        const st = r.stations[indexOf(r, stationId)];
+        st.taps = { ...taps };
+        return persist(clone(st), [putRoute(r)]);
+      }),
+
     /** @param {string} routeId @param {string} stationId @param {"pending" | "error"} status */
     setStationStatus: (routeId, stationId, status) => serial(async () => {
       if (status !== "pending" && status !== "error") throw new TypeError(`bad station status ${status}`);

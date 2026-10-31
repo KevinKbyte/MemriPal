@@ -35,6 +35,14 @@ function jpegOf(v) {
   }
 }
 
+/**
+ * B4 used_names avoid-list as a JSON array; non-ASCII is \u-escaped because a header value must be
+ * a byte string (fetch throws on anything above U+00FF).
+ * @param {string[]} names
+ */
+const usedNamesHeader = (names) =>
+  JSON.stringify(names).replace(/[\u007f-￿]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`);
+
 /** @param {any} b */
 function boxOf(b) {
   const keys = ["x1", "y1", "x2", "y2"];
@@ -91,13 +99,17 @@ export function createCaptureSession({ store, routeId, fetch, encode, onStatus =
 
   /** @param {string} stationId */
   async function upload(stationId) {
-    const photo = await store.getPhoto(
-      (await store.getRoute(routeId))?.stations.find((s) => s.id === stationId)?.photo_ref ?? "",
-    );
+    const stations = (await store.getRoute(routeId))?.stations ?? [];
+    const photo = await store.getPhoto(stations.find((s) => s.id === stationId)?.photo_ref ?? "");
+    const used = stations.filter((s) => s.id !== stationId && s.status === "named").map((s) => s.name);
     onStatus(MSG.naming);
     let res;
     try {
-      res = await fetch(apiUrl("/station"), { method: "POST", headers: { "Content-Type": "image/jpeg" }, body: photo });
+      res = await fetch(apiUrl("/station"), {
+        method: "POST",
+        headers: { "Content-Type": "image/jpeg", "X-Memripal-Used-Names": usedNamesHeader(used) },
+        body: photo,
+      });
     } catch {
       return pending(MSG.offline);
     }

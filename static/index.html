@@ -59,6 +59,35 @@
         </div>
         <p id="capture-count"></p>
       </section>
+      <section id="station-card" class="panel" hidden>
+        <h2>Station</h2>
+        <div class="field">
+          <label for="station-name">Station name</label>
+          <input id="station-name" type="text" maxlength="40" autocomplete="off">
+        </div>
+        <p id="station-name-error" class="notice" role="alert" hidden></p>
+        <dl id="station-profile"></dl>
+        <fieldset id="station-taps">
+          <legend>Your notes on this spot</legend>
+          <p>Sound</p>
+          <div id="tap-sound" class="btn-row"></div>
+          <p>Smell</p>
+          <div id="tap-smell" class="btn-row"></div>
+          <p>Feel</p>
+          <div id="tap-feel" class="btn-row"></div>
+          <p>Mood</p>
+          <div id="tap-mood" class="btn-row"></div>
+          <p>Next turn</p>
+          <div id="tap-turn" class="btn-row"></div>
+        </fieldset>
+        <div class="btn-row">
+          <button id="station-save" class="btn btn-primary" type="button">Save name</button>
+          <button id="station-drop" class="btn" type="button">Drop station</button>
+          <button id="station-drop-confirm" class="btn" type="button" hidden>Yes, drop it</button>
+          <button id="station-drop-cancel" class="btn" type="button" hidden>Keep it</button>
+          <button id="station-undo" class="btn" type="button" hidden>Undo drop</button>
+        </div>
+      </section>
       <fieldset id="place-settings" class="panel">
         <legend>Place history (optional)</legend>
         <label class="check">
