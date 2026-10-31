@@ -20,6 +20,7 @@ def cors_origins() -> list[str]:
 
 
 def add_cors(app: FastAPI) -> None:
+    """Intentionally not wired into create_app yet (item 122); call it once the shell ships."""
     app.add_middleware(
         CORSMiddleware,
         allow_origins=cors_origins(),

@@ -19,6 +19,8 @@ function parseApiBase(raw) {
   }
   // Exact-origin match rejects paths, queries, fragments and even a trailing "/" or "?".
   if (url.protocol !== "https:" || url.username || url.password || value !== url.origin) return null;
+  // URL accepts `"` and `;` in hosts; either would break out of the CSP meta attribute or add a directive.
+  if (!/^[a-z0-9.-]+$/.test(url.hostname) && !/^\[[0-9a-f:.]+\]$/.test(url.hostname)) return null;
   return url.origin;
 }
 
