@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.14] - 2026-10-31
+
+### Fixed
+
+- Backup export with a saved route no longer throws: the app now wires a canvas JPEG thumbnail (static/thumbnail.js) into backup export (MEM-054).
+
 ## [0.20.13] - 2026-10-31
 
 ### Added
