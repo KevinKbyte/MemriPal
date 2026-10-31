@@ -422,9 +422,10 @@ Plan `docs/plans/2026-10-31-map-to-palace.md` B4. New `src/memripal/station.py` 
 `src/memripal/routes_station.py` (`make_station_router(backend, passcode_error, *, max_concurrent)`); `backend.py`
 gains the `station` prompt template and the `NO_PHOTO_CACHE` gen_params flag. Pillow pinned `==13.0.0` (golden sha).
 - Request: raw image bytes, same `UPLOAD_TYPES` and byte cap as /loci (415 / 413). Used names ride in the
-  `X-Memripal-Used-Names` header as a JSON array (absent == []): <= 7 strings, each non-empty, <= 3 words, <= 40
-  chars, no control chars, header <= 2048 chars; else 400 `bad_used_names`, 0 backend calls. Header, not a multipart
-  field, so the body stays the raw photo /loci already accepts.
+  `X-Memripal-Used-Names` header as a JSON array (absent == []). ASCII-only JSON; non-ASCII names arrive as `\uXXXX`
+  escapes; a non-ASCII header is treated as absent (`parse_used_names` returns None). <= 7 strings, each non-empty,
+  <= 3 words, <= 40 chars, no control chars, header <= 2048 chars; else 400 `bad_used_names`, 0 backend calls.
+  Header, not a multipart field, so the body stays the raw photo /loci already accepts.
 - Order: passcode (401 before the body is read) -> type -> length -> used names -> concurrency cap
   (`max_concurrent`, over it 429 `busy`; the client keeps the station pending) -> body.
 - Blur (D3): SAM "person" + "license plate" in parallel on the processed photo with `NO_PHOTO_CACHE`, so
