@@ -55,7 +55,10 @@ ASSOCIATION_PROMPT = (
 )
 # Outside backend._templates_digest for the same reason as ASSOCIATION_PLACE: editing ASSOCIATION_PROMPT
 # would orphan the recorded fixtures.
-ASSOCIATION_TASTE = "\nThe gustatory (taste) channel is optional: fill it only when a taste fits the scene, else leave it empty."
+ASSOCIATION_TASTE = (
+    "\nThe gustatory (taste) channel is optional: fill it only when a taste fits the scene, "
+    "else leave it empty."
+)
 ASSOCIATION_RETRY = "\nYour previous reply was rejected: {reason}. Fix that and reply again."
 # Deliberately outside backend._templates_digest: adding it would change every pre-MEM-025 request key
 # and orphan the recorded fixtures; the place itself rides in prompt args, so it still keys the cache.
