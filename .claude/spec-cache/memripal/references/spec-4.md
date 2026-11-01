@@ -88,15 +88,39 @@ Actors: `tests/conftest.py`, ruff, the agent-workflow queue drain, `scripts/merg
   uncaught; closed by the agent-workflow follow-up (drain runs a repo-declared check command).
 
 Tests: tests/test_lint_gate.py
-## MEM-072 Route-first flow: set the route, pick loci from alternatives, capture anytime (PLANNED)
+## MEM-072 Route-first flow: map-first shell, set the route, pick loci from alternatives, capture anytime (PLANNED)
 
-PLANNED, not built, unverified: design only (docs/design/route/). ADR [0038](../../../../docs/decisions/0038-route-first-flow.md).
+PLANNED, not built, unverified: design only (docs/design/route/). ADR [0038](../../../../docs/decisions/0038-route-first-flow.md)
+(amended 2026-11-01: map-first shell, map source).
 Decided-by: ADR-0038
 Root problem: the route design is capture-first, but Kev requires route-first: set the route, the app generates
 landmark loci with alternatives, the user swaps or adds them fine-grained, and own landmark photos supplement the
-route at any time (as a generation hint or a user-added stop).
-Actors: the user; Muse Spark (loci generation); `docs/design/route/{preview.html,route.css,route-contract.md}`.
-- S1 entry is route setup: `#routes-new` reads "New route".
+route at any time (as a generation hint or a user-added stop). Kev then rejected the card-list layout for a
+Google-Maps-like map that must stay usable at 1000+ topics, routes and landmarks.
+Actors: the user; Muse Spark (loci generation); `docs/design/route/{map-shell.html,map-shell.css,route-contract-2.md}`
+(shell); `docs/design/route/{preview.html,route.css,route-contract.md}` (S2-S9 flows).
+NFR: off-route landmarks exist in the DOM only inside viewport + margin; route list windowed; reduced motion = instant.
+
+Map-first shell (2026-11-01, contract `docs/design/route/route-contract-2.md`):
+- Home = map showing ONLY the selected route: topic-coloured path, numbered stations, emoji landmark markers. Route
+  switch: 800 ms viewBox drift, path draw-in, staggered landmark pop-in; `prefers-reduced-motion` = instant.
+- Click or ~500 ms long-press on a landmark opens its card; Enter/Space does the same; Escape closes and refocuses.
+- Landmark filter "This route" (default) / "All landmarks": off-route landmarks muted grey, rendered only inside the
+  viewport + margin, recomputed on pan end, zoom end and tween end.
+- Right-side drawer: this route's settings (name, how often, topic typeahead with recents), "Map a new route"
+  (`#map-new`, enters S2), existing routes (search, recents, grouped by topic, virtualized list).
+- Bottom tabs Routes / Recall / Landmarks / Settings. No global legend: the chip shows the current route's topic
+  as colour dot + name. Fixed ~8-colour palette, deterministic per topic id, user-overridable, text beside colour.
+- Map source: stylized SVG only until after the hackathon; MapLibre + self-hosted PMTiles (`geo` routes) with SVG
+  `sketch` routes is staged as plan B15, adopted only when ADR 0038's map-source conditions hold.
+- Preview states: `?s=closed|open|landmark|hidden`, `?lm=route|all`.
+- Accept (shell): exactly one route's path in `#route`; filter All at any pan/zoom puts only in-viewport (+ margin)
+  off-route landmarks in the DOM; route list DOM rows stay bounded at 1000 routes; long-press and keyboard open the
+  same card; each `?s=` / `?lm=` state screenshots at 375 px with no page or console errors.
+
+Card-list flow (2026-10-31); S2-S9 flow rules still apply:
+- **Superseded by MEM-072 map-first shell (above):** S1 entry is route setup: `#routes-new` reads "New route". Now
+  the map is home and `#map-new` "Map a new route" starts S2.
 - S2 Set the route: start and end picked on the map or from familiar places (stations of past routes, on the phone),
   end = loop by default, stops 3-8 (default 5), own photos used as hints toggle, "Find landmarks". No typed
   geocoding; only landmark positions leave the phone, and only with the place setting on.
@@ -110,7 +134,8 @@ Actors: the user; Muse Spark (loci generation); `docs/design/route/{preview.html
   capture is a generation hint; after, it is a "Your photo" alternative on the nearest locus; a capture opened from
   a locus card lands on that locus.
 - S5 shows source tags (Suggested / Your photo) and Capture; S6-S9 unchanged apart from Capture.
-- Accept: S1 primary action is "New route"; every S3 locus card shows >= 1 alternative with Use this + Add too; Add
+- Accept (flow): **Superseded by MEM-072 map-first shell (above):** S1 primary action is "New route" (now
+  `#map-new` in the drawer). Still binding: every S3 locus card shows >= 1 alternative with Use this + Add too; Add
   all at 6/8 with 3 candidates adds 2 and keeps 1 as an alternative; Add all at 8/8 is disabled with a reason;
   capture button present on S1-S9; no capture screen shows a required hint-or-stop choice; check_route_css.py and
   design_gate.py pass at 375 px.

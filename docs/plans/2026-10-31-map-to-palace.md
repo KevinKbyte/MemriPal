@@ -54,8 +54,8 @@ Two views are first-class and both appear in the demo:
   lights the same dots.
 
 Non-goals: replacing navigation, turn-by-turn directions, safety claims, interaction while moving, points for speed/distance/streaks, AR,
-generated video, Google Maps/Street View, basemap tiles, on-device models, any model outside the hackathon list, v1 (pre-pivot) backup
-import. The B14 planned-route polyline is a schematic SVG for picking stations, never navigation.
+generated video, Google Maps/Street View, basemap tiles (hackathon only: stylized SVG map; real tiles staged as B15 option A, ADR 0038),
+on-device models, any model outside the hackathon list, v1 (pre-pivot) backup import. B14's planned-route polyline is schematic, not navigation.
 
 Assumptions (state before code):
 - A1 Station coords come only from EXIF GPS (opt-in, ADR 0022), capture geolocation (opt-in) or a B14 candidate sample point (D12). GPS
@@ -604,10 +604,10 @@ MEM ids: MEM-046.. assigned below (MEM-045 = brand-art, unmerged). ADRs 0031.. a
 ## B14 Planned (not walked) stations. MEM-059 **Superseded by MEM-064, MEM-066**
 - Criteria moved, none dropped (ledgers Part G); "tap the schematic to add a station" -> B15 (needs a basemap).
 
-## B15 Basemap + map tap to add a planned station, through the same proxy (stretch). Only if B8 proves the proxy cheap. ADR amendment.
-- CRITERIA: (1) tiles fetched only through the backend proxy (0 direct third-party requests in the fetch log); (2) CSP unchanged (header
-  test); (3) attribution text rendered on the map; (4) a map tap between two stations adds a planned station (D12) in route order; (5) suite green.
-- SIGNALS: tile-source terms of use fetched and recorded in the ADR before RED.
+## B15 Basemap option A (MapLibre + self-hosted PMTiles; post-hackathon) + map tap to add a planned station. ADR 0038 map-source amendment.
+- CRITERIA (= ADR 0038 conditions 1-10): (1) PMTiles same-origin or bundled in `www/`, 206 on Range; (2) `maplibre-gl-csp` worker, CSP unchanged;
+  (3) emoji symbol layer; (4) glyphs/sprites vendored; (5) attribution shown; (6) byte-budget test; (7) map tap adds a D12 stop; (8) suite green.
+- SIGNALS: PMTiles range-fetch probe in the Capacitor WebView passes; Protomaps/OSM (ODbL) terms recorded in the ADR; both before RED.
 
 ## Order by demo value and schedule
 (Day check: 2026-10-31 is a Saturday, so Mon = Nov 2, Tue = Nov 3, Wed = Nov 4. v1-r2's cut line said "Mon Nov 3"; fixed.)

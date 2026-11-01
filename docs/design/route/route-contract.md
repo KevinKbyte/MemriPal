@@ -3,6 +3,9 @@
 These go with `route.css`. Load it last: `<link rel="stylesheet" href="/static/route.css">` after `theme-painterly.css`.
 The CSS has no HTML, no JavaScript and no new ids.
 
+Home is the map-first shell: contract, `?s=closed|open|landmark|hidden` / `?lm=route|all` states in
+[route-contract-2.md](route-contract-2.md) (section M). The S1 card-list home below is superseded; S2-S9 still apply.
+
 ## 0. Before you start
 
 ### 0.1 Product changes made after the brief (product owner, 2026-10-31)
@@ -86,6 +89,9 @@ A fieldset cannot collapse without script or `<details>`. The CSS styles it open
 Columns: id; element it already is; classes on it; classes on direct children (DOM order). "(item)" = parts of a script-rendered list item.
 
 ### S1 Routes home
+
+**Superseded by MEM-072 map-first shell ([route-contract-2.md](route-contract-2.md) section M):** the card-list
+home below is rejected; the map is home and `#map-new` "Map a new route" replaces `#routes-new`. Kept for the settings ids it still defines.
 
 | id | element | classes | direct children |
 |---|---|---|---|
