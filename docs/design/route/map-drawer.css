@@ -1,0 +1,38 @@
+/* map-drawer.css: the map shell's right drawer (MEM-072), loaded after map-shell.css. Split out so each
+   design file stays under 500 lines; same token-only colour rule as map-shell.css. */
+
+/* ---------- "This route": compact summary row; Edit route expands the fields ---------- */
+
+.route-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.route-edit {
+  flex: none;
+}
+
+.route-sum {
+  display: grid;
+  gap: 0.125rem;
+  margin: 0;
+}
+
+.route-sum-name {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.route-fields {
+  display: grid;
+  gap: 0.75rem;
+}
+
+/* ?s=hidden: no drawer, so the chip may use the full width. */
+body:has(.drawer[hidden]) .map-top {
+  right: 0.75rem;
+}

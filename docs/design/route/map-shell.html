@@ -6,14 +6,16 @@
     <title>MemriPal map-first shell (design preview)</title>
     <!-- Design preview only (MEM-072): map-first home per owner direction. Not part of the app.
          Serve the repo root over HTTP and open /docs/design/route/map-shell.html.
-         Query: ?drawer=open (or ?s=open, for scripts/screenshot_design.py --screen open) opens the route
-         drawer; ?s=landmark opens a landmark card; ?lm=all (or ?s=all) shows every landmark, ?lm=route
+         Query (route-contract-2.md M.1): ?s=closed (default) shows the drawer handle only; ?drawer=open (or
+         ?s=open, for scripts/screenshot_design.py --screen open) opens the route drawer; ?s=hidden hides the
+         drawer entirely (full-map view); ?s=landmark opens a landmark card; ?lm=all (or ?s=all) shows every landmark, ?lm=route
          (default) only this route's; ?theme=dark|light forces a theme. Only the selected route is drawn.
          Emoji are numeric entities or \u escapes so the file stays ASCII. -->
     <link rel="icon" href="../../../static/icon.svg">
     <link rel="stylesheet" href="../../../static/style.css">
     <link rel="stylesheet" href="../../../static/theme-painterly.css">
     <link rel="stylesheet" href="map-shell.css">
+    <link rel="stylesheet" href="map-drawer.css">
   </head>
   <body class="map-shell">
     <h1 class="vh">MemriPal routes</h1>
@@ -76,7 +78,17 @@
         </summary>
         <div class="drawer-body">
           <section class="drawer-section" aria-labelledby="current-title">
-            <h2 id="current-title" class="drawer-title">This route</h2>
+            <!-- Compact by default (summary row) so search and the route list stay above the fold on a phone. -->
+            <div class="route-head">
+              <h2 id="current-title" class="drawer-title">This route</h2>
+              <button id="route-edit" class="btn route-edit" type="button" aria-expanded="false"
+                      aria-controls="route-fields">Edit route</button>
+            </div>
+            <p id="route-sum" class="route-sum">
+              <span id="route-sum-name" class="route-sum-name">Morning walk to the station</span>
+              <span class="chip-topic"><span class="topic-dot" aria-hidden="true"></span><span id="route-sum-meta"></span></span>
+            </p>
+            <div id="route-fields" class="route-fields" hidden>
             <div class="field">
               <label for="route-name">Name</label>
               <input id="route-name" type="text" maxlength="40" autocomplete="off" value="Morning walk to the station">
@@ -98,6 +110,7 @@
               <p id="topic-hint" class="field-hint">Type to search; recent topics first.</p>
             </div>
             <p class="drawer-count">Stations: <strong id="route-count">6</strong></p>
+            </div>
           </section>
 
           <button id="map-new" class="btn btn-primary" type="button">Map a new route</button>
@@ -145,7 +158,9 @@
         var theme = q.get("theme");
         if (theme === "dark" || theme === "light") root.setAttribute("data-theme", theme);
         var s = q.get("s");
-        if (q.get("drawer") === "open" || s === "open") document.getElementById("drawer").open = true;
+        var drawer = document.getElementById("drawer");
+        if (q.get("drawer") === "open" || s === "open") drawer.open = true;
+        drawer.hidden = s === "hidden";
 
         var NS = "http://www.w3.org/2000/svg";
         var map = document.getElementById("map");
@@ -248,8 +263,9 @@
         });
 
         // ---------- MAP ----------
-        // Frame padding in map units; extra top room clears the chip, right the drawer handle, bottom the filter.
-        var PAD = 70, TOP = 130, RIGHT = 90, BOTTOM = 70, MIN = 420;
+        // Frame padding in map units; extra top room clears the chip, right the drawer handle (none when the
+        // drawer is hidden), bottom the filter.
+        var PAD = 70, TOP = 130, RIGHT = drawer.hidden ? 0 : 90, BOTTOM = 70, MIN = 420, PAN_MS = 800;
         var current = null, anim = 0, popTimer = 0, offNodes = {};
         function svg(tag, attrs, parent) {
           var el = document.createElementNS(NS, tag);
@@ -338,6 +354,9 @@
           document.getElementById("route-name").value = r.name;
           document.getElementById("route-often").value = r.often;
           document.getElementById("route-count").textContent = r.stations.length;
+          document.getElementById("route-sum").setAttribute("class", "route-sum " + r.tc);
+          document.getElementById("route-sum-name").textContent = r.name;
+          document.getElementById("route-sum-meta").textContent = r.often + ", " + r.stations.length + " stations, " + r.topic;
           topicIn.value = r.topic;
           topicIn.removeAttribute("aria-invalid");
         }
@@ -356,7 +375,7 @@
           revealLine.style.strokeDasharray = len + " " + len;
           revealLine.style.strokeDashoffset = len;
           routeG.classList.add("is-arriving");
-          tween(450, function (e) { setBox(from.map(function (f, i) { return f + (target[i] - f) * e; })); }, function () {
+          tween(PAN_MS, function (e) { setBox(from.map(function (f, i) { return f + (target[i] - f) * e; })); }, function () {
             cull();
             tween(Math.min(1200, 300 + len * 0.6), function (e) { revealLine.style.strokeDashoffset = len * (1 - e); }, function () {
               revealLine.style.strokeDasharray = "";
@@ -465,6 +484,19 @@
           routeG.setAttribute("class", routeG.getAttribute("class").replace(/tc-\d/, current.tc));
           syncChrome(current);
           fillTopics();
+          buildRows();
+        });
+
+        var editBtn = document.getElementById("route-edit"), fields = document.getElementById("route-fields");
+        editBtn.addEventListener("click", function () {
+          var open = editBtn.getAttribute("aria-expanded") !== "true";
+          editBtn.setAttribute("aria-expanded", String(open));
+          fields.hidden = !open;
+        });
+        // Live: the chip, summary row and list row follow the select without a save step.
+        document.getElementById("route-often").addEventListener("change", function (e) {
+          current.often = e.target.value;
+          syncChrome(current);
           buildRows();
         });
 
