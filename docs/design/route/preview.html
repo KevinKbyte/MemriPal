@@ -4,9 +4,11 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>MemriPal route design preview</title>
-    <!-- Design preview only: renders S1-S9 from route-contract.md with sample data. Not part of the app.
+    <!-- Design preview only: renders S2-S9 from route-contract.md with sample data. Not part of the app.
+         Home is map-shell.html (route-contract-2.md); S1 shows only a pointer to it.
          Serve the repo root over HTTP and open /docs/design/route/preview.html.
          Query: ?s=1,5,6 shows only those screens (default all); ?theme=dark|light forces a theme. -->
+    <link rel="icon" href="../../../static/icon.svg">
     <link rel="stylesheet" href="../../../static/style.css">
     <link rel="stylesheet" href="../../../static/theme-painterly.css">
     <link rel="stylesheet" href="route.css">
@@ -14,6 +16,7 @@
       .preview-bar { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; max-width: 76rem;
         margin: 0 auto; padding: 0.5rem 1rem; font-size: 0.875rem; color: var(--ink); }
       .preview-bar a { color: var(--primary); }
+      .notice a { color: var(--ink); font-weight: 700; }
       /* 24px targets for axe target-size. */
       .preview-bar a:not([hidden]) { display: inline-block; min-width: 24px; min-height: 24px;
         padding: 0.125rem 0.25rem; text-align: center; }
@@ -30,7 +33,7 @@
   <body>
     <nav class="preview-bar" aria-label="Preview screens">
       <strong>Preview:</strong>
-      <a href="?">All</a> <a href="?s=1">S1</a> <a href="?s=2">S2</a> <a href="?s=3">S3</a> <a href="?s=4">S4</a>
+      <a href="?">All</a> <a href="map-shell.html">Home (map)</a> <a href="?s=2">S2</a> <a href="?s=3">S3</a> <a href="?s=4">S4</a>
       <a href="?s=5,6">S5+S6</a> <a href="?s=7">S7</a> <a href="?s=8">S8</a> <a href="?s=9">S9</a>
       <a href="#" id="theme-flip">Flip theme</a>
     </nav>
@@ -38,12 +41,16 @@
       <h1 class="brand">MemriPal</h1>
     </header>
     <main class="app">
-      <p id="public-banner" class="notice" data-s="1">Live needs a passcode. Try Load demo.</p>
-      <p id="status" class="status-line" data-s="1">Backend ready.</p>
+      <!-- S1 card-list home is superseded by the map-first shell (route-contract-2.md). Its markup stays,
+           always hidden, only because scripts/design_gate.py checks route-contract.md's names in this DOM. -->
+      <p class="notice" data-s="1">Home is the map-first shell: open <a href="map-shell.html">map-shell.html</a>
+        (contract: route-contract-2.md). The S1 card-list home is superseded and not shown.</p>
+      <p id="public-banner" class="notice" data-s="1" hidden>Live needs a passcode. Try Load demo.</p>
+      <p id="status" class="status-line" data-s="1" hidden>Backend ready.</p>
 
       <!-- S1 Routes home -->
-      <span class="preview-label" data-s="1">S1 Routes home (ready)</span>
-      <section id="routes-home" class="panel screen" data-s="1">
+      <span class="preview-label" data-s="1" hidden>S1 Routes home (ready)</span>
+      <section id="routes-home" class="panel screen" data-s="1" hidden>
         <div class="screen-head">
           <h2 class="screen-title">Your routes</h2>
           <button class="btn topbar-capture" type="button">Capture</button>
@@ -91,8 +98,8 @@
         </details>
       </section>
 
-      <span class="preview-label" data-s="1">S1 Routes home (empty)</span>
-      <section class="panel screen" data-s="1" data-preview-copy="empty">
+      <span class="preview-label" data-s="1" hidden>S1 Routes home (empty)</span>
+      <section class="panel screen" data-s="1" data-preview-copy="empty" hidden>
         <div class="screen-head">
           <h2 class="screen-title">Your routes</h2>
           <button class="btn topbar-capture" type="button">Capture</button>

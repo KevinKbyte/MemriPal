@@ -12,6 +12,8 @@ docs/sdlc-runs/
 # agent scratch (R98, item 123)
 .claude/offload-workflows/
 .claude/worktree-dirt-archive/
+# render-budget snapshots (HOOKS-382 scripts/render_snapshot.py)
+docs/design/route/.render-snapshot/
 www/
 node_modules/
 android/app/build/
