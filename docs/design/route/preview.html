@@ -210,6 +210,132 @@
           <input id="photo" class="vh" type="file" accept="image/*" capture="environment" disabled></label>
       </section>
 
+      <!-- S3 Pick landmarks per stop -->
+      <span class="preview-label" data-s="3">S3 Pick landmarks (room for 2)</span>
+      <section class="panel screen" data-s="3">
+        <div class="screen-head">
+          <h2 class="screen-title">Pick landmarks</h2>
+          <button class="btn topbar-capture" type="button">Capture</button>
+        </div>
+        <span class="pick-count"><span class="vh">Stops picked: </span>6/8</span>
+        <ol class="locus-list" aria-label="Stops on this route">
+          <li class="locus-card">
+            <div class="locus-head"><span class="locus-num">1</span>
+              <span class="locus-name">Corner bakery</span></div>
+            <ul class="alt-row" aria-label="Alternatives for stop 1">
+              <li class="alt" data-source="photo">
+                <img class="alt-thumb" data-ph="30" alt="">
+                <span class="alt-name">Striped awning</span>
+                <span class="source-tag" data-source="photo">Your photo</span>
+                <button class="btn alt-use" type="button">Use this</button>
+                <button class="btn alt-add" type="button">Add too</button>
+              </li>
+              <li class="alt">
+                <img class="alt-thumb" data-ph="60" alt="">
+                <span class="alt-name">Red post box</span>
+                <span class="source-tag">Suggested</span>
+                <button class="btn alt-use" type="button">Use this</button>
+                <button class="btn alt-add" type="button">Add too</button>
+              </li>
+            </ul>
+          </li>
+          <li class="locus-card">
+            <div class="locus-head"><span class="locus-num">2</span>
+              <span class="locus-name">Clock tower</span></div>
+            <ul class="alt-row" aria-label="Alternatives for stop 2">
+              <li class="alt">
+                <img class="alt-thumb" data-ph="120" alt="">
+                <span class="alt-name">Stone fountain</span>
+                <span class="source-tag" data-source="hint">Hint</span>
+                <button class="btn alt-use" type="button">Use this</button>
+                <button class="btn alt-add" type="button">Add too</button>
+              </li>
+            </ul>
+          </li>
+          <li class="locus-card">
+            <div class="locus-head"><span class="locus-num">3</span>
+              <span class="locus-name">Library steps</span></div>
+            <ul class="alt-row" aria-label="Alternatives for stop 3">
+              <li class="alt">
+                <img class="alt-thumb" data-ph="200" alt="">
+                <span class="alt-name">Bike rack mural</span>
+                <span class="source-tag">Suggested</span>
+                <button class="btn alt-use" type="button">Use this</button>
+                <button class="btn alt-add" type="button">Add too</button>
+              </li>
+            </ul>
+          </li>
+          <li class="locus-card">
+            <div class="locus-head"><span class="locus-num">4</span>
+              <span class="locus-name">Green door</span></div>
+            <ul class="alt-row" aria-label="Alternatives for stop 4">
+              <li class="alt">
+                <img class="alt-thumb" data-ph="260" alt="">
+                <span class="alt-name">Corner lamp post</span>
+                <span class="source-tag">Suggested</span>
+                <button class="btn alt-use" type="button">Use this</button>
+                <button class="btn alt-add" type="button">Add too</button>
+              </li>
+            </ul>
+          </li>
+          <li class="locus-card">
+            <div class="locus-head"><span class="locus-num">5</span>
+              <span class="locus-name">Park gate</span></div>
+            <ul class="alt-row" aria-label="Alternatives for stop 5">
+              <li class="alt">
+                <img class="alt-thumb" data-ph="300" alt="">
+                <span class="alt-name">Oak bench</span>
+                <span class="source-tag">Suggested</span>
+                <button class="btn alt-use" type="button">Use this</button>
+                <button class="btn alt-add" type="button">Add too</button>
+              </li>
+            </ul>
+          </li>
+          <li class="locus-card">
+            <div class="locus-head"><span class="locus-num">6</span>
+              <span class="locus-name">Old cinema</span></div>
+            <ul class="alt-row" aria-label="Alternatives for stop 6">
+              <li class="alt">
+                <img class="alt-thumb" data-ph="340" alt="">
+                <span class="alt-name">Ticket booth</span>
+                <span class="source-tag">Suggested</span>
+                <button class="btn alt-use" type="button">Use this</button>
+                <button class="btn alt-add" type="button">Add too</button>
+              </li>
+            </ul>
+          </li>
+        </ol>
+        <button class="btn btn-primary add-all" type="button">Add 2 (room for 2)</button>
+        <p class="add-reason">Adds the top 2 alternatives as new stops, up to the 8-stop limit.</p>
+      </section>
+
+      <span class="preview-label" data-s="3">S3 Pick landmarks (8-stop limit)</span>
+      <section class="panel screen" data-s="3" data-preview-copy="full">
+        <div class="screen-head">
+          <h2 class="screen-title">Pick landmarks</h2>
+          <button class="btn topbar-capture" type="button">Capture</button>
+        </div>
+        <span class="pick-count"><span class="vh">Stops picked: </span>8/8</span>
+        <p class="notice">1 kept as an alternative: 8-stop limit</p>
+        <ol class="locus-list" aria-label="Stops on this route">
+          <li class="locus-card">
+            <div class="locus-head"><span class="locus-num">8</span>
+              <span class="locus-name">Ticket booth</span></div>
+            <ul class="alt-row" aria-label="Alternatives for stop 8">
+              <li class="alt">
+                <img class="alt-thumb" data-ph="20" alt="">
+                <span class="alt-name">Poster wall</span>
+                <span class="source-tag">Suggested</span>
+                <button class="btn alt-use" type="button">Use this</button>
+                <button class="btn alt-add" type="button" disabled>Add too</button>
+              </li>
+            </ul>
+          </li>
+        </ol>
+        <button class="btn btn-primary add-all" type="button" disabled>Add 0 (no room)</button>
+        <p class="add-reason">8-stop limit reached. Use this swaps a stop instead of adding one.</p>
+      </section>
+
       <!-- S3 Station card -->
       <span class="preview-label" data-s="3">S3 Station card (baseline shown)</span>
       <section id="station-card" class="panel screen" data-s="3">
