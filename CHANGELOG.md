@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [0.20.23] - 2026-10-31
 
+### Fixed
+
+- API docs pages (/docs, /redoc, /openapi.json) no longer served (MEM-042).
+
 ### Changed
 
 - CLAUDE.md: the visual-verify screenshot rule now also covers `docs/design/**` `.css`/`.html` diffs (design previews shot with scripts/screenshot_design.py, MEM-067), and points to the global render-first rule for design tasks.
