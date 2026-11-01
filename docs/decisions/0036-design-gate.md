@@ -1,6 +1,6 @@
 # 0036: Design gate re-shoots the design at the branch tip itself, plus Kev's recorded approval for changed shots
 
-Status: Accepted; amended 2026-11-01 (deterministic shots; see the Amendment section)
+Status: Accepted; amended 2026-11-01 (deterministic shots: reduced motion, GPU off; see the Amendment section)
 Date: 2026-10-31
 Source: MEM-070 (`.claude/spec-cache/memripal/references/spec-4.md`); builds on the MEM-067 tools
 (`scripts/screenshot_design.py`, `scripts/check_route_css.py`).
@@ -48,7 +48,7 @@ B accepts exactly the stale and non-image evidence the gate exists to stop; C is
 - Every visual change to `docs/design/**` waits on Kev running `approve_design.py`; agents cannot self-approve.
 - `approve_design.py` must be on the permission ask list so only a human run records approval.
 
-## Amendment 2026-11-01: deterministic shots (reduced motion)
+## Amendment 2026-11-01: deterministic shots (reduced motion, GPU off)
 
 Approvals key on (tip, shot, sha256), so a shot must render byte-identical on every run at the same tip.
 `docs/design/route/map-shell.css` runs an infinite `lm-float` animation under `prefers-reduced-motion:
@@ -71,3 +71,26 @@ Decision: A. Both shooters (`scripts/design_gate.py`, `scripts/screenshot_design
 Why A: the only option deterministic for both CSS and JS motion without loosening the hash check.
 
 Consequence: every shot digest may change once, so the next approval at the tip covers all changed shots.
+
+### Second finding: GPU raster
+
+After reduced motion landed (9f4242a), two consecutive gate runs at one tip still differed on 2 of 48 shots
+(`s5-6_phone_light` max channel delta 51, `s7_phone_dark` delta 1; visually identical). Probe over the full 48-shot
+gate plan, 4-5 runs each: default GPU raster + one reused page = 1-2 flaky shots; fresh page per shot = 9 flaky;
+Chrome launched with `--disable-gpu` + reused page = 0 flaky over 5 runs (also 0 with
+`--disable-gpu-rasterization --num-raster-threads=1` added).
+
+Options:
+- (E) Keep GPU, add a perceptual tolerance. Cons: approvals key on sha256 digests; this is option D, already
+  rejected.
+- (F) Fresh page per shot. Cons: measured worse (9 flaky).
+- (G) Launch Chrome with `--disable-gpu` (chosen). Pros: measured 0 flaky; one-argument change; software raster is
+  the same on every run.
+- (H) G plus raster-thread flags. Cons: no extra gain measured; more surface.
+
+Decision: G. Both shooters (`scripts/design_gate.py` `real_shoot`, `scripts/screenshot_design.py` `run`) launch
+`channel="chrome"` with `args=["--disable-gpu"]` alongside `reduced_motion="reduce"`.
+
+Why G: the only measured option with zero flaky shots, at the smallest change.
+
+Consequence: every shot digest changes once (one re-approval at the tip); CI/headless parity improves.
