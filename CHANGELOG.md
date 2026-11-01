@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.28] - 2026-11-01
+
+### Added
+
+- docs/design/route/ map-first route shell (map-shell.html/.css/.js): one selected route drawn on the map with topic colour, landmark dots and emoji, 800 ms pan and draw-in to a newly picked route, a right-hand drawer for route settings and picking or mapping routes, a "This route" / "All landmarks" filter with viewport-virtualized off-route landmarks, and Recall / Landmarks / Settings / Routes tabs; reduced motion is instant (MEM-072, ADR 0038).
+- Design gate follows the stylesheets preview pages link and screenshots the split pages; route.css and preview.html are split into files under 500 lines (MEM-067, ADR 0039).
+
 ## [0.20.27] - 2026-11-01
 
 ### Added
