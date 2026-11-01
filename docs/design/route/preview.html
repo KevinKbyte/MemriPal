@@ -19,7 +19,8 @@
       @media (min-width: 900px) {
         /* S6 label sits over the right column so S5 and S6 share a row. */
         .app > .preview-label[data-s="6"] { grid-column: 2; }
-        .app > [data-preview-copy="error"] { width: 100%; max-width: 48rem; justify-self: center; }
+        .app > [data-preview-copy="error"],
+        .app > [data-preview-copy="locked"] { width: 100%; max-width: 48rem; justify-self: center; }
       }
     </style>
   </head>
@@ -65,7 +66,7 @@
             <p class="route-card-meta"><span class="tag-kind">Daily</span> 3 stations</p>
             <p class="route-card-learned">Learned 0/3 stations</p>
             <p class="route-card-list">No list yet</p>
-            <span class="tag-draft">Unfinished walk</span>
+            <span class="tag-draft">Unfinished route</span>
             <button class="btn route-card-open" type="button">Open</button>
           </li>
         </ol>
@@ -80,7 +81,7 @@
             <input id="passcode" type="password" autocomplete="off">
           </div>
           <label class="check"><input id="auto" type="checkbox">
-            Skip the Finish walk review: save in capture order with a default name</label>
+            Skip the Fix the route review: save in capture order with a default name</label>
           <label class="check"><input id="place-toggle" type="checkbox">
             Look up place facts for my stations (off by default): sends each station's landmark position, not
             your exact location, to Wikipedia through MemriPal's server.</label>
@@ -205,7 +206,7 @@
           Use my location for this walk (stays on this device; place facts and street photos send only a
           landmark position)</label>
         <p id="capture-count">3 stations, 2 named</p>
-        <button id="capture-finish" class="btn" type="button" disabled>Finish walk</button>
+        <button id="capture-finish" class="btn" type="button" disabled>Done</button>
         <label class="btn btn-primary capture-btn">Capture
           <input id="photo" class="vh" type="file" accept="image/*" capture="environment" disabled></label>
       </section>
@@ -434,11 +435,11 @@
         <button class="btn cancel" type="button">Keep</button>
       </section>
 
-      <!-- S4 Finish walk -->
-      <span class="preview-label" data-s="4">S4 Finish walk (error)</span>
+      <!-- S4 Fix the route -->
+      <span class="preview-label" data-s="4">S4 Fix the route (error)</span>
       <section id="route-review" class="panel screen" data-s="4">
         <div class="screen-head">
-          <h2 class="screen-title">Finish walk</h2>
+          <h2 class="screen-title">Fix the route</h2>
           <button class="btn topbar-capture" type="button">Capture</button>
         </div>
         <div class="field">
@@ -451,11 +452,11 @@
           <label class="kind-option"><input type="radio" name="finish-kind" value="occasional"> Occasional</label>
         </fieldset>
         <p class="order-note">Stations are in the order you walked. Move one if needed.</p>
-        <ol id="route">
+        <ol id="route" class="station-rows">
           <li class="station-row">
             <img class="thumb" data-ph="30" alt="">
             <span class="row-name">Red front door</span>
-            <span class="row-turn">Right</span>
+            <span class="source-tag" data-source="photo">Your photo</span>
             <button class="btn move-up" type="button" aria-label="Move up" disabled>Up</button>
             <button class="btn move-down" type="button" aria-label="Move down">Down</button>
             <button class="btn arm" type="button">Drop</button>
@@ -465,7 +466,7 @@
           <li class="station-row">
             <img class="thumb" data-ph="120" alt="">
             <span class="row-name">Corner bakery</span>
-            <span class="row-turn">Straight</span>
+            <span class="source-tag">Suggested</span>
             <button class="btn move-up" type="button" aria-label="Move up">Up</button>
             <button class="btn move-down" type="button" aria-label="Move down">Down</button>
             <button class="btn arm" type="button" hidden>Drop</button>
@@ -475,7 +476,7 @@
           <li class="station-row">
             <img class="thumb" data-ph="260" alt="">
             <span class="row-name"><span class="badge-pending">Name pending</span></span>
-            <span class="row-turn">Left</span>
+            <span class="source-tag">Suggested</span>
             <button class="btn move-up" type="button" aria-label="Move up">Up</button>
             <button class="btn move-down" type="button" aria-label="Move down" disabled>Down</button>
             <button class="btn arm" type="button">Drop</button>
@@ -490,6 +491,49 @@
         <button id="finish-save" class="btn btn-primary" type="button" disabled>Save route</button>
       </section>
 
+      <!-- Locked: a memorised list pins the stops; only 1:1 landmark swaps stay open. -->
+      <span class="preview-label" data-s="4">S4 Fix the route (locked by a list)</span>
+      <section class="panel screen" data-s="4" data-preview-copy="locked">
+        <div class="screen-head">
+          <h2 class="screen-title">Fix the route</h2>
+          <button class="btn topbar-capture" type="button">Capture</button>
+        </div>
+        <p class="lock-reason">Retire the list first: this route holds a memorised list, so stops cannot be added,
+          dropped or moved. <a href="#list-panel">Retire the list</a></p>
+        <ol class="station-rows" aria-label="Stops, locked by a memorised list">
+          <li class="station-row">
+            <img class="thumb" data-ph="30" alt="">
+            <span class="row-name">Red front door</span>
+            <span class="source-tag" data-source="photo">Your photo</span>
+            <button class="btn move-up" type="button" aria-label="Move up" disabled>Up</button>
+            <button class="btn move-down" type="button" aria-label="Move down" disabled>Down</button>
+            <button class="btn arm" type="button" disabled>Drop</button>
+            <button class="btn row-swap" type="button" aria-label="Swap landmark, keeps stop 1">Swap</button>
+          </li>
+          <li class="station-row">
+            <img class="thumb" data-ph="120" alt="">
+            <span class="row-name">Corner bakery</span>
+            <span class="source-tag">Suggested</span>
+            <button class="btn move-up" type="button" aria-label="Move up" disabled>Up</button>
+            <button class="btn move-down" type="button" aria-label="Move down" disabled>Down</button>
+            <button class="btn arm" type="button" disabled>Drop</button>
+            <button class="btn row-swap" type="button" aria-label="Swap landmark, keeps stop 2">Swap</button>
+            <p class="swap-warn">3 items on this stop need re-learning</p>
+          </li>
+          <li class="station-row">
+            <img class="thumb" data-ph="180" alt="">
+            <span class="row-name">Fountain square</span>
+            <span class="source-tag">Suggested</span>
+            <button class="btn move-up" type="button" aria-label="Move up" disabled>Up</button>
+            <button class="btn move-down" type="button" aria-label="Move down" disabled>Down</button>
+            <button class="btn arm" type="button" disabled>Drop</button>
+            <button class="btn row-swap" type="button" aria-label="Swap landmark, keeps stop 3">Swap</button>
+          </li>
+        </ol>
+        <button class="btn" type="button" disabled>Add a stop</button>
+        <button class="btn btn-primary" type="button">Save route</button>
+      </section>
+
       <!-- S5 Route view -->
       <span class="preview-label" data-s="5">S5 Route view (ready)</span>
       <section id="route-view" class="panel screen" data-s="5">
@@ -497,7 +541,7 @@
           <h2 class="screen-title">Morning walk to the station <span class="route-kind">Daily</span></h2>
           <button class="btn topbar-capture" type="button">Capture</button>
         </div>
-        <p class="lede" hidden>No stations yet. Start a new walk to add some.</p>
+        <p class="lede" hidden>No stops yet. Set the route to add some.</p>
         <svg id="route-map" class="route-map" viewBox="0 0 320 200" role="img" aria-label="Route map, 6 stations">
           <polyline class="route-line" points="30,170 80,130 130,150 180,90 240,110 290,40"></polyline>
           <g class="station-node lit"><circle cx="30" cy="170" r="10"></circle><text x="30" y="170">1</text></g>
@@ -512,13 +556,16 @@
         <ol id="route-view-stations" class="station-list">
           <li class="station-item"><img class="thumb" data-ph="30" alt=""><span class="item-num">1</span>
             <span class="item-name">Red front door</span><span class="item-turn">Right</span>
+            <span class="source-tag" data-source="photo">Your photo</span>
             <span class="tag">Traffic</span><span class="tag">Rain</span><span class="learned">Learned</span></li>
           <li class="station-item"><img class="thumb" data-ph="120" alt=""><img class="item-baseline" data-ph="90" alt="">
             <span class="item-num">2</span><span class="item-name">Corner bakery</span><span class="item-turn">Straight</span>
+            <span class="source-tag">Suggested</span>
             <span class="tag">Chatter</span><span class="tag">Bread</span><span class="learned">Learned</span>
             <span class="model-chip">Mapillary</span></li>
           <li class="station-item"><img class="thumb" data-ph="180" alt=""><span class="item-num">3</span>
             <span class="item-name">Fountain square</span><span class="item-turn">Left</span>
+            <span class="source-tag">Suggested</span>
             <span class="tag">Water</span><span class="tag">Coffee</span></li>
         </ol>
         <button id="route-view-practice" class="btn btn-primary" type="button">Practise this route</button>
