@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.25] - 2026-11-01
+
+### Changed
+
+- Taste (gustatory) cue is optional in associations; channels constant renamed MULTISENSORY_CHANNELS; docs say multisensory (MEM-022).
+
 ## [0.20.24] - 2026-10-31
 
 ### Added
