@@ -2,6 +2,7 @@
 
 Usage: uv run --no-project --with playwright python scripts/screenshot_design.py <base_url> <outdir>
          [--screen S]... [--width NAME=WxH]... [--theme light|dark]...
+<base_url> is preview.html's URL; screens 5-9 load from its sibling preview-2.html.
 Defaults: screens 1 2 3 4 5,6 7 8 9; widths phone=375x812 wide=1000x800; themes light dark.
 A flag replaces its default list. Prints "ERR <msg>" per error then "shots=<n> errors=<m>".
 Exits 0 when clean, 1 on any page/console error, 2 on bad usage.
@@ -17,6 +18,8 @@ DEFAULT_SCREENS = ["1", "2", "3", "4", "5,6", "7", "8", "9"]
 DEFAULT_WIDTHS = [("phone", (375, 812)), ("wide", (1000, 800))]
 DEFAULT_THEMES = ["light", "dark"]
 SETTLE_MS = 300
+PAGE_2 = "preview-2.html"
+PAGE_2_SCREENS = {"5", "6", "7", "8", "9"}
 
 Width = tuple[str, tuple[int, int]]  # (name, (width, height))
 
@@ -40,11 +43,18 @@ def parse_width(text: str) -> Width:
     return name, (w, h)
 
 
+def page_url(base_url: str, screen: str) -> str:
+    """preview.html (base_url) renders S1-S4; its sibling preview-2.html renders S5-S9."""
+    if screen.split(",")[0] in PAGE_2_SCREENS:
+        return base_url.rsplit("/", 1)[0] + "/" + PAGE_2
+    return base_url
+
+
 def shot_plan(base_url: str, screens: list[str], widths: list[Width], themes: list[str]) -> list[Shot]:
     # A screen like "5,6" is passed through as the preview's s= value; commas become dashes in the filename.
     return [
         Shot(
-            base_url + "?s=" + s + ("&theme=dark" if t == "dark" else ""),
+            page_url(base_url, s) + "?s=" + s + ("&theme=dark" if t == "dark" else ""),
             f"s{s.replace(',', '-')}_{name}_{t}.png",
             viewport,
         )

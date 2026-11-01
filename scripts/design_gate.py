@@ -14,6 +14,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import posixpath
 import re
 import subprocess
 import sys
@@ -28,7 +29,7 @@ import check_route_css  # noqa: E402
 import screenshot_design  # noqa: E402
 
 DESIGN_PREFIX = "docs/design/"
-CSS_PATH = "docs/design/route/route.css"
+ROUTE_DIR = "docs/design/route/"
 CONTRACT_PATH = "docs/design/route/route-contract.md"
 PREVIEW_PATH = "docs/design/route/preview.html"
 # preview.html links ../../../static/*.css, so the render tree needs static/ beside docs/design/.
@@ -125,16 +126,23 @@ def real_shoot(repo: Path, rev: str, outdir: str) -> dict:
     with tempfile.TemporaryDirectory() as tree:
         with tarfile.open(fileobj=io.BytesIO(archive.stdout)) as tar:
             tar.extractall(tree, filter="data")
-        preview = Path(tree) / PREVIEW_PATH
-        if not preview.is_file():  # e.g. a merge-base older than the preview page
-            return {"errors": [f"{PREVIEW_PATH} absent at {rev}"], "shots": []}
-        url = preview.as_uri()
+        route_dir = Path(tree) / ROUTE_DIR
         plan = screenshot_design.shot_plan(
-            url,
+            (route_dir / Path(PREVIEW_PATH).name).as_uri(),
             screenshot_design.DEFAULT_SCREENS,
             screenshot_design.DEFAULT_WIDTHS,
             screenshot_design.DEFAULT_THEMES,
         )
+
+        def page(shot) -> str:
+            return shot.url.split("?", 1)[0].rsplit("/", 1)[1]
+
+        # A page absent at `rev` (e.g. a merge-base older than preview-2.html) skips only its own shots.
+        absent = {page(s) for s in plan if not (route_dir / page(s)).is_file()}
+        errors += [f"{ROUTE_DIR}{name} absent at {rev}" for name in sorted(absent)]
+        plan = [s for s in plan if page(s) not in absent]
+        if not plan:
+            return {"errors": errors, "shots": []}
         with sync_playwright() as p:
             browser = p.chromium.launch(channel="chrome")
             try:
@@ -225,13 +233,39 @@ def _render_problems(render: dict, tip_dir: Path) -> tuple[list[str], dict[str, 
     return problems, hashes
 
 
+def linked_route_css(preview_html: str) -> list[str]:
+    """Repo paths of the stylesheets preview.html links that stay inside ROUTE_DIR, in link order."""
+    paths = []
+    for tag in re.findall(r"<link\b[^>]*>", preview_html, flags=re.I):
+        href = re.search(r"\bhref\s*=\s*[\"']([^\"']+)[\"']", tag, flags=re.I)
+        if not href or not re.search(r"\brel\s*=\s*[\"']?stylesheet\b", tag, flags=re.I):
+            continue
+        # Rooted (/x) and scheme (https:) hrefs, and any that normalise out of the dir, are not route CSS.
+        path = posixpath.normpath(ROUTE_DIR + href.group(1))
+        if not re.match(r"(/|[a-z][a-z0-9+.-]*:)", href.group(1), flags=re.I) and path.startswith(ROUTE_DIR):
+            paths.append(path)
+    return paths
+
+
+def _route_css(repo: Path, tip: str) -> tuple[str, list[str]]:
+    """The tip's route CSS (preview.html's in-dir sheets, concatenated) plus a problem per missing sheet."""
+    sheets: list[str] = []
+    problems: list[str] = []
+    for path in linked_route_css(_git_ok(repo, "show", f"{tip}:{PREVIEW_PATH}")):
+        try:
+            sheets.append(_git_ok(repo, "show", f"{tip}:{path}"))
+        except RuntimeError:
+            problems.append(f"{path} linked from {PREVIEW_PATH} but missing at tip {tip[:12]}")
+    return "\n".join(sheets), problems
+
+
 def _name_problems(repo: Path, tip: str, render: dict) -> list[str]:
     try:
-        css = _git_ok(repo, "show", f"{tip}:{CSS_PATH}")
+        css, problems = _route_css(repo, tip)
         contract = _git_ok(repo, "show", f"{tip}:{CONTRACT_PATH}")
     except RuntimeError as exc:
         return [f"route css/contract unreadable at tip: {exc}"]
-    problems = [f"route.css: {e}" for e in check_route_css.check(css, contract)]
+    problems += [f"route css: {e}" for e in check_route_css.check(css, contract)]
     css_ids, css_classes = css_selector_names(css)
     doc_ids, doc_classes = contract_names(contract)
     dom_ids = {i for s in render.get("shots", []) for i in s.get("ids", [])}

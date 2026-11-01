@@ -1,16 +1,19 @@
 """Mechanically check the route design CSS against the design prompt's hard constraints (MEM-067).
 
-Usage: uv run python scripts/check_route_css.py <css> <contract>
-  e.g. uv run python scripts/check_route_css.py \
-         docs/design/route/route.css docs/design/route/route-contract.md
-Prints one "FAIL <problem>" line per problem, then "OK" (exit 0) or "<n> problem(s)" (exit 1).
+Usage: uv run python scripts/check_route_css.py <css>... <contract>
+  e.g. uv run python scripts/check_route_css.py docs/design/route/route.css \
+         docs/design/route/route-s1-s2.css docs/design/route/route-s3.css \
+         docs/design/route/route-s4-s5.css docs/design/route/route-s6-s9.css \
+         docs/design/route/route-contract.md
+The css files are checked concatenated in the given order (preview.html's link order); the contract is
+the last argument. Prints one "FAIL <problem>" line per problem, then "OK" (exit 0) or "<n> problem(s)" (exit 1).
 Exits 2 on bad usage.
 """
 
 import re
 import sys
 
-USAGE = "usage: check_route_css.py <css> <contract>"
+USAGE = "usage: check_route_css.py <css>... <contract>"
 
 ALLOWED_TOKENS = set(
     "bg surface surface-2 ink muted line primary on-primary lamp lamp-ink lamp-soft ok ok-soft "
@@ -96,12 +99,16 @@ def check(css: str, contract: str) -> list[str]:
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 2:
+    if len(argv) < 2:
         print(USAGE, file=sys.stderr)
         return 2
-    css_path, contract_path = argv
-    with open(css_path, encoding="utf-8") as f:
-        css = f.read()
+    *css_paths, contract_path = argv
+    sheets = []
+    for path in css_paths:
+        with open(path, encoding="utf-8") as f:
+            sheets.append(f.read())
+    # Newline-joined so a sheet without a trailing newline cannot fuse with the next one's first rule.
+    css = "\n".join(sheets)
     with open(contract_path, encoding="utf-8") as f:
         contract = f.read()
     errs = check(css, contract)
