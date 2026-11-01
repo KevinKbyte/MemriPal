@@ -5,22 +5,40 @@
 :root {
   --tabbar-h: 4rem;
   --drawer-w: min(22rem, 88vw);
+  /* Topic palette (djb2(topic) % 8). Light: every hue >= 4.7:1 on --surface-2 land and >= 5.7:1 on
+     --surface streets; --tc-on (white) >= 6.1:1 on each, for marker numerals. */
+  --tc-0: #2E4877; --tc-1: #9A3A1D; --tc-2: #2F6B3A; --tc-3: #6A3D8F;
+  --tc-4: #1D6670; --tc-5: #9B2C6B; --tc-6: #6B5A12; --tc-7: #A04800;
+  --tc-on: #FFFFFF;
 }
 
-/* Topic colour pair: line/marker fill plus the marker numeral colour that keeps >= 4.5:1 on it. */
-.topic-biology {
-  --topic: var(--primary);
-  --on-topic: var(--on-primary);
+/* Dark: every hue >= 6.5:1 on dark land and streets; --tc-on >= 8.6:1 on each. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --tc-0: #AFC5EB; --tc-1: #F2A588; --tc-2: #A0CE91; --tc-3: #CDB0F0;
+    --tc-4: #8FD6D2; --tc-5: #F2A6CF; --tc-6: #E2CF7A; --tc-7: #F0B870;
+    --tc-on: #151B27;
+  }
 }
 
-.topic-wedding {
-  --topic: var(--bad);
-  --on-topic: var(--on-bad);
+:root[data-theme="dark"] {
+  --tc-0: #AFC5EB; --tc-1: #F2A588; --tc-2: #A0CE91; --tc-3: #CDB0F0;
+  --tc-4: #8FD6D2; --tc-5: #F2A6CF; --tc-6: #E2CF7A; --tc-7: #F0B870;
+  --tc-on: #151B27;
 }
 
-.topic-none {
-  --topic: var(--muted);
-  --on-topic: var(--surface);
+/* Topic colour pair: line/marker fill plus the marker numeral colour. */
+.tc-0 { --topic: var(--tc-0); }
+.tc-1 { --topic: var(--tc-1); }
+.tc-2 { --topic: var(--tc-2); }
+.tc-3 { --topic: var(--tc-3); }
+.tc-4 { --topic: var(--tc-4); }
+.tc-5 { --topic: var(--tc-5); }
+.tc-6 { --topic: var(--tc-6); }
+.tc-7 { --topic: var(--tc-7); }
+
+[class*="tc-"] {
+  --on-topic: var(--tc-on);
 }
 
 html,
@@ -60,6 +78,7 @@ body.map-shell {
   display: block;
   width: 100%;
   height: 100%;
+  touch-action: none;
 }
 
 .map-land {
@@ -107,55 +126,231 @@ body.map-shell {
   stroke-linejoin: round;
 }
 
+/* Sizes below are calc(var(--k) * Npx): --k is map units per CSS px (set by script on every viewBox
+   change), so these render at N screen px at any zoom. */
 .route-halo {
   stroke: var(--surface);
-  stroke-width: 10;
+  stroke-width: calc(var(--k, 1) * 11px);
 }
 
 .route-line {
   stroke: var(--topic);
-  stroke-width: 5;
+  stroke-width: calc(var(--k, 1) * 6px);
 }
 
-.topic-none .route-line {
-  stroke-dasharray: 12 9;
+.reveal {
+  fill: none;
+  stroke: #fff;
+  stroke-width: calc(var(--k, 1) * 24px);
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-.route:not(.is-current) {
-  opacity: 0.8;
+/* ---------- Landmarks ---------- */
+
+.lm {
+  cursor: pointer;
+  outline: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
 }
 
-.route.is-current .route-halo {
-  stroke-width: 17;
+.lm-hit {
+  r: calc(var(--k, 1) * 16px);
+  fill: transparent;
+  pointer-events: all;
 }
 
-.route.is-current .route-line {
-  stroke-width: 10;
-}
-
-.stn circle {
-  r: 13px;
+.lm-dot {
+  r: calc(var(--k, 1) * 13px);
   fill: var(--topic);
   stroke: var(--surface);
-  stroke-width: 3;
+  stroke-width: calc(var(--k, 1) * 2.5px);
 }
 
-.stn text {
+.lm-num {
   fill: var(--on-topic);
-  font: 700 14px/1 var(--body);
+  font: 700 calc(var(--k, 1) * 13px) / 1 var(--body);
   text-anchor: middle;
   dominant-baseline: central;
+  pointer-events: none;
 }
 
-.is-current .stn circle {
-  r: 20px;
+.lm-emoji {
+  font-size: calc(var(--k, 1) * 22px);
+  text-anchor: middle;
+  dominant-baseline: central;
+  /* Up and to the right, so an emoji never sits on a path that leaves its dot straight upward. */
+  transform: translate(calc(var(--k, 1) * 20px), calc(var(--k, 1) * -24px));
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.35));
 }
 
-.is-current .stn text {
-  font-size: 20px;
+.lm-mark,
+.lm-emoji {
+  transform-box: fill-box;
+  transform-origin: center;
 }
 
-/* ---------- Floating chip and legend ---------- */
+.lm:focus-visible .lm-dot {
+  stroke: var(--focus);
+  stroke-width: calc(var(--k, 1) * 4px);
+}
+
+/* Off-route landmarks: small grey markers, no number or emoji; the hit circle keeps a 24px target. */
+.lm-off .lm-hit {
+  r: calc(var(--k, 1) * 12px);
+}
+
+.lm-off .lm-dot {
+  r: calc(var(--k, 1) * 6px);
+  fill: var(--muted);
+  stroke-width: calc(var(--k, 1) * 2px);
+}
+
+#offroute[hidden] {
+  display: none;
+}
+
+/* Route switch: landmarks wait out the pan and draw-in, then pop in order (--i set by script). */
+.is-arriving .lm {
+  visibility: hidden;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .is-popping .lm-mark {
+    animation: lm-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    animation-delay: calc(var(--i, 0) * 110ms);
+  }
+
+  .is-popping .lm-emoji {
+    animation: lm-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both, lm-float 3s ease-in-out infinite;
+    animation-delay: calc(var(--i, 0) * 110ms + 120ms), 0s;
+  }
+
+  .route:not(.is-popping) .lm-emoji {
+    animation: lm-float 3s ease-in-out infinite;
+    animation-delay: calc(var(--i, 0) * -400ms);
+  }
+}
+
+@keyframes lm-pop {
+  from {
+    scale: 0;
+    opacity: 0;
+  }
+
+  to {
+    scale: 1;
+    opacity: 1;
+  }
+}
+
+@keyframes lm-float {
+  50% {
+    translate: 0 calc(var(--k, 1) * -3px);
+  }
+}
+
+/* Segmented radios: the native inputs stay focusable (visually hidden), the labels are the segments. */
+.lm-filter {
+  position: fixed;
+  left: 0.75rem;
+  bottom: calc(var(--tabbar-h) + 0.75rem);
+  display: flex;
+  margin: 0;
+  padding: 0.1875rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.lm-filter input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.lm-filter label {
+  display: flex;
+  align-items: center;
+  min-height: 2.25rem;
+  padding: 0 0.875rem;
+  border-radius: 999px;
+  color: var(--ink);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.lm-filter input:checked + label {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.lm-filter input:focus-visible + label {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.lm-card {
+  position: fixed;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  width: min(18rem, calc(100vw - 1rem));
+  padding: 0.625rem 0.5rem 0.625rem 0.875rem;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+}
+
+.lm-card[hidden] {
+  display: none;
+}
+
+.lm-card-emoji {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.lm-card-title {
+  margin: 0;
+  font-size: 1.0625rem;
+}
+
+.lm-card-meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.lm-card-close {
+  align-self: start;
+  min-width: 2.75rem;
+  padding: 0;
+  font-size: 1.25rem;
+}
+
+.map-attrib {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.25rem;
+  margin: 0;
+  padding: 0 0.375rem;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  color: var(--muted);
+  font-size: 0.6875rem;
+  line-height: 1.5;
+}
+
+/* ---------- Floating route chip ---------- */
 
 .map-top {
   position: fixed;
@@ -168,8 +363,7 @@ body.map-shell {
   pointer-events: none;
 }
 
-.map-chip,
-.map-legend {
+.map-chip {
   margin: 0;
   background: var(--surface);
   border: 1px solid var(--line);
@@ -191,31 +385,20 @@ body.map-shell {
   font-size: 0.875rem;
 }
 
-.map-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem 0.75rem;
-  padding: 0.25rem 0.625rem;
-  border-radius: 10px;
-  list-style: none;
-  font-size: 0.8125rem;
-}
-
-.map-legend li {
+/* Topic text stays --ink on --surface; only the dot carries the topic hue. */
+.chip-topic {
   display: flex;
   align-items: center;
   gap: 0.375rem;
+  font-size: 0.875rem;
 }
 
-.legend-swatch {
-  width: 1.25rem;
-  height: 0.3125rem;
-  border-radius: 999px;
+.topic-dot {
+  flex: none;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
   background: var(--topic);
-}
-
-.topic-none .legend-swatch {
-  background: repeating-linear-gradient(90deg, var(--topic) 0 0.375rem, transparent 0.375rem 0.625rem);
 }
 
 /* ---------- Right drawer (details/summary: opens and closes without script) ---------- */
@@ -323,10 +506,6 @@ body.map-shell {
   grid-row: span 2;
   border-radius: 999px;
   background: var(--topic);
-}
-
-.topic-none .pick-swatch {
-  background: repeating-linear-gradient(180deg, var(--topic) 0 0.375rem, transparent 0.375rem 0.625rem);
 }
 
 .pick-name {

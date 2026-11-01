@@ -3,11 +3,13 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>MemriPal map-first shell (skeleton)</title>
-    <!-- Design skeleton only (MEM-072): map-first home per owner direction. Not part of the app.
+    <title>MemriPal map-first shell (design preview)</title>
+    <!-- Design preview only (MEM-072): map-first home per owner direction. Not part of the app.
          Serve the repo root over HTTP and open /docs/design/route/map-shell.html.
          Query: ?drawer=open (or ?s=open, for scripts/screenshot_design.py --screen open) opens the route
-         drawer; ?theme=dark|light forces a theme. -->
+         drawer; ?s=landmark opens a landmark card; ?lm=all (or ?s=all) shows every landmark, ?lm=route
+         (default) only this route's; ?theme=dark|light forces a theme. Only the selected route is drawn.
+         Emoji are numeric entities or \u escapes so the file stays ASCII. -->
     <link rel="icon" href="../../../static/icon.svg">
     <link rel="stylesheet" href="../../../static/style.css">
     <link rel="stylesheet" href="../../../static/theme-painterly.css">
@@ -18,62 +20,54 @@
     <main class="shell">
       <div class="map-wrap">
         <svg id="map" class="map" viewBox="30 50 720 780" preserveAspectRatio="xMidYMid meet"
-             role="img" aria-labelledby="map-title">
+             role="group" aria-labelledby="map-title">
           <title id="map-title">Map with 3 routes; Morning walk to the station is framed</title>
+          <defs>
+            <!-- Reveal mask: a solid stroke drawn in over the path, so a dashed route draws in too. -->
+            <mask id="reveal" maskUnits="userSpaceOnUse" x="-1500" y="-1500" width="4000" height="4000">
+              <polyline id="reveal-line" class="reveal" points="0,0"></polyline>
+            </mask>
+          </defs>
           <rect class="map-land" x="-1500" y="-1500" width="4000" height="4000"></rect>
           <path class="map-river" d="M-1500 200 C0 140 300 240 600 180 S1100 150 2500 210"></path>
-          <path class="map-street-casing" d="M-1500 100H2500M-1500 260H2500M-1500 420H2500M-1500 580H2500M-1500 740H2500M-1500 900H2500M-1500 1060H2500M-60 -1500V2500M120 -1500V2500M300 -1500V2500M480 -1500V2500M660 -1500V2500M840 -1500V2500M1020 -1500V2500"></path>
-          <path class="map-street" d="M-1500 100H2500M-1500 260H2500M-1500 420H2500M-1500 580H2500M-1500 740H2500M-1500 900H2500M-1500 1060H2500M-60 -1500V2500M120 -1500V2500M300 -1500V2500M480 -1500V2500M660 -1500V2500M840 -1500V2500M1020 -1500V2500"></path>
+          <path class="map-street-casing" d="M-1500 -1180H2500M-1500 -1020H2500M-1500 -860H2500M-1500 -700H2500M-1500 -540H2500M-1500 -380H2500M-1500 -220H2500M-1500 -60H2500M-1500 100H2500M-1500 260H2500M-1500 420H2500M-1500 580H2500M-1500 740H2500M-1500 900H2500M-1500 1060H2500M-1500 1220H2500M-1500 1380H2500M-1500 1540H2500M-1500 1700H2500M-1500 1860H2500M-1500 2020H2500M-1500 2180H2500M-1500 2340H2500M-1320 -1500V2500M-1140 -1500V2500M-960 -1500V2500M-780 -1500V2500M-600 -1500V2500M-420 -1500V2500M-240 -1500V2500M-60 -1500V2500M120 -1500V2500M300 -1500V2500M480 -1500V2500M660 -1500V2500M840 -1500V2500M1020 -1500V2500M1200 -1500V2500M1380 -1500V2500M1560 -1500V2500M1740 -1500V2500M1920 -1500V2500M2100 -1500V2500M2280 -1500V2500"></path>
+          <path class="map-street" d="M-1500 -1180H2500M-1500 -1020H2500M-1500 -860H2500M-1500 -700H2500M-1500 -540H2500M-1500 -380H2500M-1500 -220H2500M-1500 -60H2500M-1500 100H2500M-1500 260H2500M-1500 420H2500M-1500 580H2500M-1500 740H2500M-1500 900H2500M-1500 1060H2500M-1500 1220H2500M-1500 1380H2500M-1500 1540H2500M-1500 1700H2500M-1500 1860H2500M-1500 2020H2500M-1500 2180H2500M-1500 2340H2500M-1320 -1500V2500M-1140 -1500V2500M-960 -1500V2500M-780 -1500V2500M-600 -1500V2500M-420 -1500V2500M-240 -1500V2500M-60 -1500V2500M120 -1500V2500M300 -1500V2500M480 -1500V2500M660 -1500V2500M840 -1500V2500M1020 -1500V2500M1200 -1500V2500M1380 -1500V2500M1560 -1500V2500M1740 -1500V2500M1920 -1500V2500M2100 -1500V2500M2280 -1500V2500"></path>
           <rect class="map-park" x="560" y="520" width="260" height="240" rx="28"></rect>
           <ellipse class="map-water" cx="690" cy="640" rx="44" ry="30"></ellipse>
           <text class="map-label" x="380" y="196">Ash River</text>
           <text class="map-label" x="150" y="412">Station Road</text>
           <text class="map-label" x="690" y="752">Elm Park</text>
 
-          <g id="routes">
-            <g id="route-park" class="route topic-none">
-              <polyline class="route-halo" points="600,560 780,560 780,720 600,720 600,560"></polyline>
-              <polyline class="route-line" points="600,560 780,560 780,720 600,720 600,560"></polyline>
-              <g class="stn"><circle cx="600" cy="560" r="13"></circle><text x="600" y="560">1</text></g>
-              <g class="stn"><circle cx="780" cy="640" r="13"></circle><text x="780" y="640">2</text></g>
-              <g class="stn"><circle cx="640" cy="720" r="13"></circle><text x="640" y="720">3</text></g>
-            </g>
-            <g id="route-grandma" class="route topic-wedding">
-              <polyline class="route-halo" points="300,900 840,900 840,260"></polyline>
-              <polyline class="route-line" points="300,900 840,900 840,260"></polyline>
-              <g class="stn"><circle cx="300" cy="900" r="13"></circle><text x="300" y="900">1</text></g>
-              <g class="stn"><circle cx="480" cy="900" r="13"></circle><text x="480" y="900">2</text></g>
-              <g class="stn"><circle cx="660" cy="900" r="13"></circle><text x="660" y="900">3</text></g>
-              <g class="stn"><circle cx="840" cy="900" r="13"></circle><text x="840" y="900">4</text></g>
-              <g class="stn"><circle cx="840" cy="740" r="13"></circle><text x="840" y="740">5</text></g>
-              <g class="stn"><circle cx="840" cy="580" r="13"></circle><text x="840" y="580">6</text></g>
-              <g class="stn"><circle cx="840" cy="420" r="13"></circle><text x="840" y="420">7</text></g>
-              <g class="stn"><circle cx="840" cy="260" r="13"></circle><text x="840" y="260">8</text></g>
-            </g>
-            <g id="route-morning" class="route topic-biology is-current">
-              <polyline class="route-halo" points="120,740 300,740 300,580 480,580 480,420 660,420 660,260"></polyline>
-              <polyline class="route-line" points="120,740 300,740 300,580 480,580 480,420 660,420 660,260"></polyline>
-              <g class="stn"><circle cx="120" cy="740" r="13"></circle><text x="120" y="740">1</text></g>
-              <g class="stn"><circle cx="300" cy="740" r="13"></circle><text x="300" y="740">2</text></g>
-              <g class="stn"><circle cx="300" cy="580" r="13"></circle><text x="300" y="580">3</text></g>
-              <g class="stn"><circle cx="480" cy="500" r="13"></circle><text x="480" y="500">4</text></g>
-              <g class="stn"><circle cx="660" cy="420" r="13"></circle><text x="660" y="420">5</text></g>
-              <g class="stn"><circle cx="660" cy="260" r="13"></circle><text x="660" y="260">6</text></g>
-            </g>
-          </g>
+          <!-- Off-route landmarks (filter "All landmarks"): only those near the viewBox exist in the DOM. -->
+          <g id="offroute"></g>
+          <!-- The one drawn route: path plus numbered landmarks, rebuilt on every pick. -->
+          <g id="route" class="route"></g>
         </svg>
+        <!-- Reserved slot: map tiles (if adopted) require this credit in the map corner. -->
+        <p class="map-attrib">&#xA9; OpenStreetMap contributors</p>
       </div>
 
       <div class="map-top">
-        <p class="map-chip" aria-live="polite">
+        <p id="chip" class="map-chip" aria-live="polite">
           <span id="chip-name" class="map-chip-name">Morning walk to the station</span>
+          <span class="chip-topic"><span class="topic-dot" aria-hidden="true"></span><span id="chip-topic"></span></span>
           <span id="chip-meta" class="map-chip-meta">Daily, 6 stations</span>
         </p>
-        <ul class="map-legend" aria-label="Route colour by topic">
-          <li class="topic-biology"><span class="legend-swatch" aria-hidden="true"></span>Biology exam</li>
-          <li class="topic-wedding"><span class="legend-swatch" aria-hidden="true"></span>Wedding toast</li>
-          <li class="topic-none"><span class="legend-swatch" aria-hidden="true"></span>No list yet</li>
-        </ul>
+      </div>
+
+      <fieldset class="lm-filter">
+        <legend class="vh">Landmarks shown</legend>
+        <input id="lm-route" type="radio" name="lm" value="route" checked><label for="lm-route">This route</label>
+        <input id="lm-all" type="radio" name="lm" value="all"><label for="lm-all">All landmarks</label>
+      </fieldset>
+
+      <div id="lm-card" class="lm-card" role="dialog" aria-labelledby="lm-card-title" hidden>
+        <span id="lm-card-emoji" class="lm-card-emoji" aria-hidden="true"></span>
+        <div class="lm-card-text">
+          <h2 id="lm-card-title" class="lm-card-title"></h2>
+          <p id="lm-card-meta" class="lm-card-meta"></p>
+        </div>
+        <button id="lm-card-close" class="lm-card-close" type="button" aria-label="Close landmark card">&#xD7;</button>
       </div>
 
       <details id="drawer" class="drawer">
@@ -154,70 +148,305 @@
     </nav>
 
     <script>
-      // Skeleton behaviour: preview params, and picking a route reframes the map by animating the SVG viewBox.
+      // Preview behaviour: one drawn route, landmark cards, and a virtualized off-route landmark layer.
       (function () {
+        "use strict";
         var q = new URLSearchParams(location.search);
         var root = document.documentElement;
         var theme = q.get("theme");
         if (theme === "dark" || theme === "light") root.setAttribute("data-theme", theme);
-        if (q.get("drawer") === "open" || q.get("s") === "open") document.getElementById("drawer").open = true;
+        var s = q.get("s");
+        if (q.get("drawer") === "open" || s === "open") document.getElementById("drawer").open = true;
 
+        var NS = "http://www.w3.org/2000/svg";
         var map = document.getElementById("map");
-        var picks = Array.prototype.slice.call(document.querySelectorAll(".route-pick"));
+        var routeG = document.getElementById("route");
+        var offG = document.getElementById("offroute");
+        var revealLine = document.getElementById("reveal-line");
         var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        // Frame padding in map units; extra top room clears the chip and legend, extra right room the drawer handle.
-        var PAD = 70, TOP = 110, RIGHT = 90, MIN = 420;
-        var anim = 0;
 
-        function frameOf(id) {
-          var b = document.getElementById("route-" + id).getBBox();
-          var w = Math.max(b.width, MIN), h = Math.max(b.height, MIN);
-          var cx = b.x + b.width / 2, cy = b.y + b.height / 2;
-          return [cx - w / 2 - PAD, cy - h / 2 - PAD - TOP, w + 2 * PAD + RIGHT, h + 2 * PAD + TOP];
+        // ---------- DATA: 6 hand routes, seeded padding to 1000, 125 topics ----------
+        function djb2(str) {
+          var h = 5381;
+          for (var i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) >>> 0;
+          return h;
         }
+        function mulberry32(a) {
+          return function () {
+            a = (a + 0x6D2B79F5) | 0;
+            var t = Math.imul(a ^ (a >>> 15), 1 | a);
+            t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+          };
+        }
+        var SUBJ = ["Biology", "Chemistry", "Spanish", "French", "History", "Physics", "Poetry", "Guitar chords",
+          "Chess openings", "Anatomy", "Contract law", "Music theory", "Geography", "Kanji", "Statistics",
+          "Art history", "Economics", "Philosophy", "Astronomy", "Recipes", "Bird calls", "Wedding", "Python",
+          "Botany", "Wine regions"];
+        var KIND = ["basics", "exam", "vocabulary", "review", "toast"];
+        var TOPICS = [];
+        SUBJ.forEach(function (a) { KIND.forEach(function (b) { TOPICS.push(a + " " + b); }); });
+        TOPICS[1] = "Biology exam, chapter 3";
+        function tc(topic) { return "tc-" + (djb2(topic) % 8); }
 
+        // Station: [x, y, name, emoji code point]. Points: path corners on the street grid.
+        var HAND = [
+          { id: "morning", name: "Morning walk to the station", often: "Daily", topic: TOPICS[1],
+            points: [[120, 740], [300, 740], [300, 580], [480, 580], [480, 420], [660, 420], [660, 260]],
+            stations: [[120, 740, "Front door", 0x1F6AA], [300, 740, "Bakery", 0x1F950], [300, 580, "Bus stop", 0x1F68F],
+              [480, 500, "Old oak", 0x1F333], [660, 420, "Fountain", 0x26F2], [660, 260, "Station clock", 0x23F0]] },
+          { id: "grandma", name: "Grandma's house", often: "Occasional", topic: "Wedding toast",
+            points: [[300, 900], [840, 900], [840, 260]],
+            stations: [[300, 900, "Garden gate", 0x1F33B], [480, 900, "Post box", 0x1F4EE], [660, 900, "Cafe", 0x2615],
+              [840, 900, "Church", 0x26EA], [840, 740, "Pond", 0x1F986], [840, 580, "Tennis court", 0x1F3BE],
+              [840, 420, "Library", 0x1F4DA], [840, 260, "Grandma's door", 0x1F475]] },
+          { id: "park", name: "Park loop", often: "Daily", topic: "Bird calls review",
+            points: [[600, 560], [780, 560], [780, 720], [600, 720], [600, 560]],
+            stations: [[600, 560, "Park gate", 0x1F6AA], [780, 640, "Bandstand", 0x1F3B5], [640, 720, "Duck pond", 0x1F986]] },
+          { id: "riverside", name: "Riverside run", often: "Weekly", topic: "Spanish vocabulary",
+            points: [[-1140, 260], [-420, 260], [-420, 100]],
+            stations: [[-1140, 260, "Boathouse", 0x1F6A3], [-780, 260, "Pier", 0x2693], [-420, 260, "Footbridge", 0x1F309],
+              [-420, 100, "Mill", 0x1F3ED]] },
+          { id: "market", name: "Saturday market", often: "Weekly", topic: "Recipes basics",
+            points: [[1020, 580], [1560, 580], [1560, 900]],
+            stations: [[1020, 580, "Fruit stall", 0x1F34E], [1200, 580, "Cheese cart", 0x1F9C0], [1380, 580, "Flower stand", 0x1F337],
+              [1560, 580, "Fish market", 0x1F41F], [1560, 900, "Clock tower", 0x1F55B]] },
+          { id: "hill", name: "Hill climb", often: "Occasional", topic: "Astronomy review",
+            points: [[300, 1380], [300, 1860], [840, 1860]],
+            stations: [[300, 1380, "Trailhead", 0x1F97E], [300, 1700, "Lookout", 0x1F52D], [480, 1860, "Stone wall", 0x1FAA8],
+              [840, 1860, "Summit cairn", 0x26F0]] }
+        ];
+        var PLACES = [["Corner shop", 0x1F3EA], ["Bench", 0x1FA91], ["Bridge", 0x1F309], ["Mailbox", 0x1F4EB],
+          ["Bike rack", 0x1F6B2], ["Mural", 0x1F3A8], ["Bus shelter", 0x1F68F], ["Statue", 0x1F5FF],
+          ["School", 0x1F3EB], ["Pharmacy", 0x1F48A], ["Pizza place", 0x1F355], ["Gym", 0x1F3CB]];
+        var WHEN = ["Evening", "Lunch", "Sunday", "Errand", "Dog", "Gym", "School", "Office"];
+        var WALK = ["loop", "run", "walk", "route", "stroll"];
+        var OFTEN = ["Daily", "Weekly", "Occasional"];
+        var X0 = -1320, DX = 180, NX = 21, Y0 = -1180, DY = 160, NY = 22;
+        var ROUTES = HAND.slice();
+        var rnd = mulberry32(72);
+        function pick(arr) { return arr[Math.floor(rnd() * arr.length)]; }
+        for (var n = ROUTES.length; n < 1000; n++) {
+          var gx = Math.floor(rnd() * NX), gy = Math.floor(rnd() * NY);
+          var pts = [[X0 + gx * DX, Y0 + gy * DY]], legs = 2 + Math.floor(rnd() * 4);
+          for (var l = 0; l < legs; l++) {
+            var step = (1 + Math.floor(rnd() * 3)) * (rnd() < 0.5 ? -1 : 1);
+            if (l % 2) gy = Math.min(NY - 1, Math.max(0, gy + step)); else gx = Math.min(NX - 1, Math.max(0, gx + step));
+            pts.push([X0 + gx * DX, Y0 + gy * DY]);
+          }
+          ROUTES.push({ id: "r" + n, name: pick(WHEN) + " " + pick(WALK) + " " + n, often: pick(OFTEN),
+            topic: TOPICS[Math.floor(rnd() * TOPICS.length)], points: pts,
+            stations: pts.map(function (p) { var pl = pick(PLACES); return [p[0], p[1], pl[0], pl[1]]; }) });
+        }
+        var BY_ID = {};
+        ROUTES.forEach(function (r) { BY_ID[r.id] = r; r.tc = tc(r.topic); });
+        // Off-route pool: one landmark per position, first route wins (hand routes come first).
+        var POOL = [], seen = {};
+        ROUTES.forEach(function (r) {
+          r.stations.forEach(function (st) {
+            var key = st[0] + "," + st[1];
+            if (!seen[key]) { seen[key] = 1; POOL.push({ key: key, st: st, route: r }); }
+          });
+        });
+
+        // ---------- MAP ----------
+        // Frame padding in map units; extra top room clears the chip, right the drawer handle, bottom the filter.
+        var PAD = 70, TOP = 130, RIGHT = 90, BOTTOM = 70, MIN = 420;
+        var current = null, anim = 0, popTimer = 0, offNodes = {};
+        function svg(tag, attrs, parent) {
+          var el = document.createElementNS(NS, tag);
+          Object.keys(attrs).forEach(function (k) { el.setAttribute(k, attrs[k]); });
+          if (parent) parent.appendChild(el);
+          return el;
+        }
+        function vbox() { var b = map.viewBox.baseVal; return [b.x, b.y, b.width, b.height]; }
+        // --k = map units per CSS px under "meet", so CSS sizes stay constant on screen at any zoom.
         function setBox(v) {
-          map.setAttribute("viewBox", v.map(function (n) { return n.toFixed(1); }).join(" "));
+          map.setAttribute("viewBox", v.map(function (x) { return x.toFixed(1); }).join(" "));
+          var k = Math.max(v[2] / (map.clientWidth || 1), v[3] / (map.clientHeight || 1));
+          map.style.setProperty("--k", k.toFixed(4));
         }
-
-        function moveTo(target, animate) {
+        function frameOf(r) {
+          var xs = [], ys = [];
+          r.points.concat(r.stations).forEach(function (p) { xs.push(p[0]); ys.push(p[1]); });
+          var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
+          var y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+          var w = Math.max(x1 - x0, MIN), h = Math.max(y1 - y0, MIN), cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+          return [cx - w / 2 - PAD, cy - h / 2 - PAD - TOP, w + 2 * PAD + RIGHT, h + 2 * PAD + TOP + BOTTOM];
+        }
+        function tween(dur, frame, done) {
           window.cancelAnimationFrame(anim);
-          var vb = map.viewBox.baseVal;
-          var from = [vb.x, vb.y, vb.width, vb.height];
-          if (!animate || reduce) { setBox(target); return; }
           var t0 = performance.now();
           function step(now) {
-            var t = Math.min(1, (now - t0) / 450);
-            var e = 1 - Math.pow(1 - t, 3);
-            setBox(from.map(function (f, i) { return f + (target[i] - f) * e; }));
-            if (t < 1) anim = window.requestAnimationFrame(step);
+            var t = Math.min(1, (now - t0) / dur);
+            frame(1 - Math.pow(1 - t, 3));
+            if (t < 1) anim = window.requestAnimationFrame(step); else done();
           }
           anim = window.requestAnimationFrame(step);
         }
-
-        function select(pick, animate) {
-          var d = pick.dataset;
-          picks.forEach(function (p) {
-            var on = p === pick;
-            if (on) p.setAttribute("aria-current", "true"); else p.removeAttribute("aria-current");
-            document.getElementById("route-" + p.dataset.route).classList.toggle("is-current", on);
+        function landmark(parent, st, i, r, off) {
+          var g = svg("g", { "class": off ? "lm lm-off" : "lm", tabindex: "0", role: "button",
+            transform: "translate(" + st[0] + " " + st[1] + ")",
+            "aria-label": off ? st[2] + ", on " + r.name : (i + 1) + ". " + st[2] }, parent);
+          g.style.setProperty("--i", i);
+          g.lmData = { st: st, i: i, route: r, off: off };
+          svg("circle", { "class": "lm-hit" }, g);
+          var mark = svg("g", { "class": "lm-mark" }, g);
+          svg("circle", { "class": "lm-dot" }, mark);
+          if (!off) {
+            svg("text", { "class": "lm-num" }, mark).textContent = i + 1;
+            svg("text", { "class": "lm-emoji", "aria-hidden": "true" }, g).textContent = String.fromCodePoint(st[3]);
+          }
+          return g;
+        }
+        function drawRoute(r) {
+          routeG.textContent = "";
+          routeG.setAttribute("class", "route " + r.tc);
+          var pts = r.points.join(" ");
+          var lines = svg("g", { mask: "url(#reveal)" }, routeG);
+          svg("polyline", { "class": "route-halo", points: pts }, lines);
+          svg("polyline", { "class": "route-line", points: pts }, lines);
+          revealLine.setAttribute("points", pts);
+          revealLine.style.strokeDasharray = "";
+          revealLine.style.strokeDashoffset = "";
+          r.stations.forEach(function (st, i) { landmark(routeG, st, i, r, false); });
+        }
+        // Virtualized: only off-route landmarks inside the viewBox plus a 25% margin exist in the DOM.
+        function cull() {
+          var all = document.getElementById("lm-all").checked;
+          offG.hidden = !all;
+          var v = vbox(), mx = v[2] * 0.25, my = v[3] * 0.25, mine = {}, want = {};
+          current.stations.forEach(function (st) { mine[st[0] + "," + st[1]] = 1; });
+          if (all) POOL.forEach(function (o) {
+            var x = o.st[0], y = o.st[1];
+            if (o.route !== current && !mine[o.key] && x >= v[0] - mx && x <= v[0] + v[2] + mx &&
+                y >= v[1] - my && y <= v[1] + v[3] + my) want[o.key] = o;
           });
-          var g = document.getElementById("route-" + d.route);
-          g.parentNode.appendChild(g); // paint the current route above the others
-          document.getElementById("route-name").value = d.name;
-          document.getElementById("route-often").value = d.often;
-          document.getElementById("route-list").value = d.list;
-          document.getElementById("route-count").textContent = d.stations;
-          document.getElementById("chip-name").textContent = d.name;
-          document.getElementById("chip-meta").textContent = d.often + ", " + d.stations + " stations";
-          document.getElementById("map-title").textContent = "Map with 3 routes; " + d.name + " is framed";
-          moveTo(frameOf(d.route), animate);
+          Object.keys(offNodes).forEach(function (key) {
+            if (want[key] || offNodes[key] === document.activeElement) return;
+            offNodes[key].remove();
+            delete offNodes[key];
+          });
+          Object.keys(want).forEach(function (key) {
+            if (!offNodes[key]) offNodes[key] = landmark(offG, want[key].st, 0, want[key].route, true);
+          });
+        }
+        function syncChrome(r) {
+          document.getElementById("chip").setAttribute("class", "map-chip " + r.tc);
+          document.getElementById("chip-name").textContent = r.name;
+          document.getElementById("chip-topic").textContent = r.topic;
+          document.getElementById("chip-meta").textContent = r.often + ", " + r.stations.length + " stations";
+          document.getElementById("map-title").textContent = "Map; " + r.name + " is drawn";
+          document.getElementById("route-name").value = r.name;
+          document.getElementById("route-often").value = r.often;
+          document.getElementById("route-count").textContent = r.stations.length;
+          picks.forEach(function (p) {
+            if (p.dataset.route === r.id) p.setAttribute("aria-current", "true"); else p.removeAttribute("aria-current");
+          });
+        }
+        // Pick: pan to frame, then the line draws in through the mask, then landmarks pop in order.
+        function select(r, animate) {
+          current = r;
+          closeCard(false);
+          window.clearTimeout(popTimer);
+          drawRoute(r);
+          syncChrome(r);
+          var target = frameOf(r);
+          if (!animate || reduce) { setBox(target); cull(); return; }
+          var len = revealLine.getTotalLength(), from = vbox();
+          revealLine.style.strokeDasharray = len + " " + len;
+          revealLine.style.strokeDashoffset = len;
+          routeG.classList.add("is-arriving");
+          tween(450, function (e) { setBox(from.map(function (f, i) { return f + (target[i] - f) * e; })); }, function () {
+            cull();
+            tween(Math.min(1200, 300 + len * 0.6), function (e) { revealLine.style.strokeDashoffset = len * (1 - e); }, function () {
+              revealLine.style.strokeDasharray = "";
+              revealLine.style.strokeDashoffset = "";
+              routeG.classList.replace("is-arriving", "is-popping");
+              popTimer = window.setTimeout(function () { routeG.classList.remove("is-popping"); }, r.stations.length * 110 + 600);
+            });
+          });
         }
 
-        picks.forEach(function (p) {
-          p.addEventListener("click", function () { select(p, true); });
+        // ---------- LANDMARK CARD ----------
+        var card = document.getElementById("lm-card"), cardFor = null;
+        function openCard(g) {
+          var d = g.lmData;
+          cardFor = g;
+          document.getElementById("lm-card-emoji").textContent = String.fromCodePoint(d.st[3]);
+          document.getElementById("lm-card-title").textContent = d.st[2];
+          document.getElementById("lm-card-meta").textContent = d.off
+            ? "On " + d.route.name + ", topic " + d.route.topic
+            : "Station " + (d.i + 1) + " of " + d.route.stations.length + ", " + d.route.topic;
+          card.hidden = false;
+          var b = g.getBoundingClientRect(), cw = card.offsetWidth, ch = card.offsetHeight;
+          var top = b.bottom + 8 + ch > window.innerHeight - 72 ? b.top - ch - 8 : b.bottom + 8;
+          card.style.left = Math.min(window.innerWidth - cw - 8, Math.max(8, b.left + b.width / 2 - cw / 2)) + "px";
+          card.style.top = Math.max(8, top) + "px";
+        }
+        function closeCard(refocus) {
+          if (card.hidden) return;
+          card.hidden = true;
+          if (refocus && cardFor && cardFor.isConnected) cardFor.focus();
+          cardFor = null;
+        }
+
+        document.getElementById("lm-card-close").addEventListener("click", function () { closeCard(true); });
+        document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeCard(true); });
+        map.addEventListener("click", function (e) {
+          var g = e.target.closest(".lm");
+          if (g) openCard(g);
         });
-        select(picks[0], false);
+        map.addEventListener("keydown", function (e) {
+          var g = e.target.closest(".lm");
+          if (g && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openCard(g); }
+        });
+
+        // ---------- PAN / ZOOM (off-route layer recomputes when each gesture ends) ----------
+        var drag = null, holdTimer = 0, wheelTimer = 0;
+        map.addEventListener("pointerdown", function (e) {
+          var g = e.target.closest(".lm");
+          if (g) { holdTimer = window.setTimeout(function () { openCard(g); }, 500); return; }
+          drag = { x: e.clientX, y: e.clientY, v: vbox() };
+          map.setPointerCapture(e.pointerId);
+        });
+        map.addEventListener("pointermove", function (e) {
+          if (!drag) return;
+          var k = parseFloat(map.style.getPropertyValue("--k")) || 1;
+          setBox([drag.v[0] - (e.clientX - drag.x) * k, drag.v[1] - (e.clientY - drag.y) * k, drag.v[2], drag.v[3]]);
+        });
+        function endPointer() {
+          window.clearTimeout(holdTimer);
+          if (drag) { drag = null; cull(); }
+        }
+        map.addEventListener("pointerup", endPointer);
+        map.addEventListener("pointercancel", endPointer);
+        map.addEventListener("wheel", function (e) {
+          e.preventDefault();
+          var v = vbox(), rect = map.getBoundingClientRect();
+          var k = Math.max(v[2] / rect.width, v[3] / rect.height);
+          // Zoom about the pointer: "meet" centres the viewBox, so map point = centre + screen offset * k.
+          var px = v[0] + v[2] / 2 + (e.clientX - rect.left - rect.width / 2) * k;
+          var py = v[1] + v[3] / 2 + (e.clientY - rect.top - rect.height / 2) * k;
+          var f = Math.min(4000, Math.max(200, v[2] * (e.deltaY > 0 ? 1.15 : 1 / 1.15))) / v[2];
+          setBox([px - (px - v[0]) * f, py - (py - v[1]) * f, v[2] * f, v[3] * f]);
+          window.clearTimeout(wheelTimer);
+          wheelTimer = window.setTimeout(cull, 150);
+        }, { passive: false });
+        window.addEventListener("resize", function () { setBox(vbox()); });
+        Array.prototype.forEach.call(document.querySelectorAll(".lm-filter input"), function (inp) {
+          inp.addEventListener("change", cull);
+        });
+
+        var picks = Array.prototype.slice.call(document.querySelectorAll(".route-pick"));
+        picks.forEach(function (p) {
+          var r = BY_ID[p.dataset.route];
+          p.className = "route-pick " + r.tc;
+          p.addEventListener("click", function () { select(r, true); });
+        });
+        if ((q.get("lm") || (s === "all" ? "all" : "route")) === "all") document.getElementById("lm-all").checked = true;
+        select(BY_ID.morning, false);
+        if (s === "landmark") openCard(routeG.querySelectorAll(".lm")[1]);
       })();
     </script>
   </body>
