@@ -1,6 +1,9 @@
 # MemriPal route UX: class contract, state tables, id map
 
-These go with `route.css`. Load it last: `<link rel="stylesheet" href="/static/route.css">` after `theme-painterly.css`.
+These go with the route stylesheets. Load them in this order, after `static/style.css` and `static/theme-painterly.css`:
+`route.css` (shell, chips, undo, route map, thumbnails), `route-s1-s2.css`, `route-s3.css`, `route-s4-s5.css`,
+`route-s6-s9.css`. Preview pages: `preview.html` = screens 1-4, `preview-2.html` = screens 5-9; both link the same
+stylesheets (ADR [0039](../../decisions/0039-route-design-file-split.md)).
 The CSS has no HTML, no JavaScript and no new ids.
 
 Home is the map-first shell: contract, `?s=closed|open|landmark|hidden` / `?lm=route|all` states in

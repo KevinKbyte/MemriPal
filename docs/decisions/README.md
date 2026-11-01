@@ -96,3 +96,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
   drawer, 1000+ scale; amended 2026-11-01 over the card-list spine); capture anytime as an unfiled candidate; no
   typed geocoding; 3-8 on every add path; map source = stylized SVG now, MapLibre + self-hosted PMTiles staged
   behind conditions (over Google/Mapbox SDK or Leaflet raster via proxy).
+- [0039](0039-route-design-file-split.md) Route design files split under the 500-line cap; preview pages carry an
+  explicit screen map and the design gate follows `<link>` hrefs in link order (over a redirect/stub page or runtime
+  CSS fetch/concat).

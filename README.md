@@ -221,11 +221,12 @@ Load demo, `load_demo.png` into `<outdir>`; prints the loci items. Exit 0 clean,
 uv run --no-project --with playwright python scripts/screenshot_ui.py <url> <outdir>
 ```
 
-Lint a route design CSS file against its contract doc (tokens, colours, ids, classes, `[hidden]` safety): prints
-`FAIL <problem>` lines then `OK`. Exit 0 clean, 1 on any problem, 2 on bad usage.
+Lint the route design CSS files (concatenated in the given order) against their contract doc, passed last (tokens,
+colours, ids, classes, `[hidden]` safety): prints `FAIL <problem>` lines then `OK`. Exit 0 clean, 1 on any problem, 2
+on bad usage.
 
 ```bash
-uv run python scripts/check_route_css.py docs/design/route/route.css docs/design/route/route-contract.md
+uv run python scripts/check_route_css.py docs/design/route/route.css docs/design/route/route-s1-s2.css docs/design/route/route-s3.css docs/design/route/route-s4-s5.css docs/design/route/route-s6-s9.css docs/design/route/route-contract.md
 ```
 
 Screenshot a design preview page across screens x widths x themes (defaults: S1-S9, phone + wide, light + dark) into
