@@ -42,4 +42,5 @@ keeps one source of truth for what counts as verified.
 - A refused merge exits 1 before any merge or enqueue; stderr names the lookup's reason and each unverified UI path.
 - Diffs with no UI path never consult the lookup.
 - Without agent-workflow installed and no seam set, UI diffs cannot merge via the ff path.
-- Record a pass with agent-workflow's `C:/Users/Kev/projects/agent-workflow/scripts/sdlc_phase_gate.py record ... --gate visual-verify` (`CLAUDE.md`).
+- Record a pass with agent-workflow's `sdlc_phase_gate.py record ... --gate visual-verify` (its `scripts/` dir, located via the
+  `AW` env var, default `$HOME/projects/agent-workflow`; `CLAUDE.md`).
