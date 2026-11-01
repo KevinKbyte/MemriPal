@@ -8,12 +8,22 @@
 # main(argv, run) defaults to 8 screens x 2 widths x 2 themes (32 shots), lets each
 # repeatable flag replace its default in the given order, prints "ERR <msg>" per error and "shots=N errors=M"
 # (exit 1 on errors, else 0), exits 2 without running for bad usage, and the module
-# imports without playwright installed.
+# imports without playwright installed. Every screenshot run takes is rendered with
+# prefers-reduced-motion: reduce (ADR 0036 amendment), so animated pages shoot the same bytes each run.
 import importlib.util
 import sys
 from pathlib import Path
 
 import pytest
+from shooter_support import (
+    REDUCE_BG,
+    REDUCED_MOTION_HTML,
+    body_bg,
+    centre_rgb,
+    install_fake_playwright,
+    is_reduce_bg,
+    require_chrome,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = REPO_ROOT / "scripts" / "screenshot_design.py"
@@ -238,3 +248,36 @@ class TestImport:
         _load()
         assert "playwright" not in sys.modules
         assert "playwright.sync_api" not in sys.modules
+
+
+def _route_pages(tmp_path):
+    """preview.html + preview-2.html fixture pages; returns preview.html's file URL."""
+    route = tmp_path / "route"
+    route.mkdir()
+    for name in ("preview.html", "preview-2.html"):
+        (route / name).write_text(REDUCED_MOTION_HTML, encoding="utf-8")
+    return (route / "preview.html").as_uri()
+
+
+class TestRunEmulatesReducedMotion:
+    def test_every_png_is_rendered_with_prefers_reduced_motion_reduce(self, tmp_path, monkeypatch):
+        install_fake_playwright(monkeypatch)
+        module = _load()
+        plan = module.shot_plan(_route_pages(tmp_path), DEFAULT_SCREENS, DEFAULT_WIDTHS, DEFAULT_THEMES)
+        out = tmp_path / "shots"
+        assert module.run(plan, str(out)) == []
+        motion = [s.filename for s in plan if body_bg(out / s.filename) != REDUCE_BG]
+        assert not motion, (
+            f"{len(motion)} of {len(plan)} shots not under prefers-reduced-motion: reduce: {motion[:4]}"
+        )
+
+
+class TestRunReducedMotionRealBrowser:
+    def test_real_chrome_shot_shows_the_reduced_motion_background(self, tmp_path):
+        require_chrome()
+        module = _load()
+        plan = module.shot_plan(_route_pages(tmp_path), ["1"], [("tiny", (200, 200))], ["light"])
+        out = tmp_path / "shots"
+        assert module.run(plan, str(out)) == []
+        rgb = centre_rgb(out / "s1_tiny_light.png")
+        assert is_reduce_bg(rgb), f"centre pixel {rgb}: not rendered under prefers-reduced-motion: reduce"

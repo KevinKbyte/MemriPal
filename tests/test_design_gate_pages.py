@@ -13,18 +13,27 @@
 # screens closed/open/landmark/hidden at map-shell.html?s=<screen> (+ &theme=dark) for each
 # width (phone, wide) and theme (light, dark), named s<screen>_<width>_<theme>.png. map-shell.html
 # and every file it loads are inside RENDER_PATHS; map-shell.html absent at a rev skips only its
-# 16 shots; a changed map shot needs an approval like any other shot.
+# 16 shots; a changed map shot needs an approval like any other shot. Every screenshot real_shoot
+# takes is rendered with prefers-reduced-motion: reduce (ADR 0036 amendment), so an infinite CSS
+# animation or a JS tween cannot make a shot's sha256 drift between runs at one tip.
 import importlib.machinery
 import importlib.util
 import posixpath
 import re
 import sys
 import types
-import urllib.parse
-import urllib.request
 from pathlib import Path
 
 import pytest
+from shooter_support import (
+    REDUCE_BG,
+    REDUCED_MOTION_HTML,
+    body_bg,
+    centre_rgb,
+    install_fake_playwright,
+    is_reduce_bg,
+    require_chrome,
+)
 from test_design_gate import (
     CSS,
     GIT,
@@ -116,57 +125,10 @@ class TestRouteCssFollowsPreviewLinks:
         assert lines[-1] == "OK"
 
 
-class _FakePage:
-    def __init__(self, visited: list[str]):
-        self.visited = visited
-        self.width = 0
-
-    def on(self, event, handler):
-        pass
-
-    def set_viewport_size(self, size):
-        self.width = size["width"]
-
-    def goto(self, url, **kwargs):
-        # A real browser raises on a missing file:// page (net::ERR_FILE_NOT_FOUND).
-        path = Path(urllib.request.url2pathname(urllib.parse.urlparse(url).path))
-        if not path.is_file():
-            raise RuntimeError(f"net::ERR_FILE_NOT_FOUND at {url}")
-        self.visited.append(url)
-
-    def wait_for_timeout(self, ms):
-        pass
-
-    def screenshot(self, path, **kwargs):
-        Path(path).write_bytes(b"\x89PNG\r\n\x1a\n" + Path(path).name.encode("ascii"))
-
-    def add_script_tag(self, **kwargs):
-        pass
-
-    def evaluate(self, expression, arg=None):
-        return self.width if "scrollWidth" in expression else []
-
-
-class _FakePlaywright:
-    def __init__(self, visited: list[str]):
-        browser = types.SimpleNamespace(new_page=lambda: _FakePage(visited), close=lambda: None)
-        self.chromium = types.SimpleNamespace(launch=lambda **kwargs: browser)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *exc):
-        return False
-
-
 @pytest.fixture
 def fake_browser(monkeypatch, tmp_path):
     """Stand-in playwright + axe modules; yields the list of page URLs actually loaded."""
-    visited: list[str] = []
-    sync_api = types.ModuleType("playwright.sync_api")
-    sync_api.sync_playwright = lambda: _FakePlaywright(visited)
-    monkeypatch.setitem(sys.modules, "playwright", types.ModuleType("playwright"))
-    monkeypatch.setitem(sys.modules, "playwright.sync_api", sync_api)
+    visited = install_fake_playwright(monkeypatch)
     axe_dir = tmp_path / "axe_pkg"
     axe_dir.mkdir()
     (axe_dir / "axe.min.js").write_text("/* axe */\n", encoding="utf-8")
@@ -335,3 +297,36 @@ class TestChangedMapShotsNeedApproval:
         _, lines = _gate(capsys, tmp_path, repo, None)
         assert (tmp_path / "out" / "tip" / "sclosed_phone_light.png").is_file(), lines
         assert not any(_approval_fails(lines, f) for _, f, _ in _expected_map_shots()), lines
+
+
+class TestRealShootEmulatesReducedMotion:
+    def test_every_shot_is_rendered_with_prefers_reduced_motion_reduce(self, tmp_path, fake_browser):
+        repo, rev = _page_repo(tmp_path, with_page_2=True, with_map_shell=True)
+        out = tmp_path / "shots"
+        render = _load().real_shoot(repo.path, rev, str(out))
+        assert render["errors"] == []
+        names = [s["filename"] for s in render["shots"]]
+        assert len(names) == 48, names
+        motion = [n for n in names if body_bg(out / n) != REDUCE_BG]
+        assert not motion, (
+            f"{len(motion)} of 48 shots not rendered under prefers-reduced-motion: reduce: {motion[:4]}"
+        )
+
+
+class TestRealShootReducedMotionRealBrowser:
+    def test_real_chrome_shot_shows_the_reduced_motion_background(self, tmp_path, monkeypatch):
+        require_chrome()
+        pytest.importorskip("axe_playwright_python")
+        repo, _ = _page_repo(tmp_path, with_page_2=False)
+        rev = repo.commit({PREVIEW_PATH: REDUCED_MOTION_HTML}, "reduced-motion fixture")
+        gate = _load()
+        shot = gate.screenshot_design.Shot
+        # One small shot keeps the real render fast; the page/screenshot path is real_shoot's own.
+        monkeypatch.setattr(
+            gate, "gate_plan", lambda url: [shot(url + "/preview.html?s=1", "s1_tiny.png", (200, 200))]
+        )
+        out = tmp_path / "shots"
+        render = gate.real_shoot(repo.path, rev, str(out))
+        assert [s["filename"] for s in render["shots"]] == ["s1_tiny.png"], render["errors"]
+        rgb = centre_rgb(out / "s1_tiny.png")
+        assert is_reduce_bg(rgb), f"centre pixel {rgb}: not rendered under prefers-reduced-motion: reduce"
