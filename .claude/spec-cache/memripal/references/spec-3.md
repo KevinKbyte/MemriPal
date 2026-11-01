@@ -10,10 +10,9 @@ committed under `docs/design/v6/`: `memripal-prototype.html`, `app.js`, `review.
 not served by the app; nothing under `static/` changes. Superseded in part by MEM-044: the v6 look (tokens, type,
 component styles) is adopted into `static/style.css` and `static/index.html`; v6 JS (`app.js`, `review.js`,
 `sched.js`, `tags.js`) and the screen-per-step navigation stay reference-only; `docs/design/v6/` is unchanged.
-- Regression rule: `photo()` in `docs/design/v6/app.js` renders cropped place photos with
-  `<use href="#room" width="800" height="560"></use>`. Without explicit width/height the room symbol sizes to the crop
-  viewBox, so Review cards and Scenes tier-2 cards for off-origin places (e.g. Wedding toast clock, window, armchair,
-  rug) render blank.
+- Regression rule: `photo()` in `docs/design/v6/app.js` renders cropped place photos with `<use href="#room"
+  width="800" height="560"></use>`. Without explicit width/height the room symbol sizes to the crop viewBox, so Review
+  cards and Scenes tier-2 cards for off-origin places (e.g. Wedding toast clock, window, armchair, rug) render blank.
 - The node test runs in `scripts/check.sh` alongside `static/*.test.mjs`.
 
 Tests: docs/design/v6/tests/crop_use_size.test.mjs
@@ -68,15 +67,16 @@ history, cached associations and the route, never photos or scene images. New `s
   `runAssociations` (regenerates any non-"valid" entry) fetches a fresh signed record. Applies to every stored entry,
   imported or not; without it a "valid" entry with a dead sig is reused every run and its scene stays tier 3.
 - C1 Every response from `create_app` carries `Content-Security-Policy: default-src 'self'; img-src 'self' data:
-  blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'` and
-  `X-Content-Type-Options: nosniff`; tested on `/` and `/static/app.js`. Nothing breaks: `index.html` has no inline
-  script, style element, style attribute or handler attribute; all fetches are same-origin; scene srcs are data: or
-  blob: (`isSafeImageSrc`); `scenes.js` sets `img.style` via CSSOM, which CSP does not block. FastAPI `/docs` and
-  `/redoc` (CDN + inline script) stop rendering. App-wide XSS control, independent of import.
+  blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'` and `X-Content-Type-Options:
+  nosniff`; tested on `/` and `/static/app.js`. Nothing breaks: `index.html` has no inline script, style element,
+  style attribute or handler attribute; all fetches are same-origin; scene srcs are data: or blob: (`isSafeImageSrc`);
+  `scenes.js` sets `img.style` via CSSOM, which CSP does not block. FastAPI `/docs` and `/redoc` (CDN + inline script)
+  would stop rendering (moot since C2: not served). App-wide XSS control, independent of import.
+- C2 `create_app` serves no `/docs`, `/redoc` or `/openapi.json` (404); the API schema is not exposed.
 - R1 Round trip: export of an app-written store, imported into an empty store, gives equal associations (by key),
   route and rehearsals; importing the same file again -> "Imported 0, skipped <all>".
 
-Tests: static/palace_export.test.mjs, static/app_scene_demote.test.mjs, tests/test_security_headers.py
+Tests: static/palace_export.test.mjs, static/app_scene_demote.test.mjs, tests/test_security_headers.py, tests/test_api_docs_disabled.py
 
 ## MEM-043 Generated hard rooms as E2E test fixtures
 
