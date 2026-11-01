@@ -1,8 +1,8 @@
-# 0037: Route-first flow: linear set-route spine, capture anytime as an unfiled candidate
+# 0038: Route-first flow: linear set-route spine, capture anytime as an unfiled candidate
 
 Status: Accepted
 Date: 2026-10-31
-Source: MEM-071 (`.claude/spec-cache/memripal/references/spec-4.md`); amends the capture-first screens in
+Source: MEM-072 (`.claude/spec-cache/memripal/references/spec-4.md`); amends the capture-first screens in
 `docs/design/route/` (S1 "New walk", S2 "Walking: capture") at 975c2a3.
 
 ## Context

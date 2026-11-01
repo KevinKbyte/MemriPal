@@ -88,10 +88,10 @@ Actors: `tests/conftest.py`, ruff, the agent-workflow queue drain, `scripts/merg
   uncaught; closed by the agent-workflow follow-up (drain runs a repo-declared check command).
 
 Tests: tests/test_lint_gate.py
-## MEM-071 Route-first flow: set the route, pick loci from alternatives, capture anytime (PLANNED)
+## MEM-072 Route-first flow: set the route, pick loci from alternatives, capture anytime (PLANNED)
 
-PLANNED, not built, unverified: design only (docs/design/route/). ADR [0037](../../../../docs/decisions/0037-route-first-flow.md).
-Decided-by: ADR-0037
+PLANNED, not built, unverified: design only (docs/design/route/). ADR [0038](../../../../docs/decisions/0038-route-first-flow.md).
+Decided-by: ADR-0038
 Root problem: the route design is capture-first, but Kev requires route-first: set the route, the app generates
 landmark loci with alternatives, the user swaps or adds them fine-grained, and own landmark photos supplement the
 route at any time (as a generation hint or a user-added stop).
