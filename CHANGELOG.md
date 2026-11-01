@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.26] - 2026-11-01
+
+### Added
+
+- Mascot canon: King Memri ("Pal") in docs/design/mascot.md, linked from README.
+
 ## [0.20.25] - 2026-11-01
 
 ### Changed
