@@ -480,22 +480,81 @@ body.map-shell {
   width: 100%;
 }
 
-.route-picks {
-  display: grid;
-  gap: 0.5rem;
+.field-hint {
   margin: 0;
-  padding: 0;
-  list-style: none;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.drawer-body input[aria-invalid="true"] {
+  border-color: var(--bad);
+}
+
+/* The route list fills the drawer's remaining height (at least 18rem) and scrolls on its own. */
+.drawer-body {
+  grid-template-rows: auto auto minmax(18rem, 1fr);
+}
+
+.drawer-section.is-picks {
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  min-height: 0;
+}
+
+.pick-viewport {
+  position: relative;
+  min-height: 12rem;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.pick-space {
+  position: relative;
+}
+
+/* Row and header heights must match ROW_H (64px) and HEAD_H (36px) in the page script. */
+.pick-head,
+.pick-row {
+  position: absolute;
+  right: 0;
+  left: 0;
+}
+
+.pick-head {
+  height: 36px;
+  padding: 0 0.75rem;
+  overflow: hidden;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 36px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pick-row {
+  height: 64px;
+  padding: 4px;
 }
 
 .route-pick {
   display: grid;
-  grid-template-columns: 0.375rem 1fr;
+  grid-template-columns: 0.375rem minmax(0, 1fr);
   column-gap: 0.75rem;
   width: 100%;
-  padding: 0.5rem 0.75rem;
+  height: 56px;
+  min-height: 0;
+  padding: 0.375rem 0.75rem;
   text-align: left;
   font-weight: 400;
+}
+
+.pick-name,
+.pick-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .route-pick[aria-current="true"] {

@@ -90,41 +90,30 @@
               </select>
             </div>
             <div class="field">
-              <label for="route-list">Topic (list on this route)</label>
-              <select id="route-list">
-                <option>Biology exam, chapter 3</option>
-                <option>Wedding toast</option>
-                <option>No list yet</option>
-              </select>
+              <label for="route-topic">Topic (list on this route)</label>
+              <!-- Typeahead over every topic; the datalist lists recently used topics first. -->
+              <input id="route-topic" type="text" list="topic-options" autocomplete="off" spellcheck="false"
+                     aria-describedby="topic-hint">
+              <datalist id="topic-options"></datalist>
+              <p id="topic-hint" class="field-hint">Type to search; recent topics first.</p>
             </div>
             <p class="drawer-count">Stations: <strong id="route-count">6</strong></p>
           </section>
 
           <button id="map-new" class="btn btn-primary" type="button">Map a new route</button>
 
-          <section class="drawer-section" aria-labelledby="existing-title">
+          <section class="drawer-section is-picks" aria-labelledby="existing-title">
             <h2 id="existing-title" class="drawer-title">Existing routes</h2>
-            <ul class="route-picks">
-              <li><button class="route-pick topic-biology" type="button" aria-current="true" data-route="morning"
-                    data-name="Morning walk to the station" data-often="Daily" data-list="Biology exam, chapter 3"
-                    data-stations="6">
-                <span class="pick-swatch" aria-hidden="true"></span>
-                <span class="pick-name">Morning walk to the station</span>
-                <span class="pick-meta">Daily, 6 stations, Biology exam, chapter 3</span>
-              </button></li>
-              <li><button class="route-pick topic-wedding" type="button" data-route="grandma"
-                    data-name="Grandma's house" data-often="Occasional" data-list="Wedding toast" data-stations="8">
-                <span class="pick-swatch" aria-hidden="true"></span>
-                <span class="pick-name">Grandma's house</span>
-                <span class="pick-meta">Occasional, 8 stations, Wedding toast</span>
-              </button></li>
-              <li><button class="route-pick topic-none" type="button" data-route="park"
-                    data-name="Park loop" data-often="Daily" data-list="No list yet" data-stations="3">
-                <span class="pick-swatch" aria-hidden="true"></span>
-                <span class="pick-name">Park loop</span>
-                <span class="pick-meta">Daily, 3 stations, no list yet</span>
-              </button></li>
-            </ul>
+            <div class="field">
+              <label for="route-search">Search routes</label>
+              <input id="route-search" type="text" role="searchbox" autocomplete="off" placeholder="Name or topic"
+                     aria-controls="pick-viewport" aria-describedby="pick-count">
+            </div>
+            <p id="pick-count" class="field-hint" aria-live="polite"></p>
+            <!-- Windowed list: only rows in view (plus overscan) exist; fixed row and header heights. -->
+            <div id="pick-viewport" class="pick-viewport" role="list" aria-labelledby="existing-title" tabindex="-1">
+              <div id="pick-space" class="pick-space"></div>
+            </div>
           </section>
         </div>
       </details>
@@ -240,13 +229,22 @@
         }
         var BY_ID = {};
         ROUTES.forEach(function (r) { BY_ID[r.id] = r; r.tc = tc(r.topic); });
-        // Off-route pool: one landmark per position, first route wins (hand routes come first).
-        var POOL = [], seen = {};
-        ROUTES.forEach(function (r) {
-          r.stations.forEach(function (st) {
-            var key = st[0] + "," + st[1];
-            if (!seen[key]) { seen[key] = 1; POOL.push({ key: key, st: st, route: r }); }
-          });
+        // Off-route pool: other routes' stations, deduped by position, kept sparse so "All landmarks" reads
+        // as a few real places, not a pin on every corner. Hand routes keep every station; padded routes
+        // contribute their start station only, at most one per 3x3-block cell.
+        var POOL = [], seen = {}, cells = {};
+        function addOff(st, r) {
+          var key = st[0] + "," + st[1];
+          if (seen[key]) return;
+          seen[key] = 1;
+          cells[Math.floor((st[0] - X0) / (3 * DX)) + "," + Math.floor((st[1] - Y0) / (3 * DY))] = 1;
+          POOL.push({ key: key, st: st, route: r });
+        }
+        HAND.forEach(function (r) { r.stations.forEach(function (st) { addOff(st, r); }); });
+        ROUTES.slice(HAND.length).forEach(function (r) {
+          var st = r.stations[0];
+          var cell = Math.floor((st[0] - X0) / (3 * DX)) + "," + Math.floor((st[1] - Y0) / (3 * DY));
+          if (!cells[cell]) addOff(st, r);
         });
 
         // ---------- MAP ----------
@@ -340,13 +338,14 @@
           document.getElementById("route-name").value = r.name;
           document.getElementById("route-often").value = r.often;
           document.getElementById("route-count").textContent = r.stations.length;
-          picks.forEach(function (p) {
-            if (p.dataset.route === r.id) p.setAttribute("aria-current", "true"); else p.removeAttribute("aria-current");
-          });
+          topicIn.value = r.topic;
+          topicIn.removeAttribute("aria-invalid");
         }
         // Pick: pan to frame, then the line draws in through the mask, then landmarks pop in order.
         function select(r, animate) {
           current = r;
+          touch(recentRoutes, r, 5);
+          touch(recentTopics, r.topic, 8);
           closeCard(false);
           window.clearTimeout(popTimer);
           drawRoute(r);
@@ -438,14 +437,154 @@
           inp.addEventListener("change", cull);
         });
 
-        var picks = Array.prototype.slice.call(document.querySelectorAll(".route-pick"));
-        picks.forEach(function (p) {
-          var r = BY_ID[p.dataset.route];
-          p.className = "route-pick " + r.tc;
-          p.addEventListener("click", function () { select(r, true); });
+        // ---------- DRAWER: topic typeahead ----------
+        // Most-recent-first lists; touch() moves an item to the front and caps the length.
+        var recentRoutes = HAND.slice(0, 3).reverse(), recentTopics = [];
+        function touch(list, item, cap) {
+          var i = list.indexOf(item);
+          if (i >= 0) list.splice(i, 1);
+          list.unshift(item);
+          list.length = Math.min(list.length, cap);
+        }
+        var topicIn = document.getElementById("route-topic");
+        var topicOpts = document.getElementById("topic-options");
+        var TOPIC_BY_LC = {};
+        TOPICS.forEach(function (t) { TOPIC_BY_LC[t.toLowerCase()] = t; });
+        var SORTED_TOPICS = TOPICS.slice().sort();
+        function fillTopics() {
+          topicOpts.textContent = "";
+          recentTopics.concat(SORTED_TOPICS.filter(function (t) { return recentTopics.indexOf(t) < 0; }))
+            .forEach(function (t) { topicOpts.appendChild(new Option(t)); });
+        }
+        topicIn.addEventListener("change", function () {
+          var t = TOPIC_BY_LC[topicIn.value.trim().toLowerCase()];
+          if (!t) { topicIn.setAttribute("aria-invalid", "true"); return; }
+          current.topic = t;
+          current.tc = tc(t);
+          touch(recentTopics, t, 8);
+          routeG.setAttribute("class", routeG.getAttribute("class").replace(/tc-\d/, current.tc));
+          syncChrome(current);
+          fillTopics();
+          buildRows();
         });
+
+        // ---------- DRAWER: windowed route list ----------
+        // Fixed heights (px) let a binary search over prefix offsets find the first visible item.
+        var ROW_H = 64, HEAD_H = 36, OVERSCAN = 4;
+        var vp = document.getElementById("pick-viewport"), space = document.getElementById("pick-space");
+        var searchIn = document.getElementById("route-search");
+        var items = [], tops = [], rowIdx = [], rowNodes = {}, active = 0;
+        function buildRows() {
+          var qy = searchIn.value.trim().toLowerCase();
+          var hit = function (r) { return !qy || (r.name + " " + r.topic).toLowerCase().indexOf(qy) >= 0; };
+          var recent = recentRoutes.filter(hit), groups = {};
+          ROUTES.forEach(function (r) {
+            if (recent.indexOf(r) < 0 && hit(r)) (groups[r.topic] = groups[r.topic] || []).push(r);
+          });
+          items = [];
+          if (recent.length) items.push({ head: "Recent" });
+          recent.forEach(function (r) { items.push({ route: r }); });
+          Object.keys(groups).sort().forEach(function (t) {
+            items.push({ head: t + " (" + groups[t].length + ")" });
+            groups[t].sort(function (a, b) { return a.name < b.name ? -1 : 1; })
+              .forEach(function (r) { items.push({ route: r }); });
+          });
+          tops = []; rowIdx = [];
+          var y = 0;
+          items.forEach(function (it, i) {
+            tops.push(y);
+            y += it.head ? HEAD_H : ROW_H;
+            if (it.route) { it.pos = rowIdx.length + 1; rowIdx.push(i); }
+          });
+          space.style.height = y + "px";
+          document.getElementById("pick-count").textContent = rowIdx.length
+            ? rowIdx.length + " routes" : 'No routes match "' + searchIn.value.trim() + '"';
+          active = Math.max(0, rowIdx.indexOf(items.findIndex(function (it) { return it.route === current; })));
+          Object.keys(rowNodes).forEach(function (k) { rowNodes[k].remove(); });
+          rowNodes = {};
+          renderRows();
+        }
+        function firstAt(y) {
+          var lo = 0, hi = tops.length - 1;
+          while (lo < hi) { var mid = (lo + hi + 1) >> 1; if (tops[mid] <= y) lo = mid; else hi = mid - 1; }
+          return lo;
+        }
+        function rowNode(i) {
+          var it = items[i], el = document.createElement("div");
+          el.className = it.head ? "pick-head" : "pick-row";
+          el.style.top = tops[i] + "px";
+          if (it.head) { el.setAttribute("aria-hidden", "true"); el.textContent = it.head; return el; }
+          var r = it.route;
+          el.setAttribute("role", "listitem");
+          el.setAttribute("aria-setsize", rowIdx.length);
+          el.setAttribute("aria-posinset", it.pos);
+          var b = document.createElement("button");
+          b.type = "button";
+          b.className = "route-pick " + r.tc;
+          b.dataset.item = i;
+          if (r === current) b.setAttribute("aria-current", "true");
+          b.innerHTML = '<span class="pick-swatch" aria-hidden="true"></span><span class="pick-name"></span>' +
+            '<span class="pick-meta"></span>';
+          b.children[1].textContent = r.name;
+          b.children[2].textContent = r.often + ", " + r.stations.length + " stations, " + r.topic;
+          el.appendChild(b);
+          return el;
+        }
+        function renderRows() {
+          if (!items.length) return;
+          var a = Math.max(0, firstAt(vp.scrollTop) - OVERSCAN);
+          var z = Math.min(items.length - 1, firstAt(vp.scrollTop + (vp.clientHeight || 400)) + OVERSCAN);
+          var keep = {}, focused = document.activeElement;
+          for (var i = a; i <= z; i++) keep[i] = 1;
+          if (rowIdx.length) keep[rowIdx[active]] = 1;
+          Object.keys(rowNodes).forEach(function (k) {
+            if (!keep[k] && !rowNodes[k].contains(focused)) { rowNodes[k].remove(); delete rowNodes[k]; }
+          });
+          Object.keys(keep).forEach(function (k) {
+            if (!rowNodes[k]) rowNodes[k] = space.appendChild(rowNode(+k));
+            var btn = rowNodes[k].querySelector("button");
+            if (btn) btn.tabIndex = +k === rowIdx[active] ? 0 : -1;
+          });
+        }
+        // Roving focus: arrows/Home/End/PageUp/PageDown move between rows, scrolling the target into the window.
+        function focusRow(n) {
+          if (!rowIdx.length) return;
+          active = Math.max(0, Math.min(rowIdx.length - 1, n));
+          var i = rowIdx[active], top = tops[i], h = vp.clientHeight;
+          if (top < vp.scrollTop + HEAD_H) vp.scrollTop = Math.max(0, top - HEAD_H);
+          else if (top + ROW_H > vp.scrollTop + h) vp.scrollTop = top + ROW_H - h;
+          renderRows();
+          rowNodes[i].querySelector("button").focus();
+        }
+        var scrollFrame = 0;
+        vp.addEventListener("scroll", function () {
+          window.cancelAnimationFrame(scrollFrame);
+          scrollFrame = window.requestAnimationFrame(renderRows);
+        });
+        vp.addEventListener("click", function (e) {
+          var b = e.target.closest(".route-pick");
+          if (!b) return;
+          select(items[+b.dataset.item].route, true);
+          buildRows();
+          focusRow(active);
+        });
+        vp.addEventListener("keydown", function (e) {
+          var page = Math.max(1, Math.floor(vp.clientHeight / ROW_H) - 1);
+          var to = { ArrowDown: active + 1, ArrowUp: active - 1, Home: 0, End: rowIdx.length - 1,
+            PageDown: active + page, PageUp: active - page }[e.key];
+          if (to === undefined || !e.target.closest(".route-pick")) return;
+          e.preventDefault();
+          focusRow(to);
+        });
+        searchIn.addEventListener("input", function () { vp.scrollTop = 0; buildRows(); });
+        searchIn.addEventListener("keydown", function (e) {
+          if (e.key === "ArrowDown") { e.preventDefault(); focusRow(0); }
+        });
+        document.getElementById("drawer").addEventListener("toggle", renderRows);
         if ((q.get("lm") || (s === "all" ? "all" : "route")) === "all") document.getElementById("lm-all").checked = true;
         select(BY_ID.morning, false);
+        fillTopics();
+        buildRows();
         if (s === "landmark") openCard(routeG.querySelectorAll(".lm")[1]);
       })();
     </script>
