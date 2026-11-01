@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.24] - 2026-10-31
+
+### Added
+
+- tests/conftest.py lint gate: every pytest run carries one ruff-lint item over the whole repo, so the merge-queue drain's pytest verify (even affected-only, single-file or -m filtered) fails on a ruff error in tests or src when request_merge.py is called directly and scripts/check.sh is skipped (MEM-071, ADR 0037).
+
 ## [0.20.23] - 2026-10-31
 
 ### Fixed
