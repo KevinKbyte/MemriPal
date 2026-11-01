@@ -13,8 +13,31 @@
   display: block;
 }
 
-.screen > .screen-title {
+.screen > .screen-title,
+.screen-head > .screen-title {
   font: 600 1.5rem/1.15 var(--display);
+}
+
+/* Title row with the always-present Capture button; wraps rather than overflowing at 375px. */
+.screen-head:not([hidden]) {
+  display: flex;
+}
+
+.screen-head {
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+}
+
+.screen-head > .screen-title {
+  flex: 1 1 10rem;
+  min-width: 0;
+  margin: 0;
+}
+
+.topbar-capture {
+  flex: none;
 }
 
 .screen .sub-title {
@@ -479,7 +502,35 @@
   }
 }
 
-/* ---------- S2 Walking: capture (7:1 text) ---------- */
+/* ---------- S2 Set the route ---------- */
+
+.setup-map {
+  max-height: 14rem;
+}
+
+.route-setup > .tap-group {
+  margin-top: 0;
+}
+
+.stepper:not([hidden]) {
+  display: flex;
+}
+
+.stepper {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 600;
+}
+
+.stepper-value {
+  min-width: 2ch;
+  color: var(--ink);
+  font: 700 1.25rem/1 var(--mono);
+  text-align: center;
+}
+
+/* ---------- S2 Capture (7:1 text) ---------- */
 
 /* Capture sits in the bottom thumb zone: the section fills the screen, a 1fr spacer row pushes
    the count/finish row and the Capture button down, and Capture sticks to the viewport bottom
@@ -605,6 +656,10 @@
   border-radius: 12px;
   background: var(--surface);
   color: var(--ink);
+}
+
+.strip-item > .tag {
+  align-self: flex-start;
 }
 
 .strip-item::before {

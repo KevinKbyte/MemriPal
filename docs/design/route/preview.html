@@ -40,7 +40,10 @@
       <!-- S1 Routes home -->
       <span class="preview-label" data-s="1">S1 Routes home (ready)</span>
       <section id="routes-home" class="panel screen" data-s="1">
-        <h2 class="screen-title">Your routes</h2>
+        <div class="screen-head">
+          <h2 class="screen-title">Your routes</h2>
+          <button class="btn topbar-capture" type="button">Capture</button>
+        </div>
         <p class="lede">Walk a route once, learn it for good, then use it to remember what matters.</p>
         <ol id="routes-list" class="route-cards">
           <li class="route-card">
@@ -67,8 +70,8 @@
           </li>
         </ol>
         <img src="../../../static/assets/empty-state.webp" alt="" hidden>
-        <p class="empty-text" hidden>No routes yet</p>
-        <button id="routes-new" class="btn btn-primary" type="button">New walk</button>
+        <p class="empty-text" hidden>No routes yet. Set your first route to begin.</p>
+        <button id="routes-new" class="btn btn-primary" type="button">New route</button>
         <button id="load-demo" class="btn" type="button">Load demo</button>
         <details id="routes-settings" class="settings" open>
           <summary>Live settings</summary>
@@ -86,29 +89,77 @@
 
       <span class="preview-label" data-s="1">S1 Routes home (empty)</span>
       <section class="panel screen" data-s="1" data-preview-copy="empty">
-        <h2 class="screen-title">Your routes</h2>
-        <p class="lede">Walk a route once, learn it for good, then use it to remember what matters.</p>
+        <div class="screen-head">
+          <h2 class="screen-title">Your routes</h2>
+          <button class="btn topbar-capture" type="button">Capture</button>
+        </div>
+        <p class="lede">Set a route first: pick familiar places, then walk it once and learn it for good.</p>
         <ol class="route-cards" hidden></ol>
         <img id="empty-state" src="../../../static/assets/empty-state.webp" alt="">
-        <p class="empty-text">No routes yet</p>
-        <button class="btn btn-primary" type="button">New walk</button>
+        <p class="empty-text">No routes yet. Set your first route to begin.</p>
+        <button class="btn btn-primary" type="button">New route</button>
         <button class="btn" type="button">Load demo</button>
       </section>
 
-      <!-- S2 Walking: capture -->
-      <span class="preview-label" data-s="2">S2 Walking: capture (uploading)</span>
+      <!-- S2 Set the route, then Capture -->
+      <span class="preview-label" data-s="2">S2 Set the route (setup)</span>
+      <section class="panel screen route-setup" data-s="2">
+        <div class="screen-head">
+          <h2 class="screen-title">Set the route</h2>
+          <button class="btn topbar-capture" type="button">Capture</button>
+        </div>
+        <p class="lede">Pick the familiar places your route passes. MemriPal finds landmarks between them.</p>
+        <svg class="route-map setup-map" viewBox="0 0 320 200" role="img" aria-label="Route preview, loop with 5 stops">
+          <polyline class="route-line" points="50,160 90,60 180,40 270,90 220,170 50,160"></polyline>
+          <g class="station-node current"><circle cx="50" cy="160" r="10"></circle><text x="50" y="160">1</text></g>
+          <g class="station-node"><circle cx="90" cy="60" r="10"></circle><text x="90" y="60">2</text></g>
+          <g class="station-node"><circle cx="180" cy="40" r="10"></circle><text x="180" y="40">3</text></g>
+          <g class="station-node"><circle cx="270" cy="90" r="10"></circle><text x="270" y="90">4</text></g>
+          <g class="station-node"><circle cx="220" cy="170" r="10"></circle><text x="220" y="170">5</text></g>
+        </svg>
+        <div class="tap-group" role="group" aria-label="Familiar places">
+          <span class="tap-label">Familiar places</span>
+          <button class="tap" type="button" aria-pressed="true">Home</button>
+          <button class="tap" type="button" aria-pressed="false">Bakery</button>
+          <button class="tap" type="button" aria-pressed="true">Park</button>
+          <button class="tap" type="button" aria-pressed="false">Library</button>
+          <button class="tap" type="button" aria-pressed="false">Station</button>
+        </div>
+        <label class="check"><input type="checkbox" checked>
+          Loop route: end where you started</label>
+        <label class="check"><input type="checkbox">
+          Use a photo as a hint for the next landmark</label>
+        <div class="stepper" role="group" aria-label="Number of stops, 3 to 8">
+          <span>Stops (3 to 8)</span>
+          <button class="btn" type="button" aria-label="Fewer stops">-</button>
+          <span class="stepper-value" role="status">5</span>
+          <button class="btn" type="button" aria-label="More stops">+</button>
+        </div>
+        <div class="tap-group" role="group" aria-label="Map source">
+          <span class="tap-label">Map source</span>
+          <button class="tap" type="button" aria-pressed="true">Street map</button>
+          <button class="tap" type="button" aria-pressed="false">My walks</button>
+        </div>
+        <p class="notice">Only landmark positions leave your phone, and only with place lookup on.</p>
+        <button class="btn btn-primary" type="button">Find landmarks</button>
+      </section>
+
+      <span class="preview-label" data-s="2">S2 Capture (uploading)</span>
       <section id="capture-session" class="panel screen" data-s="2">
-        <h2 class="screen-title">Walking: capture</h2>
+        <h2 class="screen-title">Capture</h2>
         <div id="capture-safety" class="notice" hidden>
           <p>Stay aware of traffic and people around you. Stop before you take a photo.</p>
           <button id="capture-safety-ok" class="btn btn-primary" type="button">OK</button>
         </div>
-        <p id="meta-notice" class="notice">Your photo is sent to Meta's AI APIs to name the landmark. Your location stays
-          on this phone unless you ask for a street photo or turn on place facts, which send a landmark position.</p>
+        <p id="meta-notice" class="notice">Before Find landmarks, a photo is a hint that helps pick your stops. After,
+          it is added to the nearest stop as Your photo. Photos are sent to Meta's AI APIs to name the landmark. Your
+          location stays on this phone unless you ask for a street photo or turn on place facts, which send a landmark
+          position.</p>
         <ol id="capture-strip" class="strip">
           <li class="strip-item">
             <img class="strip-thumb" data-ph="30" alt="">
             <span class="strip-name">Red front door</span>
+            <span class="tag">Hint</span>
             <span class="badge-pending" hidden>Naming...</span>
             <button class="btn capture-retry" type="button" hidden>Retry</button>
             <button class="btn arm" type="button">Drop</button>
@@ -119,6 +170,7 @@
           <li class="strip-item">
             <img class="strip-thumb" data-ph="120" alt="">
             <span class="strip-name">Corner bakery</span>
+            <span class="tag">Hint</span>
             <span class="badge-pending" hidden>Naming...</span>
             <button class="btn capture-retry" type="button" hidden>Retry</button>
             <button class="btn arm" type="button" hidden>Drop</button>
@@ -161,7 +213,10 @@
       <!-- S3 Station card -->
       <span class="preview-label" data-s="3">S3 Station card (baseline shown)</span>
       <section id="station-card" class="panel screen" data-s="3">
-        <h2 class="screen-title">Station 2</h2>
+        <div class="screen-head">
+          <h2 class="screen-title">Station 2</h2>
+          <button class="btn topbar-capture" type="button">Capture</button>
+        </div>
         <div id="scene-wrap" class="photo-frame">
           <canvas id="scene" width="480" height="360"></canvas>
           <span class="model-chip">SAM 3.1</span>
@@ -238,7 +293,10 @@
 
       <span class="preview-label" data-s="3">S3 Station card (name clash error)</span>
       <section class="panel screen" data-s="3" data-preview-copy="error">
-        <h2 class="screen-title">Station 3</h2>
+        <div class="screen-head">
+          <h2 class="screen-title">Station 3</h2>
+          <button class="btn topbar-capture" type="button">Capture</button>
+        </div>
         <div class="field">
           <label>Station name <span class="model-chip">Muse Spark</span></label>
           <input class="name-input" type="text" maxlength="40" value="Corner bakery">
@@ -253,7 +311,10 @@
       <!-- S4 Finish walk -->
       <span class="preview-label" data-s="4">S4 Finish walk (error)</span>
       <section id="route-review" class="panel screen" data-s="4">
-        <h2 class="screen-title">Finish walk</h2>
+        <div class="screen-head">
+          <h2 class="screen-title">Finish walk</h2>
+          <button class="btn topbar-capture" type="button">Capture</button>
+        </div>
         <div class="field">
           <label for="finish-name">Route name</label>
           <input id="finish-name" type="text" maxlength="40" autocomplete="off" value="Morning walk to the station">
@@ -306,7 +367,10 @@
       <!-- S5 Route view -->
       <span class="preview-label" data-s="5">S5 Route view (ready)</span>
       <section id="route-view" class="panel screen" data-s="5">
-        <h2 class="screen-title">Morning walk to the station <span class="route-kind">Daily</span></h2>
+        <div class="screen-head">
+          <h2 class="screen-title">Morning walk to the station <span class="route-kind">Daily</span></h2>
+          <button class="btn topbar-capture" type="button">Capture</button>
+        </div>
         <p class="lede" hidden>No stations yet. Start a new walk to add some.</p>
         <svg id="route-map" class="route-map" viewBox="0 0 320 200" role="img" aria-label="Route map, 6 stations">
           <polyline class="route-line" points="30,170 80,130 130,150 180,90 240,110 290,40"></polyline>
@@ -357,7 +421,10 @@
       <!-- S6 List on route -->
       <span class="preview-label" data-s="6">S6 List on route (ready)</span>
       <section id="list-panel" class="panel screen" data-s="6">
-        <h2 class="screen-title">List on this route</h2>
+        <div class="screen-head">
+          <h2 class="screen-title">List on this route</h2>
+          <button class="btn topbar-capture" type="button">Capture</button>
+        </div>
         <div class="field">
           <label for="list-name">List name</label>
           <input id="list-name" type="text" value="Biology exam, chapter 3">
@@ -447,7 +514,10 @@
         </article>
       </div>
       <section id="walk" class="panel screen" data-s="7">
-        <h2 class="screen-title">Walk your palace</h2>
+        <div class="screen-head">
+          <h2 class="screen-title">Walk your palace</h2>
+          <button class="btn topbar-capture" type="button">Capture</button>
+        </div>
         <div id="walk-step" class="walk-step">
           <p class="walk-count">Station 1 of 6</p>
           <img class="scene-img" data-ph="20" data-w="480" data-h="320" alt="">
@@ -461,7 +531,10 @@
       <!-- S8 Recall -->
       <span class="preview-label" data-s="8">S8 Recall (LIVE)</span>
       <section id="recall" class="panel screen" data-s="8">
-        <h2 class="screen-title">Recall your palace</h2>
+        <div class="screen-head">
+          <h2 class="screen-title">Recall your palace</h2>
+          <button class="btn topbar-capture" type="button">Capture</button>
+        </div>
         <p id="recall-mode" class="recall-mode">Walk the route in your head and say each station's item out loud.</p>
         <svg id="recall-map" class="route-map" viewBox="0 0 320 200" role="img" aria-label="Recall map">
           <polyline class="route-line" points="30,170 80,130 130,150 180,90 240,110 290,40"></polyline>
@@ -491,7 +564,10 @@
       <!-- S9 Results, history, backup -->
       <span class="preview-label" data-s="9">S9 Results, history, backup</span>
       <section id="history" class="panel screen" data-s="9">
-        <h2 class="screen-title">Rehearsals</h2>
+        <div class="screen-head">
+          <h2 class="screen-title">Rehearsals</h2>
+          <button class="btn topbar-capture" type="button">Capture</button>
+        </div>
         <p role="status" hidden>History is unavailable right now.</p>
         <ol id="rehearsals" class="rehearsal-list">
           <li class="rehearsal"><time class="reh-date" datetime="2026-10-31">31 Oct, 08:12</time>
@@ -516,7 +592,10 @@
         <ul id="history-intrusions" hidden></ul>
       </section>
       <section id="backup" class="panel screen" data-s="9">
-        <h2 class="screen-title">Backup</h2>
+        <div class="screen-head">
+          <h2 class="screen-title">Backup</h2>
+          <button class="btn topbar-capture" type="button">Capture</button>
+        </div>
         <button id="backup-export" class="btn" type="button">Download backup</button>
         <p class="privacy-note">The backup file contains your recall transcripts and place names.</p>
         <div class="field">
