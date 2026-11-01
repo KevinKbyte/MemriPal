@@ -8,7 +8,16 @@
 # render from preview.html and 5-9 from preview-2.html; real_shoot renders through
 # screenshot_design.shot_plan, and a page absent at a rev (e.g. a merge-base older than
 # preview-2.html) yields a "<page> absent at <rev>" error and skips only that page's shots.
+# The gate also shoots the map-first home docs/design/route/map-shell.html: design_gate.gate_plan
+# (route dir URL) is the 32 preview shots (unchanged names and order) followed by 16 map shots,
+# screens closed/open/landmark/hidden at map-shell.html?s=<screen> (+ &theme=dark) for each
+# width (phone, wide) and theme (light, dark), named s<screen>_<width>_<theme>.png. map-shell.html
+# and every file it loads are inside RENDER_PATHS; map-shell.html absent at a rev skips only its
+# 16 shots; a changed map shot needs an approval like any other shot.
 import importlib.machinery
+import importlib.util
+import posixpath
+import re
 import sys
 import types
 import urllib.parse
@@ -32,6 +41,7 @@ pytestmark = pytest.mark.skipif(not GIT, reason="design_gate test needs git")
 ROUTE_DIR = "docs/design/route/"
 PREVIEW_2_PATH = ROUTE_DIR + "preview-2.html"
 DRAWER_PATH = ROUTE_DIR + "map-drawer.css"
+MAP_SHELL_PATH = ROUTE_DIR + "map-shell.html"
 
 
 def _preview(*hrefs: str) -> str:
@@ -168,10 +178,12 @@ def fake_browser(monkeypatch, tmp_path):
     return visited
 
 
-def _page_repo(tmp_path, with_page_2: bool):
+def _page_repo(tmp_path, with_page_2: bool, with_map_shell: bool = False):
     files = {"static/style.css": "body { margin: 0; }\n"}
     if with_page_2:
         files[PREVIEW_2_PATH] = "<!doctype html>\n<p>screens 5-9</p>\n"
+    if with_map_shell:
+        files[MAP_SHELL_PATH] = "<!doctype html>\n<p>map-first home</p>\n"
     repo = _make_repo(tmp_path, files)
     return repo, repo.head()
 
@@ -180,11 +192,13 @@ PAGE_1_SCREENS = ("s1_", "s2_", "s3_", "s4_")
 
 
 class TestRealShootPages:
-    def test_both_pages_present_renders_all_32_shots_from_their_pages(self, tmp_path, fake_browser):
-        repo, rev = _page_repo(tmp_path, with_page_2=True)
+    def test_all_pages_present_renders_all_48_shots_from_their_pages(self, tmp_path, fake_browser):
+        repo, rev = _page_repo(tmp_path, with_page_2=True, with_map_shell=True)
         render = _load().real_shoot(repo.path, rev, str(tmp_path / "shots"))
         assert render["errors"] == []
-        assert len(render["shots"]) == 32
+        assert len(render["shots"]) == 48
+        map_urls = [u for u in fake_browser if "s=closed" in u or "s=hidden" in u]
+        assert len(map_urls) == 8 and all("/map-shell.html?" in u for u in map_urls), fake_browser
         page_2_urls = [u for u in fake_browser if "s=7" in u or "s=5,6" in u or "s=9" in u]
         assert page_2_urls and all("/preview-2.html?" in u for u in page_2_urls), fake_browser
         page_1_urls = [u for u in fake_browser if "s=1" in u or "s=4" in u]
@@ -198,3 +212,126 @@ class TestRealShootPages:
         names = [s["filename"] for s in render["shots"]]
         assert len(names) == 16, names
         assert all(n.startswith(PAGE_1_SCREENS) for n in names), names
+
+    def test_map_shell_absent_at_rev_skips_only_its_16_shots(self, tmp_path, fake_browser):
+        repo, rev = _page_repo(tmp_path, with_page_2=True, with_map_shell=False)
+        render = _load().real_shoot(repo.path, rev, str(tmp_path / "shots"))
+        absent = [e for e in render["errors"] if "map-shell.html" in e and f"absent at {rev}" in e]
+        assert len(absent) == 1, render["errors"]
+        assert absent == render["errors"], render["errors"]
+        names = [s["filename"] for s in render["shots"]]
+        assert len(names) == 32, names
+        assert not any(n.startswith(MAP_SHOT_PREFIXES) for n in names), names
+
+
+ROUTE_URL = "file:///repo/docs/design/route"
+MAP_SCREENS = ("closed", "open", "landmark", "hidden")
+MAP_SHOT_PREFIXES = tuple(f"s{s}_" for s in MAP_SCREENS)
+WIDTHS = (("phone", (375, 812)), ("wide", (1000, 800)))
+THEMES = ("light", "dark")
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _expected_map_shots():
+    return {
+        (
+            f"{ROUTE_URL}/map-shell.html?s={s}" + ("&theme=dark" if t == "dark" else ""),
+            f"s{s}_{w}_{t}.png",
+            viewport,
+        )
+        for w, viewport in WIDTHS
+        for t in THEMES
+        for s in MAP_SCREENS
+    }
+
+
+class TestGatePlanShootsMapShell:
+    def test_preview_shots_come_first_with_names_and_order_unchanged(self):
+        gate = _load()
+        sd = gate.screenshot_design
+        preview = sd.shot_plan(
+            ROUTE_URL + "/preview.html", sd.DEFAULT_SCREENS, sd.DEFAULT_WIDTHS, sd.DEFAULT_THEMES
+        )
+        plan = gate.gate_plan(ROUTE_URL)
+        assert len(preview) == 32
+        assert [tuple(s) for s in plan[:32]] == [tuple(s) for s in preview]
+
+    def test_16_map_shell_shots_follow_the_preview_shots(self):
+        plan = _load().gate_plan(ROUTE_URL)
+        assert len(plan) == 48, [s.filename for s in plan]
+        assert {(s.url, s.filename, tuple(s.viewport)) for s in plan[32:]} == _expected_map_shots()
+
+    def test_map_shot_names_are_unique_and_follow_the_screen_width_theme_pattern(self):
+        plan = _load().gate_plan(ROUTE_URL)
+        names = [s.filename for s in plan]
+        assert len(set(names)) == len(names) == 48, names
+        by_name = {s.filename: s for s in plan}
+        assert by_name["sclosed_phone_light.png"].url == ROUTE_URL + "/map-shell.html?s=closed"
+        assert by_name["shidden_wide_dark.png"].url == ROUTE_URL + "/map-shell.html?s=hidden&theme=dark"
+        assert tuple(by_name["shidden_wide_dark.png"].viewport) == (1000, 800)
+
+
+def _loaded_repo_paths(html: str) -> list[str]:
+    """Repo paths of the files an html page under ROUTE_DIR loads via link href / script src."""
+    refs = re.findall(r"<(?:link|script)\b[^>]*\b(?:href|src)\s*=\s*[\"']([^\"'#]+)[\"']", html, flags=re.I)
+    return [
+        posixpath.normpath(ROUTE_DIR + r)
+        for r in refs
+        if not re.match(r"([a-z][a-z0-9+.-]*:|/)", r, flags=re.I)
+    ]
+
+
+class TestMapShellRendersFromArchive:
+    def test_map_shell_and_every_file_it_loads_are_inside_render_paths(self):
+        render_paths = _load().RENDER_PATHS
+        html = (REPO_ROOT / MAP_SHELL_PATH).read_text(encoding="utf-8")
+        loaded = [MAP_SHELL_PATH, *_loaded_repo_paths(html)]
+        for name in ("map-shell.js", "map-shell.css", "map-drawer.css"):
+            assert ROUTE_DIR + name in loaded, loaded
+        for path in loaded:
+            assert (REPO_ROOT / path).is_file(), path
+            assert any(path == r or path.startswith(r.rstrip("/") + "/") for r in render_paths), (
+                path,
+                render_paths,
+            )
+
+
+def _map_shell_branch(tmp_path):
+    """main has preview.html + preview-2.html; the feature branch adds map-shell.html."""
+    repo = _make_repo(
+        tmp_path,
+        {
+            "static/style.css": "body { margin: 0; }\n",
+            PREVIEW_2_PATH: "<!doctype html>\n<p>screens 5-9</p>\n",
+        },
+    )
+    repo.commit({MAP_SHELL_PATH: "<!doctype html>\n<p>map-first home</p>\n"}, "add map shell")
+    return repo
+
+
+def _approval_fails(lines, name):
+    return [line for line in _fails(lines) if name in line and "approv" in line.lower()]
+
+
+class TestChangedMapShotsNeedApproval:
+    def test_new_map_shots_without_approval_are_reported_like_any_changed_shot(
+        self, capsys, tmp_path, fake_browser
+    ):
+        repo = _map_shell_branch(tmp_path)
+        _, lines = _gate(capsys, tmp_path, repo, None)
+        for name in sorted(f for _, f, _ in _expected_map_shots()):
+            assert _approval_fails(lines, name), (name, lines)
+        assert not _approval_fails(lines, "s1_phone_light.png"), lines
+
+    def test_approved_map_shots_at_this_tip_are_not_reported(self, capsys, tmp_path, fake_browser):
+        repo = _map_shell_branch(tmp_path)
+        _gate(capsys, tmp_path, repo, None)
+        spec = importlib.util.spec_from_file_location(
+            "approve_design_map", REPO_ROOT / "scripts" / "approve_design.py"
+        )
+        approve = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(approve)
+        assert approve.main([str(tmp_path / "out"), "--approvals", str(tmp_path / "approvals.json")]) == 0
+        _, lines = _gate(capsys, tmp_path, repo, None)
+        assert (tmp_path / "out" / "tip" / "sclosed_phone_light.png").is_file(), lines
+        assert not any(_approval_fails(lines, f) for _, f, _ in _expected_map_shots()), lines
