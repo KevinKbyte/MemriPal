@@ -6,8 +6,8 @@ Usage: uv run python scripts/check_route_css.py <css>... <contract>
          docs/design/route/route-s4-s5.css docs/design/route/route-s6-s9.css \
          docs/design/route/route-contract.md
 The css files are checked concatenated in the given order (preview.html's link order); the contract is
-the last argument. Prints one "FAIL <problem>" line per problem, then "OK" (exit 0) or "<n> problem(s)" (exit 1).
-Exits 2 on bad usage.
+the last argument. Prints one "FAIL <problem>" line per problem, then "OK" (exit 0) or
+"<n> problem(s)" (exit 1). Exits 2 on bad usage.
 """
 
 import re
