@@ -6,10 +6,15 @@ Every page it loads is treated as a fixture whose body is REDUCE_BG under
 `browser.new_page(reduced_motion=...)`, `browser.new_context(reduced_motion=...).new_page()` or
 `page.emulate_media(reduced_motion=...)`, and its screenshot writes the colour that media selects
 (read back with body_bg).
+With install_fake_playwright(monkeypatch, gpu_raster_noise=True) it also models GPU raster: a browser
+launched without '--disable-gpu' in `args` writes screenshots carrying a never-repeating raster token,
+so the same page shot twice differs in bytes; launched with it, screenshot bytes depend only on the
+page and its media.
 
 REDUCED_MOTION_HTML / require_chrome / centre_rgb: the same fixture for the opt-in real-browser tests.
 """
 
+import itertools
 import sys
 import types
 import urllib.parse
@@ -23,6 +28,8 @@ REDUCE_BG = "#00ff00"
 MOTION_BG = "#ff0000"
 # Playwright's accepted values; anything else raises, as in a real browser.
 REDUCED_MOTION_VALUES = ("reduce", "no-preference", "null", None)
+# GPU raster noise: each GPU-on screenshot takes the next token, so no two are byte-identical.
+_RASTER_TOKENS = itertools.count()
 
 REDUCED_MOTION_HTML = (
     '<!doctype html>\n<html><head><meta charset="utf-8"><style>\n'
@@ -40,9 +47,10 @@ def _reduced_motion(value):
 
 
 class FakePage:
-    def __init__(self, visited: list[str], reduced_motion=None):
+    def __init__(self, visited: list[str], reduced_motion=None, gpu_raster=False):
         self.visited = visited
         self.width = 0
+        self.gpu_raster = gpu_raster
         self.reduced_motion = _reduced_motion(reduced_motion)
 
     def on(self, event, handler):
@@ -67,7 +75,8 @@ class FakePage:
 
     def screenshot(self, path, **kwargs):
         bg = REDUCE_BG if self.reduced_motion == "reduce" else MOTION_BG
-        Path(path).write_bytes(PNG + f"{Path(path).name}\nbody-bg={bg}".encode("ascii"))
+        noise = f"\ngpu-raster={next(_RASTER_TOKENS)}" if self.gpu_raster else ""
+        Path(path).write_bytes(PNG + f"{Path(path).name}{noise}\nbody-bg={bg}".encode("ascii"))
 
     def add_script_tag(self, **kwargs):
         pass
@@ -77,35 +86,42 @@ class FakePage:
 
 
 class _FakeContext:
-    def __init__(self, visited: list[str], reduced_motion):
+    def __init__(self, visited: list[str], reduced_motion, gpu_raster=False):
         self.visited = visited
         self.reduced_motion = _reduced_motion(reduced_motion)
+        self.gpu_raster = gpu_raster
 
     def new_page(self):
-        return FakePage(self.visited, self.reduced_motion)
+        return FakePage(self.visited, self.reduced_motion, self.gpu_raster)
 
     def close(self):
         pass
 
 
 class _FakeBrowser:
-    def __init__(self, visited: list[str]):
+    def __init__(self, visited: list[str], gpu_raster=False):
         self.visited = visited
+        self.gpu_raster = gpu_raster
 
     def new_page(self, **kwargs):
-        return FakePage(self.visited, kwargs.get("reduced_motion"))
+        return FakePage(self.visited, kwargs.get("reduced_motion"), self.gpu_raster)
 
     def new_context(self, **kwargs):
-        return _FakeContext(self.visited, kwargs.get("reduced_motion"))
+        return _FakeContext(self.visited, kwargs.get("reduced_motion"), self.gpu_raster)
 
     def close(self):
         pass
 
 
 class FakePlaywright:
-    def __init__(self, visited: list[str]):
-        browser = _FakeBrowser(visited)
-        self.chromium = types.SimpleNamespace(launch=lambda **kwargs: browser)
+    def __init__(self, visited: list[str], gpu_raster_noise=False):
+        self.visited = visited
+        self.gpu_raster_noise = gpu_raster_noise
+        self.chromium = types.SimpleNamespace(launch=self._launch)
+
+    def _launch(self, **kwargs):
+        gpu_on = "--disable-gpu" not in (kwargs.get("args") or [])
+        return _FakeBrowser(self.visited, gpu_raster=self.gpu_raster_noise and gpu_on)
 
     def __enter__(self):
         return self
@@ -114,11 +130,14 @@ class FakePlaywright:
         return False
 
 
-def install_fake_playwright(monkeypatch) -> list[str]:
-    """Patch playwright.sync_api into sys.modules; returns the list of page URLs actually loaded."""
+def install_fake_playwright(monkeypatch, gpu_raster_noise=False) -> list[str]:
+    """Patch playwright.sync_api into sys.modules; returns the list of page URLs actually loaded.
+
+    gpu_raster_noise: browsers launched without '--disable-gpu' in `args` shoot non-repeating bytes.
+    """
     visited: list[str] = []
     sync_api = types.ModuleType("playwright.sync_api")
-    sync_api.sync_playwright = lambda: FakePlaywright(visited)
+    sync_api.sync_playwright = lambda: FakePlaywright(visited, gpu_raster_noise)
     monkeypatch.setitem(sys.modules, "playwright", types.ModuleType("playwright"))
     monkeypatch.setitem(sys.modules, "playwright.sync_api", sync_api)
     return visited

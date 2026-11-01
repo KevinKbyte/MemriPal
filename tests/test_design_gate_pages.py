@@ -15,7 +15,9 @@
 # and every file it loads are inside RENDER_PATHS; map-shell.html absent at a rev skips only its
 # 16 shots; a changed map shot needs an approval like any other shot. Every screenshot real_shoot
 # takes is rendered with prefers-reduced-motion: reduce (ADR 0036 amendment), so an infinite CSS
-# animation or a JS tween cannot make a shot's sha256 drift between runs at one tip.
+# animation or a JS tween cannot make a shot's sha256 drift between runs at one tip. real_shoot
+# launches Chromium with --disable-gpu in `args` (ADR 0036 amendment, option G): GPU raster makes
+# bytes drift between runs, so two runs at one rev must write byte-identical PNGs.
 import importlib.machinery
 import importlib.util
 import posixpath
@@ -128,7 +130,17 @@ class TestRouteCssFollowsPreviewLinks:
 @pytest.fixture
 def fake_browser(monkeypatch, tmp_path):
     """Stand-in playwright + axe modules; yields the list of page URLs actually loaded."""
-    visited = install_fake_playwright(monkeypatch)
+    return _install_fake_browser(monkeypatch, tmp_path)
+
+
+@pytest.fixture
+def fake_gpu_browser(monkeypatch, tmp_path):
+    """fake_browser whose GPU-on launches shoot non-repeating bytes (models GPU raster)."""
+    return _install_fake_browser(monkeypatch, tmp_path, gpu_raster_noise=True)
+
+
+def _install_fake_browser(monkeypatch, tmp_path, gpu_raster_noise=False):
+    visited = install_fake_playwright(monkeypatch, gpu_raster_noise=gpu_raster_noise)
     axe_dir = tmp_path / "axe_pkg"
     axe_dir.mkdir()
     (axe_dir / "axe.min.js").write_text("/* axe */\n", encoding="utf-8")
@@ -310,6 +322,23 @@ class TestRealShootEmulatesReducedMotion:
         motion = [n for n in names if body_bg(out / n) != REDUCE_BG]
         assert not motion, (
             f"{len(motion)} of 48 shots not rendered under prefers-reduced-motion: reduce: {motion[:4]}"
+        )
+
+
+class TestRealShootIsByteDeterministic:
+    def test_two_runs_at_one_rev_shoot_byte_identical_pngs(self, tmp_path, fake_gpu_browser):
+        repo, rev = _page_repo(tmp_path, with_page_2=True, with_map_shell=True)
+        gate = _load()
+        first, second = tmp_path / "shots-1", tmp_path / "shots-2"
+        assert gate.real_shoot(repo.path, rev, str(first))["errors"] == []
+        assert gate.real_shoot(repo.path, rev, str(second))["errors"] == []
+        names = sorted(p.name for p in first.glob("*.png"))
+        assert len(names) == 48, names
+        assert sorted(p.name for p in second.glob("*.png")) == names
+        drift = [n for n in names if (first / n).read_bytes() != (second / n).read_bytes()]
+        assert not drift, (
+            f"{len(drift)} of 48 shots differ between runs (browser not launched with --disable-gpu): "
+            f"{drift[:4]}"
         )
 
 

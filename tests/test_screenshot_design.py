@@ -9,7 +9,9 @@
 # repeatable flag replace its default in the given order, prints "ERR <msg>" per error and "shots=N errors=M"
 # (exit 1 on errors, else 0), exits 2 without running for bad usage, and the module
 # imports without playwright installed. Every screenshot run takes is rendered with
-# prefers-reduced-motion: reduce (ADR 0036 amendment), so animated pages shoot the same bytes each run.
+# prefers-reduced-motion: reduce (ADR 0036 amendment), so animated pages shoot the same bytes each run,
+# and run launches Chromium with --disable-gpu in `args` (ADR 0036 amendment, option G) because GPU
+# raster makes bytes drift between runs: two runs of one plan write byte-identical PNGs.
 import importlib.util
 import sys
 from pathlib import Path
@@ -269,6 +271,24 @@ class TestRunEmulatesReducedMotion:
         motion = [s.filename for s in plan if body_bg(out / s.filename) != REDUCE_BG]
         assert not motion, (
             f"{len(motion)} of {len(plan)} shots not under prefers-reduced-motion: reduce: {motion[:4]}"
+        )
+
+
+class TestRunIsByteDeterministic:
+    def test_two_runs_of_one_plan_shoot_byte_identical_pngs(self, tmp_path, monkeypatch):
+        install_fake_playwright(monkeypatch, gpu_raster_noise=True)
+        module = _load()
+        plan = module.shot_plan(_route_pages(tmp_path), DEFAULT_SCREENS, DEFAULT_WIDTHS, DEFAULT_THEMES)
+        first, second = tmp_path / "shots-1", tmp_path / "shots-2"
+        assert module.run(plan, str(first)) == []
+        assert module.run(plan, str(second)) == []
+        names = sorted(p.name for p in first.glob("*.png"))
+        assert len(names) == len(plan) == 32, names
+        assert sorted(p.name for p in second.glob("*.png")) == names
+        drift = [n for n in names if (first / n).read_bytes() != (second / n).read_bytes()]
+        assert not drift, (
+            f"{len(drift)} of {len(names)} shots differ between runs "
+            f"(browser not launched with --disable-gpu): {drift[:4]}"
         )
 
 
