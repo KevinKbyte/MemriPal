@@ -279,8 +279,8 @@ export function onLoadDemo(deps) {
   return showUpload(send, "could not load the demo photo", deps);
 }
 
-/** KAVE COGS channels, in the order the association panel shows them (MEM-022). */
-export const KAVE_CHANNELS = Object.freeze([
+/** The 8 multisensory channels, in the order the association panel shows them (MEM-022). */
+export const MULTISENSORY_CHANNELS = Object.freeze([
   "kinesthetic",
   "auditory",
   "visual",
@@ -290,6 +290,14 @@ export const KAVE_CHANNELS = Object.freeze([
   "gustatory",
   "spatial",
 ]);
+
+/**
+ * The channels a record shows: taste is optional (MEM-022), so an absent or blank gustatory is hidden.
+ * @param {Record<string, string>} record
+ */
+export function shownChannels(record) {
+  return MULTISENSORY_CHANNELS.filter((c) => c !== "gustatory" || String(record.gustatory ?? "").trim());
+}
 
 /**
  * @typedef {{item: string, locus: {n: number, label: string}}} AssocPair
@@ -345,7 +353,7 @@ function textEl(doc, tag, text) {
 }
 
 /**
- * Panel card: item and locus, the 8 channels in KAVE order, then the D16 question and answer.
+ * Panel card: item and locus, the shown channels in multisensory order, then the D16 question and answer.
  * @param {AssocPair} pair
  * @param {AssocEntry | null} entry null when generation failed
  * @param {string} failure
@@ -360,7 +368,7 @@ function associationCard(pair, entry, failure, doc) {
   }
   if (entry.status !== "valid") card.append(textEl(doc, "p", "Needs regeneration"));
   const list = doc.createElement("dl");
-  for (const channel of KAVE_CHANNELS) {
+  for (const channel of shownChannels(entry.record)) {
     list.append(textEl(doc, "dt", channel), textEl(doc, "dd", entry.record[channel]));
   }
   card.append(list, textEl(doc, "p", entry.record.question), textEl(doc, "p", entry.record.answer));

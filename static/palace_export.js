@@ -28,6 +28,7 @@ const FIELDS = [
   "kinesthetic", "auditory", "visual", "emotional", "conceptual", "olfactory", "gustatory", "spatial",
   "scene_prompt_details", "walk_cue", "reencode_hint", "question", "answer",
 ];
+const REQUIRED_FIELDS = FIELDS.filter((f) => f !== "gustatory");
 const NAME_MAX = 100; // MAX_ITEM_LEN, MAX_LOCUS_LEN (trimmed)
 const SCENE_FIELDS = new Set(["spatial", "visual", "scene_prompt_details"]);
 const SCENE_FIELD_MAX = 300; // MAX_SCENE_FIELD_CHARS
@@ -67,20 +68,22 @@ function exactKeys(obj, required, optional = []) {
 function associationOf(e) {
   if (!isObject(e) || !exactKeys(e, ["record", "status"], ["sig"])) return null;
   const { record, status, sig } = e;
-  if (!isObject(record) || !exactKeys(record, FIELDS)) return null;
-  if (!FIELDS.every((f) => typeof record[f] === "string")) return null;
+  if (!isObject(record) || !exactKeys(record, REQUIRED_FIELDS, ["gustatory"])) return null;
+  // Taste is optional (MEM-022): only the fields the record actually has are checked and copied.
+  const present = FIELDS.filter((f) => f in record);
+  if (!present.every((f) => typeof record[f] === "string")) return null;
   for (const f of ["item", "locus"]) {
     const t = record[f].trim();
     if (!t || t.length > NAME_MAX) return null;
   }
-  for (const f of FIELDS.slice(2)) {
+  for (const f of present.slice(2)) {
     if (record[f].length > (SCENE_FIELDS.has(f) ? SCENE_FIELD_MAX : FIELD_MAX)) return null;
   }
   if (status !== "valid" && status !== "invalid") return null;
   if ("sig" in e && !(typeof sig === "string" && SIG_RE.test(sig))) return null;
   /** @type {Record<string, string>} */
   const rec = {};
-  for (const f of FIELDS) rec[f] = record[f];
+  for (const f of present) rec[f] = record[f];
   return "sig" in e ? { record: rec, status, sig } : { record: rec, status };
 }
 

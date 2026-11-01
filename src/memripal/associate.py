@@ -20,6 +20,8 @@ CHANNELS = (
 )
 EXTRA_FIELDS = ("scene_prompt_details", "walk_cue", "reencode_hint", "question", "answer")
 FIELDS = ("item", "locus", *CHANNELS, *EXTRA_FIELDS)
+# Taste is optional (MEM-022): absent or blank passes; a present value is still a capped string.
+OPTIONAL_FIELDS = ("gustatory",)
 MAX_ITEM_LEN = 100
 MAX_LOCUS_LEN = 100
 # Per-field cap on an untrusted reply; a realistic field is a sentence or two.
@@ -51,6 +53,9 @@ ASSOCIATION_PROMPT = (
     "ITEM: {item}\n"
     "LOCUS: {locus}"
 )
+# Outside backend._templates_digest for the same reason as ASSOCIATION_PLACE: editing ASSOCIATION_PROMPT
+# would orphan the recorded fixtures.
+ASSOCIATION_TASTE = "\nThe gustatory (taste) channel is optional: fill it only when a taste fits the scene, else leave it empty."
 ASSOCIATION_RETRY = "\nYour previous reply was rejected: {reason}. Fix that and reply again."
 # Deliberately outside backend._templates_digest: adding it would change every pre-MEM-025 request key
 # and orphan the recorded fixtures; the place itself rides in prompt args, so it still keys the cache.
@@ -82,7 +87,7 @@ class Association:
 
 
 def association_prompt(item: str, locus: str, reason: str | None = None, place: dict | None = None) -> str:
-    prompt = ASSOCIATION_PROMPT.format(item=item, locus=locus)
+    prompt = ASSOCIATION_PROMPT.format(item=item, locus=locus) + ASSOCIATION_TASTE
     if place is not None:
         prompt += ASSOCIATION_PLACE.format(title=place["title"], extract=place["extract"])
     return prompt if reason is None else prompt + ASSOCIATION_RETRY.format(reason=reason)
@@ -116,19 +121,21 @@ def validate_association(value: Any, item: str, locus: str) -> str | None:
     if not isinstance(value, dict):
         return "the reply is not a JSON object"
     for name in FIELDS:
-        if name not in value:
+        if name not in value and name not in OPTIONAL_FIELDS:
             return f"the {name} field is missing"
     if set(value) - set(FIELDS):
         return "the reply has fields outside the schema"
     for name in FIELDS:
+        if name not in value:
+            continue
         text = value[name]
         if not isinstance(text, str):
             return f"the {name} field is not a string"
         if len(text) > (MAX_SCENE_FIELD_CHARS if name in SCENE_FIELDS else MAX_FIELD_CHARS):
             return f"the {name} field is too long"
-        if not normalize(text):
+        if not normalize(text) and name not in OPTIONAL_FIELDS:
             return f"the {name} channel is empty" if name in CHANNELS else f"the {name} field is empty"
-    channels = [normalize(value[name]) for name in CHANNELS]
+    channels = [normalize(value[name]) for name in CHANNELS if name in value]
     if not any(normalize(item) in text for text in channels):
         return "no channel names the item word for word"
     if not any(normalize(locus) in text for text in channels):

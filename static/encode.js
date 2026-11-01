@@ -3,7 +3,7 @@
 // (associations, resumable, then scenes) -> walk view. Lives outside app.js (near its line cap).
 // Model text only ever reaches the page via textContent; image srcs pass isSafeImageSrc.
 
-import { KAVE_CHANNELS, demoUpload, runAssociations, showUpload } from "./app.js";
+import { demoUpload, runAssociations, showUpload, shownChannels } from "./app.js";
 import { associationKey } from "./palace_store.js";
 import { runScenes, sceneView } from "./scenes.js";
 
@@ -201,7 +201,7 @@ function showWalk(steps, scenes, doc) {
     if (s.entry) {
       if (s.entry.status !== "valid") parts.push(textEl(doc, "p", "Needs regeneration"));
       const channels = doc.createElement("dl");
-      for (const c of KAVE_CHANNELS) channels.append(textEl(doc, "dt", c), textEl(doc, "dd", s.entry.record[c]));
+      for (const c of shownChannels(s.entry.record)) channels.append(textEl(doc, "dt", c), textEl(doc, "dd", s.entry.record[c]));
       parts.push(channels, textEl(doc, "p", s.entry.record.question), textEl(doc, "p", s.entry.record.answer));
     } else {
       parts.push(textEl(doc, "p", "Could not generate this association."));
