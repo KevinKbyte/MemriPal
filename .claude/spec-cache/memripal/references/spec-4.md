@@ -69,3 +69,22 @@ Actors: `scripts/design_gate.py`, `scripts/approve_design.py` (Kev only), the ME
 - Pass: fresh tip shots, every check clean, every changed shot approved.
 - Accept: README.md as evidence -> refused; PNG from an earlier commit -> refused; fresh tip shots with a changed
   shot and no approval -> fail; fresh tip shots + approval -> pass; each check above failing alone -> fail.
+
+## MEM-071 Lint gate inside pytest
+
+Decided-by: ADR [0037](../../../../docs/decisions/0037-lint-in-pytest.md)
+Root problem: on 2026-10-31 two E501s reached main (3da4970 via MEM-034 418fd73; e5a6ead, fixed by a8c8daf). MEM-034
+was enqueued by calling agent-workflow `scripts/request_merge.py` directly, which skips `scripts/merge_branch.sh` and
+so `scripts/check.sh`, the only place ruff ran. The queue drain's verify (agent-workflow
+`scripts/post_merge_verify.py`) runs only pytest, often affected-only on changed test files.
+Actors: `tests/conftest.py`, ruff, the agent-workflow queue drain, `scripts/merge_branch.sh`.
+- `tests/conftest.py` appends one `ruff-lint` item to every pytest session (`hookimpl(trylast=True)` on
+  `pytest_collection_modifyitems`, so after `-k`/`-m` deselection) running `sys.executable -m ruff check <rootpath>`.
+- Nonzero exit fails the item with ruff's output. So any pytest run, including a single-file target or a `-m`
+  filtered run, fails on a lint error anywhere in the repo (tests or src); a clean repo passes.
+- Same interpreter as pytest (ruff and pytest share the dev dependency group), so a missing ruff fails closed.
+- `merge_branch.sh` with the real `check.sh` still refuses a lint-error branch before enqueue.
+- Residual: a drain run whose changed files map to zero test targets skips pytest entirely, so a lint error there is
+  uncaught; closed by the agent-workflow follow-up (drain runs a repo-declared check command).
+
+Tests: tests/test_lint_gate.py
