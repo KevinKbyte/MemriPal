@@ -43,9 +43,9 @@ history, cached associations and the route, never photos or scene images. New `s
 - Route: each locus rebuilt with exactly {n, label, phrase, box {x1, y1, x2, y2}, outline [[x, y], ...]} (`app.py`
   `_locus_json`): n integer, label and phrase strings, coordinates finite numbers; any other key or type -> route
   skipped. No production code reads the route today (`loadRoute` is called only in tests).
-- I3 Association entry: exactly {record, status} or {record, status, sig}. record has exactly the 15 `associate.py`
-  `FIELDS` (item, locus, 8 channels, scene_prompt_details, walk_cue, reencode_hint, question, answer), all strings;
-  item and locus non-blank, <= 100 chars trimmed (`MAX_ITEM_LEN`, `MAX_LOCUS_LEN`); spatial, visual,
+- I3 Association entry: exactly {record, status} or {record, status, sig}. record has the 15 `associate.py` `FIELDS`
+  (item, locus, 8 channels, scene_prompt_details, walk_cue, reencode_hint, question, answer), all strings; MEM-022:
+  gustatory may be absent. item and locus non-blank, <= 100 trimmed (`MAX_ITEM_LEN`, `MAX_LOCUS_LEN`); spatial, visual,
   scene_prompt_details <= 300 (`MAX_SCENE_FIELD_CHARS`); every other field <= 2000 (`MAX_FIELD_CHARS`). Unknown key ->
   entry skipped, never stripped: stripping changes the canonical JSON `record_sign.py` signs. status "valid" or
   "invalid"; sig, when present, matches `/^[0-9a-f]{64}$/`. Key = `associationKey(record.item, record.locus)`, never

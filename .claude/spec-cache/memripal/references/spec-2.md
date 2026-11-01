@@ -212,8 +212,8 @@ by `static/flow.js` `wireApp`: `#load-demo` runs `runDemoPalace`; `app.js` backs
 - `runEncode({image, loci, points, auto}, {doc, fetch, store})`: review (skipped when `auto`, D19: zero clicks) ->
   `store.saveRoute(order)` -> pairs = order[i] with points[i] -> `runAssociations` (MEM-022, resume reuses valid
   records) -> `runScenes` (MEM-029) -> walk view at step 1.
-- Walk view (`#walk`): "Step <k> of <n>", "<item> at <label>", the scene (`sceneView`), the 8 channels in
-  `KAVE_CHANNELS` order, question, answer; non-valid record adds "Needs regeneration"; no record -> "Could not
+- Walk view (`#walk`): "Step <k> of <n>", "<item> at <label>", the scene (`sceneView`), `shownChannels` in
+  `MULTISENSORY_CHANNELS` order, question, answer; non-valid record adds "Needs regeneration"; no record -> "Could not
   generate this association". Prev disabled at step 1, Next at the last.
 - `runDemoPalace({auto}, deps)`: demo photo -> /loci (same bytes) -> /demo/notes.txt -> /split (notes mode, plain
   base64) -> `runEncode`; a failed step writes `#upload-status` ("Demo failed: <code>") and stops; never throws.

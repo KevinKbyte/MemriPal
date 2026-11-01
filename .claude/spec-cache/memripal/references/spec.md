@@ -429,10 +429,10 @@ a) `src/memripal/associate.py`:
   point, same call); additionalProperties false. No maxLength (backend `_schema_valid` refuses it): length caps live
   in the validator.
 - `validate_association(value, item, locus) -> str | None`: None = valid, else a short non-empty reason. After
-  `textnorm.normalize` (MEM-020): (1) all 8 channels non-empty; (2) item verbatim in >= 1 channel;
-  (3) locus short label in >= 1 channel; (4) echoed `item` and `locus` match the request. Also rejected: non-dict,
-  missing, unknown or blank field (question, answer included), non-string value, oversized field (a 64 KiB channel
-  fails; ~250-char fields pass).
+  `textnorm.normalize` (MEM-020): (1) 7 channels non-empty, gustatory may be absent or blank (`OPTIONAL_FIELDS`,
+  MEM-022); (2) item verbatim in >= 1 channel; (3) locus short label in >= 1 channel; (4) echoed `item` and `locus`
+  match the request. Also rejected: non-dict, missing, unknown or blank non-optional field (question, answer
+  included), non-string value, oversized field, a present gustatory too (64 KiB fails; ~250-char fields pass).
 - `associate(backend, processed, item, locus) -> Association` (frozen: item, locus, status "valid" | "invalid",
   attempts = calls made, record = reply when valid, reason = None when valid). Empty/blank or > MAX_ITEM_LEN item,
   or empty/blank locus -> ValueError before any call; exactly 100 chars passes.
@@ -482,7 +482,7 @@ ADR [0021](../../../../docs/decisions/0021-client-palace-store-injected-kv.md). 
   backslash, comma) inside a field.
 
 `static/app.js`, `static/index.html`:
-- `KAVE_CHANNELS` = kinesthetic, auditory, visual, emotional, conceptual, olfactory, gustatory, spatial, in order.
+- `MULTISENSORY_CHANNELS` = kinesthetic, auditory, visual, emotional, conceptual, olfactory, gustatory, spatial.
 - `runAssociations(pairs, {doc, fetch, store, image})`, pairs = `[{item, locus: {n, label}}]`, image = uploaded photo
   data URL. Missing image -> no request, error in `#assoc-status`. One POST /associate (MEM-021) per pair needing
   generation, body exactly `{image, item, locus: locus.label}`; entry `{record, status}` stored under
@@ -492,8 +492,8 @@ ADR [0021](../../../../docs/decisions/0021-client-palace-store-injected-kv.md). 
 - Resume: stored `valid` entries reused without a request; only missing or `invalid` ones regenerate. A record
   under another locus label is not reused. Re-run with all valid -> no requests, panel not duplicated.
 - `#assoc-status` shows "<done> of <total>" (done = pairs with a stored record). `#associations` holds one child
-  per pair: item, locus label, the 8 channels in `KAVE_CHANNELS` order (name + text), then the D16 question and
-  answer.
+  per pair: item, locus label, `shownChannels(record)` in `MULTISENSORY_CHANNELS` order (name + text), then the D16
+  question and answer. Gustatory optional (`ASSOCIATION_TASTE`: when it fits): absent/blank hidden; other 7 required.
 - Model text set via textContent only: hostile markup renders as literal text, never an element; `app.js` and
   `palace_store.js` contain no `innerHTML`/`outerHTML`/`insertAdjacentHTML`/`document.write`.
 

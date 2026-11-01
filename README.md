@@ -3,7 +3,7 @@
 MemriPal is a place-based recall coach for speeches, not a study chatbot. It turns any place you know into a memory
 palace for a talk you must deliver (or exam facts, vocabulary). Photograph a familiar space (a room, a library aisle,
 a campus walk); SAM 3.1 segments distinct objects
-into an ordered walking route of loci; Muse Spark splits your study list into items and writes a validated 8-sense
+into an ordered walking route of loci; Muse Spark splits your study list into items and writes a validated multisensory
 association tying each item to its locus; Muse Image renders each scene onto your photo. You then walk the route
 eyes closed and recall aloud; a deterministic matcher (no LLM) checks the Muse Voice Transcribe transcript, marks
 each locus you recall and lists the ones you miss, with per-locus hit rates and chronic misses across rehearsals, so
@@ -61,7 +61,7 @@ All via the Meta Model API (not original work); client in `src/memripal/meta_cli
 
 | Model (API id) | Job | Status |
 | --- | --- | --- |
-| Muse Spark (`muse-spark-1.3`) | Names objects in the photo; splits notes into items; writes the 8-sense association per item | built |
+| Muse Spark (`muse-spark-1.3`) | Names objects in the photo; splits notes into items; writes the multisensory association per item | built |
 | SAM 3.1 (`sam-3.1`) | Segments each object phrase into boxes that become loci | built |
 | Muse Image (`muse-image-1.0`) | Renders each mnemonic scene onto the photo | built |
 | Muse Voice Transcribe (`muse-voice-transcribe-1.0`) | Speech-to-text for eyes-closed spoken recall | built |
