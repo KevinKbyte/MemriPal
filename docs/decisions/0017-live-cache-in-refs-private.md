@@ -43,7 +43,7 @@ makes a recorded run replayable at all.
 ## Consequences
 
 - Demo fixtures stay synthetic until a later promote step copies chosen photos and responses into
-  `fixtures/promoted/`, re-keyed to `sha(process_upload(P))`.
+  `fixtures/replay/` (`scripts/promote_live_cache.py`), re-keyed to `sha(process_upload(P))`.
 - S7 public mode passes `live_cache_root=None`: no disk writes, per [0003](0003-stateless-backend-client-state.md)
   stateless backend.
 - The `fixtures/` guard is a `ValueError` at backend selection, not a convention (MEM-014, `tests/test_live_cache.py`).
