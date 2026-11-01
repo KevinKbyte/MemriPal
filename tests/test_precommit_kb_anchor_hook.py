@@ -28,7 +28,10 @@ def test_hook_fails_closed_naming_missing_gate_path(tmp_path):
     env = {**os.environ, "AW": missing.as_posix(), "GIT_CONFIG_GLOBAL": os.devnull}
     run = lambda *a: subprocess.run(a, cwd=work, env=env, capture_output=True, text=True)  # noqa: E731
     run("git", "init", "-q")
+    # Stub the earlier MEM-004 scan step so the hook reaches the KB-041 gate.
+    (work / "scripts").mkdir()
+    (work / "scripts" / "precommit_scan.py").write_text("import sys\nsys.exit(0)\n", encoding="utf-8")
     proc = run(SH, str(HOOK))
     out = proc.stdout + proc.stderr
+    assert "kb_anchor_gate.py" in out and missing.as_posix() in out, f"gate path not named: {out!r}"
     assert proc.returncode != 0, out
-    assert "kb_anchor_gate.py" in out and missing.as_posix() in out, out
