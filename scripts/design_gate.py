@@ -161,7 +161,7 @@ def real_shoot(repo: Path, rev: str, outdir: str) -> dict:
         if not plan:
             return {"errors": errors, "shots": []}
         with sync_playwright() as p:
-            browser = p.chromium.launch(channel="chrome")
+            browser = p.chromium.launch(channel="chrome", args=["--disable-gpu"])
             try:
                 # Shots must settle (ADR 0036 amendment 2026-11-01): lm-float animates infinitely otherwise.
                 page = browser.new_page(reduced_motion="reduce")

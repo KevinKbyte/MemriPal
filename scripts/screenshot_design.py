@@ -77,7 +77,7 @@ def run(plan: list[Shot], outdir: str) -> list[str]:
             errors.append(msg.text)
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(channel="chrome")
+        browser = p.chromium.launch(channel="chrome", args=["--disable-gpu"])
         try:
             # Shots must settle (ADR 0036 amendment 2026-11-01): lm-float animates infinitely otherwise.
             page = browser.new_page(reduced_motion="reduce")
