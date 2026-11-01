@@ -45,6 +45,8 @@
            always hidden, only because scripts/design_gate.py checks route-contract.md's names in this DOM. -->
       <p class="notice" data-s="1">Home is the map-first shell: open <a href="map-shell.html">map-shell.html</a>
         (contract: route-contract-2.md). The S1 card-list home is superseded and not shown.</p>
+      <!-- Outside .notice: its link color would override .btn-primary's text color and fail contrast. -->
+      <p data-s="1"><a id="map-new" class="btn btn-primary" href="map-shell.html">Map a new route</a></p>
       <p id="public-banner" class="notice" data-s="1" hidden>Live needs a passcode. Try Load demo.</p>
       <p id="status" class="status-line" data-s="1" hidden>Backend ready.</p>
 
