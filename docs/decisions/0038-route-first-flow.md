@@ -76,7 +76,7 @@ Options:
 - (A') Keep the card-list S1-S4 spine (2026-10-31 decision). Pros: passes the 9-state gate with no new ids.
   Cons: owner rejected it; a list hides that a route is a place.
 - (B') Map-first shell (chosen). The map is home and shows ONLY the selected route; a right-side drawer holds this
-  route's settings, "Map a new route" and existing routes; bottom tabs Routes / Recall / Landmarks / Settings.
+  route's settings, "Map a new route" and existing routes; bottom tabs Routes / Landmarks / Recall / Settings.
   Pros: matches the owner's Google-Maps-like model; one route at a time keeps the map uncluttered and bounds
   render cost at 1000+ routes. Cons: its own preview page and states, outside preview.html's 9 states; needs
   culling and windowing to stay fast at scale.
