@@ -10,13 +10,13 @@ from pathlib import Path
 import pytest
 
 REPO = Path(__file__).resolve().parent.parent
-AW = Path(os.environ.get("AW", "C:/Users/Kev/.claude/worktrees/agent-workflow/kb-spec-169"))
+AW = Path(os.environ.get("AW") or Path.home() / "projects" / "agent-workflow")
 SCRIPT = AW / "scripts" / "dangling_paths.py"
 
 
 @pytest.mark.skipif(
     not SCRIPT.is_file(),
-    reason=f"agent-workflow checkout absent: {SCRIPT} not found (set AW)",
+    reason=f"SKIPPED: agent-workflow checkout absent, {SCRIPT} not found (set AW to its path)",
 )
 def test_dangling_paths_check_clean():
     docs = sorted(p.relative_to(REPO).as_posix() for p in (REPO / "docs" / "decisions").glob("*.md"))

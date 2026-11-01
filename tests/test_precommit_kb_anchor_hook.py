@@ -2,7 +2,6 @@
 # agent-workflow checkout and fails closed, naming the expected path, when absent.
 # Covers: KB-041
 import os
-import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -11,27 +10,60 @@ import pytest
 
 REPO = Path(__file__).resolve().parent.parent
 HOOK = REPO / ".githooks" / "pre-commit"
-SH = shutil.which("sh")
 
 
-def test_hook_invokes_kb_anchor_gate_and_ors_status():
-    text = HOOK.read_text(encoding="utf-8")
-    pattern = r'python\s+"\$\{AW:-[^}]+\}/scripts/kb_anchor_gate\.py"\s+--repo\s+\.\s*\|\|\s*status=1'
-    assert re.search(pattern, text), "kb_anchor_gate.py --repo . || status=1 missing"
+def _find_sh():
+    """Prefer Git-Bash sh; System32/WSL launchers cannot run the hook."""
+    found = shutil.which("sh")
+    if found is None:
+        return None
+    low = found.replace("\\", "/").lower()
+    return None if "/windows/system32" in low or "wsl" in low else found
 
 
-@pytest.mark.skipif(SH is None, reason="sh unavailable")
-def test_hook_fails_closed_naming_missing_gate_path(tmp_path):
-    missing = tmp_path / "no-aw"
+SH = _find_sh()
+NO_SH = "Git-Bash/POSIX sh unavailable (System32/WSL sh does not count)"
+
+
+def _run_hook(tmp_path, aw):
     work = tmp_path / "repo"
     work.mkdir()
-    env = {**os.environ, "AW": missing.as_posix(), "GIT_CONFIG_GLOBAL": os.devnull}
+    env = {**os.environ, "AW": aw.as_posix(), "GIT_CONFIG_GLOBAL": os.devnull}
     run = lambda *a: subprocess.run(a, cwd=work, env=env, capture_output=True, text=True)  # noqa: E731
     run("git", "init", "-q")
     # Stub the earlier MEM-004 scan step so the hook reaches the KB-041 gate.
     (work / "scripts").mkdir()
     (work / "scripts" / "precommit_scan.py").write_text("import sys\nsys.exit(0)\n", encoding="utf-8")
-    proc = run(SH, str(HOOK))
+    return run(SH, str(HOOK))
+
+
+def _stub_aw(tmp_path, exit_code):
+    aw = tmp_path / "aw"
+    (aw / "scripts").mkdir(parents=True)
+    gate = aw / "scripts" / "kb_anchor_gate.py"
+    gate.write_text(f"import sys\nsys.exit({exit_code})\n", encoding="utf-8")
+    return aw
+
+
+@pytest.mark.skipif(SH is None, reason=NO_SH)
+@pytest.mark.parametrize("code", [1, 2])
+def test_hook_fails_when_kb_gate_exits_nonzero(tmp_path, code):
+    proc = _run_hook(tmp_path, _stub_aw(tmp_path, code))
+    assert proc.returncode != 0, proc.stdout + proc.stderr
+
+
+@pytest.mark.skipif(SH is None, reason=NO_SH)
+def test_hook_passes_kb_portion_when_kb_gate_exits_zero(tmp_path):
+    proc = _run_hook(tmp_path, _stub_aw(tmp_path, 0))
+    out = proc.stdout + proc.stderr
+    assert "KB-041 gate missing" not in out, out
+    assert proc.returncode == 0, out
+
+
+@pytest.mark.skipif(SH is None, reason=NO_SH)
+def test_hook_fails_closed_naming_missing_gate_path(tmp_path):
+    missing = tmp_path / "no-aw"
+    proc = _run_hook(tmp_path, missing)
     out = proc.stdout + proc.stderr
     assert "kb_anchor_gate.py" in out and missing.as_posix() in out, f"gate path not named: {out!r}"
     assert proc.returncode != 0, out
