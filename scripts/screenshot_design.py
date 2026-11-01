@@ -79,7 +79,8 @@ def run(plan: list[Shot], outdir: str) -> list[str]:
     with sync_playwright() as p:
         browser = p.chromium.launch(channel="chrome")
         try:
-            page = browser.new_page()
+            # Shots must settle (ADR 0036 amendment 2026-11-01): lm-float animates infinitely otherwise.
+            page = browser.new_page(reduced_motion="reduce")
             page.on("pageerror", lambda exc: errors.append(str(exc)))
             page.on("console", on_console)
             viewport = None

@@ -163,7 +163,8 @@ def real_shoot(repo: Path, rev: str, outdir: str) -> dict:
         with sync_playwright() as p:
             browser = p.chromium.launch(channel="chrome")
             try:
-                page = browser.new_page()
+                # Shots must settle (ADR 0036 amendment 2026-11-01): lm-float animates infinitely otherwise.
+                page = browser.new_page(reduced_motion="reduce")
                 page.on("pageerror", lambda exc: errors.append(str(exc)))
                 page.on("console", lambda msg: errors.append(msg.text) if msg.type == "error" else None)
                 for shot in plan:
