@@ -32,6 +32,8 @@ DESIGN_PREFIX = "docs/design/"
 ROUTE_DIR = "docs/design/route/"
 CONTRACT_PATH = "docs/design/route/route-contract.md"
 PREVIEW_PATH = "docs/design/route/preview.html"
+MAP_SHELL_PAGE = "map-shell.html"
+MAP_SCREENS = ("closed", "open", "landmark", "hidden")
 # preview.html links ../../../static/*.css, so the render tree needs static/ beside docs/design/.
 RENDER_PATHS = ["docs/design", "static"]
 PHONE_WIDTH = 375
@@ -100,8 +102,28 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def gate_plan(route_dir_url: str) -> list[screenshot_design.Shot]:
+    """screenshot_design's preview plan, then the map-first home's screens per width and theme."""
+    plan = screenshot_design.shot_plan(
+        route_dir_url + "/" + Path(PREVIEW_PATH).name,
+        screenshot_design.DEFAULT_SCREENS,
+        screenshot_design.DEFAULT_WIDTHS,
+        screenshot_design.DEFAULT_THEMES,
+    )
+    return plan + [
+        screenshot_design.Shot(
+            f"{route_dir_url}/{MAP_SHELL_PAGE}?s={s}" + ("&theme=dark" if t == "dark" else ""),
+            f"s{s}_{name}_{t}.png",
+            viewport,
+        )
+        for name, viewport in screenshot_design.DEFAULT_WIDTHS
+        for t in screenshot_design.DEFAULT_THEMES
+        for s in MAP_SCREENS
+    ]
+
+
 def real_shoot(repo: Path, rev: str, outdir: str) -> dict:
-    """Render preview.html at `rev` per screenshot_design's plan; collect overflow, axe and DOM names."""
+    """Render the route pages at `rev` per gate_plan; collect overflow, axe and DOM names."""
     # Lazy imports: the gate must import (and be tested) where playwright is absent.
     from playwright.sync_api import sync_playwright
 
@@ -127,12 +149,7 @@ def real_shoot(repo: Path, rev: str, outdir: str) -> dict:
         with tarfile.open(fileobj=io.BytesIO(archive.stdout)) as tar:
             tar.extractall(tree, filter="data")
         route_dir = Path(tree) / ROUTE_DIR
-        plan = screenshot_design.shot_plan(
-            (route_dir / Path(PREVIEW_PATH).name).as_uri(),
-            screenshot_design.DEFAULT_SCREENS,
-            screenshot_design.DEFAULT_WIDTHS,
-            screenshot_design.DEFAULT_THEMES,
-        )
+        plan = gate_plan(route_dir.as_uri())
 
         def page(shot) -> str:
             return shot.url.split("?", 1)[0].rsplit("/", 1)[1]
