@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MemriPal route design preview (S5-S9)</title>
+    <!-- Design preview only, page 2 of 2: renders S5-S9 from route-contract.md with sample data; S2-S4 are
+         on preview.html. Not part of the app. Same stylesheets, in the same order, as preview.html.
+         Serve the repo root over HTTP and open /docs/design/route/preview-2.html.
+         Query: ?s=5,6 shows only those screens (default all); ?theme=dark|light forces a theme. -->
+    <link rel="icon" href="../../../static/icon.svg">
+    <link rel="stylesheet" href="../../../static/style.css">
+    <link rel="stylesheet" href="../../../static/theme-painterly.css">
+    <link rel="stylesheet" href="route.css">
+    <link rel="stylesheet" href="route-s1-s2.css">
+    <link rel="stylesheet" href="route-s3.css">
+    <link rel="stylesheet" href="route-s4-s5.css">
+    <link rel="stylesheet" href="route-s6-s9.css">
+    <style>
+      .preview-bar { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; max-width: 76rem;
+        margin: 0 auto; padding: 0.5rem 1rem; font-size: 0.875rem; color: var(--ink); }
+      .preview-bar a { color: var(--primary); }
+      .notice a { color: var(--ink); font-weight: 700; }
+      /* 24px targets for axe target-size. */
+      .preview-bar a:not([hidden]) { display: inline-block; min-width: 24px; min-height: 24px;
+        padding: 0.125rem 0.25rem; text-align: center; }
+      .preview-label { display: block; margin: 1.5rem 0 0.25rem; font: 600 0.8125rem/1.2 var(--display);
+        letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+      @media (min-width: 900px) {
+        /* S6 label sits over the right column so S5 and S6 share a row. */
+        .app > .preview-label[data-s="6"] { grid-column: 2; }
+        .app > [data-preview-copy="error"],
+        .app > [data-preview-copy="locked"] { width: 100%; max-width: 48rem; justify-self: center; }
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="preview-bar" aria-label="Preview screens">
+      <strong>Preview:</strong>
+      <a href="?">All</a> <a href="map-shell.html">Home (map)</a> <a href="preview.html?s=2">S2</a>
+      <a href="preview.html?s=3">S3</a> <a href="preview.html?s=4">S4</a>
+      <a href="?s=5,6">S5+S6</a> <a href="?s=7">S7</a> <a href="?s=8">S8</a> <a href="?s=9">S9</a>
+      <a href="#" id="theme-flip">Flip theme</a>
+    </nav>
+    <header class="topbar">
+      <h1 class="brand">MemriPal</h1>
+    </header>
+    <main class="app">
+      <!-- S1 card-list home is superseded by the map-first shell (route-contract-2.md). Its markup stays,
+           always hidden, only because scripts/design_gate.py checks route-contract.md's names in the rendered
+           DOM (union of both pages); it lives here so preview.html stays under 500 lines. -->
+      <p id="public-banner" class="notice" data-s="1" hidden>Live needs a passcode. Try Load demo.</p>
+      <p id="status" class="status-line" data-s="1" hidden>Backend ready.</p>
+
+      <!-- S1 Routes home -->
+      <span class="preview-label" data-s="1" hidden>S1 Routes home (ready)</span>
+      <section id="routes-home" class="panel screen" data-s="1" hidden>
+        <div class="screen-head">
+          <h2 class="screen-title">Your routes</h2>
+          <button class="btn topbar-capture" type="button">Capture</button>
+        </div>
+        <p class="lede">Walk a route once, learn it for good, then use it to remember what matters.</p>
+        <ol id="routes-list" class="route-cards">
+          <li class="route-card">
+            <h3 class="route-card-name">Morning walk to the station</h3>
+            <p class="route-card-meta"><span class="tag-kind">Daily</span> 6 stations</p>
+            <p class="route-card-learned">Learned 4/6 stations</p>
+            <p class="route-card-list">List: Biology exam, chapter 3</p>
+            <button class="btn route-card-open" type="button">Open</button>
+          </li>
+          <li class="route-card">
+            <h3 class="route-card-name">Grandma's house</h3>
+            <p class="route-card-meta"><span class="tag-kind">Occasional</span> 8 stations</p>
+            <p class="route-card-learned">Learned 8/8 stations</p>
+            <p class="route-card-list">List: Wedding toast</p>
+            <button class="btn route-card-open" type="button">Open</button>
+          </li>
+          <li class="route-card">
+            <h3 class="route-card-name">Park loop</h3>
+            <p class="route-card-meta"><span class="tag-kind">Daily</span> 3 stations</p>
+            <p class="route-card-learned">Learned 0/3 stations</p>
+            <p class="route-card-list">No list yet</p>
+            <span class="tag-draft">Unfinished route</span>
+            <button class="btn route-card-open" type="button">Open</button>
+          </li>
+        </ol>
+        <img src="../../../static/assets/empty-state.webp" alt="" hidden>
+        <p class="empty-text" hidden>No routes yet. Set your first route to begin.</p>
+        <button id="routes-new" class="btn btn-primary" type="button">New route</button>
+        <button id="load-demo" class="btn" type="button">Load demo</button>
+        <details id="routes-settings" class="settings" open>
+          <summary>Live settings</summary>
+          <div class="field">
+            <label for="passcode">Live passcode (not needed for Load demo)</label>
+            <input id="passcode" type="password" autocomplete="off">
+          </div>
+          <label class="check"><input id="auto" type="checkbox">
+            Skip the Fix the route review: save in capture order with a default name</label>
+          <label class="check"><input id="place-toggle" type="checkbox">
+            Look up place facts for my stations (off by default): sends each station's landmark position, not
+            your exact location, to Wikipedia through MemriPal's server.</label>
+        </details>
+      </section>
+
+      <span class="preview-label" data-s="1" hidden>S1 Routes home (empty)</span>
+      <section class="panel screen" data-s="1" data-preview-copy="empty" hidden>
+        <div class="screen-head">
+          <h2 class="screen-title">Your routes</h2>
+          <button class="btn topbar-capture" type="button">Capture</button>
+        </div>
+        <p class="lede">Set a route first: pick familiar places, then walk it once and learn it for good.</p>
+        <ol class="route-cards" hidden></ol>
+        <img id="empty-state" src="../../../static/assets/empty-state.webp" alt="">
+        <p class="empty-text">No routes yet. Set your first route to begin.</p>
+        <button class="btn btn-primary" type="button">New route</button>
+        <button class="btn" type="button">Load demo</button>
+      </section>
+
+      <!-- S5 Route view -->
+      <span class="preview-label" data-s="5">S5 Route view (ready)</span>
+      <section id="route-view" class="panel screen" data-s="5">
+        <div class="screen-head">
+          <h2 class="screen-title">Morning walk to the station <span class="route-kind">Daily</span></h2>
+          <button class="btn topbar-capture" type="button">Capture</button>
+        </div>
+        <p class="lede" hidden>No stops yet. Set the route to add some.</p>
+        <svg id="route-map" class="route-map" viewBox="0 0 320 200" role="img" aria-label="Route map, 6 stations">
+          <polyline class="route-line" points="30,170 80,130 130,150 180,90 240,110 290,40"></polyline>
+          <g class="station-node lit"><circle cx="30" cy="170" r="10"></circle><text x="30" y="170">1</text></g>
+          <g class="station-node lit"><circle cx="80" cy="130" r="10"></circle><text x="80" y="130">2</text></g>
+          <g class="station-node missed"><circle cx="130" cy="150" r="10"></circle><text x="130" y="150">3</text></g>
+          <g class="station-node current"><circle cx="180" cy="90" r="10"></circle><text x="180" y="90">4</text></g>
+          <g class="station-node"><circle cx="240" cy="110" r="10"></circle><text x="240" y="110">5</text></g>
+          <g class="station-node"><circle cx="290" cy="40" r="10"></circle><text x="290" y="40">6</text></g>
+        </svg>
+        <p class="map-legend"><span class="legend-key current">You are here</span>
+          <span class="legend-key lit">Said</span> <span class="legend-key missed">Missed</span></p>
+        <ol id="route-view-stations" class="station-list">
+          <li class="station-item"><img class="thumb" data-ph="30" alt=""><span class="item-num">1</span>
+            <span class="item-name">Red front door</span><span class="item-turn">Right</span>
+            <span class="source-tag" data-source="photo">Your photo</span>
+            <span class="tag">Traffic</span><span class="tag">Rain</span><span class="learned">Learned</span></li>
+          <li class="station-item"><img class="thumb" data-ph="120" alt=""><img class="item-baseline" data-ph="90" alt="">
+            <span class="item-num">2</span><span class="item-name">Corner bakery</span><span class="item-turn">Straight</span>
+            <span class="source-tag">Suggested</span>
+            <span class="tag">Chatter</span><span class="tag">Bread</span><span class="learned">Learned</span>
+            <span class="model-chip">Mapillary</span></li>
+          <li class="station-item"><img class="thumb" data-ph="180" alt=""><span class="item-num">3</span>
+            <span class="item-name">Fountain square</span><span class="item-turn">Left</span>
+            <span class="source-tag">Suggested</span>
+            <span class="tag">Water</span><span class="tag">Coffee</span></li>
+        </ol>
+        <button id="route-view-practice" class="btn btn-primary" type="button">Practise this route</button>
+        <button id="route-view-baseline" class="btn toggle" type="button" aria-pressed="false">Show street photos</button>
+        <span class="model-chip">Mapillary</span>
+        <fieldset id="place-settings" class="place-facts">
+          <legend>Place facts (optional)</legend>
+          <p>If your route passes a place with a history or a fun fact, Muse Spark can tie it into each station's cues.</p>
+          <div class="field">
+            <label for="place-typed">Or type a place</label>
+            <input id="place-typed" type="text" maxlength="255" autocomplete="off">
+          </div>
+          <div id="places"></div>
+        </fieldset>
+        <div id="route-view-lists" class="list-summary">
+          <span class="summary-name">Active list: Biology exam, chapter 3</span>
+          <button id="route-view-add-list" class="btn" type="button">Add list</button>
+        </div>
+        <p id="route-view-in-use" class="notice" hidden>This route already holds a list. Retire it first.</p>
+        <button id="route-view-delete" class="btn arm" type="button">Delete route</button>
+        <button id="route-view-delete-confirm" class="btn confirm" type="button" hidden>Delete it</button>
+        <button id="route-view-delete-cancel" class="btn cancel" type="button" hidden>Keep</button>
+        <button id="route-view-undo" class="btn undo" type="button" hidden>Undo</button>
+      </section>
+
+      <!-- S6 List on route -->
+      <span class="preview-label" data-s="6">S6 List on route (ready)</span>
+      <section id="list-panel" class="panel screen" data-s="6">
+        <div class="screen-head">
+          <h2 class="screen-title">List on this route</h2>
+          <button class="btn topbar-capture" type="button">Capture</button>
+        </div>
+        <div class="field">
+          <label for="list-name">List name</label>
+          <input id="list-name" type="text" value="Biology exam, chapter 3">
+        </div>
+        <div class="field">
+          <label for="list-notes">Paste what you want to remember. Muse Spark breaks it into key points and packs them into
+            a mnemonic or acronym at each station, so one station can hold more than one point.</label>
+          <textarea id="list-notes" class="list-notes" rows="4">Mitochondria make ATP. Ribosomes build proteins. The nucleus holds DNA...</textarea>
+        </div>
+        <button id="list-split" class="btn" type="button">Find key points</button>
+        <span class="model-chip">Muse Spark</span>
+        <p id="assoc-status" class="status-line" role="status">6 stations, 14 key points</p>
+        <div id="associations" class="assoc-cards">
+          <article class="assoc-card">
+            <h3 class="assoc-station">1. Red front door</h3>
+            <p class="assoc-chunk">MRN: "My Red Nose"</p>
+            <ul class="assoc-points">
+              <li>Mitochondria make ATP</li><li>Ribosomes build proteins</li><li>Nucleus holds DNA</li>
+            </ul>
+            <div class="assoc-place-fact">
+              <p>The door belongs to the oldest house on the street, built in 1871.</p>
+              <span class="model-chip">Muse Spark</span>
+              <p class="credit">Place facts: Wikipedia, CC BY-SA</p>
+            </div>
+            <ul class="channels">
+              <li class="channel"><b class="channel-name">Visual</b> A glowing red nose on the door knocker</li>
+              <li class="channel"><b class="channel-name">Auditory</b> The knocker hums like a power plant</li>
+              <li class="channel"><b class="channel-name">Kinesthetic</b> You push the heavy door, it buzzes</li>
+              <li class="channel"><b class="channel-name">Emotional</b> Pride at 150 years of energy</li>
+              <li class="channel"><b class="channel-name">Conceptual</b> The house is the cell, the door its gate</li>
+              <li class="channel"><b class="channel-name">Olfactory</b> Hot metal and toast <span class="chip-imagined">Imagined</span></li>
+              <li class="channel"><b class="channel-name">Gustatory</b> A sugar-cube ribosome <span class="chip-imagined">Imagined</span></li>
+              <li class="channel"><b class="channel-name">Spatial</b> Nucleus sits behind the door, top step</li>
+            </ul>
+            <span class="model-chip">Muse Spark</span>
+          </article>
+          <article class="assoc-card">
+            <h3 class="assoc-station">2. Corner bakery</h3>
+            <p class="assoc-item">The cell membrane is a double layer of lipids</p>
+            <ul class="channels">
+              <li class="channel"><b class="channel-name">Visual</b> Two layers of pastry, sealed at the edge</li>
+              <li class="channel"><b class="channel-name">Auditory</b> A crackle as the crust lets crumbs in</li>
+              <li class="channel"><b class="channel-name">Olfactory</b> Butter and warm flour <span class="chip-imagined">Imagined</span></li>
+              <li class="channel"><b class="channel-name">Gustatory</b> Flaky, salty lipid layer <span class="chip-imagined">Imagined</span></li>
+            </ul>
+            <span class="model-chip">Muse Spark</span>
+            <span class="badge-replay" hidden>Recorded</span>
+          </article>
+          <article class="assoc-card" aria-busy="true">
+            <h3 class="assoc-station">3. Fountain square</h3>
+            <p class="card-progress">Packing 3 points into a mnemonic...</p>
+          </article>
+          <article class="assoc-card">
+            <h3 class="assoc-station">4. Bus shelter</h3>
+            <p class="form-error">Could not reach Muse Spark.</p>
+            <button class="btn capture-retry" type="button">Retry</button>
+          </article>
+        </div>
+        <button id="generate" class="btn btn-primary" type="button">Make scenes</button>
+        <span class="model-chip">Muse Image</span>
+        <button id="list-retire" class="btn arm" type="button">Retire list</button>
+        <button id="list-retire-confirm" class="btn confirm" type="button" hidden>Retire it</button>
+        <button id="list-retire-cancel" class="btn cancel" type="button" hidden>Keep</button>
+        <button id="list-retire-undo" class="btn undo" type="button" hidden>Undo</button>
+      </section>
+
+      <!-- S7 Scene walk -->
+      <span class="preview-label" data-s="7">S7 Scene walk</span>
+      <div id="scenes" class="scene-cards" aria-live="polite" data-s="7">
+        <article class="scene-card">
+          <img class="scene-img" data-ph="20" data-w="480" data-h="320" alt="A glowing red nose on a door">
+          <span class="chip-ai">AI picture</span>
+          <h3 class="scene-station">1. Red front door</h3>
+          <p>MRN: My Red Nose</p>
+        </article>
+        <article class="scene-card" aria-busy="true">
+          <span class="chip-ai">AI picture</span>
+          <h3 class="scene-station">2. Corner bakery</h3>
+          <p>The cell membrane is a double layer of lipids</p>
+          <p class="card-progress">Painting... <span class="model-chip">Muse Image</span></p>
+        </article>
+        <article class="scene-card">
+          <span class="chip-ai">AI picture</span>
+          <h3 class="scene-station">3. Fountain square</h3>
+          <p>Text-only card: the picture failed, the cue still works.</p>
+          <span class="badge-replay">Recorded</span>
+        </article>
+      </div>
+      <section id="walk" class="panel screen" data-s="7">
+        <div class="screen-head">
+          <h2 class="screen-title">Walk your palace</h2>
+          <button class="btn topbar-capture" type="button">Capture</button>
+        </div>
+        <div id="walk-step" class="walk-step">
+          <p class="walk-count">Station 1 of 6</p>
+          <img class="scene-img" data-ph="20" data-w="480" data-h="320" alt="">
+          <p class="walk-cue">A glowing red nose on the door knocker hums like a power plant.</p>
+          <p class="walk-item">MRN: mitochondria, ribosomes, nucleus</p>
+        </div>
+        <button id="walk-prev" class="btn" type="button" disabled>Previous</button>
+        <button id="walk-next" class="btn" type="button">Next</button>
+      </section>
+
+      <!-- S8 Recall -->
+      <span class="preview-label" data-s="8">S8 Recall (LIVE)</span>
+      <section id="recall" class="panel screen" data-s="8">
+        <div class="screen-head">
+          <h2 class="screen-title">Recall your palace</h2>
+          <button class="btn topbar-capture" type="button">Capture</button>
+        </div>
+        <p id="recall-mode" class="recall-mode">Walk the route in your head and say each station's item out loud.</p>
+        <svg id="recall-map" class="route-map" viewBox="0 0 320 200" role="img" aria-label="Recall map">
+          <polyline class="route-line" points="30,170 80,130 130,150 180,90 240,110 290,40"></polyline>
+          <g class="station-node lit"><circle cx="30" cy="170" r="10"></circle><text x="30" y="170">1</text></g>
+          <g class="station-node lit"><circle cx="80" cy="130" r="10"></circle><text x="80" y="130">2</text></g>
+          <g class="station-node current"><circle cx="130" cy="150" r="10"></circle><text x="130" y="150">3</text></g>
+          <g class="station-node"><circle cx="180" cy="90" r="10"></circle><text x="180" y="90">4</text></g>
+          <g class="station-node"><circle cx="240" cy="110" r="10"></circle><text x="240" y="110">5</text></g>
+          <g class="station-node"><circle cx="290" cy="40" r="10"></circle><text x="290" y="40">6</text></g>
+        </svg>
+        <p class="map-legend"><span class="legend-key current">You are here</span>
+          <span class="legend-key lit">Said</span> <span class="legend-key missed">Missed</span></p>
+        <button id="recall-start" class="btn btn-primary" type="button" disabled>Start recall</button>
+        <button id="recall-replay" class="btn" type="button" disabled>Play a recorded session</button>
+        <textarea id="recall-typed" rows="4" aria-label="Type what you remember" hidden></textarea>
+        <button id="recall-submit" class="btn" type="button">Done</button>
+        <p class="form-error" hidden>Speech relay failed</p>
+        <div id="recall-live" class="live-board">
+          <span class="badge-live">LIVE</span>
+          <span class="model-chip">Muse Voice Transcribe</span>
+          <ol><li class="lit">Mitochondria make ATP</li><li class="lit">Cell membrane, two layers</li><li>...</li></ol>
+        </div>
+        <div id="recall-results" hidden></div>
+        <p class="plain-code">Matching is plain code, no AI.</p>
+      </section>
+
+      <!-- S9 Results, history, backup -->
+      <span class="preview-label" data-s="9">S9 Results, history, backup</span>
+      <section id="history" class="panel screen" data-s="9">
+        <div class="screen-head">
+          <h2 class="screen-title">Rehearsals</h2>
+          <button class="btn topbar-capture" type="button">Capture</button>
+        </div>
+        <p role="status" hidden>History is unavailable right now.</p>
+        <ol id="rehearsals" class="rehearsal-list">
+          <li class="rehearsal"><time class="reh-date" datetime="2026-10-31">31 Oct, 08:12</time>
+            <span class="reh-mode">Spoken</span><span class="reh-score">5/6</span>
+            <button class="btn arm" type="button" data-action="delete-rehearsal">Delete</button>
+            <button class="btn confirm" type="button" hidden>Delete it</button>
+            <button class="btn cancel" type="button" hidden>Keep</button></li>
+          <li class="rehearsal"><time class="reh-date" datetime="2026-10-30">30 Oct, 18:40</time>
+            <span class="reh-mode">Typed</span><span class="reh-score">3/6</span>
+            <button class="btn arm" type="button" data-action="delete-rehearsal" hidden>Delete</button>
+            <button class="btn confirm" type="button">Delete it</button>
+            <button class="btn cancel" type="button">Keep</button></li>
+        </ol>
+        <button id="rehearsal-undo" class="btn undo" type="button" hidden>Undo</button>
+        <div id="history-view"></div>
+        <h3 class="sub-title">Hit rate per station</h3>
+        <ul id="hit-rates" class="hit-rates">
+          <li class="hit-rate"><span>Red front door</span><span class="hit-value">100%</span></li>
+          <li class="hit-rate"><span>Corner bakery</span><span class="hit-value">83%</span></li>
+          <li class="hit-rate"><span>Fountain square</span><span class="hit-value">40%</span></li>
+        </ul>
+        <ul id="history-intrusions" hidden></ul>
+      </section>
+      <section id="backup" class="panel screen" data-s="9">
+        <div class="screen-head">
+          <h2 class="screen-title">Backup</h2>
+          <button class="btn topbar-capture" type="button">Capture</button>
+        </div>
+        <button id="backup-export" class="btn" type="button">Download backup</button>
+        <p class="privacy-note">The backup file contains your recall transcripts and place names.</p>
+        <div class="field">
+          <label for="backup-import">Import a backup</label>
+          <input id="backup-import" type="file" accept="application/json,.json">
+        </div>
+        <p id="backup-status" class="status-line" role="status"></p>
+      </section>
+
+      <div id="scene-overlay" hidden></div>
+    </main>
+    <script src="preview.js"></script>
+  </body>
+</html>
