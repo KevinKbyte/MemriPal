@@ -16,4 +16,13 @@ fi
 if ! git diff --cached --quiet --diff-filter=ACMRD -- 'docs/decisions/*'; then
     uv run pytest -q tests/test_decisions_structure.py || status=1
 fi
+
+# KB-041: KB anchor gate lives in agent-workflow; fail closed when it is absent.
+KB_GATE="${AW:-C:/Users/Kev/projects/agent-workflow}/scripts/kb_anchor_gate.py"
+if [ ! -f "$KB_GATE" ]; then
+    echo "pre-commit: KB-041 gate missing: $KB_GATE (set AW to the agent-workflow checkout)" >&2
+    status=1
+else
+    python "${AW:-C:/Users/Kev/projects/agent-workflow}/scripts/kb_anchor_gate.py" --repo . || status=1
+fi
 exit $status
