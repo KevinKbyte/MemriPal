@@ -53,6 +53,8 @@ A fieldset cannot collapse without script or `<details>`. The CSS styles it open
 | title `h1` in the topbar | `brand` | From style.css; widened with `.app` at >= 900px so the title lines up with the content column. |
 | `<main>` | `app` | One column on a phone; 2-column grid at >= 900px. Nothing above `#scene-overlay` gets transform/filter/contain. |
 | every screen root (S1-S9 sections, `#walk`) | `panel screen` | `.panel` from style.css. `#scenes` is a plain div (`scene-cards`), not a panel. |
+| screen head `div` (every screen except `#capture-session`) | `screen-head` | Title row: `h2.screen-title` + `button.btn.topbar-capture`. |
+| topbar Capture button | `topbar-capture` | Capture is one tap away from every screen head. |
 | screen heading `h2` | `screen-title` | --display. |
 | sub-heading `h3` | `sub-title` | |
 | intro line `p` | `lede` | |
@@ -62,11 +64,12 @@ A fieldset cannot collapse without script or `<details>`. The CSS styles it open
 | model chip `span` | `model-chip` | "Muse Spark", "SAM 3.1", "Muse Image", "Muse Voice Transcribe", "Mapillary" (baseline only). |
 | badges/chips `span` | `badge-live`, `badge-replay`, `chip-ai`, `chip-imagined`, `badge-pending`, `badge-not-walked` | Text per brief. Ink on soft fill: >= 7:1 both modes. |
 | tags `span` | `tag`, `tag-kind`, `tag-draft`, `learned` | |
+| source tag `span` | `source-tag` | Where a landmark came from: `data-source="photo"` "Your photo", `data-source="hint"` "Hint", none "Suggested". On `.alt` (S3), `.station-row` (S4), `.station-item` (S5). |
 | per-item retry | `btn capture-retry` | |
 | thumbnail `img` | `thumb` | 56x56 cover. |
 | visually hidden | `vh` | Focusable, read aloud (`#photo`, `#loci`). |
 | inline error | `field-error` (one message), `form-error` (`ul` or `p`) | |
-| route map `svg` | `route-map` | `polyline.route-line`, then `g.station-node` (`circle r=10` + `text`); node states `current`, `lit`, `missed`. |
+| route map `svg` | `route-map` (S2 setup adds `setup-map`) | `polyline.route-line`, then `g.station-node` (`circle r=10` + `text`); node states `current`, `lit`, `missed`. |
 | legend `p` under a map | `map-legend` | `span.legend-key` + `current`/`lit`/`missed` (CSS dot + text: "You are here", "Said", "Missed"). |
 
 ### 1.1 Delete pattern (station, route, list, rehearsal, strip item, finish row)
@@ -86,37 +89,56 @@ Columns: id; element it already is; classes on it; classes on direct children (D
 
 | id | element | classes | direct children |
 |---|---|---|---|
-| `#routes-home` | section | `panel screen` | `h2.screen-title` "Your routes", `p.lede`, `#routes-list`, `#empty-state`, `p.empty-text` "No routes yet", `#routes-new`, `#load-demo`, `#routes-settings` |
+| `#routes-home` | section | `panel screen` | `div.screen-head` (`h2.screen-title` "Your routes" + `button.btn.topbar-capture`), `p.lede`, `#routes-list`, `#empty-state`, `p.empty-text` "No routes yet", `#routes-new`, `#load-demo`, `#routes-settings` |
 | `#routes-list` | ol | `route-cards` | `li.route-card` |
-| (item) `li.route-card` | li | `route-card` | `h3.route-card-name`, `p.route-card-meta` (`span.tag-kind` + "6 stations"), `p.route-card-learned` "Learned 4/6 stations", `p.route-card-list`, `span.tag-draft` (unfinished walk only), `button.btn.route-card-open` "Open" |
+| (item) `li.route-card` | li | `route-card` | `h3.route-card-name`, `p.route-card-meta` (`span.tag-kind` + "6 stations"), `p.route-card-learned` "Learned 4/6 stations", `p.route-card-list`, `span.tag-draft` "Unfinished route" (unfinished route only), `button.btn.route-card-open` "Open" |
 | `#empty-state` | img | none | none |
-| `#routes-new` | button | `btn btn-primary` | none |
+| `#routes-new` | button | `btn btn-primary` | none ("New route") |
 | `#load-demo` | button | `btn` | none |
 | `#routes-settings` | details | `settings` | `summary` "Live settings", `div.field` (label + `#passcode`), `label.check` (`#auto` + text), `label.check` (`#place-toggle` + text, unchecked by default; see 0.2) |
 | `#passcode` | input[type=password] | none | none |
 | `#auto` / `#place-toggle` | input[type=checkbox] | none | none |
 
-### S2 Walking: capture (text >= 7:1)
+### S2 Set the route, then Capture (Capture text >= 7:1)
 
 | id | element | classes | direct children |
 |---|---|---|---|
-| `#capture-session` | section | `panel screen` | in order: `h2.screen-title` (optional), `#capture-safety`, `#meta-notice`, `#capture-strip`, `#upload-status`, `label.check.locate` (holds `#capture-locate`), `#capture-count`, `#capture-finish`, `label.btn.btn-primary.capture-btn`. `#photo` inside the Capture label or just before it. Each child has a named grid area; any other direct child breaks the thumb-zone layout. |
+| (none) route setup | section | `panel screen route-setup` | `div.screen-head` ("Set the route"), `p.lede`, `svg.route-map.setup-map` (`polyline.route-line`, `g.station-node`), `div.tap-group` "Familiar places", `label.check` (loop), `label.check` (photo hint), `div.stepper`, `div.tap-group` "Map source", `p.notice`, `button.btn.btn-primary` "Find landmarks" |
+| (part) `div.stepper` | div[role=group] | `stepper` | `span`, `button.btn` (minus), `span.stepper-value[role=status]` (stop count, 3 to 8, default 5), `button.btn` (plus) |
+
+
+| id | element | classes | direct children |
+|---|---|---|---|
+| `#capture-session` | section | `panel screen` | in order: `h2.screen-title` "Capture" (no `.screen-head`), `#capture-safety`, `#meta-notice`, `#capture-strip`, `#upload-status`, `label.check.locate` (holds `#capture-locate`), `#capture-count`, `#capture-finish`, `label.btn.btn-primary.capture-btn`. `#photo` inside the Capture label or just before it. Each child has a named grid area; any other direct child breaks the thumb-zone layout. |
 | `#capture-safety` | div | `notice` | `p`, `#capture-safety-ok` |
 | `#capture-safety-ok` | button | `btn btn-primary` | none |
 | `#meta-notice` | p | `notice` | none |
 | `#capture-strip` | ol | `strip` | `li.strip-item` (`.dropped` after a drop: shows only Undo) |
-| (item) `li.strip-item` | li | `strip-item` | `img.strip-thumb`, `span.strip-name`, `span.badge-pending`, `button.btn.capture-retry`, `button.btn.arm` "Drop", `button.btn.confirm`, `button.btn.cancel`, `button.btn.undo`. Number = CSS counter. |
+| (item) `li.strip-item` | li | `strip-item` | `img.strip-thumb`, `span.strip-name`, `span.tag` "Hint" (before Find landmarks only), `span.badge-pending`, `button.btn.capture-retry`, `button.btn.arm` "Drop", `button.btn.confirm`, `button.btn.cancel`, `button.btn.undo`. Number = CSS counter. |
 | `#upload-status` | p[role=status] | `status-line` | text, `span.model-chip` "SAM 3.1", `span.model-chip` "Muse Spark" |
 | `#photo` | input[type=file] | `vh` | none |
 | `#capture-locate` | input[type=checkbox] | none (parent label `check locate`) | none |
 | `#capture-count` | p | none | none |
-| `#capture-finish` | button | `btn` | none |
+| `#capture-finish` | button | `btn` | none ("Done") |
+
+### S3 Pick landmarks
+
+| id | element | classes | direct children |
+|---|---|---|---|
+| (none) picker | section | `panel screen` | `div.screen-head` ("Pick landmarks"), `span.pick-count`, `p.notice` (at 8/8 only), `ol.locus-list`, `button.btn.btn-primary.add-all`, `p.add-reason` |
+| (part) `span.pick-count` | span | `pick-count` | `span.vh` "Stops picked: ", count over the 8-stop max (e.g. "6/8") |
+| (part) `ol.locus-list` | ol | `locus-list` | `li.locus-card` |
+| (item) `li.locus-card` | li | `locus-card` | `div.locus-head` (`span.locus-num` + `span.locus-name`), `ul.alt-row` |
+| (part) `ul.alt-row` | ul | `alt-row` | `li.alt` |
+| (item) `li.alt` | li | `alt` (+ `data-source` when "photo") | `img.alt-thumb`, `span.alt-name`, `span.source-tag`, `button.btn.alt-use` "Use this", `button.btn.alt-add` "Add too" |
+| `add-all` | button | `btn btn-primary add-all` | none ("Add 2 (room for 2)"; disabled at the limit) |
+| `add-reason` | p | `add-reason` | none (what add-all adds, or why it is disabled) |
 
 ### S3 Station card (text >= 7:1)
 
 | id | element | classes | direct children |
 |---|---|---|---|
-| `#station-card` | section | `panel screen` | `h2.screen-title`, `#scene-wrap`, `label.check.baseline-optin` (holds `#station-baseline-optin`), `p.baseline-nolocation`, `#station-baseline-status`, `#station-baseline`, `div.field` (label with `span.model-chip`, `#station-name`, `#station-name-error`), `h3.sub-title` (with `span.model-chip`), `#station-profile`, `#station-taps`, `#station-save`, `#station-drop`, `#station-drop-confirm`, `#station-drop-cancel`, `#station-undo`, `#loci` |
+| `#station-card` | section | `panel screen` | `div.screen-head` (`h2.screen-title` "Station 2" + `button.btn.topbar-capture`), `#scene-wrap`, `label.check.baseline-optin` (holds `#station-baseline-optin`), `p.baseline-nolocation`, `#station-baseline-status`, `#station-baseline`, `div.field` (label with `span.model-chip`, `#station-name`, `#station-name-error`), `h3.sub-title` (with `span.model-chip`), `#station-profile`, `#station-taps`, `#station-save`, `#station-drop`, `#station-drop-confirm`, `#station-drop-cancel`, `#station-undo`, `#loci` |
 | `#scene-wrap` | div | `photo-frame` | `#scene`, `span.model-chip` "SAM 3.1" |
 | `#scene` | canvas | none | none |
 | `#station-baseline-optin` | input[type=checkbox] | none | none |
@@ -136,15 +158,18 @@ Columns: id; element it already is; classes on it; classes on direct children (D
 
 Below 480px the two photos stack; from 480px they sit side by side while `#station-baseline` is shown (`:has()`).
 
-### S4 Finish walk
+### S4 Fix the route
 
 | id | element | classes | direct children |
 |---|---|---|---|
-| `#route-review` | section | `panel screen` | `h2.screen-title` "Finish walk", `div.field` (label + `#finish-name`), `#finish-kind`, `p.order-note`, `#route`, `#route-undo`, `ul.form-error`, `#finish-save` |
+| `#route-review` | section | `panel screen` | `div.screen-head` ("Fix the route"), `div.field` (label + `#finish-name`), `#finish-kind`, `p.order-note`, `#route`, `#route-undo`, `ul.form-error`, `#finish-save` |
 | `#finish-name` | input[type=text] | none | none |
 | `#finish-kind` | fieldset | `kind-pick` | `legend`, `label.kind-option` x2 (radio name=finish-kind + text) |
-| `#route` | ol | none | `li.station-row` |
-| (item) `li.station-row` | li | `station-row` | `img.thumb`, `span.row-name` (holds `span.badge-pending` if unnamed), `span.row-turn`, `button.btn.move-up`, `button.btn.move-down`, `button.btn.arm`, `button.btn.confirm`, `button.btn.cancel`. Number = style.css counter. |
+| `#route` | ol | `station-rows` | `li.station-row` |
+| (item) `li.station-row` | li | `station-row` | `img.thumb`, `span.row-name` (holds `span.badge-pending` if unnamed), `span.source-tag` (Suggested / Your photo), `button.btn.move-up`, `button.btn.move-down`, `button.btn.arm`, `button.btn.confirm`, `button.btn.cancel`. Number = `station-rows` counter. |
+| (locked) section | section | `panel screen` (`data-preview-copy="locked"`) | `div.screen-head`, `p.lock-reason`, `ol.station-rows`, `button.btn` "Add a stop" (disabled), `button.btn.btn-primary` "Save route" |
+| (part) `p.lock-reason` | p | `lock-reason` | "Retire the list first: ..." plus a link to list retirement |
+| (item, locked) `li.station-row` | li | `station-row` | as above with `move-up`, `move-down`, `arm` disabled and no confirm/cancel, plus `button.btn.row-swap` "Swap" (1:1 landmark swap, keeps the stop), `p.swap-warn` (only when a swap would force re-learning, e.g. "3 items on this stop need re-learning") |
 | `#route-undo` | button | `btn undo` | none |
 | `#finish-save` | button | `btn btn-primary` | none |
 
@@ -152,10 +177,10 @@ Below 480px the two photos stack; from 480px they sit side by side while `#stati
 
 | id | element | classes | direct children |
 |---|---|---|---|
-| `#route-view` | section | `panel screen` | `h2.screen-title` (+ `span.route-kind`), `p.lede` (empty only), `#route-map`, `p.map-legend`, `#route-view-stations`, `#route-view-practice`, `#route-view-baseline`, `span.model-chip` "Mapillary", `#place-settings`, `#route-view-lists`, `#route-view-in-use`, `#route-view-delete`, `#route-view-delete-confirm`, `#route-view-delete-cancel`, `#route-view-undo` |
+| `#route-view` | section | `panel screen` | `div.screen-head` (`h2.screen-title` + `span.route-kind`, `button.topbar-capture`), `p.lede` (empty only), `#route-map`, `p.map-legend`, `#route-view-stations`, `#route-view-practice`, `#route-view-baseline`, `span.model-chip` "Mapillary", `#place-settings`, `#route-view-lists`, `#route-view-in-use`, `#route-view-delete`, `#route-view-delete-confirm`, `#route-view-delete-cancel`, `#route-view-undo` |
 | `#route-map` | svg viewBox="0 0 320 200" | `route-map` | `polyline.route-line`, `g.station-node` |
 | `#route-view-stations` | ol | `station-list` | `li.station-item` |
-| (item) `li.station-item` | li | `station-item` | in order: `img.thumb`, `img.item-baseline` (if baseline), `span.item-num`, `span.item-name`, `span.item-turn`, `span.tag` (sound), `span.tag` (smell), `span.learned`, `span.model-chip` "Mapillary" (with baseline) |
+| (item) `li.station-item` | li | `station-item` | in order: `img.thumb`, `img.item-baseline` (if baseline), `span.item-num`, `span.item-name`, `span.item-turn`, `span.source-tag`, `span.tag` (sound), `span.tag` (smell), `span.learned`, `span.model-chip` "Mapillary" (with baseline) |
 | `#route-view-practice` | button | `btn btn-primary` | none |
 | `#route-view-baseline` | button[aria-pressed] | `btn toggle` | none |
 | `#place-settings` | fieldset | `place-facts` | `legend`, `div.field` (label + `#place-typed`), `#places` (the on/off switch is in S1 `#routes-settings`) |
@@ -233,9 +258,16 @@ S = shown, H = hidden attribute. Arm/confirm/undo follow 1.1 in every state.
 | `#routes-new` | S | S | S |
 | `#load-demo` | S | S | S (enabled) |
 | `#routes-settings` | S | S | S |
-| `span.tag-draft` | n/a | S on unfinished walk | as ready |
+| `span.tag-draft` | n/a | S on unfinished route | as ready |
 
 ### S2
+Route setup is the first S2 state ("Set the route", `.route-setup`), shown before Find landmarks; the Capture screen is reached from `.topbar-capture`.
+| element | route-setup |
+|---|---|
+| `.route-setup`, `.setup-map`, `.stepper` | S |
+| `.stepper-value` | S, default 5 (range 3 to 8) |
+| `button` "Find landmarks" | S |
+
 | element | capturing | uploading | error | offline |
 |---|---|---|---|---|
 | `#capture-safety` | S on first walk until OK (Capture disabled until then), else H | H | H | H |
@@ -248,7 +280,17 @@ S = shown, H = hidden attribute. Arm/confirm/undo follow 1.1 in every state.
 | `.badge-pending` (item) | H | S on item being named | S on failed item | S on unnamed items |
 | `.capture-retry` (item) | H | H | S on failed item | S on unnamed items |
 
-### S3
+### S3 Pick landmarks
+| element | picking | full |
+|---|---|---|
+| `.pick-count` | S (e.g. 6/8) | S (8/8) |
+| `.locus-list` | S | S |
+| `p.notice` | H | S ("1 kept as an alternative: 8-stop limit") |
+| `.alt-add` | S | S (disabled) |
+| `.add-all` | S ("Add 2 (room for 2)") | S (disabled, "Add 0 (no room)"; `data-preview-copy="full"`) |
+| `.add-reason` | S (what it adds) | S ("8-stop limit reached. Use this swaps a stop instead of adding one.") |
+
+### S3 Station card
 | element | uploading | ready | error | offline | baseline-loading | baseline-shown | baseline-none | recorded-replay |
 |---|---|---|---|---|---|---|---|---|
 | `#scene-wrap`, `#station-taps` | S | S | S | S | S | S | S | S |
@@ -263,18 +305,23 @@ S = shown, H = hidden attribute. Arm/confirm/undo follow 1.1 in every state.
 | `#station-save` | S (disabled) | S | S (disabled until unique) | S | S | S | S | S |
 
 ### S4
-| element | ready | error | uploading |
+| element | ready | error | uploading | locked |
 |---|---|---|---|
-| `#finish-name`, `#finish-kind` | S | S | S (disabled) |
-| `p.order-note`, `#route` | S | S | S |
-| `.badge-pending` (row) | H | S on unnamed rows | H |
-| `ul.form-error` | H | S (3-8 stations; names pending; duplicate names) | H |
-| `#finish-save` | S | S (disabled) | S (disabled, "Saving...") |
+| `#finish-name`, `#finish-kind` | S | S | S (disabled) | n/a |
+| `p.order-note`, `#route` | S | S | S | n/a |
+| `.station-rows` | S | S | S | S |
+| `.badge-pending` (row) | H | S on unnamed rows | H | H |
+| `ul.form-error` | H | S (3-8 stations; names pending; duplicate names) | H | H |
+| `#finish-save` | S | S (disabled) | S (disabled, "Saving...") | S |
+| `.lock-reason` ("Retire the list first") | H | H | H | S |
+| `.move-up`, `.move-down`, `.arm` (row), "Add a stop" | S | S | S | S (disabled: insert/drop/reorder blocked) |
+| `.row-swap` | H | H | H | S |
+| `.swap-warn` | H | H | H | S on a row whose swap needs re-learning |
 
 ### S5
 | element | empty | ready | offline |
 |---|---|---|---|
-| `p.lede` "No stations yet. Start a new walk to add some." | S | H | H |
+| `p.lede` "No stops yet. Set the route to add some." | S | H | H |
 | `#route-map`, `p.map-legend`, `#route-view-stations`, `#route-view-practice`, `#route-view-lists` | H | S | S |
 | `#route-view-baseline` + chip | H | S if >= 1 baseline | S if >= 1 baseline |
 | `#place-settings` | S | S | S (lookup disabled) |
@@ -339,7 +386,7 @@ S = shown, H = hidden attribute. Arm/confirm/undo follow 1.1 in every state.
 | `scene-wrap`, `scene`, `loci` | S3 | Photo frame; canvas photo + box; hidden landmark list. |
 | `assoc-status`, `associations` | S6 | Progress; cards: mnemonic, points, place fact, 8 channels. |
 | `generate` | S6 (moved from S4) | "Make scenes". |
-| `route-review`, `route`, `route-undo` | S4 | Finish walk; stations in order; undo a dropped row. |
+| `route-review`, `route`, `route-undo` | S4 | Fix the route; stops in order; undo a dropped row. |
 | `scenes`, `walk`, `walk-step`, `walk-prev`, `walk-next` | S7 | Scene cards and step walk. |
 | `recall`, `recall-start`, `recall-replay`, `recall-typed`, `recall-submit`, `recall-live`, `recall-results` | S8 | Recall. |
 | `history`, `rehearsals`, `rehearsal-undo`, `history-view`, `hit-rates` | S9 | History and hit rate per station. |
@@ -349,8 +396,8 @@ S = shown, H = hidden attribute. Arm/confirm/undo follow 1.1 in every state.
 ### New ids
 | new id | screen | role |
 |---|---|---|
-| `routes-home`, `routes-list`, `routes-new`, `routes-settings` | S1 | Section; route cards; "New walk"; Live settings. |
-| `capture-session`, `capture-safety`, `capture-safety-ok`, `capture-strip`, `capture-locate`, `capture-finish`, `capture-count` | S2 | Section; safety notice + OK; thumbnails; location opt-in; Finish walk; count. |
+| `routes-home`, `routes-list`, `routes-new`, `routes-settings` | S1 | Section; route cards; "New route"; Live settings. |
+| `capture-session`, `capture-safety`, `capture-safety-ok`, `capture-strip`, `capture-locate`, `capture-finish`, `capture-count` | S2 | Section; safety notice + OK; thumbnails; location opt-in; Done; count. |
 | `station-card`, `station-baseline-optin`, `station-baseline-status`, `station-baseline`, `station-baseline-img`, `station-baseline-credit` | S3 | Section; Mapillary opt-in, status, figure, photo, credit. |
 | `station-name`, `station-name-error`, `station-profile`, `station-taps`, `tap-sound`, `tap-smell`, `tap-feel`, `tap-mood`, `tap-turn` | S3 | Name, clash error, profile, quick-tap groups. |
 | `station-save`, `station-drop`, `station-drop-confirm`, `station-drop-cancel`, `station-undo` | S3 | Save; drop pattern. |
