@@ -1,6 +1,6 @@
 # 0036: Design gate re-shoots the design at the branch tip itself, plus Kev's recorded approval for changed shots
 
-Status: Accepted
+Status: Accepted; amended 2026-11-01 (deterministic shots; see the Amendment section)
 Date: 2026-10-31
 Source: MEM-070 (`.claude/spec-cache/memripal/references/spec-4.md`); builds on the MEM-067 tools
 (`scripts/screenshot_design.py`, `scripts/check_route_css.py`).
@@ -47,3 +47,27 @@ B accepts exactly the stale and non-image evidence the gate exists to stop; C is
 - Running the gate needs Playwright and local Chrome (as `screenshot_design.py` already does).
 - Every visual change to `docs/design/**` waits on Kev running `approve_design.py`; agents cannot self-approve.
 - `approve_design.py` must be on the permission ask list so only a human run records approval.
+
+## Amendment 2026-11-01: deterministic shots (reduced motion)
+
+Approvals key on (tip, shot, sha256), so a shot must render byte-identical on every run at the same tip.
+`docs/design/route/map-shell.css` runs an infinite `lm-float` animation under `prefers-reduced-motion:
+no-preference`: 11 of 16 map-shell shots differed between two gate runs at one tip (pixel diffs only around emoji
+glyphs), and approvals stopped matching.
+
+Options:
+- (A) Emulate `prefers-reduced-motion: reduce` (chosen). Pros: deterministic; covers the CSS and the page's JS tween
+  (`map-shell.js` checks `matchMedia` reduce); shots show a real a11y state the contract already specifies
+  (`docs/design/route/route-contract-2.md`: "reduced motion = instant"). Cons: shots do not show the mid-motion
+  look (end state is the same; the pop-in uses fill mode `both`).
+- (B) Playwright `screenshot(animations="disabled")`. Pros: one argument. Cons: CSS only; the JS tween stays
+  timing-dependent.
+- (C) Longer `SETTLE_MS` / wait for stable frames. Cons: an infinite animation never settles.
+- (D) Perceptual-diff tolerance in approvals. Cons: the threshold is a judgment, not a check; weakens the gate.
+
+Decision: A. Both shooters (`scripts/design_gate.py`, `scripts/screenshot_design.py`) open pages with Playwright
+`reduced_motion="reduce"`.
+
+Why A: the only option deterministic for both CSS and JS motion without loosening the hash check.
+
+Consequence: every shot digest may change once, so the next approval at the tip covers all changed shots.
