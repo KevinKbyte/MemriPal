@@ -14,6 +14,8 @@ docs/sdlc-runs/
 .claude/worktree-dirt-archive/
 # render-budget snapshots (HOOKS-382 scripts/render_snapshot.py)
 docs/design/route/.render-snapshot/
+# render-budget override audit log: local state keyed by absolute checkout paths
+docs/design/**/.render-budget-overrides.jsonl
 www/
 node_modules/
 android/app/build/
