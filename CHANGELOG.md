@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.27] - 2026-11-01
+
+### Added
+
+- Pre-commit hook runs agent-workflow kb_anchor_gate (docs/decisions code anchors; AW env var, default $HOME/projects/agent-workflow) (KB-041).
+
 ## [0.20.26] - 2026-11-01
 
 ### Added
