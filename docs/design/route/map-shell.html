@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MemriPal map-first shell (skeleton)</title>
+    <!-- Design skeleton only (MEM-072): map-first home per owner direction. Not part of the app.
+         Serve the repo root over HTTP and open /docs/design/route/map-shell.html.
+         Query: ?drawer=open (or ?s=open, for scripts/screenshot_design.py --screen open) opens the route
+         drawer; ?theme=dark|light forces a theme. -->
+    <link rel="icon" href="../../../static/icon.svg">
+    <link rel="stylesheet" href="../../../static/style.css">
+    <link rel="stylesheet" href="../../../static/theme-painterly.css">
+    <link rel="stylesheet" href="map-shell.css">
+  </head>
+  <body class="map-shell">
+    <h1 class="vh">MemriPal routes</h1>
+    <main class="shell">
+      <div class="map-wrap">
+        <svg id="map" class="map" viewBox="30 50 720 780" preserveAspectRatio="xMidYMid meet"
+             role="img" aria-labelledby="map-title">
+          <title id="map-title">Map with 3 routes; Morning walk to the station is framed</title>
+          <rect class="map-land" x="-1500" y="-1500" width="4000" height="4000"></rect>
+          <path class="map-river" d="M-1500 200 C0 140 300 240 600 180 S1100 150 2500 210"></path>
+          <path class="map-street-casing" d="M-1500 100H2500M-1500 260H2500M-1500 420H2500M-1500 580H2500M-1500 740H2500M-1500 900H2500M-1500 1060H2500M-60 -1500V2500M120 -1500V2500M300 -1500V2500M480 -1500V2500M660 -1500V2500M840 -1500V2500M1020 -1500V2500"></path>
+          <path class="map-street" d="M-1500 100H2500M-1500 260H2500M-1500 420H2500M-1500 580H2500M-1500 740H2500M-1500 900H2500M-1500 1060H2500M-60 -1500V2500M120 -1500V2500M300 -1500V2500M480 -1500V2500M660 -1500V2500M840 -1500V2500M1020 -1500V2500"></path>
+          <rect class="map-park" x="560" y="520" width="260" height="240" rx="28"></rect>
+          <ellipse class="map-water" cx="690" cy="640" rx="44" ry="30"></ellipse>
+          <text class="map-label" x="380" y="196">Ash River</text>
+          <text class="map-label" x="150" y="412">Station Road</text>
+          <text class="map-label" x="690" y="752">Elm Park</text>
+
+          <g id="routes">
+            <g id="route-park" class="route topic-none">
+              <polyline class="route-halo" points="600,560 780,560 780,720 600,720 600,560"></polyline>
+              <polyline class="route-line" points="600,560 780,560 780,720 600,720 600,560"></polyline>
+              <g class="stn"><circle cx="600" cy="560" r="13"></circle><text x="600" y="560">1</text></g>
+              <g class="stn"><circle cx="780" cy="640" r="13"></circle><text x="780" y="640">2</text></g>
+              <g class="stn"><circle cx="640" cy="720" r="13"></circle><text x="640" y="720">3</text></g>
+            </g>
+            <g id="route-grandma" class="route topic-wedding">
+              <polyline class="route-halo" points="300,900 840,900 840,260"></polyline>
+              <polyline class="route-line" points="300,900 840,900 840,260"></polyline>
+              <g class="stn"><circle cx="300" cy="900" r="13"></circle><text x="300" y="900">1</text></g>
+              <g class="stn"><circle cx="480" cy="900" r="13"></circle><text x="480" y="900">2</text></g>
+              <g class="stn"><circle cx="660" cy="900" r="13"></circle><text x="660" y="900">3</text></g>
+              <g class="stn"><circle cx="840" cy="900" r="13"></circle><text x="840" y="900">4</text></g>
+              <g class="stn"><circle cx="840" cy="740" r="13"></circle><text x="840" y="740">5</text></g>
+              <g class="stn"><circle cx="840" cy="580" r="13"></circle><text x="840" y="580">6</text></g>
+              <g class="stn"><circle cx="840" cy="420" r="13"></circle><text x="840" y="420">7</text></g>
+              <g class="stn"><circle cx="840" cy="260" r="13"></circle><text x="840" y="260">8</text></g>
+            </g>
+            <g id="route-morning" class="route topic-biology is-current">
+              <polyline class="route-halo" points="120,740 300,740 300,580 480,580 480,420 660,420 660,260"></polyline>
+              <polyline class="route-line" points="120,740 300,740 300,580 480,580 480,420 660,420 660,260"></polyline>
+              <g class="stn"><circle cx="120" cy="740" r="13"></circle><text x="120" y="740">1</text></g>
+              <g class="stn"><circle cx="300" cy="740" r="13"></circle><text x="300" y="740">2</text></g>
+              <g class="stn"><circle cx="300" cy="580" r="13"></circle><text x="300" y="580">3</text></g>
+              <g class="stn"><circle cx="480" cy="500" r="13"></circle><text x="480" y="500">4</text></g>
+              <g class="stn"><circle cx="660" cy="420" r="13"></circle><text x="660" y="420">5</text></g>
+              <g class="stn"><circle cx="660" cy="260" r="13"></circle><text x="660" y="260">6</text></g>
+            </g>
+          </g>
+        </svg>
+      </div>
+
+      <div class="map-top">
+        <p class="map-chip" aria-live="polite">
+          <span id="chip-name" class="map-chip-name">Morning walk to the station</span>
+          <span id="chip-meta" class="map-chip-meta">Daily, 6 stations</span>
+        </p>
+        <ul class="map-legend" aria-label="Route colour by topic">
+          <li class="topic-biology"><span class="legend-swatch" aria-hidden="true"></span>Biology exam</li>
+          <li class="topic-wedding"><span class="legend-swatch" aria-hidden="true"></span>Wedding toast</li>
+          <li class="topic-none"><span class="legend-swatch" aria-hidden="true"></span>No list yet</li>
+        </ul>
+      </div>
+
+      <details id="drawer" class="drawer">
+        <summary class="drawer-handle">
+          <span class="when-closed">Route settings</span><span class="when-open">Close</span>
+        </summary>
+        <div class="drawer-body">
+          <section class="drawer-section" aria-labelledby="current-title">
+            <h2 id="current-title" class="drawer-title">This route</h2>
+            <div class="field">
+              <label for="route-name">Name</label>
+              <input id="route-name" type="text" maxlength="40" autocomplete="off" value="Morning walk to the station">
+            </div>
+            <div class="field">
+              <label for="route-often">How often you walk it</label>
+              <select id="route-often">
+                <option>Daily</option>
+                <option>Weekly</option>
+                <option>Occasional</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="route-list">Topic (list on this route)</label>
+              <select id="route-list">
+                <option>Biology exam, chapter 3</option>
+                <option>Wedding toast</option>
+                <option>No list yet</option>
+              </select>
+            </div>
+            <p class="drawer-count">Stations: <strong id="route-count">6</strong></p>
+          </section>
+
+          <button id="map-new" class="btn btn-primary" type="button">Map a new route</button>
+
+          <section class="drawer-section" aria-labelledby="existing-title">
+            <h2 id="existing-title" class="drawer-title">Existing routes</h2>
+            <ul class="route-picks">
+              <li><button class="route-pick topic-biology" type="button" aria-current="true" data-route="morning"
+                    data-name="Morning walk to the station" data-often="Daily" data-list="Biology exam, chapter 3"
+                    data-stations="6">
+                <span class="pick-swatch" aria-hidden="true"></span>
+                <span class="pick-name">Morning walk to the station</span>
+                <span class="pick-meta">Daily, 6 stations, Biology exam, chapter 3</span>
+              </button></li>
+              <li><button class="route-pick topic-wedding" type="button" data-route="grandma"
+                    data-name="Grandma's house" data-often="Occasional" data-list="Wedding toast" data-stations="8">
+                <span class="pick-swatch" aria-hidden="true"></span>
+                <span class="pick-name">Grandma's house</span>
+                <span class="pick-meta">Occasional, 8 stations, Wedding toast</span>
+              </button></li>
+              <li><button class="route-pick topic-none" type="button" data-route="park"
+                    data-name="Park loop" data-often="Daily" data-list="No list yet" data-stations="3">
+                <span class="pick-swatch" aria-hidden="true"></span>
+                <span class="pick-name">Park loop</span>
+                <span class="pick-meta">Daily, 3 stations, no list yet</span>
+              </button></li>
+            </ul>
+          </section>
+        </div>
+      </details>
+    </main>
+
+    <nav class="tabbar" aria-label="Main">
+      <ul>
+        <li><a class="tab" href="#routes" aria-current="page">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19c3-6 11-2 14-12"></path><circle cx="5" cy="19" r="2"></circle><circle cx="19" cy="7" r="2"></circle></svg>
+          Routes</a></li>
+        <li><a class="tab" href="#recall">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"></path><path d="M9 10.5l2 2 4-4"></path></svg>
+          Recall</a></li>
+        <li><a class="tab" href="#landmarks">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6-6.5-6-11a6 6 0 0 1 12 0c0 4.5-6 11-6 11z"></path><circle cx="12" cy="10" r="2"></circle></svg>
+          Landmarks</a></li>
+        <li><a class="tab" href="#settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"></path></svg>
+          Settings</a></li>
+      </ul>
+    </nav>
+
+    <script>
+      // Skeleton behaviour: preview params, and picking a route reframes the map by animating the SVG viewBox.
+      (function () {
+        var q = new URLSearchParams(location.search);
+        var root = document.documentElement;
+        var theme = q.get("theme");
+        if (theme === "dark" || theme === "light") root.setAttribute("data-theme", theme);
+        if (q.get("drawer") === "open" || q.get("s") === "open") document.getElementById("drawer").open = true;
+
+        var map = document.getElementById("map");
+        var picks = Array.prototype.slice.call(document.querySelectorAll(".route-pick"));
+        var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        // Frame padding in map units; extra top room clears the chip and legend, extra right room the drawer handle.
+        var PAD = 70, TOP = 110, RIGHT = 90, MIN = 420;
+        var anim = 0;
+
+        function frameOf(id) {
+          var b = document.getElementById("route-" + id).getBBox();
+          var w = Math.max(b.width, MIN), h = Math.max(b.height, MIN);
+          var cx = b.x + b.width / 2, cy = b.y + b.height / 2;
+          return [cx - w / 2 - PAD, cy - h / 2 - PAD - TOP, w + 2 * PAD + RIGHT, h + 2 * PAD + TOP];
+        }
+
+        function setBox(v) {
+          map.setAttribute("viewBox", v.map(function (n) { return n.toFixed(1); }).join(" "));
+        }
+
+        function moveTo(target, animate) {
+          window.cancelAnimationFrame(anim);
+          var vb = map.viewBox.baseVal;
+          var from = [vb.x, vb.y, vb.width, vb.height];
+          if (!animate || reduce) { setBox(target); return; }
+          var t0 = performance.now();
+          function step(now) {
+            var t = Math.min(1, (now - t0) / 450);
+            var e = 1 - Math.pow(1 - t, 3);
+            setBox(from.map(function (f, i) { return f + (target[i] - f) * e; }));
+            if (t < 1) anim = window.requestAnimationFrame(step);
+          }
+          anim = window.requestAnimationFrame(step);
+        }
+
+        function select(pick, animate) {
+          var d = pick.dataset;
+          picks.forEach(function (p) {
+            var on = p === pick;
+            if (on) p.setAttribute("aria-current", "true"); else p.removeAttribute("aria-current");
+            document.getElementById("route-" + p.dataset.route).classList.toggle("is-current", on);
+          });
+          var g = document.getElementById("route-" + d.route);
+          g.parentNode.appendChild(g); // paint the current route above the others
+          document.getElementById("route-name").value = d.name;
+          document.getElementById("route-often").value = d.often;
+          document.getElementById("route-list").value = d.list;
+          document.getElementById("route-count").textContent = d.stations;
+          document.getElementById("chip-name").textContent = d.name;
+          document.getElementById("chip-meta").textContent = d.often + ", " + d.stations + " stations";
+          document.getElementById("map-title").textContent = "Map with 3 routes; " + d.name + " is framed";
+          moveTo(frameOf(d.route), animate);
+        }
+
+        picks.forEach(function (p) {
+          p.addEventListener("click", function () { select(p, true); });
+        });
+        select(picks[0], false);
+      })();
+    </script>
+  </body>
+</html>
