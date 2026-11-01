@@ -1,0 +1,354 @@
+/* route-s6-s9.css: S6 to S9 and the Desktop layout; loaded after route.css in preview link order, same rules as route.css. */
+
+/* ---------- S6 List on route ---------- */
+
+.list-notes {
+  width: 100%;
+  min-height: 8rem;
+  resize: vertical;
+}
+
+.assoc-cards:not([hidden]) {
+  display: grid;
+}
+
+.assoc-cards {
+  gap: 0.75rem;
+}
+
+.assoc-card {
+  padding: 0.875rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.assoc-card[aria-busy="true"] {
+  border-style: dashed;
+}
+
+.assoc-card > * + * {
+  margin-top: 0.5rem;
+}
+
+.assoc-station {
+  margin: 0;
+  font: 600 1.125rem/1.2 var(--display);
+}
+
+.assoc-item {
+  font-weight: 700;
+}
+
+/* One station can hold several key points: the mnemonic or acronym packs them, the list shows what it holds. */
+.assoc-chunk {
+  font: 700 1.375rem/1.2 var(--display);
+  letter-spacing: 0.02em;
+  overflow-wrap: anywhere;
+}
+
+.assoc-points {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.assoc-points > li + li {
+  margin-top: 0.125rem;
+}
+
+/* A real fact about the place (history or a fun fact) used as the anchor for the hooks. */
+.assoc-place-fact {
+  padding: 0.5rem 0.75rem;
+  border-left: 4px solid var(--lamp-ink);
+  border-radius: 0 10px 10px 0;
+  background: var(--lamp-soft);
+  color: var(--ink);
+}
+
+.assoc-place-fact > .credit {
+  margin-top: 0.25rem;
+}
+
+.channels {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.channels:not([hidden]) {
+  display: flex;
+}
+
+.channels {
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.channel {
+  max-width: 100%;
+  padding: 0.25rem 0.625rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+  overflow-wrap: anywhere;
+}
+
+.channel-name {
+  margin-right: 0.25rem;
+  font: 700 0.75rem/1.4 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.channel > .chip-imagined {
+  margin-left: 0.25rem;
+}
+
+.card-progress {
+  font-weight: 600;
+}
+
+/* ---------- S7 Scene walk ---------- */
+
+.scene-cards:not([hidden]) {
+  display: grid;
+}
+
+.scene-cards {
+  align-items: start;
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+}
+
+/* Positioned so style.css's absolute .chip-ai pins inside its card, not the page. */
+.scene-card {
+  position: relative;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.scene-card > * + * {
+  margin-top: 0.5rem;
+}
+
+.scene-card[aria-busy="true"] {
+  border-style: dashed;
+}
+
+.scene-img:not([hidden]) {
+  display: block;
+}
+
+.scene-img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 10px;
+  object-fit: cover;
+  background: var(--surface-2);
+}
+
+.scene-station {
+  margin: 0;
+  font: 600 1.125rem/1.2 var(--display);
+}
+
+@media (min-width: 600px) {
+  .scene-cards {
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  }
+}
+
+#walk-step > .scene-img {
+  max-width: min(100%, 36rem);
+  justify-self: center;
+}
+
+#walk:not([hidden]) {
+  display: grid;
+}
+
+#walk {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+#walk > * {
+  grid-column: 1 / -1;
+}
+
+#walk > #walk-prev {
+  grid-column: 1;
+  justify-self: stretch;
+}
+
+#walk > #walk-next {
+  grid-column: 2;
+  justify-self: stretch;
+}
+
+.walk-step:not([hidden]) {
+  display: grid;
+}
+
+.walk-step {
+  gap: 0.5rem;
+}
+
+.walk-count {
+  font: 700 0.9375rem/1.3 var(--mono);
+}
+
+.walk-cue {
+  font-size: 1.0625rem;
+}
+
+.walk-item {
+  font: 600 1.25rem/1.3 var(--display);
+}
+
+/* ---------- S8 Recall ---------- */
+
+.recall-mode {
+  font: 600 1.0625rem/1.3 var(--display);
+}
+
+.live-board {
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.live-board > .badge-live,
+.live-board > .badge-replay,
+.live-board > .model-chip {
+  margin: 0 0.375rem 0.5rem 0;
+}
+
+.live-board ol {
+  margin: 0;
+  padding-left: 1.75rem;
+}
+
+.live-board li {
+  padding: 0.25rem 0.5rem;
+  border-left: 4px solid var(--surface);
+}
+
+.plain-code {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+/* ---------- S9 Results, history, backup ---------- */
+
+.rehearsal-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rehearsal:not([hidden]) {
+  display: flex;
+}
+
+.rehearsal {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem 0.75rem;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.reh-date,
+.reh-score {
+  font: 600 0.875rem/1.5 var(--mono);
+}
+
+.reh-mode {
+  flex: 1 1 8rem;
+  font-weight: 600;
+}
+
+.hit-rates {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hit-rate:not([hidden]) {
+  display: grid;
+}
+
+.hit-rate {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  padding: 0.375rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.hit-value {
+  font: 700 0.9375rem/1.5 var(--mono);
+}
+
+.privacy-note {
+  color: var(--muted);
+}
+
+/* ---------- Desktop: route map left, list/scenes right (same markup) ---------- */
+
+@media (min-width: 900px) {
+  .app:not([hidden]) {
+    display: grid;
+  }
+
+  .app {
+    max-width: 76rem;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    column-gap: 1.25rem;
+    align-items: start;
+  }
+
+  .app > * {
+    grid-column: 1 / -1;
+  }
+
+  .app > #route-view {
+    grid-column: 1;
+    grid-row: span 3;
+  }
+
+  .app > #list-panel,
+  .app > #scenes,
+  .app > #walk {
+    grid-column: 2;
+  }
+
+  /* Without S5 on screen the right-hand screens take the full width. */
+  .app:has(> #route-view[hidden]) > #list-panel,
+  .app:has(> #route-view[hidden]) > #scenes,
+  .app:has(> #route-view[hidden]) > #walk {
+    grid-column: 1 / -1;
+  }
+
+  .route-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  /* Topbar title lines up with the widened content column. */
+  .brand {
+    max-width: 76rem;
+  }
+
+  /* Single-column form screens stay at a readable width inside the wide grid. */
+  .app > #station-card,
+  .app > #route-review,
+  .app > #recall,
+  .app > #history,
+  .app > #backup {
+    width: 100%;
+    max-width: 48rem;
+    justify-self: center;
+  }
+}

@@ -1,0 +1,331 @@
+/* route-s3.css: S3 Pick landmarks and Station card; loaded after route.css in preview link order, same rules as route.css. */
+
+/* ---------- S3 Pick landmarks per stop (7:1 text) ---------- */
+
+.pick-count {
+  border-color: var(--primary);
+  background: var(--surface);
+  font-size: 0.9375rem;
+}
+
+.locus-list,
+.alt-row {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.locus-list:not([hidden]),
+.alt-row:not([hidden]),
+.locus-card:not([hidden]) {
+  display: grid;
+}
+
+.locus-list {
+  gap: 0.625rem;
+  min-width: 0;
+}
+
+.locus-card {
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.625rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.locus-head:not([hidden]) {
+  display: flex;
+}
+
+.locus-head {
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.locus-num {
+  flex: none;
+  min-width: 1.5rem;
+  padding: 0 0.25rem;
+  border-radius: 6px;
+  background: var(--ink);
+  color: var(--surface);
+  font: 700 0.875rem/1.5rem var(--mono);
+  text-align: center;
+}
+
+.locus-name {
+  min-width: 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.alt-row {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  gap: 0.5rem;
+}
+
+/* Thumb left; name and source tag stacked beside it; Use this / Add too share the bottom row. */
+.alt:not([hidden]) {
+  display: grid;
+}
+
+.alt {
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas:
+    "thumb name name"
+    "thumb tag tag"
+    "use use add";
+  gap: 0.375rem 0.5rem;
+  min-width: 0;
+  padding: 0.5rem;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.alt[data-source="photo"] {
+  border: 2px solid var(--primary);
+}
+
+.alt-thumb {
+  grid-area: thumb;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.alt-name {
+  grid-area: name;
+  align-self: end;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.alt > .source-tag {
+  grid-area: tag;
+  justify-self: start;
+  align-self: start;
+}
+
+.alt-use {
+  grid-area: use;
+}
+
+.alt-add {
+  grid-area: add;
+}
+
+.source-tag {
+  border-style: dashed;
+  background: var(--surface);
+}
+
+.source-tag[data-source="photo"] {
+  border-style: solid;
+  border-color: var(--primary);
+}
+
+.source-tag[data-source="hint"] {
+  border-style: solid;
+  border-color: var(--lamp-ink);
+  background: var(--lamp-soft);
+}
+
+.add-reason {
+  margin: 0;
+  color: var(--ink);
+}
+
+/* ---------- S3 Station card (7:1 text) ---------- */
+
+#station-card:not([hidden]) {
+  display: grid;
+}
+
+#station-card {
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-flow: row dense;
+  color: var(--ink);
+}
+
+#station-card > * {
+  grid-column: 1 / -1;
+}
+
+.photo-frame:not([hidden]) {
+  display: grid;
+}
+
+.photo-frame {
+  align-content: start;
+  gap: 0.5rem;
+  justify-items: start;
+}
+
+.photo-frame > .model-chip {
+  align-self: start;
+}
+
+.photo-frame > #scene:not([hidden]) {
+  display: block;
+}
+
+.photo-frame > #scene {
+  width: 100%;
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+
+.baseline-optin {
+  font-weight: 600;
+  align-items: flex-start;
+}
+
+.baseline-optin > input {
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-top: 0.1rem;
+}
+
+.baseline-nolocation {
+  font-weight: 600;
+}
+
+.baseline:not([hidden]) {
+  display: grid;
+}
+
+.baseline {
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.baseline > img {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px dashed var(--primary);
+}
+
+.baseline-caption:not([hidden]) {
+  display: flex;
+}
+
+.baseline-caption {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.credit {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.credit-logo {
+  height: 1rem;
+  width: auto;
+  vertical-align: middle;
+}
+
+a.credit-link:not([hidden]) {
+  display: inline-flex;
+}
+
+a.credit-link {
+  align-items: center;
+  min-height: 2.75rem;
+}
+
+/* Your photo and the street photo sit side by side once there is room for both. */
+@media (min-width: 480px) {
+  #station-card {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #station-card:has(> #station-baseline:not([hidden])) > #scene-wrap {
+    grid-column: 1;
+  }
+
+  #station-card > #station-baseline {
+    grid-column: 2;
+  }
+}
+
+.name-input {
+  width: 100%;
+  font: 700 1.25rem/1.3 var(--display);
+}
+
+.profile:not([hidden]) {
+  display: grid;
+}
+
+.profile {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.25rem 0.75rem;
+  margin: 0;
+}
+
+.profile > dt {
+  font: 700 0.875rem/1.55 var(--mono);
+}
+
+.profile > dd {
+  margin: 0;
+}
+
+.taps {
+  margin: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--ink);
+}
+
+.taps > legend {
+  padding: 0 0.375rem;
+  font-weight: 700;
+}
+
+.tap-group:not([hidden]) {
+  display: flex;
+}
+
+.tap-group {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.tap-label {
+  flex: 1 1 100%;
+  font: 700 0.875rem/1.3 var(--mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tap {
+  padding: 0.375rem 0.875rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* Pressed is fill plus an inset ring, so the state never rests on colour alone. */
+.tap[aria-pressed="true"],
+.tap[aria-pressed="true"]:hover {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
+  box-shadow: inset 0 0 0 2px var(--on-primary);
+  font-weight: 800;
+}

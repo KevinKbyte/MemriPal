@@ -1,0 +1,313 @@
+/* route-s4-s5.css: S4 Fix the route and S5 Route view; loaded after route.css in preview link order, same rules as route.css. */
+
+/* ---------- S4 Fix the route ---------- */
+
+.kind-pick {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.kind-pick > legend {
+  margin-bottom: 0.375rem;
+  padding: 0;
+  font-weight: 700;
+}
+
+.kind-pick:not([hidden]) {
+  display: flex;
+}
+
+.kind-pick {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.kind-option:not([hidden]) {
+  display: inline-flex;
+}
+
+.kind-option {
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0 0.875rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.check > input[type="checkbox"],
+.kind-option > input[type="radio"] {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  accent-color: var(--primary);
+}
+
+.kind-option > input[type="radio"] {
+  appearance: none;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--surface);
+}
+
+.kind-option > input[type="radio"]:checked {
+  background: var(--primary);
+  box-shadow: inset 0 0 0 3px var(--surface);
+}
+
+.kind-option:has(input:checked) {
+  border: 2px solid var(--primary);
+  background: var(--surface-2);
+}
+
+.order-note {
+  color: var(--muted);
+}
+
+/* Each pair below: #route out-ranks style.css's `#route li`; .station-rows reaches the locked list (no id). */
+.station-rows {
+  counter-reset: route;
+  padding-left: 0;
+}
+
+/* style.css numbers #route rows with an absolute ::before counter; rows switch to a grid here. */
+#route > .station-row:not([hidden]),
+.station-rows > .station-row:not([hidden]) {
+  display: grid;
+}
+
+#route > .station-row,
+.station-rows > .station-row {
+  position: relative;
+  counter-increment: route;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.375rem 0.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.5rem 0.5rem 2.5rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+#route > .station-row::before,
+.station-rows > .station-row::before {
+  content: counter(route) ".";
+  position: absolute;
+  left: 0;
+  top: 0.6rem;
+  width: 2.25rem;
+  text-align: right;
+  font: 600 0.9rem/1.5 var(--mono);
+  color: var(--muted);
+}
+
+#route > .station-row > *,
+.station-rows > .station-row > * {
+  grid-column: 2 / -1;
+  min-width: 0;
+}
+
+#route > .station-row > .thumb,
+.station-rows > .station-row > .thumb {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+}
+
+#route > .station-row > .row-name,
+.station-rows > .station-row > .row-name {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+#route > .station-row > .source-tag,
+.station-rows > .station-row > .source-tag {
+  justify-self: start;
+}
+
+#route > .station-row > .move-up,
+#route > .station-row > .move-down,
+#route > .station-row > .arm,
+#route > .station-row > .confirm,
+#route > .station-row > .cancel,
+.station-rows > .station-row > .move-up,
+.station-rows > .station-row > .move-down,
+.station-rows > .station-row > .arm,
+.station-rows > .station-row > .confirm,
+.station-rows > .station-row > .cancel,
+.station-rows > .station-row > .row-swap {
+  padding-inline: 0.25rem;
+  white-space: nowrap;
+}
+
+/* Phone: four equal tracks. At rest Up | Down | Drop (x2); armed adds a row Drop it (x2) | Keep (x2). */
+#route > .station-row > .move-up,
+.station-rows > .station-row > .move-up { grid-column: 1; }
+#route > .station-row > .move-down,
+.station-rows > .station-row > .move-down { grid-column: 2; }
+#route > .station-row > .arm,
+.station-rows > .station-row > .arm { grid-column: 3 / span 2; }
+#route > .station-row > .confirm,
+.station-rows > .station-row > .confirm { grid-column: 1 / span 2; }
+#route > .station-row > .cancel,
+.station-rows > .station-row > .cancel { grid-column: 3 / span 2; }
+.station-rows > .station-row > .row-swap,
+.station-rows > .station-row > .swap-warn { grid-column: 1 / -1; }
+
+/* Locked by a memorised list: why, and where to unlock it. */
+.lock-reason,
+.swap-warn {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-left: 4px solid var(--lamp-ink);
+  border-radius: 0 10px 10px 0;
+  background: var(--lamp-soft);
+  color: var(--ink);
+}
+
+.swap-warn {
+  font-weight: 600;
+}
+
+/* Wide: buttons sit right of the name in fixed equal tracks so rows align at rest and armed. */
+@media (min-width: 760px) {
+  #route > .station-row,
+  .station-rows > .station-row {
+    grid-template-columns: 3.5rem minmax(0, 1fr) repeat(4, 5.75rem);
+  }
+
+  #route > .station-row > .row-name,
+  #route > .station-row > .source-tag,
+  .station-rows > .station-row > .row-name,
+  .station-rows > .station-row > .source-tag {
+    grid-column: 2;
+  }
+
+  #route > .station-row > .move-up,
+  #route > .station-row > .move-down,
+  #route > .station-row > .arm,
+  #route > .station-row > .confirm,
+  #route > .station-row > .cancel,
+  .station-rows > .station-row > .move-up,
+  .station-rows > .station-row > .move-down,
+  .station-rows > .station-row > .arm,
+  .station-rows > .station-row > .confirm,
+  .station-rows > .station-row > .cancel,
+  .station-rows > .station-row > .row-swap {
+    grid-row: 1 / span 2;
+    align-self: center;
+  }
+
+  #route > .station-row > .move-up,
+  .station-rows > .station-row > .move-up { grid-column: 3; }
+  #route > .station-row > .move-down,
+  .station-rows > .station-row > .move-down { grid-column: 4; }
+  #route > .station-row > .confirm,
+  .station-rows > .station-row > .confirm,
+  .station-rows > .station-row > .row-swap { grid-column: 5; }
+  #route > .station-row > .arm,
+  #route > .station-row > .cancel,
+  .station-rows > .station-row > .arm,
+  .station-rows > .station-row > .cancel { grid-column: 6; }
+
+  .station-rows > .station-row > .swap-warn { grid-column: 2 / -1; }
+}
+
+/* ---------- S5 Route view ---------- */
+
+.route-kind {
+  margin-left: 0.5rem;
+  font: 600 0.875rem/1 var(--mono);
+  color: var(--muted);
+}
+
+.station-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Thumbnail floats left so name, turn cue and chips flow beside it; flow-root contains it. */
+.station-item:not([hidden]) {
+  display: flow-root;
+}
+
+.station-item {
+  padding: 0.625rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.station-item > .thumb {
+  float: left;
+  margin-right: 0.75rem;
+}
+
+.station-item > .item-num {
+  margin-right: 0.375rem;
+  font: 700 0.875rem/1.5 var(--mono);
+}
+
+.station-item > .item-name {
+  font-weight: 700;
+}
+
+.station-item > .item-turn {
+  margin-left: 0.375rem;
+  color: var(--muted);
+}
+
+.station-item > .tag,
+.station-item > .source-tag,
+.station-item > .learned,
+.station-item > .model-chip {
+  margin: 0.25rem 0.25rem 0 0;
+}
+
+.station-item > .item-baseline {
+  float: right;
+  width: 3rem;
+  height: 3rem;
+  margin-left: 0.5rem;
+  border: 1px dashed var(--primary);
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.toggle[aria-pressed="true"] {
+  border: 2px solid var(--primary);
+  background: var(--surface-2);
+}
+
+.place-facts {
+  margin: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.place-facts > legend {
+  padding: 0 0.375rem;
+  font-weight: 700;
+}
+
+.list-summary:not([hidden]) {
+  display: flex;
+}
+
+.list-summary {
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.list-summary > .summary-name {
+  font-weight: 700;
+}
