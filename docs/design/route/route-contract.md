@@ -210,7 +210,7 @@ Below 480px the two photos stack; from 480px they sit side by side while `#stati
 | id | element | classes | direct children |
 |---|---|---|---|
 | `#scenes` | div[aria-live=polite] | `scene-cards` | `article.scene-card` (aria-busy while painting) |
-| (item) `article.scene-card` | article | `scene-card` | `img.scene-img` (or existing `div.scene-frame > img.scene-img`; none on a text-only card), `span.chip-ai`, `h3.scene-station`, `p` (item), `p.card-progress` (+ `span.model-chip` "Muse Image"), `span.badge-replay` |
+| (item) `article.scene-card` | article | `scene-card` | `img.scene-img` (none on a text-only card), `span.chip-ai`, `h3.scene-station`, `p` (item), `p.card-progress` (+ `span.model-chip` "Muse Image"), `span.badge-replay` |
 | `#walk` | section | `panel screen` | `h2.screen-title`, `#walk-step`, `#walk-prev`, `#walk-next` |
 | `#walk-step` | div | `walk-step` | `p.walk-count`, `img.scene-img`, `p.walk-cue`, `p.walk-item` |
 | `#walk-prev` / `#walk-next` | button | `btn` | none |
@@ -227,7 +227,7 @@ Below 480px the two photos stack; from 480px they sit side by side while `#stati
 | `#recall-replay` / `#recall-submit` | button | `btn` | none |
 | `#recall-typed` | textarea | none | none |
 | `#recall-live` | div | `live-board` | `span.badge-live` or `span.badge-replay`, `span.model-chip` "Muse Voice Transcribe", `ol` (style.css `li.lit`) |
-| `#recall-results` | div | none | style.css `li.said-got` / `li.said-missed` |
+| `#recall-results` | div | none | none |
 
 ### S9 Results, history, backup
 
