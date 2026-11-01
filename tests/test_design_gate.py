@@ -4,7 +4,8 @@
 # injectable `shoot(rev, outdir)` (rev = the tip's full sha; the shooter writes the PNGs and
 # returns {"errors", "shots": [{"filename", "viewport", "scroll_width", "axe", "ids",
 # "classes"}]}) and fails on: any page/console error; `check_route_css.check` problems on the
-# tip's docs/design/route/route.css + route-contract.md; scroll width beyond the viewport at
+# tip's route CSS (the in-dir stylesheets preview.html links, pinned in test_design_gate_pages.py)
+# + route-contract.md; scroll width beyond the viewport at
 # 375 px; an axe "color-contrast" or "target-size" violation; no shots; or any id/class used in
 # a CSS selector or named (as `#id`/`.class` in a backticked span) by the contract that is absent
 # from the union of every shot's rendered DOM. `--evidence` that is a README.md, or anything
@@ -30,8 +31,14 @@ pytestmark = pytest.mark.skipif(not GIT, reason="design_gate test needs git")
 
 CSS_PATH = "docs/design/route/route.css"
 CONTRACT_PATH = "docs/design/route/route-contract.md"
+PREVIEW_PATH = "docs/design/route/preview.html"
 CSS = "/* route */\n#scene-wrap { margin: 0; }\n.assoc-card { padding: 0; }\n"
 CONTRACT = "# Contract\n\nCards: `article.assoc-card` inside `#scene-wrap`. Load `route.css` last.\n"
+PREVIEW = (
+    "<!doctype html>\n"
+    '<link rel="stylesheet" href="../../../static/style.css">\n'
+    '<link rel="stylesheet" href="route.css">\n'
+)
 PNG = b"\x89PNG\r\n\x1a\n"
 PHONE = "s1_phone_light.png"
 WIDE = "s1_wide_light.png"
@@ -130,7 +137,7 @@ def _make_repo(tmp_path: Path, extra_base_files=None) -> Repo:
     repo = Repo(tmp_path / "repo")
     repo.path.mkdir()
     repo.git("init", "-q", "-b", "main")
-    files = {"README.md": "# demo\n", CSS_PATH: CSS, CONTRACT_PATH: CONTRACT}
+    files = {"README.md": "# demo\n", CSS_PATH: CSS, CONTRACT_PATH: CONTRACT, PREVIEW_PATH: PREVIEW}
     files.update(extra_base_files or {})
     repo.commit(files, "base")
     repo.git("checkout", "-q", "-b", "feature")

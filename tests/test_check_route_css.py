@@ -5,17 +5,20 @@
 # hex/functional/named colours, url/@font-face/@import, banned properties, display rules whose
 # last compound lacks :not([hidden]) except pseudo-elements, unknown ids, classes absent from the
 # contract's backticked spans or literal text, bare element selectors outside ELEMENT_OK);
-# main(argv) prints FAIL lines plus "<n> problem(s)" (exit 1) or "OK" (exit 0), exits 2 with a
-# usage line on stderr for a wrong argument count, and the shipped docs/design/route CSS passes.
+# main(argv) takes one or more css paths then the contract (last arg), checks the css files
+# concatenated in the given order, prints FAIL lines plus "<n> problem(s)" (exit 1) or "OK"
+# (exit 0), and exits 2 with a usage line on stderr for fewer than 2 args.
 import importlib.util
+import re
+import subprocess
 from pathlib import Path
 
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = REPO_ROOT / "scripts" / "check_route_css.py"
-ROUTE_CSS = REPO_ROOT / "docs" / "design" / "route" / "route.css"
-ROUTE_CONTRACT = REPO_ROOT / "docs" / "design" / "route" / "route-contract.md"
+ROUTE_DIR = REPO_ROOT / "docs" / "design" / "route"
+ROUTE_CONTRACT = ROUTE_DIR / "route-contract.md"
 
 ELEMENT_OK = ["a", "circle", "text", "li", "ol", "dt", "dd", "legend", "summary", "img", "input"]
 BANNED_PROPS = ["transform", "filter", "contain", "perspective", "will-change", "backdrop-filter"]
@@ -186,7 +189,7 @@ def _write(tmp_path, css, contract):
 
 
 class TestMain:
-    @pytest.mark.parametrize("argv", [[], ["route.css"], ["route.css", "contract.md", "extra"]])
+    @pytest.mark.parametrize("argv", [[], ["route.css"]])
     def test_wrong_arg_count_exits_2_with_usage(self, argv, capsys):
         try:
             code = _load().main(argv)
@@ -219,6 +222,70 @@ class TestMain:
         assert _load().main(argv) == 0
         assert capsys.readouterr().out.splitlines() == ["OK"]
 
+    def test_several_css_files_are_all_checked(self, tmp_path, capsys):
+        sheets = []
+        for name, css in [
+            ("a.css", "#status { color: var(--ink); }\n"),
+            ("b.css", "#loci { color: var(--brand); }\n"),
+            ("c.css", "#nope { color: var(--ink); }\n"),
+        ]:
+            path = tmp_path / name
+            path.write_bytes(css.encode("utf-8"))
+            sheets.append(str(path))
+        contract = tmp_path / "route-contract.md"
+        contract.write_bytes(b"")
+        assert _load().main([*sheets, str(contract)]) == 1
+        assert capsys.readouterr().out.splitlines() == [
+            "FAIL token --brand",
+            "FAIL unknown id #nope",
+            "2 problem(s)",
+        ]
+
+    def test_contract_is_the_last_arg_not_a_css_file(self, tmp_path, capsys):
+        first, second, contract = tmp_path / "a.css", tmp_path / "b.css", tmp_path / "contract.md"
+        first.write_bytes(b"#status { color: var(--ink); }\n")
+        second.write_bytes(b".ghost { color: var(--ink); }\n")
+        contract.write_bytes(b"Use `ghost` here.\n")
+        assert _load().main([str(first), str(second), str(contract)]) == 0
+        assert capsys.readouterr().out.splitlines() == ["OK"]
+
+
+# Covers: MEM-072
+# Requirement: every hand-authored (git-tracked) docs/design/route/ file with suffix .css or .html
+# is under 500 lines, and the shipped route CSS set (the stylesheets preview.html links whose href
+# is relative and stays inside docs/design/route/, in link order) passes check_route_css against
+# route-contract.md.
+LINE_CAP = 500
+STYLESHEET = re.compile(r"<link\s+rel=\"stylesheet\"\s+href=\"([^\"]+)\"")
+
+
+def _tracked_route_design_files():
+    out = subprocess.run(
+        ["git", "-C", str(REPO_ROOT), "ls-files", "-z", "--", "docs/design/route"],
+        capture_output=True,
+        encoding="utf-8",
+        check=True,
+        timeout=60,
+    ).stdout
+    return [REPO_ROOT / p for p in out.split("\0") if p.endswith((".css", ".html"))]
+
+
+def _shipped_route_css():
+    preview = (ROUTE_DIR / "preview.html").read_text(encoding="utf-8")
+    hrefs = STYLESHEET.findall(preview)
+    return [ROUTE_DIR / h for h in hrefs if not re.match(r"(\.\./|/|[a-z][a-z0-9+.-]*:)", h, re.I)]
+
+
+class TestShippedRouteDesign:
+    def test_route_design_css_and_html_files_are_under_500_lines(self):
+        files = _tracked_route_design_files()
+        assert files, "no tracked .css/.html under docs/design/route"
+        counts = {f.name: len(f.read_text(encoding="utf-8").splitlines()) for f in files}
+        too_long = {name: n for name, n in counts.items() if n >= LINE_CAP}
+        assert too_long == {}, f"files at or over {LINE_CAP} lines: {too_long}"
+
     def test_shipped_route_css_passes_against_its_contract(self, capsys):
-        assert _load().main([str(ROUTE_CSS), str(ROUTE_CONTRACT)]) == 0
+        sheets = _shipped_route_css()
+        assert sheets, "preview.html links no route stylesheet"
+        assert _load().main([*map(str, sheets), str(ROUTE_CONTRACT)]) == 0
         assert capsys.readouterr().out.splitlines() == ["OK"]

@@ -1,12 +1,14 @@
 # Covers: MEM-067
 # Requirement: scripts/screenshot_design.py screenshots the route design preview: parse_width
 # turns "name=WxH" into (name, (W, H)) and rejects malformed or non-positive specs; shot_plan
-# orders shots widths-outer, themes-middle, screens-inner with url "?s=<screen>" (plus
-# "&theme=dark" only for dark), filename "s<screen, commas as dashes>_<width>_<theme>.png" and the
-# width's viewport; main(argv, run) defaults to 8 screens x 2 widths x 2 themes (32 shots), lets
-# each repeatable flag replace its default in the given order, prints "ERR <msg>" per error and
-# "shots=N errors=M" (exit 1 on errors, else 0), exits 2 without running for bad usage, and the
-# module imports without playwright installed.
+# orders shots widths-outer, themes-middle, screens-inner with url "<page>?s=<screen>" (plus
+# "&theme=dark" only for dark) where base_url is the preview.html URL and page is preview.html for
+# screens 1-4 and its sibling preview-2.html for screens 5-9 (incl. "5,6"), filename
+# "s<screen, commas as dashes>_<width>_<theme>.png" (unchanged by the page) and the width's viewport;
+# main(argv, run) defaults to 8 screens x 2 widths x 2 themes (32 shots), lets each
+# repeatable flag replace its default in the given order, prints "ERR <msg>" per error and "shots=N errors=M"
+# (exit 1 on errors, else 0), exits 2 without running for bad usage, and the module
+# imports without playwright installed.
 import importlib.util
 import sys
 from pathlib import Path
@@ -17,6 +19,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = REPO_ROOT / "scripts" / "screenshot_design.py"
 
 BASE = "http://127.0.0.1:8765/preview.html"
+BASE_2 = "http://127.0.0.1:8765/preview-2.html"
+PAGE_1_SCREENS = {"1", "2", "3", "4"}
 DEFAULT_SCREENS = ["1", "2", "3", "4", "5,6", "7", "8", "9"]
 DEFAULT_WIDTHS = [("phone", (375, 812)), ("wide", (1000, 800))]
 DEFAULT_THEMES = ["light", "dark"]
@@ -34,7 +38,8 @@ def _expected(screens, widths, themes):
     for name, viewport in widths:
         for theme in themes:
             for screen in screens:
-                url = BASE + "?s=" + screen + ("&theme=dark" if theme == "dark" else "")
+                page = BASE if screen in PAGE_1_SCREENS else BASE_2
+                url = page + "?s=" + screen + ("&theme=dark" if theme == "dark" else "")
                 shots.append((url, f"s{screen.replace(',', '-')}_{name}_{theme}.png", viewport))
     return shots
 
@@ -85,18 +90,36 @@ class TestShotPlan:
         plan = _load().shot_plan(BASE, ["1", "5,6"], widths, ["light", "dark"])
         assert [tuple(s) for s in plan] == [
             (BASE + "?s=1", "s1_phone_light.png", (375, 812)),
-            (BASE + "?s=5,6", "s5-6_phone_light.png", (375, 812)),
+            (BASE_2 + "?s=5,6", "s5-6_phone_light.png", (375, 812)),
             (BASE + "?s=1&theme=dark", "s1_phone_dark.png", (375, 812)),
-            (BASE + "?s=5,6&theme=dark", "s5-6_phone_dark.png", (375, 812)),
+            (BASE_2 + "?s=5,6&theme=dark", "s5-6_phone_dark.png", (375, 812)),
             (BASE + "?s=1", "s1_wide_light.png", (1000, 800)),
-            (BASE + "?s=5,6", "s5-6_wide_light.png", (1000, 800)),
+            (BASE_2 + "?s=5,6", "s5-6_wide_light.png", (1000, 800)),
             (BASE + "?s=1&theme=dark", "s1_wide_dark.png", (1000, 800)),
-            (BASE + "?s=5,6&theme=dark", "s5-6_wide_dark.png", (1000, 800)),
+            (BASE_2 + "?s=5,6&theme=dark", "s5-6_wide_dark.png", (1000, 800)),
+        ]
+
+    @pytest.mark.parametrize(
+        "screen, page",
+        [("1", BASE), ("2", BASE), ("3", BASE), ("4", BASE)]
+        + [(s, BASE_2) for s in ("5", "5,6", "6", "7", "8", "9")],
+    )
+    def test_screen_renders_from_its_page(self, screen, page):
+        shot = _load().shot_plan(BASE, [screen], [("phone", (375, 812))], ["light"])[0]
+        assert shot.url == page + "?s=" + screen
+        assert shot.filename == f"s{screen.replace(',', '-')}_phone_light.png"
+
+    def test_page_2_is_the_sibling_of_a_file_url_base(self):
+        base = "file:///C:/tmp/tree/docs/design/route/preview.html"
+        plan = _load().shot_plan(base, ["4", "7"], [("phone", (375, 812))], ["light"])
+        assert [s.url for s in plan] == [
+            base + "?s=4",
+            "file:///C:/tmp/tree/docs/design/route/preview-2.html?s=7",
         ]
 
     def test_shot_fields_are_named(self):
         shot = _load().shot_plan(BASE, ["5,6"], [("phone", (375, 812))], ["dark"])[0]
-        assert shot.url == BASE + "?s=5,6&theme=dark"
+        assert shot.url == BASE_2 + "?s=5,6&theme=dark"
         assert shot.filename == "s5-6_phone_dark.png"
         assert shot.viewport == (375, 812)
 
