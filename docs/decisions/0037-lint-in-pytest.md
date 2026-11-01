@@ -8,8 +8,8 @@ Source: MEM-071 (`.claude/spec-cache/memripal/references/spec-4.md`).
 
 On 2026-10-31 two E501s reached main (3da4970 via MEM-034 418fd73; e5a6ead, fixed by a8c8daf). ruff ran only in
 `scripts/check.sh`, which only `scripts/merge_branch.sh` calls. MEM-034 was enqueued by calling agent-workflow
-`scripts/request_merge.py` directly, skipping both. The queue drain's verify (agent-workflow
-`scripts/post_merge_verify.py`) runs only pytest, often affected-only on changed test files, so nothing on the drain
+`request_merge.py` (its `scripts/` dir) directly, skipping both. The queue drain's verify (agent-workflow
+`post_merge_verify.py`) runs only pytest, often affected-only on changed test files, so nothing on the drain
 path linted.
 
 ## Options considered
