@@ -19,6 +19,8 @@ end screen, "Mark got it" overrides a missed point (counts and hit rates update,
 and hit rates show on page load in a history section; each row's "View" opens that run's said-vs-palace.
 Runs saved in localStorage before IndexedDB was available are copied into IndexedDB once on page load.
 
+Mascot: King Memri ("Pal"), a paper-crowned dog ([docs/design/mascot.md](docs/design/mascot.md)).
+
 ## Built during the hackathon (Oct 26 - Nov 4 2026)
 
 Everything in this repo was created during the Meta Global AI Developer Hackathon; git history is the record. Hacking
