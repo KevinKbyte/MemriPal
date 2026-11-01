@@ -24,13 +24,13 @@ MapLibre + PMTiles is staged behind ADR 0038's conditions.
 | `#route` `.route.tc-N` | g | The ONE drawn route: `polyline.route-halo` + `polyline.route-line` under `mask#reveal`, then one `g.lm` per station. `tc-N` (N = 0-7) is the topic colour. |
 | `g.lm` | g[role=button][tabindex=0] | `circle.lm-hit` (touch target), `g.lm-mark` (`circle.lm-dot` + `text.lm-num`), `text.lm-emoji` (aria-hidden). aria-label "n. Name". |
 | `#offroute` > `g.lm.lm-off` | g | Off-route landmark: muted grey dot, no number, no emoji; aria-label "Name, on Route". Hidden unless filter = All. |
-| `.map-attrib` | p | Reserved credit slot; required only once tiles ship. |
+| `.map-attrib` | p | Credit slot: "Illustrative map" while the map is stylized SVG; the OSM credit once tiles ship (ADR 0038 option A). |
 | `#chip` `.map-chip.tc-N` | p[aria-live=polite] | `#chip-name`, `.chip-topic` (`.topic-dot` + `#chip-topic` text), `#chip-meta` ("Daily, 6 stations"). Replaces a global legend. |
 | `.lm-filter` | fieldset | `#lm-route` "This route" (checked) / `#lm-all` "All landmarks" radios. |
 | `#lm-card` `.lm-card` | div[role=dialog] | `#lm-card-emoji`, `#lm-card-title`, `#lm-card-meta` ("Station 2 of 6, topic" or "On Route, topic Topic"), `#lm-card-close`. |
 | `#drawer` `.drawer` | details (right side) | `summary.drawer-handle` ("Route settings" / "Close"); body: "This route" (`#route-name`, `#route-often`, `#route-topic` + `#topic-options` + `#topic-hint`, `#route-count`), `#map-new` "Map a new route", "Existing routes" (`#route-search`, `#pick-count`, `#pick-viewport` > `#pick-space`). |
 | `.pick-head` / `.pick-row` | div | Windowed list items: header (aria-hidden, "Recent" or "Topic (n)") / row (role=listitem, aria-setsize/posinset) holding `button.route-pick.tc-N` (`.pick-swatch`, `.pick-name`, `.pick-meta`). |
-| `.tabbar` | nav | Routes / Recall / Landmarks / Settings; current tab `aria-current="page"`. |
+| `.tabbar` | nav | Routes / Landmarks / Recall / Settings; current tab `aria-current="page"`. |
 
 ## M.3 Behaviour
 

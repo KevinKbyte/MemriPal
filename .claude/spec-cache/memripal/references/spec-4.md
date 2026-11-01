@@ -109,7 +109,7 @@ Map-first shell (2026-11-01, contract `docs/design/route/route-contract-2.md`):
   viewport + margin, recomputed on pan end, zoom end and tween end.
 - Right-side drawer: this route's settings (name, how often, topic typeahead with recents), "Map a new route"
   (`#map-new`, enters S2), existing routes (search, recents, grouped by topic, virtualized list).
-- Bottom tabs Routes / Recall / Landmarks / Settings. No global legend: the chip shows the current route's topic
+- Bottom tabs Routes / Landmarks / Recall / Settings. No global legend: the chip shows the current route's topic
   as colour dot + name. Fixed ~8-colour palette, deterministic per topic id, user-overridable, text beside colour.
 - Map source: stylized SVG only until after the hackathon; MapLibre + self-hosted PMTiles (`geo` routes) with SVG
   `sketch` routes is staged as plan B15, adopted only when ADR 0038's map-source conditions hold.
