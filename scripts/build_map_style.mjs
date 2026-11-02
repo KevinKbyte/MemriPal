@@ -27,6 +27,13 @@ export function buildStyle(flavor) {
   const layers = JSON.parse(
     JSON.stringify(basemaps.layers("protomaps", basemaps.namedFlavor(flavor), { lang: "en" })),
   );
+  // Only icons in the vendored sprite may be requested (a missing one logs `Image "x" could not be
+  // loaded`); other kinds get "" so the label draws without an icon.
+  const pois = layers.find((layer) => layer.id === "pois");
+  if (!pois) throw new Error(`no pois layer in ${flavor} basemap`);
+  const sprite = JSON.parse(readFileSync(join(MAP_DIR, "sprites", "v4", `${flavor}.json`), "utf8"));
+  const icons = Object.keys(sprite).filter((key) => key !== "station").sort();
+  pois.layout["icon-image"] = ["match", ["get", "kind"], "station", "train_station", icons, ["get", "kind"], ""];
   return {
     version: 8,
     glyphs: "/static/map/fonts/{fontstack}/{range}.pbf",
