@@ -9,7 +9,10 @@
 # marker count, no navigations, no flip errors or CSP violations, and a "pan" section with exactly one
 # entry per width, phone then wide, each with the overlay clipped to the map, a non-empty station list,
 # at least one station whose true spot is off the map, every station box within the map rect, and each
-# station pinned exactly when its true spot is off the map) and gives one non-empty message per
+# station pinned exactly when its true spot is off the map, and a "select" section with exactly one
+# entry per width, phone then wide, where clicking a pinned station's marker expanded exactly that
+# station's list item with a non-empty detail, ringed exactly that marker, moved focus into the item and
+# brought the station's true spot onto the map) and gives one non-empty message per
 # defect otherwise; main(argv, run) takes "<outdir> [--root DIR]" (root defaults to the repo root),
 # prints the report JSON, then "ERR <msg>" per problem, then "shots=N problems=M" (exit 1 on any
 # problem, else 0), exits 2 without running when the outdir is missing, and the module imports
@@ -80,6 +83,18 @@ def _clean_report():
                     {"box": [2, 400, 28, 470], "pinned": True, "inside": False},
                 ],
             },
+        ],
+        "select": [
+            {
+                "width": name,
+                "station": 3,
+                "expanded": [3],
+                "selected": [3],
+                "detail_chars": 420,
+                "focus_in": True,
+                "spot_inside": True,
+            }
+            for name in ("phone", "wide")
         ],
         "foreign": [],
     }
@@ -211,6 +226,38 @@ def _pan_no_stations(r):
     r["pan"][0]["stations"] = []
 
 
+def _select_missing(r):
+    del r["select"]
+
+
+def _select_one_width(r):
+    r["select"] = r["select"][1:]
+
+
+def _select_wrong_item_expanded(r):
+    r["select"][0]["expanded"] = [2]
+
+
+def _select_two_items_expanded(r):
+    r["select"][1]["expanded"] = [2, 3]
+
+
+def _select_marker_not_ringed(r):
+    r["select"][1]["selected"] = []
+
+
+def _select_empty_detail(r):
+    r["select"][0]["detail_chars"] = 0
+
+
+def _select_focus_left_behind(r):
+    r["select"][1]["focus_in"] = False
+
+
+def _select_spot_still_off_map(r):
+    r["select"][0]["spot_inside"] = False
+
+
 SINGLE_DEFECTS = [
     pytest.param(_set_shot_state, id="shot-not-idle"),
     pytest.param(_add_shot_error, id="shot-error"),
@@ -227,6 +274,12 @@ SINGLE_DEFECTS = [
     pytest.param(_pan_station_outside_wrap, id="pan-station-outside-wrap"),
     pytest.param(_pan_off_screen_not_pinned, id="pan-off-screen-not-pinned"),
     pytest.param(_pan_on_screen_pinned, id="pan-on-screen-pinned"),
+    pytest.param(_select_wrong_item_expanded, id="select-wrong-item-expanded"),
+    pytest.param(_select_two_items_expanded, id="select-two-items-expanded"),
+    pytest.param(_select_marker_not_ringed, id="select-marker-not-ringed"),
+    pytest.param(_select_empty_detail, id="select-empty-detail"),
+    pytest.param(_select_focus_left_behind, id="select-focus-left-behind"),
+    pytest.param(_select_spot_still_off_map, id="select-spot-still-off-map"),
 ]
 
 # Not in SINGLE_DEFECTS: each wipes out what another pan defect would be judged on.
@@ -234,6 +287,8 @@ SOLO_DEFECTS = [
     pytest.param(_pan_missing, id="pan-missing"),
     pytest.param(_pan_one_width, id="pan-one-width"),
     pytest.param(_pan_no_stations, id="pan-no-stations"),
+    pytest.param(_select_missing, id="select-missing"),
+    pytest.param(_select_one_width, id="select-one-width"),
 ]
 
 
@@ -259,6 +314,15 @@ class TestProblems:
         defect(report)
         found = _load().problems(report)
         assert found and all(m.startswith("pan") for m in found), found
+
+    @pytest.mark.parametrize(
+        "defect", [p for p in SINGLE_DEFECTS + SOLO_DEFECTS if p.id.startswith("select-")]
+    )
+    def test_select_defect_messages_start_with_select(self, defect):
+        report = _clean_report()
+        defect(report)
+        found = _load().problems(report)
+        assert found and all(m.startswith("select") for m in found), found
 
     def test_pan_widths_out_of_order_is_a_problem(self):
         report = _clean_report()
