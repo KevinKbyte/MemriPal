@@ -6,7 +6,10 @@
 # "<origin>/docs/design/map/preview.html?theme=<theme>" and filename "map_<width>_<theme>.png";
 # problems(report) is empty for a clean run (every shot idle with no errors or CSP violations, no foreign
 # requests, the theme button flipping dark then light in the same document with a non-zero, unchanging
-# marker count, no navigations, no flip errors or CSP violations) and gives one non-empty message per
+# marker count, no navigations, no flip errors or CSP violations, and a "pan" section with exactly one
+# entry per width, phone then wide, each with the overlay clipped to the map, a non-empty station list,
+# at least one station whose true spot is off the map, every station box within the map rect, and each
+# station pinned exactly when its true spot is off the map) and gives one non-empty message per
 # defect otherwise; main(argv, run) takes "<outdir> [--root DIR]" (root defaults to the repo root),
 # prints the report JSON, then "ERR <msg>" per problem, then "shots=N problems=M" (exit 1 on any
 # problem, else 0), exits 2 without running when the outdir is missing, and the module imports
@@ -58,6 +61,26 @@ def _clean_report():
         "args": [],
         "shots": shots,
         "flip": {"steps": steps, "navigations": [], "errors": [], "csp": []},
+        "pan": [
+            {
+                "width": "phone",
+                "wrap": [0, 41, 375, 500],
+                "clipped": True,
+                "stations": [
+                    {"box": [120, 200, 146, 270], "pinned": False, "inside": True},
+                    {"box": [2, 300, 28, 370], "pinned": True, "inside": False},
+                ],
+            },
+            {
+                "width": "wide",
+                "wrap": [0, 41, 712, 800],
+                "clipped": True,
+                "stations": [
+                    {"box": [400, 300, 426, 370], "pinned": False, "inside": True},
+                    {"box": [2, 400, 28, 470], "pinned": True, "inside": False},
+                ],
+            },
+        ],
         "foreign": [],
     }
 
@@ -154,6 +177,40 @@ def _add_flip_csp(r):
     r["flip"]["csp"] = ["script-src https://cdn.example.com/maplibre.js"]
 
 
+def _pan_missing(r):
+    del r["pan"]
+
+
+def _pan_one_width(r):
+    r["pan"] = r["pan"][:1]
+
+
+def _pan_not_clipped(r):
+    r["pan"][0]["clipped"] = False
+
+
+def _pan_proved_nothing(r):
+    for st in r["pan"][1]["stations"]:
+        st["inside"] = True
+        st["pinned"] = False
+
+
+def _pan_station_outside_wrap(r):
+    r["pan"][1]["stations"][1]["box"] = [-30, 400, -4, 470]
+
+
+def _pan_off_screen_not_pinned(r):
+    r["pan"][0]["stations"][1]["pinned"] = False
+
+
+def _pan_on_screen_pinned(r):
+    r["pan"][1]["stations"][0]["pinned"] = True
+
+
+def _pan_no_stations(r):
+    r["pan"][0]["stations"] = []
+
+
 SINGLE_DEFECTS = [
     pytest.param(_set_shot_state, id="shot-not-idle"),
     pytest.param(_add_shot_error, id="shot-error"),
@@ -165,6 +222,18 @@ SINGLE_DEFECTS = [
     pytest.param(_add_navigation, id="flip-navigation"),
     pytest.param(_add_flip_error, id="flip-error"),
     pytest.param(_add_flip_csp, id="flip-csp"),
+    pytest.param(_pan_not_clipped, id="pan-not-clipped"),
+    pytest.param(_pan_proved_nothing, id="pan-proved-nothing"),
+    pytest.param(_pan_station_outside_wrap, id="pan-station-outside-wrap"),
+    pytest.param(_pan_off_screen_not_pinned, id="pan-off-screen-not-pinned"),
+    pytest.param(_pan_on_screen_pinned, id="pan-on-screen-pinned"),
+]
+
+# Not in SINGLE_DEFECTS: each wipes out what another pan defect would be judged on.
+SOLO_DEFECTS = [
+    pytest.param(_pan_missing, id="pan-missing"),
+    pytest.param(_pan_one_width, id="pan-one-width"),
+    pytest.param(_pan_no_stations, id="pan-no-stations"),
 ]
 
 
@@ -176,12 +245,33 @@ class TestProblems:
     def test_clean_report_has_no_problems(self):
         assert _load().problems(_clean_report()) == []
 
-    @pytest.mark.parametrize("defect", SINGLE_DEFECTS)
+    @pytest.mark.parametrize("defect", SINGLE_DEFECTS + SOLO_DEFECTS)
     def test_each_defect_gives_one_message(self, defect):
         report = _clean_report()
         defect(report)
         found = _load().problems(report)
         assert len(found) == 1, found
+        _assert_messages(found)
+
+    @pytest.mark.parametrize("defect", [p for p in SINGLE_DEFECTS + SOLO_DEFECTS if p.id.startswith("pan-")])
+    def test_pan_defect_messages_start_with_pan(self, defect):
+        report = _clean_report()
+        defect(report)
+        found = _load().problems(report)
+        assert found and all(m.startswith("pan") for m in found), found
+
+    def test_pan_widths_out_of_order_is_a_problem(self):
+        report = _clean_report()
+        report["pan"].reverse()
+        found = _load().problems(report)
+        assert found
+        _assert_messages(found)
+
+    def test_pan_width_repeated_is_a_problem(self):
+        report = _clean_report()
+        report["pan"][1] = copy.deepcopy(report["pan"][0])
+        found = _load().problems(report)
+        assert found
         _assert_messages(found)
 
     def test_zero_markers_is_a_problem_even_when_unchanged(self):
