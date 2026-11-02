@@ -327,3 +327,16 @@ describe("MEM-044 A2 v6 shell + control markup (static/index.html, F13)", () => 
     }
   });
 });
+
+// Covers: MEM-073
+// Requirement: the room-photo upload flow is retired (ADR 0040), so the first screen no longer
+// invites a room photo: index.html says neither "room photo" nor "photo of a room" (any case), while
+// every A5 id stays exactly once (the #photo input included; checked above).
+describe("MEM-073 first screen has no room-photo copy", () => {
+  for (const phrase of ["room photo", "photo of a room"]) {
+    test(`index.html never says "${phrase}"`, () => {
+      const at = HTML.toLowerCase().indexOf(phrase);
+      assert.equal(at, -1, `index.html still says "${phrase}": ...${HTML.slice(Math.max(0, at - 40), at + 40)}...`);
+    });
+  }
+});

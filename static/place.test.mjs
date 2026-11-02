@@ -3,8 +3,9 @@
 // history" is OFF by default and persisted in localStorage (a throwing storage reads as off); while
 // off no POST /place is made and the location is never asked for; toggling off discards the
 // confirmed place, so the next /associate body carries no auto place (a typed place is still sent).
-// When on, coords come from the ORIGINAL file's EXIF GPS (read before the re-encode strips it),
-// falling back to geolocation, and are sent to POST /place rounded to 4 decimal places.
+// When on, Load demo's coords come from the /demo/place.json sidecar (the demo photo is EXIF-free)
+// and are sent to POST /place rounded to 4 decimal places. The room-photo pick, which read the
+// original file's EXIF GPS with a geolocation fallback, is retired (MEM-073, ADR 0040).
 // Contract (RED; GREEN implements, ADR 0022):
 //   place.js exports
 //     readGps(bytes) -> {lat, lon} | null; bytes is a Uint8Array or ArrayBuffer of a JPEG. Parses the
@@ -14,8 +15,8 @@
 //       current()}; storage is a localStorage-like {getItem, setItem}; place = {title, extract};
 //       current() -> the place to send or null; setEnabled(false) discards the confirmed place.
 //   app.js
-//     onPhotoChange(input, deps): deps also takes {place: createPlaceState(...), geolocate}, where
-//       geolocate() resolves {lat, lon} | null. When place.enabled(): POST "/place" JSON {lat, lon}.
+//     onLoadDemo(deps): deps also takes {place: createPlaceState(...)}. When place.enabled(): GET
+//       "/demo/place.json" then POST "/place" JSON {lat, lon}.
 //     runAssociations(pairs, deps): deps also takes {place}; a non-null place.current() adds
 //       "place" to the /associate body, else the body stays exactly {image, item, locus}.
 //   index.html has an unchecked #place-toggle labelled "Use my location for place history".
@@ -217,10 +218,6 @@ function recordingFetch() {
   return { fn, calls, placeCalls };
 }
 
-function photoInput(bytes) {
-  return { files: [new File([bytes], "room.jpg", { type: "image/jpeg" })], value: "C:\\fakepath\\room.jpg" };
-}
-
 function uploadDeps(place, fetchFn, geolocate) {
   return {
     doc: fakeDoc(),
@@ -316,20 +313,36 @@ describe("place toggle", () => {
   });
 });
 
-// Covers: MEM-025
-// Requirement: while the toggle is off a photo pick makes no POST /place and never asks for the
-// location; when on, the original file's EXIF GPS (not the re-encoded bytes) is sent rounded to
-// 4 dp, with geolocation only as the fallback for a photo without GPS.
-describe("place lookup on photo pick", () => {
-  test("toggle off (default): no /place request and no geolocation, even for a GPS photo", async () => {
+/** fetch stub for Load demo: the demo photo, its /demo/place.json sidecar, /loci and /place. */
+function demoFetch(sidecar = { lat: 51.500729, lon: -0.124625 }) {
+  const rec = recordingFetch();
+  const fn = async (url, init = {}) => {
+    const u = String(url);
+    if (u === "/demo/photo.jpg") {
+      rec.calls.push({ url: u, init });
+      return new Response(PLAIN_JPEG, { headers: { "content-type": "image/jpeg" } });
+    }
+    if (u === "/demo/place.json") {
+      rec.calls.push({ url: u, init });
+      return jsonResponse(sidecar);
+    }
+    return rec.fn(url, init);
+  };
+  return { ...rec, fn, sidecarCalls: () => rec.calls.filter((c) => c.url === "/demo/place.json") };
+}
+
+// Covers: MEM-025, MEM-073
+// Requirement: while the toggle is off Load demo makes no POST /place and never reads the place
+// sidecar; when on, the /demo/place.json coords are sent to POST /place rounded to 4 dp.
+describe("place lookup on Load demo", () => {
+  test("toggle off (default): no /place request and no sidecar read", async () => {
     const { createPlaceState } = await placeModule();
-    const fetch = recordingFetch();
-    const geolocate = geolocateSpy({ lat: 1, lon: 2 });
-    await app.onPhotoChange(photoInput(GPS_JPEG), uploadDeps(createPlaceState(memoryStorage()), fetch.fn, geolocate));
+    const fetch = demoFetch();
+    await app.onLoadDemo(uploadDeps(createPlaceState(memoryStorage()), fetch.fn, geolocateSpy()));
     await settle();
     assert.ok(fetch.calls.some((c) => c.url === "/loci"), "the upload itself still runs");
     assert.deepEqual(fetch.placeCalls(), []);
-    assert.equal(geolocate.calls, 0);
+    assert.deepEqual(fetch.sidecarCalls(), []);
   });
 
   test("toggled on then off: no /place request", async () => {
@@ -337,38 +350,23 @@ describe("place lookup on photo pick", () => {
     const state = createPlaceState(memoryStorage());
     state.setEnabled(true);
     state.setEnabled(false);
-    const fetch = recordingFetch();
-    const geolocate = geolocateSpy({ lat: 1, lon: 2 });
-    await app.onPhotoChange(photoInput(GPS_JPEG), uploadDeps(state, fetch.fn, geolocate));
+    const fetch = demoFetch();
+    await app.onLoadDemo(uploadDeps(state, fetch.fn, geolocateSpy()));
     await settle();
     assert.deepEqual(fetch.placeCalls(), []);
-    assert.equal(geolocate.calls, 0);
+    assert.deepEqual(fetch.sidecarCalls(), []);
   });
 
-  test("toggle on: POST /place with the original file's GPS rounded to 4 dp", async () => {
+  test("toggle on: POST /place with the sidecar's coords rounded to 4 dp", async () => {
     const { createPlaceState } = await placeModule();
     const state = createPlaceState(memoryStorage());
     state.setEnabled(true);
-    const fetch = recordingFetch();
-    const geolocate = geolocateSpy({ lat: 1, lon: 2 });
-    await app.onPhotoChange(photoInput(GPS_JPEG), uploadDeps(state, fetch.fn, geolocate));
+    const fetch = demoFetch();
+    await app.onLoadDemo(uploadDeps(state, fetch.fn, geolocateSpy()));
     await until(() => fetch.placeCalls().length > 0, "POST /place");
     const [call] = fetch.placeCalls();
     assert.equal(call.init.method, "POST");
     assert.deepEqual(JSON.parse(call.init.body), { lat: 51.5007, lon: -0.1246 });
-    assert.equal(geolocate.calls, 0, "EXIF GPS wins over geolocation");
-  });
-
-  test("toggle on, photo without GPS: falls back to geolocation, rounded to 4 dp", async () => {
-    const { createPlaceState } = await placeModule();
-    const state = createPlaceState(memoryStorage());
-    state.setEnabled(true);
-    const fetch = recordingFetch();
-    const geolocate = geolocateSpy({ lat: 40.689247, lon: -74.044502 });
-    await app.onPhotoChange(photoInput(PLAIN_JPEG), uploadDeps(state, fetch.fn, geolocate));
-    await until(() => fetch.placeCalls().length > 0, "POST /place");
-    assert.equal(geolocate.calls, 1);
-    assert.deepEqual(JSON.parse(fetch.placeCalls()[0].init.body), { lat: 40.6892, lon: -74.0445 });
   });
 });
 

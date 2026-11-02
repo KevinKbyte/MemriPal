@@ -1,10 +1,10 @@
 // Covers: MEM-040
 // Requirement: the decorative empty-state picture (#empty-state) shows on page load and is hidden
-// once a palace's places render in #loci (a photo upload or Load demo whose result is drawn); it
+// once a palace's places render in #loci (a Load demo or other upload whose result is drawn); it
 // stays hidden for the rest of the page session, so a later flow step, a new upload in flight, or a
 // later failed upload never brings it back. A failed upload before any drawn result leaves it shown.
-// Driven through the page's own handlers (wireApp's Load demo click, app.js onPhotoChange), per
-// .claude/rules/client-transform-tests-drive-browser-path.md.
+// Driven through the page's own handlers (wireApp's Load demo click, app.js onLoadDemo), per
+// .claude/rules/client-transform-tests-drive-browser-path.md. The room-photo pick is retired (MEM-073).
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -102,10 +102,9 @@ const emptyState = (b) => el(b, "empty-state");
 const lociItems = (b) => findAll(el(b, "loci"), (n) => n.tagName === "LI");
 const statusText = (b) => el(b, "upload-status").textContent;
 
-/** The photo input's own change handler, as wireUpload binds it, on the same page. */
-function pickPhoto(b) {
-  const input = { files: [{ name: "room.jpg", type: "image/jpeg" }], value: "C:\\fakepath\\room.jpg" };
-  return app.onPhotoChange(input, {
+/** One upload through app.js's Load demo upload handler on the same page; /loci answers per boot(). */
+function demoUpload(b) {
+  return app.onLoadDemo({
     doc: b.p.doc,
     loadImage: async (src) => ({ src }),
     fetch: b.srv.fn,
@@ -130,15 +129,6 @@ describe("empty-state on page load", () => {
     assert.equal(lociItems(b).length, 0);
   });
 
-  test("a failed photo upload before any drawn result leaves it shown", async () => {
-    const b = await boot(() => jsonResponse({ error: "upstream" }, 502));
-    emptyState(b);
-    await pickPhoto(b);
-    assert.equal(statusText(b), "Upload failed: upstream");
-    assert.equal(lociItems(b).length, 0);
-    assert.equal(emptyState(b).hidden, false, "a failed upload drew nothing, so the empty state stays");
-  });
-
   test("a failed Load demo (no places drawn) leaves it shown", async () => {
     const b = await boot(() => jsonResponse({ error: "busy" }, 503));
     emptyState(b);
@@ -161,18 +151,9 @@ describe("empty-state hidden once places render", () => {
     await until(() => lociItems(b).length === LOCI.length, "#loci rendered by Load demo", TURNS);
     assert.equal(emptyState(b).hidden, true, "#empty-state still shown after #loci rendered");
   });
-
-  test("photo upload: hidden once #loci lists the places", async () => {
-    const b = await boot();
-    assert.equal(emptyState(b).hidden, false);
-    await pickPhoto(b);
-    assert.equal(statusText(b), `Found ${LOCI.length} places`);
-    assert.deepEqual(lociItems(b).map((li) => li.textContent), ["lamp", "door", "clock"]);
-    assert.equal(emptyState(b).hidden, true, "#empty-state still shown after #loci rendered");
-  });
 });
 
-// Covers: MEM-040
+// Covers: MEM-040, MEM-073
 // Requirement: once hidden, the empty-state picture stays hidden for the rest of the page session.
 describe("empty-state stays hidden for the session", () => {
   test("stays hidden through the rest of the Load demo flow and a recall replay", async () => {
@@ -188,11 +169,11 @@ describe("empty-state stays hidden for the session", () => {
   test("stays hidden while a new upload is in flight (#loci cleared)", async () => {
     let answer = () => jsonResponse(LOCI_BODY);
     const b = await boot(() => answer());
-    await pickPhoto(b);
+    await demoUpload(b);
     assert.equal(emptyState(b).hidden, true);
     const d = deferred();
     answer = () => d.promise;
-    const pending = pickPhoto(b);
+    const pending = demoUpload(b);
     await until(() => b.srv.calls.filter((u) => u === "/loci").length === 2, "second /loci POST", TURNS);
     assert.equal(lociItems(b).length, 0, "a new upload clears #loci up front");
     assert.equal(emptyState(b).hidden, true, "an upload in flight brought the empty state back");
@@ -201,37 +182,37 @@ describe("empty-state stays hidden for the session", () => {
     assert.equal(emptyState(b).hidden, true);
   });
 
-  test("a later failed photo upload (error response) keeps it hidden", async () => {
+  test("a later failed upload (error response) keeps it hidden", async () => {
     let answer = () => jsonResponse(LOCI_BODY);
     const b = await boot(() => answer());
-    await pickPhoto(b);
+    await demoUpload(b);
     assert.equal(emptyState(b).hidden, true);
     answer = () => jsonResponse({ error: "upstream" }, 502);
-    await pickPhoto(b);
+    await demoUpload(b);
     assert.equal(statusText(b), "Upload failed: upstream");
     assert.equal(lociItems(b).length, 0);
     assert.equal(emptyState(b).hidden, true, "a failed upload brought the empty state back");
   });
 
-  test("a later photo upload whose send rejects keeps it hidden", async () => {
+  test("a later upload whose send rejects keeps it hidden", async () => {
     let answer = () => jsonResponse(LOCI_BODY);
     const b = await boot(() => answer());
-    await pickPhoto(b);
+    await demoUpload(b);
     answer = () => {
       throw new TypeError("Failed to fetch");
     };
-    await pickPhoto(b);
-    assert.equal(statusText(b), "Upload failed: could not read or send the photo");
+    await demoUpload(b);
+    assert.equal(statusText(b), "Upload failed: could not load the demo photo");
     assert.equal(emptyState(b).hidden, true, "a rejected upload brought the empty state back");
   });
 
-  test("a failed photo upload after Load demo keeps it hidden", async () => {
+  test("a failed upload after Load demo keeps it hidden", async () => {
     let answer = () => jsonResponse(LOCI_BODY);
     const b = await boot(() => answer());
     await loadDemo(b);
     assert.equal(emptyState(b).hidden, true);
     answer = () => jsonResponse({ error: "upstream" }, 502);
-    await pickPhoto(b);
+    await demoUpload(b);
     assert.equal(statusText(b), "Upload failed: upstream");
     assert.equal(emptyState(b).hidden, true, "a failed upload after the demo brought the empty state back");
   });

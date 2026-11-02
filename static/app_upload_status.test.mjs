@@ -1,6 +1,6 @@
 // Covers: MEM-017
 // Requirement: the upload status line tells the user what went wrong in plain words, driven
-// through the page's own handlers (onLoadDemo / onPhotoChange). A failed demo GET, or a failed
+// through the page's own handler (onLoadDemo; the room-photo pick is retired, MEM-073). A failed demo GET, or a failed
 // /loci POST whose body carries no JSON string `error`, names the HTTP status as "HTTP <status>"
 // (e.g. "HTTP 503") and never shows an internal "http_<status>" code. A server JSON error code
 // (body {"error": "upstream"}) is still shown as-is; "fixture_missing" on an own photo instead gets a
@@ -35,7 +35,6 @@ function fakePage() {
 }
 
 const DEMO_FAILURE = "could not load the demo photo";
-const PICK_FAILURE = "could not read or send the photo";
 
 const demoPhoto = () =>
   new Response(new Uint8Array([0xff, 0xd8, 0x44]), { status: 200, headers: { "content-type": "image/jpeg" } });
@@ -64,12 +63,9 @@ function depsFor(page, fetchFn) {
   };
 }
 
-const pickInput = () => ({ files: [{ name: "room.jpg", type: "image/jpeg" }], value: "C:\\fakepath\\room.jpg" });
-
-/** Both real upload sources, each driven through its page handler. */
+/** The real upload source, driven through its page handler. */
 const SOURCES = [
   { name: "Load demo", run: (deps) => app.onLoadDemo(deps), failure: DEMO_FAILURE },
-  { name: "photo pick", run: (deps) => app.onPhotoChange(pickInput(), deps), failure: PICK_FAILURE },
 ];
 
 function assertNamesHttpStatus(text, status) {
@@ -101,7 +97,7 @@ describe("Load demo: a failed demo GET names the HTTP status", () => {
 // Covers: MEM-017
 // Requirement: a failed /loci POST whose body has no JSON string `error` (plain text, empty, a
 // JSON object without `error`, or a non-string `error`) names "HTTP <status>", never "http_<status>",
-// for both the photo pick and Load demo paths.
+// for the Load demo path.
 describe("upload: a failed POST without a JSON error names the HTTP status", () => {
   const bodies = [
     { name: "plain-text body", make: (status) => new Response("Service Unavailable", { status }) },

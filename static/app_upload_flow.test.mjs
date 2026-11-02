@@ -1,14 +1,13 @@
 // Covers: MEM-017
-// Requirement: the real upload flow (photo pick and "Load demo") only ever shows the latest
-// upload's result. app.js exports the seam the page itself uses:
+// Requirement: the real upload flow ("Load demo" and any other showUpload caller) only ever shows
+// the latest upload's result. app.js exports the seam the page itself uses:
 //   showUpload(send, failureText, deps)  -- one upload; send() resolves to the /loci Response
-//   onPhotoChange(input, deps)           -- the photo input's change handler
 //   onLoadDemo(deps)                     -- the "Load demo" click handler
 // deps = {doc, loadImage, fetch, encode}: doc offers getElementById/createElement, loadImage(src)
-// resolves to a drawable image once decoded, fetch is the fetch function, encode(file) resolves to
-// the bytes POSTed for a picked photo. All three share ONE module-level stale-response gate, so a
-// later upload from either source supersedes an earlier one from either source: a superseded
-// upload never draws, never sets the status, and never clears, even when it answers last.
+// resolves to a drawable image once decoded, fetch is the fetch function. Every upload shares ONE
+// module-level stale-response gate, so a later upload from any source supersedes an earlier one
+// from any source: a superseded upload never draws, never sets the status, and never clears, even
+// when it answers last. The room-photo pick (onPhotoChange) is retired (MEM-073, ADR 0040).
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -116,11 +115,10 @@ function assertShowsB(page) {
 }
 
 // Covers: MEM-017
-// Requirement: app.js exports the upload-flow seam (showUpload, onPhotoChange, onLoadDemo).
+// Requirement: app.js exports the upload-flow seam (showUpload, onLoadDemo).
 describe("upload flow seam", () => {
-  test("app.js exports showUpload, onPhotoChange and onLoadDemo", () => {
+  test("app.js exports showUpload and onLoadDemo", () => {
     assert.equal(typeof app.showUpload, "function");
-    assert.equal(typeof app.onPhotoChange, "function");
     assert.equal(typeof app.onLoadDemo, "function");
   });
 });
@@ -212,16 +210,18 @@ function stubFetch() {
   return { posts, fetchFn };
 }
 
-const pickInput = () => ({ files: [{ name: "room.jpg", type: "image/jpeg" }], value: "C:\\fakepath\\room.jpg" });
+/** Another showUpload caller on the same page; its /loci body starts 0x50, so stubFetch keys it "pick". */
+const otherUpload = (deps) =>
+  app.showUpload(() => deps.fetch("/loci", { method: "POST", body: new Uint8Array([0x50]) }), "could not send", deps);
 
-// Covers: MEM-017
-// Requirement: a photo pick and "Load demo" share one gate: whichever started later wins.
-describe("photo pick and Load demo share one gate", () => {
-  test("Load demo started after a photo pick supersedes the pick", async () => {
+// Covers: MEM-017, MEM-073
+// Requirement: "Load demo" and any other upload share one gate: whichever started later wins.
+describe("Load demo and another upload share one gate", () => {
+  test("Load demo started after another upload supersedes it", async () => {
     const page = fakePage();
     const { posts, fetchFn } = stubFetch();
     const deps = depsFor(page, { fetch: fetchFn });
-    const pPick = app.onPhotoChange(pickInput(), deps);
+    const pPick = otherUpload(deps);
     await until(() => posts.has("pick"), "pick POSTs /loci");
     const pDemo = app.onLoadDemo(deps);
     await until(() => posts.has("demo"), "demo POSTs /loci");
@@ -234,79 +234,19 @@ describe("photo pick and Load demo share one gate", () => {
     assertShowsB(page);
   });
 
-  test("a photo pick started after Load demo supersedes the demo", async () => {
+  test("an upload started after Load demo supersedes the demo", async () => {
     const page = fakePage();
     const { posts, fetchFn } = stubFetch();
     const deps = depsFor(page, { fetch: fetchFn });
     const pDemo = app.onLoadDemo(deps);
     await until(() => posts.has("demo"), "demo POSTs /loci");
-    const pPick = app.onPhotoChange(pickInput(), deps);
+    const pPick = otherUpload(deps);
     await until(() => posts.has("pick"), "pick POSTs /loci");
     posts.get("demo").resolve(jsonResponse(payload("A", ["chair"])));
     await pDemo;
     assert.deepEqual(page.drawn, [], "the superseded demo must not draw");
     posts.get("pick").resolve(jsonResponse(payload("B", ["lamp", "door"])));
     await pPick;
-    assertShowsB(page);
-  });
-});
-
-// Covers: MEM-017
-// Requirement: a photo pick clears input.value at once (so re-picking the same photo fires change
-// again), uploads nothing without a file, and POSTs the encoded photo bytes to /loci as image/jpeg.
-describe("photo input change handler", () => {
-  test("a change event clears input.value at once, so re-picking the same photo fires again", async () => {
-    const page = fakePage();
-    const deps = depsFor(page, { fetch: async () => jsonResponse(payload("B", ["lamp", "door"])) });
-    const input = pickInput();
-    const p = app.onPhotoChange(input, deps);
-    assert.equal(input.value, "");
-    await p;
-    assert.equal(input.value, "");
-    assertShowsB(page);
-  });
-
-  test("a change with no chosen file clears the value and uploads nothing", async () => {
-    for (const files of [[], null]) {
-      const page = fakePage();
-      const calls = [];
-      const deps = depsFor(page, {
-        fetch: async (url) => {
-          calls.push(String(url));
-          return jsonResponse(payload("B", ["lamp"]));
-        },
-      });
-      const input = { files, value: "C:\\fakepath\\room.jpg" };
-      await app.onPhotoChange(input, deps);
-      assert.equal(input.value, "", `files=${JSON.stringify(files)}`);
-      assert.deepEqual(calls, []);
-      assert.deepEqual(page.drawn, []);
-    }
-  });
-
-  test("a picked photo is encoded and its encoded bytes POSTed to /loci as image/jpeg", async () => {
-    const page = fakePage();
-    const encoded = new Uint8Array([0x50, 1, 2, 3]);
-    const seen = [];
-    const posts = [];
-    const deps = depsFor(page, {
-      encode: async (file) => {
-        seen.push(file.name);
-        return encoded;
-      },
-      fetch: async (url, init) => {
-        posts.push([String(url), init]);
-        return jsonResponse(payload("B", ["lamp", "door"]));
-      },
-    });
-    await app.onPhotoChange(pickInput(), deps);
-    assert.deepEqual(seen, ["room.jpg"]);
-    assert.equal(posts.length, 1);
-    const [url, init] = posts[0];
-    assert.equal(url, "/loci");
-    assert.equal(init.method.toUpperCase(), "POST");
-    assert.equal(new Headers(init.headers).get("content-type"), "image/jpeg");
-    assert.deepEqual(new Uint8Array(await new Response(init.body).arrayBuffer()), encoded);
     assertShowsB(page);
   });
 });

@@ -1,9 +1,10 @@
 // Covers: MEM-017
-// Requirement: on a fixture-mode server, picking your own photo cannot be answered (the server only
-// replays the demo photo and returns 404 {"error": "fixture_missing"}). The upload status must then
-// tell the user in plain words to use Load demo instead, never show the raw code "fixture_missing"
-// as the whole message, and leave the page usable: the photo input is cleared so a re-pick uploads
-// again, and Load demo afterwards still finds the demo's places.
+// Requirement: on a fixture-mode server, an upload of any photo other than the demo's cannot be
+// answered (the server only replays the demo photo and returns 404 {"error": "fixture_missing"}).
+// The upload status must then tell the user in plain words to use Load demo instead, never show the
+// raw code "fixture_missing" as the whole message, and leave the page usable: Load demo afterwards
+// still finds the demo's places. Driven through showUpload, the seam every upload goes through; the
+// room-photo pick that used to reach it is retired (MEM-073, ADR 0040).
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 
@@ -58,27 +59,27 @@ const depsFor = (page, fetchFn) => ({
   encode: async () => new Uint8Array([0x50, 0x51]),
 });
 
-const pickInput = () => ({ files: [{ name: "room.jpg", type: "image/jpeg" }], value: "C:\\fakepath\\room.jpg" });
+/** One upload of bytes the fixture server does not know, through the page's upload seam. */
+const otherPhoto = (deps) =>
+  app.showUpload(() => deps.fetch("/loci", { method: "POST", body: new Uint8Array([0x50, 0x51]).buffer }), "could not send", deps);
 
-// Covers: MEM-017
-// Requirement: an own photo on a fixture-mode server says "use Load demo" in plain words (UX F9).
-describe("own photo upload on a fixture-mode server", () => {
+// Covers: MEM-017, MEM-073
+// Requirement: a non-demo photo on a fixture-mode server says "use Load demo" in plain words (UX F9).
+describe("non-demo photo upload on a fixture-mode server", () => {
   test("status tells the user to use Load demo, not just the raw fixture_missing code", async () => {
     const page = fakePage();
     const server = fixtureServer();
-    await app.onPhotoChange(pickInput(), depsFor(page, server.fetchFn));
+    await otherPhoto(depsFor(page, server.fetchFn));
     const text = page.status.textContent;
     assert.ok(server.calls.includes("/loci"), "the photo was sent");
     assert.notEqual(text.replace(/^Upload failed:\s*/, "").trim(), "fixture_missing", `status "${text}" must not be only the raw code`);
     assert.match(text, /Load demo/, `status "${text}" must point the user at Load demo`);
   });
 
-  test("the page stays usable: input cleared, and Load demo afterwards finds the demo's places", async () => {
+  test("the page stays usable: Load demo afterwards finds the demo's places", async () => {
     const page = fakePage();
     const server = fixtureServer();
-    const input = pickInput();
-    await app.onPhotoChange(input, depsFor(page, server.fetchFn));
-    assert.equal(input.value, "", "the input is cleared so a re-pick uploads again");
+    await otherPhoto(depsFor(page, server.fetchFn));
     await app.onLoadDemo(depsFor(page, server.fetchFn));
     assert.equal(page.status.textContent, `Found ${LOCI.length} places`);
     assert.equal(page.list.children.length, LOCI.length, "the demo's places are listed");
