@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MemriPal Kendall basemap preview</title>
+    <!-- Design preview only (MEM-076, MEM-077): the real Kendall Square basemap (self-hosted PMTiles + MapLibre)
+         with a mock marker overlay in app styling. Not part of the app.
+         Serve the repo root over HTTP and open /docs/design/map/preview.html; the style JSON and this page
+         fetch /static/map/... by absolute path. No inline script or style, so it runs under the app CSP.
+         Query: ?theme=dark|light sets the starting theme (default prefers-color-scheme); the Flip theme
+         button swaps the style in place without a reload. -->
+    <link rel="icon" href="/static/icon.svg">
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/theme-painterly.css">
+    <link rel="stylesheet" href="/docs/design/route/map-shell.css">
+    <link rel="stylesheet" href="/static/vendor/maplibre/maplibre-gl.css">
+    <link rel="stylesheet" href="preview.css">
+    <script src="/static/vendor/maplibre/maplibre-gl-csp.js" defer></script>
+    <script src="/static/vendor/pmtiles/pmtiles.js" defer></script>
+    <script src="preview.js" defer></script>
+  </head>
+  <body class="mp-preview">
+    <header class="mp-bar">
+      <strong>Kendall basemap preview</strong>
+      <button id="theme-flip" type="button">Flip theme</button>
+    </header>
+    <div class="mp-wrap">
+      <div id="map" class="mp-map"></div>
+      <p id="sketch-fallback" class="mp-fallback" hidden>sketch fallback</p>
+      <svg id="overlay" class="mp-overlay" aria-label="Sample landmarks" role="img"></svg>
+    </div>
+  </body>
+</html>
