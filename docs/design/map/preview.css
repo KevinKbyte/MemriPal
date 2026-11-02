@@ -138,3 +138,8 @@ body.mp-preview {
 .mp-map .maplibregl-ctrl-attrib a {
   color: var(--ink);
 }
+
+/* Emoji stacked straight above its numbered dot (overrides map-shell.css's up-right offset). */
+.lm-emoji {
+  transform: translate(0, calc(var(--k, 1) * -30px));
+}
