@@ -130,3 +130,114 @@ describe("build_map_style.mjs: light vs dark", () => {
     assert.notDeepEqual(light, dark);
   });
 });
+
+// Minimal evaluator for the expression operators a POI icon-image uses; throws on anything else so an
+// unsupported shape fails loudly instead of passing vacuously.
+function evalExpr(expr, props) {
+  if (!Array.isArray(expr)) return expr;
+  const [op, ...args] = expr;
+  if (op === "literal") return args[0];
+  if (op === "get") return props[args[0]] ?? null;
+  if (op === "==") return evalExpr(args[0], props) === evalExpr(args[1], props);
+  if (op === "case") {
+    for (let i = 0; i + 1 < args.length; i += 2) if (evalExpr(args[i], props)) return evalExpr(args[i + 1], props);
+    return evalExpr(args[args.length - 1], props);
+  }
+  if (op === "coalesce") {
+    for (const a of args) {
+      const v = evalExpr(a, props);
+      if (v !== null && v !== undefined) return v;
+    }
+    return null;
+  }
+  if (op === "match") {
+    const input = evalExpr(args[0], props);
+    for (let i = 1; i + 1 < args.length; i += 2) {
+      const labels = Array.isArray(args[i]) ? args[i] : [args[i]];
+      if (labels.includes(input)) return evalExpr(args[i + 1], props);
+    }
+    return evalExpr(args[args.length - 1], props);
+  }
+  throw new Error(`unsupported icon-image operator: ${JSON.stringify(op)}`);
+}
+
+// Every icon name an icon-image expression can resolve to. A ["get", p] output is bounded only when it
+// sits in a match branch keyed on ["get", p] (its value is then one of that branch's labels); anywhere
+// else, including a match fallback, it passes arbitrary tile data through and is reported as unbounded.
+function iconOutputs(expr) {
+  const names = new Set();
+  const unbounded = [];
+  const walk = (node, bound) => {
+    if (typeof node === "string") return void names.add(node);
+    if (!Array.isArray(node)) return void unbounded.push(JSON.stringify(node));
+    const [op, ...args] = node;
+    if (op === "literal" && typeof args[0] === "string") return void names.add(args[0]);
+    if (op === "get") {
+      if (bound && bound.prop === args[0]) bound.labels.forEach((l) => names.add(l));
+      else unbounded.push(JSON.stringify(node));
+      return;
+    }
+    if (op === "match") {
+      const input = args[0];
+      const prop = Array.isArray(input) && input[0] === "get" ? input[1] : null;
+      for (let i = 1; i + 1 < args.length; i += 2) {
+        const labels = Array.isArray(args[i]) ? args[i] : [args[i]];
+        walk(args[i + 1], prop ? { prop, labels } : null);
+      }
+      return walk(args[args.length - 1], null);
+    }
+    if (op === "case") {
+      for (let i = 1; i < args.length; i += 2) walk(args[i], null);
+      return walk(args[args.length - 1], null);
+    }
+    if (op === "coalesce") return void args.forEach((a) => walk(a, null));
+    unbounded.push(JSON.stringify(node));
+  };
+  walk(expr, null);
+  return { names, unbounded };
+}
+
+for (const flavor of FLAVORS) {
+  // Covers: MEM-075
+  // Requirement: the Kendall map never asks MapLibre for a sprite icon the vendored sprite lacks (a
+  // missing one logs `Image "townhall" could not be loaded` on every load). In buildStyle(flavor) the
+  // pois layer's icon-image resolves only to "" (no icon; the label is still drawn) or a name present in
+  // static/map/sprites/v4/<flavor>.json: "station" -> "train_station", a sprite kind such as "cafe" ->
+  // "cafe", a kind with no sprite icon such as "townhall" -> "". No raw ["get","kind"] passthrough.
+  describe(`build_map_style.mjs: buildStyle("${flavor}") pois icons exist in the sprite`, () => {
+    let pois;
+    let spriteNames;
+    before(async () => {
+      const style = (await loadBuildStyle())(flavor);
+      pois = style.layers.find((l) => l.id === "pois");
+      const spritePath = join(MAP_DIR, "sprites", "v4", `${flavor}.json`);
+      spriteNames = new Set(Object.keys(JSON.parse(readFileSync(spritePath, "utf8"))));
+    });
+
+    test("has a pois symbol layer with icon-image and text-field", () => {
+      assert.ok(pois, "no layer with id pois");
+      assert.equal(pois.type, "symbol");
+      assert.ok(pois.layout && pois.layout["icon-image"] !== undefined, "pois has no layout.icon-image");
+      assert.ok(pois.layout["text-field"], "pois has no layout.text-field (labels must still draw)");
+    });
+
+    test('kind "townhall" (no sprite icon) resolves to ""', () => {
+      assert.equal(evalExpr(pois.layout["icon-image"], { kind: "townhall" }), "");
+    });
+
+    test('kind "station" resolves to "train_station"', () => {
+      assert.equal(evalExpr(pois.layout["icon-image"], { kind: "station" }), "train_station");
+    });
+
+    test('kind "cafe" (a sprite icon) resolves to "cafe"', () => {
+      assert.equal(evalExpr(pois.layout["icon-image"], { kind: "cafe" }), "cafe");
+    });
+
+    test("every icon name the expression can produce is \"\" or a sprite key, with no passthrough", () => {
+      const { names, unbounded } = iconOutputs(pois.layout["icon-image"]);
+      assert.deepEqual(unbounded, [], "icon-image passes unbounded tile data through as an icon name");
+      const missing = [...names].filter((n) => n !== "" && !spriteNames.has(n));
+      assert.deepEqual(missing, [], `icon names absent from sprites/v4/${flavor}.json`);
+    });
+  });
+}
