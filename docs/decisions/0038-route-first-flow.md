@@ -140,6 +140,9 @@ condition below holds (2026-11-01 three-lens adversary round, no veto):
    and landmark lists are the accessible path.
 10. The design gate keeps the stylized SVG (deterministic, offline); MapLibre only in production `static/`.
 
+Amended by ADR [0041](0041-real-map-whole-file-pmtiles.md) (2026-11-02): condition 2 resolved as a bundled extract
+fetched whole into memory (no Range, no CORS), plus its own conditions 1-10.
+
 Why B beat the others: it is the only option that ships by Nov 4 without overturning the basemap non-goal, and its
 design is already built. A is the long-term answer (real streets plus imagined places, no third-party key) but
 carries the CSP, CORS, virtualization and size defects above, so it waits behind explicit conditions. C leaks the

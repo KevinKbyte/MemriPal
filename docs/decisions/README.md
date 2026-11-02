@@ -104,3 +104,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0040](0040-retire-room-photo-flow.md) Room-photo flow retired in two steps: upload handler and room copy now, Load
   demo -> demo route and `/loci` deleted (no 410) at B10 (over full retirement now, a stand-in demo route now, or also
   deleting unwired route-first modules).
+- [0041](0041-real-map-whole-file-pmtiles.md) Real map: bundled Kendall Square PMTiles extract fetched whole into
+  pmtiles `FileSource`, validated, sketch fallback; maplibre-gl 5.24 CSP build; own Python extract script; amends 0038
+  condition 2 (over HTTP Range, a z/x/y tile dir, MapLibre 6, or the Go `pmtiles extract` CLI).
