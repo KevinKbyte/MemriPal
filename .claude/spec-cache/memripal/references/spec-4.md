@@ -145,7 +145,7 @@ Card-list flow (2026-10-31); S2-S9 flow rules still apply:
 Amends MEM-049 (Spark reply contract). Decision (Kev, 2026-11-02, design-floor item 26): option (a), keep ONE SAM box
 per station on a phrase constrained to permanent objects; rejected (b) one SAM call per candidate (N calls on the
 shared /station + /loci rate budget; "largest box" favours walls and buses), (c)/(d) multi-loci rooms (revive /loci;
-objects move). Recorded in ADR 0040 when it lands (MEM-073).
+objects move). Recorded in ADR [0040](../../../../docs/decisions/0040-retire-room-photo-flow.md) (note 2026-11-02).
 Root problem: the station prompt asks for FIXED structures, but `_checked_reply` checked only length, so a reply
 naming "parked car" became the station box. SAM takes one phrase per call and cannot judge permanence, so the check
 belongs on the phrase.

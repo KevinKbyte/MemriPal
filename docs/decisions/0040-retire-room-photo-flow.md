@@ -76,3 +76,17 @@ a user can reach of the room flow now and leaves only what Load demo still needs
   `.claude/rules/client-transform-tests-drive-browser-path.md` names `onLoadDemo`.
 - Until B10, `scripts/screenshot_ui.py` writes both `load_demo.png` (room demo) and `route_view.png` (backup fixture).
 - B10 lands the `/loci` deletion list above as one slice; until then a `/loci` change must keep Load demo green.
+
+## Note 2026-11-02: landmark objects on a station photo (MEM-079)
+
+Kev paused this retirement to ask whether a photo should keep SAM object loci. Four adversaries (feasibility,
+product, cost, root) compared: (a) one box per station on a phrase limited to permanent objects; (b) several SAM
+phrases per station, largest box wins; (c) room photos keep multi-object loci beside routes; (d) a separate indoor
+palace mode. All four picked (a), and Kev approved it:
+- (a) was mostly built: the station prompt already asks for fixed structures and `landmark_box` keeps one SAM box.
+  The gap was enforcement, closed by MEM-079 (`MOVABLE_NOUNS` check in `station._checked_reply`).
+- (b) costs N SAM calls per station on the shared `/station` + `/loci` rate budget, and the largest box favours walls
+  and buses.
+- (c) and (d) revive `/loci` with 12 easy-to-point-at objects, which a room rarely has as permanent fixtures; objects
+  move, which is why multi-loci was dropped. Indoor palaces already have a place: ADR 0038 `sketch` routes.
+Under (a) this ADR's option D stands unchanged.
