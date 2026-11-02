@@ -6,6 +6,7 @@
 # boxes always give the same pixels (golden sha pinned on the committed demo photo). The station-name
 # shape rule valid_station_name(name) accepts a non-empty name of at most 3 words with no digits.
 import hashlib
+import io
 import random
 from pathlib import Path
 
@@ -171,3 +172,84 @@ class TestStationNameRule:
         from memripal.station import valid_station_name
 
         assert valid_station_name(name) is False
+
+
+FIXED_PHRASE = "brick arch"
+FIXED_TOKEN = "<|box;x1=10;y1=20;x2=110;y2=220;w=320;h=240|>"
+
+
+def _reply(phrase: str) -> dict:
+    return {
+        "station_name": "Brick Arch",
+        "landmark_phrase": phrase,
+        "visual": "a red brick arch",
+        "spatial": "over the path",
+        "conceptual": "a gateway",
+    }
+
+
+class LandmarkBackend:
+    """Spark replies in order (last repeats); blur SAM finds nothing; landmark SAM boxes only FIXED_PHRASE."""
+
+    mode = "fake"
+
+    def __init__(self, phrases):
+        self.phrases = list(phrases)
+        self.spark_calls = 0
+        self.segment_subjects: list[str] = []
+
+    def call(self, req):
+        if req.method == "spark_json":
+            self.spark_calls += 1
+            return _reply(self.phrases[min(self.spark_calls, len(self.phrases)) - 1])
+        self.segment_subjects.append(req.subject)
+        return FIXED_TOKEN if req.subject == FIXED_PHRASE else ""
+
+
+def _processed():
+    from memripal.imaging import process_upload
+
+    buf = io.BytesIO()
+    _noise(320, 240, seed=7).save(buf, "JPEG", quality=90)
+    return process_upload(buf.getvalue())
+
+
+# Covers: MEM-079
+# Requirement: the station box marks a FIXED structure only. A Spark landmark_phrase naming a movable thing
+# (a word from MOVABLE_NOUNS, singular or plural, any case) breaks the reply contract: it is regenerated
+# once, then BadReply, and no segment request ever carries that phrase, so it never becomes the box. A fixed
+# phrase ("brick arch") still yields exactly one box.
+class TestFixedLandmarkOnly:
+    @pytest.mark.parametrize("phrase", ["red chair", "parked car", "person by door", "Two Bikes", "PEOPLE"])
+    def test_movable_phrase_is_never_segmented_and_ends_in_bad_reply(self, phrase):
+        from memripal.station import BadReply, run_station
+
+        backend = LandmarkBackend([phrase])
+        with pytest.raises(BadReply):
+            run_station(backend, _processed(), [])
+        assert phrase not in backend.segment_subjects
+        assert backend.spark_calls == 2
+
+    def test_movable_phrase_is_re_asked_and_a_fixed_one_gives_one_box(self):
+        from memripal.station import run_station
+
+        backend = LandmarkBackend(["parked car", FIXED_PHRASE])
+        result = run_station(backend, _processed(), [])
+        assert backend.spark_calls == 2
+        assert "parked car" not in backend.segment_subjects
+        assert backend.segment_subjects.count(FIXED_PHRASE) == 1
+        assert (result.box.x1, result.box.y1, result.box.x2, result.box.y2) == (10, 20, 110, 220)
+
+    @pytest.mark.parametrize("phrase", [FIXED_PHRASE, "carved door", "oak tree", "busy mural", "cartoon"])
+    def test_fixed_phrase_passes_the_check(self, phrase):
+        from memripal.station import movable_phrase
+
+        assert movable_phrase(phrase) is False
+
+    def test_denylist_is_the_agreed_set(self):
+        from memripal.station import MOVABLE_NOUNS
+
+        assert set(MOVABLE_NOUNS) == {
+            "person", "people", "man", "woman", "child", "dog", "car", "bus", "bike", "scooter",
+            "truck", "chair", "table", "cart", "bag", "umbrella", "cone",
+        }  # fmt: skip

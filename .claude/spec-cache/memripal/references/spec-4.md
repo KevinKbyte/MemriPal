@@ -139,3 +139,24 @@ Card-list flow (2026-10-31); S2-S9 flow rules still apply:
   all at 6/8 with 3 candidates adds 2 and keeps 1 as an alternative; Add all at 8/8 is disabled with a reason;
   capture button present on S1-S9; no capture screen shows a required hint-or-stop choice; check_route_css.py and
   design_gate.py pass at 375 px.
+
+## MEM-079 Station landmark box marks a fixed structure only
+
+Amends MEM-049 (Spark reply contract). Decision (Kev, 2026-11-02, design-floor item 26): option (a), keep ONE SAM box
+per station on a phrase constrained to permanent objects; rejected (b) one SAM call per candidate (N calls on the
+shared /station + /loci rate budget; "largest box" favours walls and buses), (c)/(d) multi-loci rooms (revive /loci;
+objects move). Recorded in ADR 0040 when it lands (MEM-073).
+Root problem: the station prompt asks for FIXED structures, but `_checked_reply` checked only length, so a reply
+naming "parked car" became the station box. SAM takes one phrase per call and cannot judge permanence, so the check
+belongs on the phrase.
+Actors: Muse Spark; `src/memripal/station.py`.
+- `MOVABLE_NOUNS` = person, people, man, woman, child, dog, car, bus, bike, scooter, truck, chair, table, cart, bag,
+  umbrella, cone. `movable_phrase(phrase)`: any alphabetic word, lower-cased, equal to an entry or to an entry + "s" /
+  "es".
+- A movable landmark_phrase breaks the reply contract like a bad name: one regenerate, then `BadReply` (502
+  `bad_reply`). A movable phrase is never sent to SAM. The prompt is unchanged (replay keys stay stable).
+- Known cost: fixed things named with a listed word ("bus shelter", "bike rack") are re-asked too.
+- Accept: replies "red chair", "parked car", "person by door", "Two Bikes", "PEOPLE" -> BadReply after 2 Spark calls,
+  no segment request with that phrase; "parked car" then "brick arch" -> exactly 1 box.
+
+Tests: tests/test_station.py

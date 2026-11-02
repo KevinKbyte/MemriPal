@@ -40,6 +40,11 @@ MAX_USED_NAMES = 7
 MAX_USED_NAMES_HEADER = 2048
 MAX_PROFILE_CHARS = 400
 SPARK_ATTEMPTS = 2
+# Things that move between walks: a phrase naming one can never be the station box (MEM-079).
+MOVABLE_NOUNS = frozenset(
+    {"person", "people", "man", "woman", "child", "dog", "car", "bus", "bike", "scooter"}
+    | {"truck", "chair", "table", "cart", "bag", "umbrella", "cone"}
+)
 REPLY_FIELDS = ("station_name", "landmark_phrase", "visual", "spatial", "conceptual")
 STATION_SCHEMA = {
     "type": "object",
@@ -179,11 +184,17 @@ def pixelated_photo(processed: Processed, boxes: list[Box]) -> Processed:
     return Processed(jpeg=jpeg, width=out.width, height=out.height, sha=hashlib.sha256(jpeg).hexdigest())
 
 
+def movable_phrase(phrase: str) -> bool:
+    """True when any word of the phrase is a MOVABLE_NOUNS entry, singular or plural, any case."""
+    words = "".join(c if c.isalpha() else " " for c in phrase.lower()).split()
+    return any({w, w.removesuffix("s"), w.removesuffix("es")} & MOVABLE_NOUNS for w in words)
+
+
 def _checked_reply(reply: object) -> tuple[str, str, dict] | None:
     if not isinstance(reply, dict) or set(reply) != set(REPLY_FIELDS):
         return None
     name, phrase = reply["station_name"], reply["landmark_phrase"]
-    if not valid_station_name(name) or not _clean_text(phrase, MAX_PHRASE_LEN):
+    if not valid_station_name(name) or not _clean_text(phrase, MAX_PHRASE_LEN) or movable_phrase(phrase):
         return None
     profile = {k: reply[k] for k in ("visual", "spatial", "conceptual")}
     if not all(_clean_text(v, MAX_PROFILE_CHARS) for v in profile.values()):
