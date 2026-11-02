@@ -1,10 +1,10 @@
 # MemriPal
 
 MemriPal is a place-based recall coach for speeches, not a study chatbot. It turns any place you know into a memory
-palace for a talk you must deliver (or exam facts, vocabulary). Photograph a familiar space (a room, a library aisle,
-a campus walk); SAM 3.1 segments distinct objects
+palace for a talk you must deliver (or exam facts, vocabulary). The demo palace starts from one photo of a familiar
+space; SAM 3.1 segments distinct objects
 into an ordered walking route of loci; Muse Spark splits your study list into items and writes a validated multisensory
-association tying each item to its locus; Muse Image renders each scene onto your photo. You then walk the route
+association tying each item to its locus; Muse Image renders each scene onto the photo. You then walk the route
 eyes closed and recall aloud; a deterministic matcher (no LLM) checks the Muse Voice Transcribe transcript, marks
 each locus you recall and lists the ones you miss, with per-locus hit rates and chronic misses across rehearsals, so
 you re-recite only those. The full encode-and-recall loop runs live against the Meta Model API or offline from
@@ -188,8 +188,8 @@ header -> 401 `passcode_required` (no passcode set: loopback only); spent call b
 
 ## Place history (opt-in)
 
-Settings toggle "Use my location for place history", OFF by default; one tap turns it off. When on, the browser reads
-the photo's own GPS (else asks for your location, else you type a place) and sends coords rounded to 4 decimals to
+Settings toggle "Use my location for place history", OFF by default; one tap turns it off. When on, Load demo
+sends the demo place's recorded coords (the demo photo has no GPS) rounded to 4 decimals to
 `POST /place`, which asks Wikipedia for nearby articles and returns up to 3 chips "Near: <title>, <m> m". The place
 you confirm (title + short extract) grounds the association; coords are never logged, stored, or sent to Meta.
 Wikipedia does see the coords. Turning the toggle off stops lookups and discards the confirmed place. Offline demo:
@@ -213,8 +213,9 @@ Run all checks (ruff, pytest, node tests):
 sh scripts/check.sh
 ```
 
-Visual-verify the upload UI against a running app (needs local Chrome): screenshots `initial.png` and, after clicking
-Load demo, `load_demo.png` into `<outdir>`; prints the loci items. Exit 0 clean, 1 on any page/console error (a
+Visual-verify the UI against a running app (needs local Chrome): screenshots `initial.png`, `load_demo.png` (after
+clicking Load demo) and `route_view.png` (after importing `fixtures/demo/route_backup.json` through backup import) into
+`<outdir>`; prints the loci items. Exit 0 clean, 1 on any page/console error (a
 `/favicon.ico` 404 is ignored), 2 on bad usage.
 
 ```bash
