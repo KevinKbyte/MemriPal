@@ -1,5 +1,6 @@
 // Kendall basemap preview (MEM-076, MEM-077): loads the self-hosted PMTiles extract whole, validates it,
-// serves it to MapLibre as "pmtiles://kendall", and draws mock app markers over the canvas.
+// serves it to MapLibre as "pmtiles://kendall", and draws the Kendall/MIT -> Meta (100 Binney St)
+// walking route with its numbered stations in an SVG overlay over the canvas.
 // Sets <html data-map-state="idle|fallback|error"> so a shooter knows when the page has settled.
 (function () {
   var PMTILES_URL = "/static/map/kendall.pmtiles";
@@ -7,12 +8,28 @@
   var MAX_BYTES = 3 * 1024 * 1024;
   // Extract bounds (west, south, east, north), same as scripts/build_map_extract.py.
   var BBOX = [-71.1083, 42.3494, -71.0719, 42.3764];
-  var KENDALL = [-71.0865, 42.3625];
   var SVG_NS = "http://www.w3.org/2000/svg";
-  var MARKERS = [
-    { name: "Kendall/MIT station", lngLat: [-71.08617, 42.36249], tc: 0 },
-    { name: "MIT Great Dome", lngLat: [-71.09218, 42.35965], tc: 1 },
-    { name: "O'Connell Branch Library", lngLat: [-71.08474, 42.37046], tc: 2 }
+  // Walking route Kendall/MIT station -> Meta, 100 Binney St (~600 m), vertices on real street centerlines.
+  var ROUTE = [
+    [-71.08560, 42.36238], [-71.08506, 42.36233], [-71.08479, 42.36237], [-71.08469, 42.36240],
+    [-71.08441, 42.36265], [-71.08420, 42.36282], [-71.08384, 42.36329], [-71.08347, 42.36385],
+    [-71.08277, 42.36509], [-71.08245, 42.36564], [-71.08237, 42.36573], [-71.08120, 42.36558],
+    [-71.08090, 42.36554]
+  ];
+  // Memory-palace stations: each title alone must tell a walker where they are and which way to go next.
+  var STATIONS = [
+    { lngLat: [-71.08560, 42.36238], emoji: 0x1F687,
+      title: "Kendall/MIT station: exit onto Main St and walk east toward the One Broadway tower" },
+    { lngLat: [-71.08441, 42.36265], emoji: 0x1F3E2,
+      title: "One Broadway tower (Brothers Marketplace at its base): bear left onto Third St" },
+    { lngLat: [-71.08347, 42.36385], emoji: 0x1F3D9,
+      title: "Watermark Kendall towers at Kendall St / Potter St: keep straight on Third St" },
+    { lngLat: [-71.08277, 42.36509], emoji: 0x1F3D8,
+      title: "Third Square Apartments at Munroe St / Linskey Way: keep straight on Third St" },
+    { lngLat: [-71.08237, 42.36573], emoji: 0x1F9F1,
+      title: "Kendall Building (old brick boiler works) at Binney St: turn right onto Binney St" },
+    { lngLat: [-71.08090, 42.36554], emoji: 0x1F4BC,
+      title: "Meta office, 100 Binney St: on your right, Toomey Park across the street" }
   ];
 
   var root = document.documentElement;
@@ -47,28 +64,43 @@
     });
   }
 
-  function drawMarkers(map) {
+  function el(tag, cls, parent) {
+    var node = document.createElementNS(SVG_NS, tag);
+    if (cls) node.setAttribute("class", cls);
+    if (parent) parent.appendChild(node);
+    return node;
+  }
+
+  // Same structure and classes as docs/design/route/map-shell.js drawRoute/landmark, so map-shell.css styles
+  // it; --k is unset here, so its calc(var(--k, 1) * Npx) sizes resolve to N screen px.
+  function drawRoute(map) {
     var svg = document.getElementById("overlay");
-    var groups = MARKERS.map(function (m, i) {
-      var g = document.createElementNS(SVG_NS, "g");
-      g.setAttribute("class", "lm tc-" + m.tc);
-      var mark = document.createElementNS(SVG_NS, "g");
-      mark.setAttribute("class", "lm-mark");
-      var dot = document.createElementNS(SVG_NS, "circle");
-      dot.setAttribute("class", "lm-dot");
-      var num = document.createElementNS(SVG_NS, "text");
-      num.setAttribute("class", "lm-num");
-      num.textContent = String(i + 1);
-      var title = document.createElementNS(SVG_NS, "title");
-      title.textContent = m.name;
-      mark.append(dot, num);
-      g.append(title, mark);
+    var route = el("g", "route tc-0");
+    var halo = el("polyline", "route-halo", route);
+    var line = el("polyline", "route-line", route);
+    var groups = STATIONS.map(function (st, i) {
+      var g = el("g", "lm", route);
+      g.style.setProperty("--i", i);
+      el("title", null, g).textContent = (i + 1) + ". " + st.title;
+      var mark = el("g", "lm-mark", g);
+      el("circle", "lm-dot", mark);
+      el("text", "lm-num", mark).textContent = String(i + 1);
+      var emoji = el("text", "lm-emoji", g);
+      emoji.setAttribute("aria-hidden", "true");
+      // U+FE0F forces colour presentation: 1F3D9/1F3D8 default to monochrome text glyphs otherwise.
+      emoji.textContent = String.fromCodePoint(st.emoji, 0xFE0F);
       return g;
     });
-    svg.replaceChildren.apply(svg, groups);
+    svg.replaceChildren(route);
     function place() {
-      MARKERS.forEach(function (m, i) {
-        var p = map.project(m.lngLat);
+      var pts = ROUTE.map(function (ll) {
+        var p = map.project(ll);
+        return p.x.toFixed(1) + "," + p.y.toFixed(1);
+      }).join(" ");
+      halo.setAttribute("points", pts);
+      line.setAttribute("points", pts);
+      STATIONS.forEach(function (st, i) {
+        var p = map.project(st.lngLat);
         groups[i].setAttribute("transform", "translate(" + p.x.toFixed(1) + " " + p.y.toFixed(1) + ")");
       });
     }
@@ -82,10 +114,14 @@
     protocol.add(archive);
     maplibregl.addProtocol("pmtiles", protocol.tile);
     maplibregl.setWorkerUrl(WORKER_URL);
+    var lngs = ROUTE.map(function (p) { return p[0]; });
+    var lats = ROUTE.map(function (p) { return p[1]; });
     var map = new maplibregl.Map({
       container: "map",
-      center: KENDALL,
-      bounds: [[BBOX[0], BBOX[1]], [BBOX[2], BBOX[3]]],
+      // Open framed on the walk, not the whole extract.
+      bounds: [[Math.min.apply(null, lngs), Math.min.apply(null, lats)],
+        [Math.max.apply(null, lngs), Math.max.apply(null, lats)]],
+      fitBoundsOptions: { padding: 60, maxZoom: 16 },
       maxBounds: [[BBOX[0], BBOX[1]], [BBOX[2], BBOX[3]]],
       minZoom: 12,
       // Tiles stop at z14; MapLibre overzooms them for display up to 16.
@@ -93,6 +129,7 @@
       attributionControl: { compact: false },
       fadeDuration: 0
     });
+    window.__map = map;
     // The committed styles use root-relative sprite/glyph paths so they work on any origin; MapLibre
     // rejects a relative sprite URL, so prefix this page's origin. String concat, not new URL(): URL
     // would percent-encode the {fontstack}/{range} placeholders.
@@ -106,7 +143,7 @@
       });
     }
     applyTheme();
-    // Flip swaps the style in place (no reload); the SVG markers sit outside the style and keep their
+    // Flip swaps the style in place (no reload); the SVG route sits outside the style and keep their
     // positions. data-map-state drops back to "loading" until the new style settles, for the shooter.
     document.getElementById("theme-flip").addEventListener("click", function () {
       dark = !dark;
@@ -121,7 +158,7 @@
       console.error("map error: " + (e && e.error ? e.error.message : "unknown"));
       setState("error");
     });
-    map.once("load", function () { drawMarkers(map); });
+    map.once("load", function () { drawRoute(map); });
     map.once("idle", function () {
       if (root.getAttribute("data-map-state") !== "error") setState("idle");
     });

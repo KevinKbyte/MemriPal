@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>MemriPal Kendall basemap preview</title>
     <!-- Design preview only (MEM-076, MEM-077): the real Kendall Square basemap (self-hosted PMTiles + MapLibre)
-         with a mock marker overlay in app styling. Not part of the app.
+         with one walking route drawn over it in app styling: Kendall/MIT station to the Meta office,
+         100 Binney St, as six numbered memory-palace stations, also listed in order beside the map so the
+         walk can be followed without GPS. Not part of the app.
          Serve the repo root over HTTP and open /docs/design/map/preview.html; the style JSON and this page
          fetch /static/map/... by absolute path. No inline script or style, so it runs under the app CSP.
          Query: ?theme=dark|light sets the starting theme (default prefers-color-scheme); the Flip theme
@@ -25,10 +27,24 @@
       <strong>Kendall basemap preview</strong>
       <button id="theme-flip" type="button">Flip theme</button>
     </header>
-    <div class="mp-wrap">
-      <div id="map" class="mp-map"></div>
-      <p id="sketch-fallback" class="mp-fallback" hidden>sketch fallback</p>
-      <svg id="overlay" class="mp-overlay" aria-label="Sample landmarks" role="img"></svg>
-    </div>
+    <main class="mp-main">
+      <div class="mp-wrap">
+        <div id="map" class="mp-map"></div>
+        <p id="sketch-fallback" class="mp-fallback" hidden>sketch fallback</p>
+        <svg id="overlay" class="mp-overlay" aria-label="Walking route: Kendall/MIT station to Meta, 100 Binney St" role="img"></svg>
+      </div>
+      <aside class="mp-route" aria-labelledby="mp-route-h">
+        <h2 id="mp-route-h">Kendall/MIT to Meta office walk</h2>
+        <p class="mp-route-meta">About 600 m, about 8 min walk</p>
+        <ol>
+          <li>Kendall/MIT station: exit onto Main St and walk east toward the One Broadway tower</li>
+          <li>One Broadway tower (Brothers Marketplace at its base): bear left onto Third St</li>
+          <li>Watermark Kendall towers at Kendall St / Potter St: keep straight on Third St</li>
+          <li>Third Square Apartments at Munroe St / Linskey Way: keep straight on Third St</li>
+          <li>Kendall Building (old brick boiler works) at Binney St: turn right onto Binney St</li>
+          <li>Meta office, 100 Binney St: on your right, Toomey Park across the street</li>
+        </ol>
+      </aside>
+    </main>
   </body>
 </html>
