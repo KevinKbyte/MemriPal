@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.32] - 2026-11-02
+
+### Fixed
+
+- Route practice end screen: a station said out of order (heard, but not counted in order) now gets "Mark got it", and marking it counts that station as learned (MEM-080).
+
 ## [0.20.31] - 2026-11-02
 
 ### Removed
