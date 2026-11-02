@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.30] - 2026-11-02
+
+### Fixed
+
+- POST /station: a landmark phrase naming something that moves (a person, car, chair, bike and similar) is refused and re-asked, so the station box always marks a fixed structure (MEM-079).
+
 ## [0.20.29] - 2026-11-02
 
 ### Fixed
