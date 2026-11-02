@@ -48,10 +48,12 @@ body.mp-preview {
   padding: 0;
 }
 
+/* Clips the overlay: a panned route never paints over the station list beside or below the map. */
 .mp-wrap {
   position: relative;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
   background: var(--surface-2);
 }
 
@@ -137,6 +139,19 @@ body.mp-preview {
 
 .mp-map .maplibregl-ctrl-attrib a {
   color: var(--ink);
+}
+
+/* Pin arrow: points from a station pressed against the map edge toward its true, off-map spot. */
+.lm-arrow {
+  display: none;
+  fill: var(--topic);
+  stroke: var(--surface);
+  stroke-width: 1.5px;
+  stroke-linejoin: round;
+}
+
+.lm-pinned .lm-arrow {
+  display: inline;
 }
 
 /* Emoji stacked straight above its numbered dot (overrides map-shell.css's up-right offset). */

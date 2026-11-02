@@ -9,6 +9,9 @@
   // Extract bounds (west, south, east, north), same as scripts/build_map_extract.py.
   var BBOX = [-71.1083, 42.3494, -71.0719, 42.3764];
   var SVG_NS = "http://www.w3.org/2000/svg";
+  // Drawn extent of a station around its point, in screen px: the dot (r 13 + stroke) and the pin arrow
+  // (tip 22) at the sides and bottom; the emoji (30 above, ~13 half-height, float and shadow) at the top.
+  var PIN_SIDE = 24, PIN_TOP = 48, PIN_BOTTOM = 24;
   // Walking route Kendall/MIT station -> Meta, 100 Binney St (~600 m), vertices on real street centerlines.
   var ROUTE = [
     [-71.08560, 42.36238], [-71.08506, 42.36233], [-71.08479, 42.36237], [-71.08469, 42.36240],
@@ -78,12 +81,16 @@
     var route = el("g", "route tc-0");
     var halo = el("polyline", "route-halo", route);
     var line = el("polyline", "route-line", route);
+    var arrows = [];
     var groups = STATIONS.map(function (st, i) {
       var g = el("g", "lm", route);
       g.style.setProperty("--i", i);
       // The true spot, for scripts/screenshot_map.py's pan check (a pinned station is drawn elsewhere).
       g.setAttribute("data-lnglat", st.lngLat.join(","));
       el("title", null, g).textContent = (i + 1) + ". " + st.title;
+      // Shown only while pinned to the map edge; place() rotates it toward the true spot.
+      arrows[i] = el("path", "lm-arrow", g);
+      arrows[i].setAttribute("d", "M22 0 L14 -6 L14 6 Z");
       var mark = el("g", "lm-mark", g);
       el("circle", "lm-dot", mark);
       el("text", "lm-num", mark).textContent = String(i + 1);
@@ -101,9 +108,22 @@
       }).join(" ");
       halo.setAttribute("points", pts);
       line.setAttribute("points", pts);
+      // Like an off-screen marker in a game: a station whose spot is off the map is pressed against the
+      // edge at the nearest point to it, with an arrow toward the spot. Stations near the edge are nudged
+      // in so they draw whole. Known limitation: several off-map stations in one direction stack on one
+      // edge point or corner.
+      var c = map.getContainer(), w = c.clientWidth, h = c.clientHeight;
       STATIONS.forEach(function (st, i) {
         var p = map.project(st.lngLat);
-        groups[i].setAttribute("transform", "translate(" + p.x.toFixed(1) + " " + p.y.toFixed(1) + ")");
+        var x = Math.min(Math.max(p.x, PIN_SIDE), w - PIN_SIDE);
+        var y = Math.min(Math.max(p.y, PIN_TOP), h - PIN_BOTTOM);
+        var off = p.x < 0 || p.y < 0 || p.x > w || p.y > h;
+        groups[i].classList.toggle("lm-pinned", off);
+        if (off) {
+          var deg = Math.atan2(p.y - y, p.x - x) * 180 / Math.PI;
+          arrows[i].setAttribute("transform", "rotate(" + deg.toFixed(1) + ")");
+        }
+        groups[i].setAttribute("transform", "translate(" + x.toFixed(1) + " " + y.toFixed(1) + ")");
       });
     }
     map.on("move", place);
