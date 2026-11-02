@@ -101,3 +101,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0039](0039-route-design-file-split.md) Route design files split under the 500-line cap; preview pages carry an
   explicit screen map and the design gate follows `<link>` hrefs in link order (over a redirect/stub page or runtime
   CSS fetch/concat).
+- [0040](0040-retire-room-photo-flow.md) Room-photo flow retired in two steps: upload handler and room copy now, Load
+  demo -> demo route and `/loci` deleted (no 410) at B10 (over full retirement now, a stand-in demo route now, or also
+  deleting unwired route-first modules).
