@@ -81,6 +81,8 @@
     var groups = STATIONS.map(function (st, i) {
       var g = el("g", "lm", route);
       g.style.setProperty("--i", i);
+      // The true spot, for scripts/screenshot_map.py's pan check (a pinned station is drawn elsewhere).
+      g.setAttribute("data-lnglat", st.lngLat.join(","));
       el("title", null, g).textContent = (i + 1) + ". " + st.title;
       var mark = el("g", "lm-mark", g);
       el("circle", "lm-dot", mark);

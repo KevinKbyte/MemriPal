@@ -4,7 +4,9 @@ Usage: uv run --no-project --with playwright python scripts/screenshot_map.py <o
          [--chrome-arg=ARG]...
 Serves --root (default: the repo root) with the app CSP + nosniff, shoots docs/design/map/preview.html at
 phone=375x812 and wide=1000x800 in light and dark, then clicks the theme button twice and checks the map
-re-themes in place. Prints the report JSON, then "ERR <msg>" per problem, then "shots=<n> problems=<m>".
+re-themes in place, then at each width pans the route off the map (map_<width>_pan.png) and checks the
+overlay stays clipped to the map with off-screen stations pinned to its edge. Prints the report JSON,
+then "ERR <msg>" per problem, then "shots=<n> problems=<m>".
 Exits 0 when clean, 1 on any problem, 2 on bad usage.
 """
 
@@ -50,6 +52,28 @@ WEBGL_JS = """() => { const c = document.createElement('canvas');
 ATTRIB_JS = "() => document.querySelector('.maplibregl-ctrl-attrib-inner')?.textContent || null"
 MARKERS_JS = "() => document.querySelectorAll('#overlay .lm').length"
 CANVASES_JS = "() => document.querySelectorAll('#map canvas').length"
+# Pan 1.5 map widths west (maxBounds still leaves ~1.8 km), so at least one station's true spot leaves the
+# map, then measure page-px boxes. A station's true spot comes from its data-lnglat projected by the live map.
+PAN_JS = """async () => {
+  const map = window.__map;
+  const w = map.getContainer().clientWidth;
+  await new Promise(res => { map.once('idle', res); setTimeout(res, 5000);
+    map.panBy([-1.5 * w, 0], {animate: false}); });
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+  const wrapEl = document.querySelector('.mp-wrap');
+  const r = wrapEl.getBoundingClientRect();
+  const rnd = v => Math.round(v * 10) / 10;
+  const box = b => [b.left, b.top, b.right, b.bottom].map(rnd);
+  const ov = el => getComputedStyle(el).overflow;
+  const stations = [...document.querySelectorAll('#overlay .lm')].map(g => {
+    const p = map.project(g.getAttribute('data-lnglat').split(',').map(Number));
+    return {box: box(g.getBoundingClientRect()), pinned: g.classList.contains('lm-pinned'),
+      inside: p.x >= 0 && p.y >= 0 && p.x <= r.width && p.y <= r.height,
+      spot: [rnd(r.left + p.x), rnd(r.top + p.y)]};
+  });
+  return {wrap: box(r), stations,
+    clipped: ov(wrapEl) !== 'visible' || ov(document.getElementById('overlay')) !== 'visible'};
+}"""
 
 
 class Shot(NamedTuple):
@@ -107,6 +131,36 @@ def problems(report: dict) -> list[str]:
         found.append(f"flip: page errors {flip['errors']}")
     if flip["csp"]:
         found.append(f"flip: CSP violations {flip['csp']}")
+    found += _pan_problems(report.get("pan"))
+    return found
+
+
+def _within(box: Sequence[float], wrap: Sequence[float]) -> bool:
+    return box[0] >= wrap[0] and box[1] >= wrap[1] and box[2] <= wrap[2] and box[3] <= wrap[3]
+
+
+def _pan_problems(pan: list[dict] | None) -> list[str]:
+    """Panned off the route, the overlay must stay inside the map and pin off-screen stations to its edge."""
+    want = [name for name, _ in WIDTHS]
+    widths = [entry.get("width") for entry in pan or []]
+    if widths != want:
+        return [f"pan: widths {widths}, expected {want}"]
+    found: list[str] = []
+    for entry in pan:
+        width, stations = entry["width"], entry["stations"]
+        if not entry["clipped"]:
+            found.append(f"pan {width}: overlay not clipped to the map")
+        if not stations:
+            found.append(f"pan {width}: no stations")
+            continue
+        if all(st["inside"] for st in stations):
+            found.append(f"pan {width}: every station still on the map, the pan proved nothing")
+        outside = [i + 1 for i, st in enumerate(stations) if not _within(st["box"], entry["wrap"])]
+        if outside:
+            found.append(f"pan {width}: stations {outside} drawn outside the map {entry['wrap']}")
+        wrong = [i + 1 for i, st in enumerate(stations) if st["pinned"] == st["inside"]]
+        if wrong:
+            found.append(f"pan {width}: stations {wrong} pinned != off the map")
     return found
 
 
@@ -174,6 +228,7 @@ def run(root: str, outdir: str, chrome_args: Sequence[str] = ()) -> dict:
                         }
                     )
                 report["flip"] = _flip_check(page, origin, out, errors)
+                report["pan"] = [_pan_check(page, origin, out, name, vp) for name, vp in WIDTHS]
                 report["foreign"] = sorted(set(foreign))
                 # browser.close() has hung for minutes on this host: emit the result before teardown so a
                 # hung close still leaves it on record (stderr, so a clean stdout from main isn't doubled).
@@ -194,7 +249,11 @@ def _flip_check(page, origin: str, out: Path, errors: list[str]) -> dict:
     page.wait_for_selector("html[data-map-state=idle]", timeout=IDLE_TIMEOUT_MS)
     page.evaluate("() => { window.__same = 1; }")
     navs: list[str] = []
-    page.on("framenavigated", lambda frame: navs.append(frame.url))
+
+    def on_nav(frame) -> None:
+        navs.append(frame.url)
+
+    page.on("framenavigated", on_nav)
     steps = []
     for _ in FLIP_THEMES:
         page.click("#theme-flip")
@@ -210,12 +269,25 @@ def _flip_check(page, origin: str, out: Path, errors: list[str]) -> dict:
         )
         if len(steps) == 1:
             page.screenshot(path=str(out / "map_wide_flipped_dark.png"))
+    page.remove_listener("framenavigated", on_nav)  # later checks navigate on purpose
     return {
         "steps": steps,
         "navigations": navs,
         "errors": list(errors),
         "csp": page.evaluate("() => window.__csp"),
     }
+
+
+def _pan_check(page, origin: str, out: Path, name: str, viewport: tuple[int, int]) -> dict:
+    """Pan the route off the map: the overlay must stay clipped and off-screen stations pinned to its edge."""
+    page.set_viewport_size({"width": viewport[0], "height": viewport[1]})
+    page.goto(f"{origin}{PAGE}?theme=light", wait_until="load")
+    page.wait_for_selector("html[data-map-state=idle]", timeout=IDLE_TIMEOUT_MS)
+    page.wait_for_selector("#overlay .lm", timeout=IDLE_TIMEOUT_MS)
+    measured = page.evaluate(PAN_JS)
+    page.wait_for_timeout(SETTLE_MS)
+    page.screenshot(path=str(out / f"map_{name}_pan.png"))
+    return {"width": name, **measured}
 
 
 def main(argv: list[str], run: Callable[..., dict] = run) -> int:
