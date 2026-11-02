@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.31] - 2026-11-02
+
+### Removed
+
+- Room-photo upload: picking a photo no longer posts it to /loci (`onPhotoChange` and its `#photo` listener removed; the `#photo` element stays for S2 capture). Load demo is unchanged until plan B10 repoints it at the demo route and deletes /loci (MEM-073, ADR 0040).
+
+### Changed
+
+- First-screen copy no longer asks for a room photo; `scripts/screenshot_ui.py` also writes `route_view.png` after importing `fixtures/demo/route_backup.json` through backup import (MEM-073).
+
 ## [0.20.30] - 2026-11-02
 
 ### Fixed
