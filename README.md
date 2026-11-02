@@ -238,14 +238,14 @@ uv run --no-project --with playwright python scripts/screenshot_design.py <base_
 ```
 
 Screenshot the offline Kendall map design preview `docs/design/map/preview.html` at phone + wide x light + dark into
-`<outdir>` (`map_<phone|wide>_<light|dark>.png`; needs local Chrome), serving the repo root (`--root DIR` overrides)
-locally with the app CSP; then clicks the theme-flip button twice and checks it swaps theme in place (same document, no
-navigation, stable marker count). Prints a JSON report, then `ERR <msg>` per problem (non-idle map, page/console
-error, CSP violation, non-local request, flip defect), then `shots=<n> problems=<m>`. Exit 0 clean, 1 on any problem,
-2 on bad usage.
+`<outdir>` (`map_<phone|wide>_<light|dark>.png`; needs local Chrome; `--chrome-arg=ARG`, repeatable, adds a Chrome
+launch flag), serving the repo root (`--root DIR` overrides) locally with the app CSP; then clicks the theme-flip button
+twice and checks it swaps theme in place (same document, no navigation, stable marker count). Prints a JSON report,
+then `ERR <msg>` per problem (non-idle map, page/console error, CSP violation, non-local request, flip defect), then
+`shots=<n> problems=<m>`. Exit 0 clean, 1 on any problem, 2 on bad usage.
 
 ```bash
-uv run --no-project --with playwright python scripts/screenshot_map.py <outdir> [--root DIR]
+uv run --no-project --with playwright python scripts/screenshot_map.py <outdir> [--root DIR] [--chrome-arg=ARG]...
 ```
 
 End-to-end browser drive (Playwright, installed Chrome; not part of `scripts/check.sh`): runs 22 steps against a
