@@ -22,6 +22,18 @@ export function markPointGot(record, i) {
 }
 
 /**
+ * Whether point `i` counts: got, and on a route run also a hit. A route point said out of order is got
+ * but not a hit (MEM-080).
+ * @param {Rehearsal} record
+ * @param {number} i
+ */
+export function pointCounted(record, i) {
+  if (!record.points[i].got) return false;
+  const id = record.hits ? Object.keys(record.hits)[i] : undefined;
+  return id === undefined || record.hits?.[id] === true;
+}
+
+/**
  * @param {Rehearsal} record
  * @param {any} doc
  * @param {(i: number) => void} onMark called with the point index of the clicked row
@@ -30,7 +42,7 @@ export function renderEndScreen(record, doc, onMark) {
   const list = renderSaidVsPalace(record, doc);
   // Rows are in record.points order, so a row's index is its point's index.
   Array.from(list.children).forEach((row, i) => {
-    if (record.points[i].got) return;
+    if (pointCounted(record, i)) return;
     const button = doc.createElement("button");
     button.type = "button";
     button.dataset.action = "mark-got";

@@ -182,3 +182,19 @@ NFR: none.
 
 Tests: tests/test_screenshot_ui.py, static/index_markup.test.mjs, static/app_photo_retired.test.mjs,
 static/route_backup_fixture.test.mjs
+
+## MEM-080 Mark got it on a route point said out of order
+
+Amends MEM-033 (end-screen override) for route runs (MEM-051).
+Root problem: on a route run a station said out of order is got (the matcher heard it) but its hit is false
+(`countInOrder` did not count it). The end screen offered "Mark got it" only on points that were not got, so the user
+could not credit that station towards Learned n/N or its hit rate.
+Actors: the user; `static/recall_end.js`, `static/flow.js`.
+- `pointCounted(record, i)`: point i is got and, when the record has hits, its station's hit (the i-th hits key,
+  route order) is true. A record without hits counts got alone.
+- `renderEndScreen` puts "Mark got it" on every point that does not count; `markPointGot` then sets that station's
+  hit true (got stays true). A failed override write reports the point as still missed when it does not count.
+- Accept: a route run with point 1 got/not hit and point 2 missed shows the button on rows 1 and 2 only; marking
+  point 1 sets its hit true and removes its button; a non-route run shows no button on got points.
+
+Tests: static/recall_end_order.test.mjs

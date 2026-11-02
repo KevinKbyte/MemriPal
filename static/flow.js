@@ -15,7 +15,7 @@ import { pointOf } from "./rehearsals.js";
 import { showPublicBanner } from "./public_banner.js";
 import { REPLAY_LABEL, replayRecording, startRecall } from "./recall.js";
 import { createMatcher } from "./recall_match.js";
-import { markPointGot, renderEndScreen } from "./recall_end.js";
+import { markPointGot, pointCounted, renderEndScreen } from "./recall_end.js";
 import { createLiveRelay, renderLiveBoard } from "./recall_live.js";
 import { routePracticePoints } from "./route_map.js";
 import { createRouteView, routeRun } from "./route_view.js";
@@ -325,7 +325,7 @@ export function wireApp(deps) {
         }
         inFlight -= 1;
         if (inFlight === 0) {
-          const lost = failed.filter((j) => !stored.points[j].got).map((j) => stored.points[j].label);
+          const lost = failed.filter((j) => !pointCounted(stored, j)).map((j) => stored.points[j].label);
           failed = [];
           if (stored !== record || lost.length) {
             record = stored;
