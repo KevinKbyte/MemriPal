@@ -248,6 +248,15 @@ server never ready.
 uv run --with playwright python scripts/e2e_drive.py --out <dir>
 ```
 
+Rebuild the offline Kendall Square map (MEM-074, MEM-075): cut the z12-14 extract out of a Protomaps planet build
+(pick a date from `https://build-metadata.protomaps.dev/builds.json`) via HTTP Range reads only, then regenerate
+`static/map/style-light.json` and `style-dark.json` from the vendored basemaps.
+
+```bash
+uv run python scripts/build_map_extract.py --source https://build.protomaps.com/<YYYYMMDD>.pmtiles --out static/map/kendall.pmtiles
+node scripts/build_map_style.mjs
+```
+
 Merge a worktree branch in one command: refuses a dirty tree, rebases onto `main`, runs the worktree's
 `scripts/check.sh`, enqueues via the merge queue (`request_merge.py --wait`), then re-runs `scripts/check.sh` in the
 primary checkout. Exit 2 on bad usage; otherwise the first failing step's code. The queue is found at
