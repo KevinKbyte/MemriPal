@@ -160,3 +160,25 @@ Actors: Muse Spark; `src/memripal/station.py`.
   no segment request with that phrase; "parked car" then "brick arch" -> exactly 1 box.
 
 Tests: tests/test_station.py
+## MEM-073 Retire the room-photo upload flow (step 1 of 2)
+
+Decided-by: ADR [0040](../../../../docs/decisions/0040-retire-room-photo-flow.md). Supersedes MEM-017's photo-pick
+upload and MEM-025's `onPhotoChange` place path; step 2 (Load demo -> demo route, `/loci` deleted, no 410) is plan B10.
+Root problem: the route-first pivot dropped room segmentation (objects move), but the page still lets a user pick a
+room photo and post it to `/loci`, and the first screen asks for one.
+Actors: the user; `static/app.js`, `static/index.html`; `scripts/screenshot_ui.py`; `fixtures/demo/route_backup.json`.
+NFR: none.
+- `static/app.js`: no `onPhotoChange` export and no `#photo` `change` listener; picking a file sends no request. The
+  `<input id="photo">` element stays, unhandled (plan A5 re-homes `#photo`, `#meta-notice`, `#upload-status` to S2
+  capture). Load demo (`flow.js` -> `runDemoPalace` -> `/loci`) is unchanged until B10.
+- `static/index.html`: no "room photo" / "photo of a room" text; first-screen copy is neutral; every A5 id kept
+  exactly once.
+- `scripts/screenshot_ui.py`: also writes `route_view.png`, the route view after importing the committed backup-v2
+  fixture `fixtures/demo/route_backup.json` through `#backup-import`; `initial.png` and `load_demo.png` unchanged
+  until B10 drops the room shot.
+- Accept: a `#photo` change sends no request and `app.js` exports no `onPhotoChange`; `index.html` has no "room
+  photo" / "photo of a room" text and the A5 id tests stay green; `screenshot_ui.py` writes `route_view.png` from the
+  backup fixture.
+
+Tests: tests/test_screenshot_ui.py, static/index_markup.test.mjs; the `#photo` no-request test lands with the source
+slice.

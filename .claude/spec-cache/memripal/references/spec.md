@@ -314,16 +314,16 @@ Tests: tests/test_seg_provider.py, tests/test_seg_provider_wiring.py
 `static/index.html`, `static/app.js` (S2.6):
 - `#meta-notice` "Your photo is sent to Meta's AI APIs to find places in it." precedes the single file input
   `<input id="photo" type="file" accept="image/*" capture="environment">`; hidden unless /healthz mode is "meta".
-- Client re-encode (drops EXIF, bakes orientation): `createImageBitmap(file, {imageOrientation: "from-image"})`
-  -> canvas -> `toBlob("image/jpeg", 0.9)` -> POST /loci as image/jpeg. Input value cleared on change, so
-  re-picking the same photo re-uploads.
+- **Superseded by MEM-073** (no photo-pick upload): client re-encode (drops EXIF, bakes orientation):
+  `createImageBitmap(file, {imageOrientation: "from-image"})` -> canvas -> `toBlob("image/jpeg", 0.9)` -> POST /loci
+  as image/jpeg. Input value cleared on change, so re-picking the same photo re-uploads.
 - `button#load-demo` "Load demo": `demoUpload(fetchFn)` GETs /demo/photo.jpg and POSTs those exact bytes to /loci,
   no re-encode (browser JPEG encoders differ, so a re-encoded demo misses the replay with `fixture_missing`;
   ADR 0016). Demo GET non-2xx -> "Upload failed: HTTP <status>".
 - GET /demo/photo.jpg: fixed path, no user-supplied component, serves `fixtures/demo/photo.jpg` byte-identical as
   image/jpeg, behind TrustedHostMiddleware; `/demo/` traversal paths are not served.
-- Stale-response gate: `latestOnly()` -> `{next, isCurrent}`; one gate shared by photo pick and Load demo; a
-  response or `drawResult` whose token is no longer the latest renders nothing.
+- Stale-response gate: `latestOnly()` -> `{next, isCurrent}`; one gate shared by photo pick (**Superseded by
+  MEM-073**) and Load demo; a response or `drawResult` whose token is no longer the latest renders nothing.
 - Demo processed sha pinned: `process_upload(fixtures/demo/photo.jpg)` -> sha
   `7af10a4e9efede5539af090a5c61550d34c8828cd1cbd956023fff088ca05206`, 1024x768; changing it requires
   regenerating the replay fixtures.

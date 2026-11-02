@@ -39,7 +39,8 @@ a) Client (`static/place.js`, `static/app.js`, `static/index.html`):
   (empty or throwing storage reads as off); on and one-tap off both persist across a reload.
 - `readGps(bytes)` (Uint8Array or ArrayBuffer of a JPEG) -> `{lat, lon}` | null: APP1 Exif GPS IFD, II or MM byte
   order, N/S/E/W refs; null for no Exif, no GPS IFD, non-JPEG, empty or truncated input; never throws.
-- `onPhotoChange(input, deps)`, deps add `{place, geolocate}`. Toggle on: coords from `readGps` on the ORIGINAL file,
+- **Superseded by MEM-073** (photo pick removed; the 4 dp rounding and toggle-off rules still bind Load demo):
+  `onPhotoChange(input, deps)`, deps add `{place, geolocate}`. Toggle on: coords from `readGps` on the ORIGINAL file,
   read before `reencodeJpeg` strips EXIF (server `has_exif` rejection untouched); no GPS -> `geolocate()`
   (`navigator.geolocation`, secure context only: localhost / Cloud Run https); none -> typed place. POST /place JSON
   `{lat, lon}` rounded to 4 dp. Toggle off: no /place request, geolocation never asked.
@@ -492,8 +493,8 @@ The separate wiring change MEM-038 defers. Assets committed at 2e2cf96 under `st
   one stylesheet link `/static/theme-painterly.css`, last rel=stylesheet; MEM-044 A2 restyles the markup, ids and
   `hidden` kept.
 - Visibility: shown on page load; gets the `hidden` attribute once a palace's places render in `#loci` (a photo
-  upload or Load demo whose result is drawn), and stays hidden for the rest of the page session (a later failed
-  upload does not bring it back).
+  upload, **Superseded by MEM-073**, or Load demo whose result is drawn), and stays hidden for the rest of the
+  page session (a later failed upload does not bring it back).
 - `style.css`: `#empty-state` is a centered block, `max-width: min(100%, 360px)`, `height: auto`.
   `#empty-state[hidden]` stays `display: none`: the existing global `[hidden] { display: none !important; }` rule
   must keep winning over the new explicit `display` (no `!important` on `#empty-state`).
