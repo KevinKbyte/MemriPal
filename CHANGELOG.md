@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.29] - 2026-11-02
+
+### Fixed
+
+- Recall end screen: "Mark got it" now also sets the matching record.hits entry true, so a point marked got counts as a hit (MEM-033, MEM-051).
+
 ## [0.20.28] - 2026-11-01
 
 ### Added
