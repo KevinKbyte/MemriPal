@@ -1,0 +1,5 @@
+pmtiles 4.5.0 (npm pack, tarball shasum 09172312c8691e4ce66677f77aeb6c125d33cf32), BSD-3-Clause.
+IIFE build, global `pmtiles`.
+
+Copied files (sha256):
+caf981bc46f6327ee7e65d5dc964d89d38a69f60edca2bd4c5c890c21b554c6c  pmtiles.js  <- npm/pmtiles-4.5.0/package/dist/pmtiles.js

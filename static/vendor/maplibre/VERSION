@@ -1,0 +1,8 @@
+maplibre-gl 5.24.0 (npm pack, tarball shasum a8059371cdbeb04a62850ccc22cb37783928a10d), BSD-3-Clause.
+CSP build (ADR 0038 cond 1): no blob worker, worker loaded same-origin via setWorkerUrl.
+
+Copied files (sha256):
+a1f1847bac64aa00acbf80fbb79b2c5af24d8eecaaa5e2ad14080fab81f1de95  maplibre-gl-csp.js  <- npm/maplibre-gl-5.24.0/package/dist/maplibre-gl-csp.js
+f950e7b15c49c8b9c7bb52136df2a2df2f6f03b83b8927774573fc98b067f7f0  maplibre-gl-csp-worker.js  <- npm/maplibre-gl-5.24.0/package/dist/maplibre-gl-csp-worker.js
+ab1e70d59ec40465bae7e7030da2f3ccf28133fd502e62bd598eefbadfd7a732  maplibre-gl.css  <- npm/maplibre-gl-5.24.0/package/dist/maplibre-gl.css
+ee5fc05a0677eaf69601d2c7db0d9ecd6cc27c3abc1d0733bc9ed34707cf8ef2  LICENSE.txt  <- npm/maplibre-gl-5.24.0/package/LICENSE.txt
