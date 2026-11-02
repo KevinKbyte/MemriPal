@@ -524,7 +524,7 @@ MEM ids: MEM-046.. assigned below (MEM-045 = brand-art, unmerged). ADRs 0031.. a
   Recorded /split, /associate, /scenes replays are keyed on the pixelated photos and promoted with a new
   scripts/promote_live_cache.py `--photo-sha` mode (pick entries whose sidecar names that sha; test + README entry).
   Demo data carries NO coordinates (schematic index layout). Room-demo fixtures + sidecar + /place replay archived to
-  fixtures/archive/room-demo/ (not served); #load-demo lands on S5.
+  fixtures/archive/room-demo/ (not served); #load-demo lands on S5. Retire /loci (ADR 0040): ledgers B10 delta.
 - Demo baselines (MK7): for each demo station with Mapillary coverage, the recorded /baseline RESPONSE (re-encoded
   JPEG, author, image link, licence) is committed as demo data and rendered with badge-replay; Load demo never calls
   /baseline. The coordinates used at K1 to fetch them are not committed.

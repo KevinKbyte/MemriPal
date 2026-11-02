@@ -327,6 +327,14 @@ path, so a premise that turns out false surfaces at RED (record it in the slice'
   0 docs/design references in static/ or the E2E fetch log; (10) DOM test: direct parenthood for #route > li, #route-view-stations > li,
   #plan-stations > li, #capture-strip > children, #scene-overlay and its ancestors.
 
+### B10 delta: retire /loci (ADR 0040 step 2; step 1 = MEM-073; 2026-11-02, not in the Part G totals)
+- Once Load demo builds the demo route: delete the `/loci` route, tests/test_loci_api.py and the `/loci` POST in
+  tests/test_demo_assoc_fixtures.py (~line 185; call `find_loci` directly). Drop "/loci" from src/memripal/ratelimit.py
+  `LIMITED_ROUTES` + `CAPPED_ROUTES` and static/flow.js `PASSCODE_ROUTES`. No 410 stub: the page is the only client
+  (A7). Port the ~16 load-demo test files once, onto the demo route. Drop the room shot (`load_demo.png`) from
+  scripts/screenshot_ui.py; MEM-073's `route_view.png` stays.
+- CRITERIA: (13) POST /loci -> 404 and `git grep -F '"/loci"' -- src static tests scripts` == 0.
+
 ## Below-cut slices B12, B13 (moved from the plan's Part B; only if time remains)
 
 ### B12 Intrusion counting + optional list cooldown. MEM-057, ADR (reuse/intrusions)
