@@ -237,6 +237,17 @@ Screenshot a design preview page across screens x widths x themes (defaults: S1-
 uv run --no-project --with playwright python scripts/screenshot_design.py <base_url> <outdir> [--screen S]... [--width NAME=WxH]... [--theme T]...
 ```
 
+Screenshot the offline Kendall map design preview `docs/design/map/preview.html` at phone + wide x light + dark into
+`<outdir>` (`map_<phone|wide>_<light|dark>.png`; needs local Chrome), serving the repo root (`--root DIR` overrides)
+locally with the app CSP; then clicks the theme-flip button twice and checks it swaps theme in place (same document, no
+navigation, stable marker count). Prints a JSON report, then `ERR <msg>` per problem (non-idle map, page/console
+error, CSP violation, non-local request, flip defect), then `shots=<n> problems=<m>`. Exit 0 clean, 1 on any problem,
+2 on bad usage.
+
+```bash
+uv run --no-project --with playwright python scripts/screenshot_map.py <outdir> [--root DIR]
+```
+
 End-to-end browser drive (Playwright, installed Chrome; not part of `scripts/check.sh`): runs 22 steps against a
 fixture-mode uvicorn it starts on a free local port with `MEMRIPAL_ALLOWED_HOSTS=memripal-e2e.test` (inherited
 `MEMRIPAL_*` vars dropped) and stops on exit. `--base-url URL` targets a running server instead; it needs that same
