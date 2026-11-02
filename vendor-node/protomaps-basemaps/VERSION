@@ -1,0 +1,5 @@
+@protomaps/basemaps 5.7.2 (npm pack, tarball shasum 06c0ba62e4317c84d31e54e7e5f4ee20947d22b0), BSD-3-Clause.
+Build-time only (style JSON generation); never served.
+
+Copied files (sha256):
+551864f01da1bfe3005e99987197f22f56d0c35f9a10fa1727a889e2434af16d  basemaps.js  <- npm/protomaps-basemaps-5.7.2/package/dist/basemaps.js
