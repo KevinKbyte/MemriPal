@@ -11,7 +11,8 @@
          Serve the repo root over HTTP and open /docs/design/map/preview.html; the style JSON and this page
          fetch /static/map/... by absolute path. No inline script or style, so it runs under the app CSP.
          Query: ?theme=dark|light sets the starting theme (default prefers-color-scheme); the Flip theme
-         button swaps the style in place without a reload. -->
+         button swaps the style in place without a reload. Each list item opens its station's detail (profile
+         plus what a study list stores there, from demo-list.js sample data); a map marker selects into it. -->
     <link rel="icon" href="/static/icon.svg">
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="/static/theme-painterly.css">
@@ -20,6 +21,7 @@
     <link rel="stylesheet" href="preview.css">
     <script src="/static/vendor/maplibre/maplibre-gl-csp.js" defer></script>
     <script src="/static/vendor/pmtiles/pmtiles.js" defer></script>
+    <script src="demo-list.js" defer></script>
     <script src="preview.js" defer></script>
   </head>
   <body class="mp-preview">
@@ -31,7 +33,7 @@
       <div class="mp-wrap">
         <div id="map" class="mp-map"></div>
         <p id="sketch-fallback" class="mp-fallback" hidden>sketch fallback</p>
-        <svg id="overlay" class="mp-overlay" aria-label="Walking route: Kendall/MIT station to Meta, 100 Binney St" role="img"></svg>
+        <svg id="overlay" class="mp-overlay" aria-label="Walking route: Kendall/MIT station to Meta, 100 Binney St" role="group"></svg>
       </div>
       <aside class="mp-route" aria-labelledby="mp-route-h">
         <h2 id="mp-route-h">Kendall/MIT to Meta office walk</h2>

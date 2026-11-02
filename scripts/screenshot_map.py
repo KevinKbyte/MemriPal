@@ -5,7 +5,8 @@ Usage: uv run --no-project --with playwright python scripts/screenshot_map.py <o
 Serves --root (default: the repo root) with the app CSP + nosniff, shoots docs/design/map/preview.html at
 phone=375x812 and wide=1000x800 in light and dark, then clicks the theme button twice and checks the map
 re-themes in place, then at each width pans the route off the map (map_<width>_pan.png) and checks the
-overlay stays clipped to the map with off-screen stations pinned to its edge. Prints the report JSON,
+overlay stays clipped to the map with off-screen stations pinned to its edge, then clicks a pinned station
+and checks it opens that station's detail in the list (map_<width>_select.png). Prints the report JSON,
 then "ERR <msg>" per problem, then "shots=<n> problems=<m>".
 Exits 0 when clean, 1 on any problem, 2 on bad usage.
 """
@@ -74,6 +75,24 @@ PAN_JS = """async () => {
   return {wrap: box(r), stations,
     clipped: ov(wrapEl) !== 'visible' || ov(document.getElementById('overlay')) !== 'visible'};
 }"""
+# Station 3 sits pinned on its own (not stacked under another) after the pan at both widths.
+SELECT_STATION = 3
+SELECT_JS = """(n) => {
+  const map = window.__map;
+  const c = map.getContainer();
+  const items = [...document.querySelectorAll('.mp-route ol > li')];
+  const marks = [...document.querySelectorAll('#overlay .lm')];
+  const li = items[n - 1];
+  const detail = li && li.querySelector('.mp-st-detail');
+  const p = map.project(marks[n - 1].getAttribute('data-lnglat').split(',').map(Number));
+  return {
+    expanded: items.flatMap((it, i) => it.querySelector('[aria-expanded="true"]') ? [i + 1] : []),
+    selected: marks.flatMap((g, i) => g.classList.contains('lm-selected') ? [i + 1] : []),
+    detail_chars: detail && !detail.hidden ? detail.textContent.trim().length : 0,
+    focus_in: !!li && li.contains(document.activeElement),
+    spot_inside: p.x >= 0 && p.y >= 0 && p.x <= c.clientWidth && p.y <= c.clientHeight,
+  };
+}"""
 
 
 class Shot(NamedTuple):
@@ -132,6 +151,29 @@ def problems(report: dict) -> list[str]:
     if flip["csp"]:
         found.append(f"flip: CSP violations {flip['csp']}")
     found += _pan_problems(report.get("pan"))
+    found += _select_problems(report.get("select"))
+    return found
+
+
+def _select_problems(select: list[dict] | None) -> list[str]:
+    """A pinned marker click opens exactly its station's detail in the list and brings its spot on screen."""
+    want = [name for name, _ in WIDTHS]
+    widths = [entry.get("width") for entry in select or []]
+    if widths != want:
+        return [f"select: widths {widths}, expected {want}"]
+    found: list[str] = []
+    for entry in select:
+        width, n = entry["width"], entry["station"]
+        if entry["expanded"] != [n]:
+            found.append(f"select {width}: expanded list items {entry['expanded']}, expected [{n}]")
+        if entry["selected"] != [n]:
+            found.append(f"select {width}: ringed markers {entry['selected']}, expected [{n}]")
+        if entry["detail_chars"] <= 0:
+            found.append(f"select {width}: station {n} detail is empty or hidden")
+        if not entry["focus_in"]:
+            found.append(f"select {width}: focus did not move into station {n}'s list item")
+        if not entry["spot_inside"]:
+            found.append(f"select {width}: station {n}'s spot is still off the map")
     return found
 
 
@@ -228,7 +270,10 @@ def run(root: str, outdir: str, chrome_args: Sequence[str] = ()) -> dict:
                         }
                     )
                 report["flip"] = _flip_check(page, origin, out, errors)
-                report["pan"] = [_pan_check(page, origin, out, name, vp) for name, vp in WIDTHS]
+                report["pan"], report["select"] = [], []
+                for name, vp in WIDTHS:
+                    report["pan"].append(_pan_check(page, origin, out, name, vp))
+                    report["select"].append(_select_check(page, out, name))
                 report["foreign"] = sorted(set(foreign))
                 # browser.close() has hung for minutes on this host: emit the result before teardown so a
                 # hung close still leaves it on record (stderr, so a clean stdout from main isn't doubled).
@@ -288,6 +333,21 @@ def _pan_check(page, origin: str, out: Path, name: str, viewport: tuple[int, int
     page.wait_for_timeout(SETTLE_MS)
     page.screenshot(path=str(out / f"map_{name}_pan.png"))
     return {"width": name, **measured}
+
+
+def _select_check(page, out: Path, name: str) -> dict:
+    """From the panned view, click SELECT_STATION's pinned marker and measure the list detail it opens."""
+    click_error = None
+    try:
+        page.locator("#overlay .lm").nth(SELECT_STATION - 1).locator(".lm-hit").click(timeout=5000)
+    except Exception as exc:  # no clickable marker: the measurements below then show nothing opened
+        click_error = str(exc).splitlines()[0]
+    page.wait_for_timeout(SETTLE_MS)
+    page.wait_for_function("() => !window.__map.isMoving()", timeout=IDLE_TIMEOUT_MS)
+    page.wait_for_timeout(SETTLE_MS)
+    measured = page.evaluate(SELECT_JS, SELECT_STATION)
+    page.screenshot(path=str(out / f"map_{name}_select.png"))
+    return {"width": name, "station": SELECT_STATION, "click_error": click_error, **measured}
 
 
 def main(argv: list[str], run: Callable[..., dict] = run) -> int:

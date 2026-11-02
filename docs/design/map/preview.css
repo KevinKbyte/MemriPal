@@ -88,6 +88,98 @@ body.mp-preview {
   margin-top: 0.375rem;
 }
 
+/* Station list items are disclosures: the button keeps the station text, the region below is its detail.
+   [aria-expanded] outranks the app's button[aria-expanded] toggle look (static/style.css), so a station
+   row stays plain text. */
+.mp-st[aria-expanded] {
+  display: block;
+  width: 100%;
+  min-height: 24px;
+  padding: 0.125rem 0;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.mp-st[aria-expanded]:hover {
+  color: var(--primary);
+  background: none;
+}
+
+.mp-st[aria-expanded="true"] {
+  font-weight: 600;
+}
+
+.mp-st:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.mp-st-detail {
+  margin: 0.375rem 0 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  background: var(--surface-2);
+  border-left: 3px solid var(--primary);
+  border-radius: 0 6px 6px 0;
+}
+
+.mp-st-detail[hidden] {
+  display: none;
+}
+
+.mp-st-detail h3 {
+  margin: 0.625rem 0 0.125rem;
+  font-size: 0.9375rem;
+}
+
+.mp-st-meta,
+.mp-st-empty {
+  margin: 0;
+  color: var(--muted);
+}
+
+.mp-st-item {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Label above its line: the 18rem side panel is too narrow for a label column. */
+.mp-st-dl {
+  margin: 0.375rem 0 0;
+}
+
+.mp-st-dl dt {
+  margin-top: 0.375rem;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.mp-st-dl dd {
+  margin: 0;
+}
+
+.mp-chip {
+  display: inline-block;
+  padding: 0 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 400;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+/* Phone: the list grows while a station is open; the map recentres above it. */
+@media (max-width: 47.99rem) {
+  .mp-route:has(.mp-st[aria-expanded="true"]) {
+    max-height: 60%;
+  }
+}
+
 /* Desktop: list becomes a side panel. */
 @media (min-width: 48rem) {
   .mp-main {
@@ -152,6 +244,12 @@ body.mp-preview {
 
 .lm-pinned .lm-arrow {
   display: inline;
+}
+
+/* The station whose detail is open in the list. */
+.lm-selected .lm-dot {
+  stroke: var(--focus);
+  stroke-width: 4px;
 }
 
 /* Emoji stacked straight above its numbered dot (overrides map-shell.css's up-right offset). */

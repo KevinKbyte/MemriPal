@@ -34,6 +34,22 @@
     { lngLat: [-71.08090, 42.36554], emoji: 0x1F4BC,
       title: "Meta office, 100 Binney St: on your right, Toomey Park across the street" }
   ];
+  // Sample observed profile per station (visual, spatial, conceptual: one short line each, as the app's
+  // station profile), shown in the station detail.
+  var PROFILES = [
+    ["Red Line headhouse under a glass canopy", "Main St, west end of the walk", "Where the walk starts"],
+    ["Tall glass tower, market at street level", "Main St at Third St", "Offices above, food below"],
+    ["Two matching glass towers", "Third St at Kendall St / Potter St", "A pair of homes towers"],
+    ["Brick and glass apartment block", "Third St at Munroe St / Linskey Way", "Homes on a quiet stretch"],
+    ["Old brick boiler works, tall arched windows", "Third St at Binney St", "Industrial past, offices now"],
+    ["Modern office front, park across the street", "100 Binney St, south side", "Where the walk ends"]
+  ];
+  var CHANNELS = ["kinesthetic", "auditory", "visual", "emotional", "conceptual", "olfactory", "gustatory",
+    "spatial"];
+  var IMAGINED = { olfactory: true, gustatory: true };
+  var reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // One selection shared by the station list and the map markers.
+  var buttons = [], details = [], markers = [], selected = -1, liveMap = null;
 
   var root = document.documentElement;
   var q = new URLSearchParams(location.search);
@@ -74,6 +90,98 @@
     return node;
   }
 
+  // HTML element with text set via textContent only (model text never goes through innerHTML, MEM-050).
+  function tag(name, cls, text, parent) {
+    var node = document.createElement(name);
+    if (cls) node.className = cls;
+    if (text != null) node.textContent = text;
+    if (parent) parent.appendChild(node);
+    return node;
+  }
+
+  // Station detail: where it is (profile), then what is stored there from the study list, if anything.
+  function fillDetail(d, i) {
+    tag("p", "mp-st-meta", "Station " + (i + 1) + " of " + STATIONS.length, d);
+    var prof = tag("dl", "mp-st-dl", null, d);
+    ["visual", "spatial", "conceptual"].forEach(function (k, j) {
+      tag("dt", null, k, prof);
+      tag("dd", null, PROFILES[i][j], prof);
+    });
+    var list = window.mpDemoList;
+    if (!list) {
+      tag("p", "mp-st-empty", "No study list on this route yet.", d);
+      return;
+    }
+    var h = tag("h3", null, list.name + " ", d);
+    tag("span", "mp-chip", "sample data", h);
+    var entry = list.items[i + 1];
+    if (!entry) {
+      tag("p", "mp-st-empty", "Nothing from this list is stored here yet.", d);
+      return;
+    }
+    tag("p", "mp-st-item", entry.item, d);
+    var dl = tag("dl", "mp-st-dl", null, d);
+    CHANNELS.forEach(function (c) {
+      var dt = tag("dt", null, c + " ", dl);
+      if (IMAGINED[c]) tag("span", "mp-chip", "imagined cue", dt);
+      tag("dd", null, entry.record[c], dl);
+    });
+  }
+
+  // Each list item becomes a disclosure: its button keeps the station text, its region holds the detail.
+  // The list is the station's one detail view (route-first: the walk works from the list alone); the map
+  // markers select into it.
+  function buildList() {
+    document.querySelectorAll(".mp-route ol > li").forEach(function (li, i) {
+      var n = i + 1;
+      var btn = tag("button", "mp-st", li.textContent.trim());
+      btn.type = "button";
+      btn.id = "mp-st-" + n;
+      btn.setAttribute("aria-expanded", "false");
+      btn.setAttribute("aria-controls", "mp-st-d-" + n);
+      var d = tag("div", "mp-st-detail");
+      d.id = "mp-st-d-" + n;
+      d.hidden = true;
+      d.setAttribute("role", "region");
+      d.setAttribute("aria-labelledby", btn.id);
+      fillDetail(d, i);
+      li.replaceChildren(btn, d);
+      btn.addEventListener("click", function () { select(selected === i ? -1 : i, false); });
+      buttons[i] = btn;
+      details[i] = d;
+    });
+    document.querySelector(".mp-route").addEventListener("keydown", function (e) {
+      if (e.key !== "Escape" || selected < 0) return;
+      var b = buttons[selected];
+      select(-1, false);
+      b.focus();
+    });
+  }
+
+  // Open station i's detail (i < 0 closes it), ring its marker, and bring its true spot onto the map. A
+  // marker click also moves focus into the list item, so keyboard and screen reader users land on the detail.
+  function select(i, fromMarker) {
+    selected = i;
+    buttons.forEach(function (b, j) {
+      b.setAttribute("aria-expanded", String(j === i));
+      details[j].hidden = j !== i;
+    });
+    markers.forEach(function (g, j) { g.classList.toggle("lm-selected", j === i); });
+    if (i < 0) return;
+    if (fromMarker) buttons[i].focus({ preventScroll: true });
+    buttons[i].parentNode.scrollIntoView({ block: "nearest" });
+    // The phone list grows while a station is open: resize the map first, then check the spot.
+    if (liveMap) requestAnimationFrame(function () { liveMap.resize(); showSpot(i); });
+  }
+
+  // Centre on the station when its spot is off the map or too near the edge to draw unpinned.
+  function showSpot(i) {
+    var c = liveMap.getContainer(), p = liveMap.project(STATIONS[i].lngLat);
+    if (p.x >= PIN_SIDE && p.x <= c.clientWidth - PIN_SIDE && p.y >= PIN_TOP &&
+      p.y <= c.clientHeight - PIN_BOTTOM) return;
+    liveMap.easeTo({ center: STATIONS[i].lngLat, duration: reduceMotion ? 0 : 500 });
+  }
+
   // Same structure and classes as docs/design/route/map-shell.js drawRoute/landmark, so map-shell.css styles
   // it; --k is unset here, so its calc(var(--k, 1) * Npx) sizes resolve to N screen px.
   function drawRoute(map) {
@@ -88,6 +196,19 @@
       // The true spot, for scripts/screenshot_map.py's pan check (a pinned station is drawn elsewhere).
       g.setAttribute("data-lnglat", st.lngLat.join(","));
       el("title", null, g).textContent = (i + 1) + ". " + st.title;
+      // A marker is a button into its station's detail in the list. The 16px hit circle (map-shell.css
+      // .lm-hit, pointer-events: all) takes the click through the otherwise pointer-events: none overlay.
+      g.setAttribute("tabindex", "0");
+      g.setAttribute("role", "button");
+      g.setAttribute("aria-label", (i + 1) + ". " + st.title);
+      g.setAttribute("aria-controls", "mp-st-d-" + (i + 1));
+      g.addEventListener("click", function () { select(i, true); });
+      g.addEventListener("keydown", function (e) {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        select(i, true);
+      });
+      el("circle", "lm-hit", g);
       // Shown only while pinned to the map edge; place() rotates it toward the true spot.
       arrows[i] = el("path", "lm-arrow", g);
       arrows[i].setAttribute("d", "M22 0 L14 -6 L14 6 Z");
@@ -101,6 +222,9 @@
       return g;
     });
     svg.replaceChildren(route);
+    markers = groups;
+    liveMap = map;
+    if (selected >= 0) groups[selected].classList.add("lm-selected");
     function place() {
       var pts = ROUTE.map(function (ll) {
         var p = map.project(ll);
@@ -186,6 +310,8 @@
     });
   }
 
+  // The list and its details work with or without the map (the sketch fallback keeps them).
+  buildList();
   if (typeof maplibregl === "undefined" || typeof pmtiles === "undefined") {
     fallback("map libraries missing");
     return;
