@@ -180,5 +180,5 @@ NFR: none.
   photo" / "photo of a room" text and the A5 id tests stay green; `screenshot_ui.py` writes `route_view.png` from the
   backup fixture.
 
-Tests: tests/test_screenshot_ui.py, static/index_markup.test.mjs; the `#photo` no-request test lands with the source
-slice.
+Tests: tests/test_screenshot_ui.py, static/index_markup.test.mjs, static/app_photo_retired.test.mjs,
+static/route_backup_fixture.test.mjs

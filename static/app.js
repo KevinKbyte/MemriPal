@@ -1,11 +1,11 @@
 // @ts-check
-// MemriPal frontend: backend health plus photo upload -> numbered memory loci (MEM-017).
+// MemriPal frontend: backend health plus Load demo -> numbered memory loci (MEM-017; photo pick retired, MEM-073).
 // Served as a raw ES module (no build step). Model-derived text is only ever set via textContent.
 
 import { withApiBase } from "./api_base.js";
-import { selectStore, withPasscode, wireApp } from "./flow.js";
+import { selectStore, wireApp } from "./flow.js";
 import { associationKey, createPalaceStore } from "./palace_store.js";
-import { browserGeolocate, createPlaceState, lookupPlace, readGps, wirePlace } from "./place.js";
+import { createPlaceState, lookupPlace, wirePlace } from "./place.js";
 import { createIdbAdapter } from "./idb_adapter.js";
 import { createRehearsalStore } from "./rehearsals.js";
 import { createRouteStore } from "./route_store.js";
@@ -88,30 +88,6 @@ export function latestOnly() {
   };
 }
 
-/** @param {string} id */
-function byId(id) {
-  return document.getElementById(id);
-}
-
-/**
- * Re-encode in the browser: canvas output drops EXIF (incl. GPS) and bakes in the orientation.
- * @param {File} file
- * @returns {Promise<Blob>}
- */
-async function reencodeJpeg(file) {
-  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
-  const canvas = document.createElement("canvas");
-  canvas.width = bitmap.width;
-  canvas.height = bitmap.height;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("canvas unavailable");
-  ctx.drawImage(bitmap, 0, 0);
-  bitmap.close();
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("encode failed"))), "image/jpeg", 0.9);
-  });
-}
-
 /**
  * @param {string} src
  * @returns {Promise<HTMLImageElement>} the image once decoded
@@ -129,9 +105,7 @@ async function loadImage(src) {
  *   doc: Pick<Document, "getElementById" | "createElement">,
  *   loadImage: (src: string) => Promise<CanvasImageSource>,
  *   fetch: typeof fetch,
- *   encode: (file: File) => Promise<BodyInit>,
  *   place?: ReturnType<typeof createPlaceState>,
- *   geolocate?: () => Promise<{lat: number, lon: number} | null>,
  * }} UploadDeps
  */
 
@@ -225,33 +199,6 @@ export async function showUpload(send, failure, deps) {
   } catch (err) {
     if (isCurrent()) status.textContent = `Upload failed: ${err instanceof HttpStatusError ? err.message : failure}`;
   }
-}
-
-/**
- * Photo input change handler.
- * @param {{files: ArrayLike<File> | null, value: string}} input
- * @param {UploadDeps} deps
- * @returns {Promise<void> | undefined}
- */
-export function onPhotoChange(input, deps) {
-  const file = input.files && input.files[0];
-  // Clear the value so re-picking the same photo fires change again.
-  input.value = "";
-  if (!file) return undefined;
-  const place = deps.place;
-  // Opt-in only (MEM-025): with the toggle off neither the GPS nor the location is ever read.
-  if (place && place.enabled()) {
-    const geolocate = deps.geolocate;
-    // GPS from the ORIGINAL bytes: the re-encode below strips EXIF (ADR 0009, 0022).
-    const coords = async () =>
-      readGps(new Uint8Array(await file.arrayBuffer())) ?? (geolocate ? await geolocate() : null);
-    void lookupPlace(coords, { doc: deps.doc, fetch: deps.fetch, place });
-  }
-  return showUpload(
-    async () => postLoci(deps.fetch, await deps.encode(file)),
-    "could not read or send the photo",
-    deps,
-  );
 }
 
 /**
@@ -432,12 +379,8 @@ function wireUpload() {
     doc: document,
     loadImage,
     fetch: withApiBase(fetch.bind(globalThis)),
-    encode: reencodeJpeg,
     place,
-    geolocate: browserGeolocate,
   };
-  const input = /** @type {HTMLInputElement | null} */ (byId("photo"));
-  if (input) input.addEventListener("change", () => onPhotoChange(input, { ...deps, fetch: withPasscode(deps.fetch, document) }));
   return deps;
 }
 

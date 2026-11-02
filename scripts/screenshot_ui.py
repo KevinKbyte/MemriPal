@@ -1,4 +1,6 @@
-"""Screenshot the upload UI before and after "Load demo" and fail on page/console errors (MEM-017).
+"""Screenshot the UI before/after "Load demo", plus an imported backup's route view (MEM-017, MEM-073).
+
+Fails on page/console errors.
 
 Usage: uv run --no-project --with playwright python scripts/screenshot_ui.py <url> <outdir>
 Exits 0 when clean (a /favicon.ico 404 is ignored), 1 on any other error, 2 on bad usage.
@@ -11,6 +13,9 @@ from urllib.parse import urlsplit
 
 USAGE = "usage: screenshot_ui.py <url> <outdir>"
 DEMO_WAIT_MS = 4000
+IMPORT_WAIT_MS = 2000
+# A backup-v2 route of 3 named stations; importing it is the only way to create a route (ADR 0040).
+ROUTE_BACKUP = Path(__file__).resolve().parents[1] / "fixtures" / "demo" / "route_backup.json"
 
 Error = tuple[str, str]  # (message text, source URL)
 
@@ -47,6 +52,12 @@ def run(url: str, outdir: str) -> list[Error]:
             page.wait_for_timeout(DEMO_WAIT_MS)
             page.screenshot(path=str(out / "load_demo.png"), full_page=True)
             items = page.eval_on_selector_all("#loci li", "els => els.map(e => e.textContent)")
+            page.set_input_files("#backup-import", str(ROUTE_BACKUP))
+            page.wait_for_timeout(IMPORT_WAIT_MS)
+            # Import refreshes only the history list; the route view renders its home on page load.
+            page.reload()
+            page.wait_for_timeout(IMPORT_WAIT_MS)
+            page.screenshot(path=str(out / "route_view.png"), full_page=True)
         finally:
             browser.close()
     print(f"items: {items}")

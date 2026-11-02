@@ -142,22 +142,30 @@ class _Handle:
     def __getattr__(self, name):
         if name.startswith("__"):
             raise AttributeError(name)
+        return _Member(self._log, self._selector, name)
 
-        def method(*args, **kwargs):
-            self._log.append((name, self._selector, args, kwargs))
-            if name == "screenshot":
-                path = kwargs.get("path", args[0] if args else None)
-                if path is not None:
-                    Path(path).write_bytes(b"PNG fake")
-            if name in ("locator", "query_selector", "wait_for_selector", "get_by_text", "get_by_role"):
-                return _Handle(self._log, args[0] if args else kwargs.get("selector"))
-            if name in ("eval_on_selector_all", "evaluate", "all_text_contents", "query_selector_all"):
-                return []
-            if name in ("count",):
-                return 1
-            return _Handle(self._log, self._selector)
 
-        return method
+class _Member(_Handle):
+    """A handle attribute: a call records itself; an attribute read chains (p.chromium.launch)."""
+
+    def __init__(self, log, selector, name):
+        super().__init__(log, selector)
+        self._name = name
+
+    def __call__(self, *args, **kwargs):
+        name = self._name
+        self._log.append((name, self._selector, args, kwargs))
+        if name == "screenshot":
+            path = kwargs.get("path", args[0] if args else None)
+            if path is not None:
+                Path(path).write_bytes(b"PNG fake")
+        if name in ("locator", "query_selector", "wait_for_selector", "get_by_text", "get_by_role"):
+            return _Handle(self._log, args[0] if args else kwargs.get("selector"))
+        if name in ("eval_on_selector_all", "evaluate", "all_text_contents", "query_selector_all"):
+            return []
+        if name in ("count",):
+            return 1
+        return _Handle(self._log, self._selector)
 
 
 def _fake_playwright(log):
