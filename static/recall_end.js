@@ -13,7 +13,12 @@ import { renderSaidVsPalace } from "./rehearsals.js";
  * @returns {Rehearsal}
  */
 export function markPointGot(record, i) {
-  return { ...record, points: record.points.map((p, j) => (j === i ? { ...p, got: true, override: true, span: null } : p)) };
+  const marked = { ...record, points: record.points.map((p, j) => (j === i ? { ...p, got: true, override: true, span: null } : p)) };
+  // Route runs: hits keys are station ids in route order, the same order as points (routeRun), so point i
+  // is key i. Station ids are non-integer strings, so insertion order survives JSON round-trips.
+  const id = record.hits ? Object.keys(record.hits)[i] : undefined;
+  if (id !== undefined) marked.hits = { ...record.hits, [id]: true };
+  return marked;
 }
 
 /**
