@@ -42,3 +42,19 @@ describe("responsive layout", () => {
     assert.ok(ok, "no img { max-width: 100% } rule");
   });
 });
+
+// Covers: MEM-072
+// Requirement: the map-first shell's route drawer fits a 360 px phone: --drawer-w is defined in style.css and
+// every fixed length inside it (px, or rem/em at 16 px) is at most 360 px, so min(22rem, 88vw) never widens it.
+describe("map-first shell drawer width", () => {
+  test("--drawer-w is defined and none of its fixed lengths exceeds 360px", () => {
+    const m = /--drawer-w\s*:\s*([^;}]+)/.exec(css());
+    assert.ok(m, "--drawer-w not defined in style.css");
+    const lengths = [...m[1].matchAll(/([\d.]+)(px|rem|em)\b/g)];
+    assert.ok(lengths.length > 0, `--drawer-w (${m[1].trim()}) has no fixed length cap`);
+    for (const [, n, unit] of lengths) {
+      const px = Number(n) * (unit === "px" ? 1 : 16);
+      assert.ok(px <= 360, `--drawer-w length ${n}${unit} is wider than 360px`);
+    }
+  });
+});
