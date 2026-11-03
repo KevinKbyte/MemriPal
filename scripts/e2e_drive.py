@@ -31,6 +31,8 @@ HOST = "127.0.0.1"
 PUBLIC_HOST = "memripal-e2e.test"
 EXPECTED_STEPS = 22
 READY_TIMEOUT_S = 30.0
+# Every e2e request shares loopback, so the app's default per-IP limit would 429 mid-run.
+E2E_RATE_PER_MIN = 100000
 
 Result = tuple[str, str, str]  # (step name, "PASS" | "FAIL", detail)
 
@@ -65,10 +67,11 @@ def pick_free_port(host: str = HOST) -> int:
 
 def server_env(base: Mapping[str, str]) -> dict[str, str]:
     """`base` minus every MEMRIPAL_* var (a stray passcode or live mode would break the run), plus
-    fixture mode and the public test host."""
+    fixture mode, the public test host, and a rate limit a full run never trips."""
     env = {k: v for k, v in base.items() if not k.startswith("MEMRIPAL_")}
     env["MEMRIPAL_MODE"] = "fixture"
     env["MEMRIPAL_ALLOWED_HOSTS"] = PUBLIC_HOST
+    env["MEMRIPAL_RATE_PER_MIN"] = str(E2E_RATE_PER_MIN)
     return env
 
 
