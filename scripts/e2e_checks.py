@@ -4,6 +4,8 @@ import json
 import re
 
 from e2e_steps import (
+    load_demo,
+    open_drawer,
     s_demo,
     s_drop,
     s_generate,
@@ -16,6 +18,7 @@ from e2e_steps import (
     s_saved,
     s_scenes,
     s_walk,
+    show_tab,
 )
 from e2e_support import hscroll, instrument, open_page, step, texts, wait_history_rows, wait_status_ready
 
@@ -36,7 +39,9 @@ def _collect_sigs(o, out):
 
 
 def _check_auto(page):
-    # MEM-048: #auto lives in the collapsed #routes-settings details; open it so the box is checkable.
+    # MEM-048: #auto lives in the collapsed #routes-settings details (Settings tab, MEM-072); open it so
+    # the box is checkable.
+    show_tab(page, "settings")
     page.eval_on_selector("#routes-settings", "d => { d.open = true; }")
     page.check("#auto")
 
@@ -108,13 +113,14 @@ def s_reload(ctx, page, before_rows):
     # shows only via the history View button (step 10b), never in #recall-results without a recall run.
     page.reload()
     wait_status_ready(page)
+    show_tab(page, "recall")
     wait_history_rows(page)
     hist_vis = page.is_visible("#history")
     rows_before_demo = texts(page, "#rehearsals li > span")
     recall_hidden = page.eval_on_selector("#recall", "e => e.hidden")
     ctx.shot(page, "12_after_reload")
     _check_auto(page)
-    page.click("#load-demo")
+    load_demo(page)
     page.wait_for_selector("#recall:not([hidden])", timeout=180000)
     wait_history_rows(page)
     rows_after_demo = texts(page, "#rehearsals li > span")
@@ -182,7 +188,7 @@ def s_narrow(ctx, browser):
         open_page(page, ctx.base + ctx.home)
         m = {"initial": hscroll(page)}
         ctx.shot(page, "16_360_initial")
-        page.click("#load-demo")
+        load_demo(page)
         page.wait_for_selector("#route-review:not([hidden])", timeout=60000)
         page.click("#route-edit")
         page.locator("#route li").nth(0).locator("button[data-action=drop]").click()
@@ -210,13 +216,14 @@ def s_public(ctx, browser):
         page = bctx.new_page()
         instrument(ctx, page, "public")
         open_page(page, ctx.public_url)
+        open_drawer(page)
         vis = page.is_visible("#public-banner")
         txt = page.text_content("#public-banner")
         status = page.text_content("#status")
         ctx.shot(page, "20_public_banner")
         # Load demo still works on the public host (fixture mode, no passcode).
         _check_auto(page)
-        page.click("#load-demo")
+        load_demo(page)
         page.wait_for_selector("#walk:not([hidden])", timeout=180000)
         walk_ok = page.is_visible("#walk")
         ctx.rec(
