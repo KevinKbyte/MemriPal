@@ -438,6 +438,29 @@ li.said-missed {
   display: none;
 }
 
+/* MEM-076: the real map hides the sketch on its first idle; .route-map's display overrides the UA [hidden]. */
+.route-map[hidden] {
+  display: none;
+}
+
+/* MEM-076: real map container (static/real_map.js), same box as the 320x200 sketch it replaces. */
+.real-map {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 8 / 5;
+  overflow: hidden;
+  background: var(--surface-2);
+  border-radius: 8px;
+}
+
+/* Until the first idle the map renders invisibly over the sketch: pulled up by the sketch's height (5/8 of
+   the shared width) plus the .panel grid gap, so the sketch keeps its place and the swap barely moves the
+   page (one panel gap). */
+.real-map-pending {
+  margin-top: calc(-62.5% - 0.875rem);
+  visibility: hidden;
+}
+
 .route-line {
   fill: none;
   stroke: var(--line);
