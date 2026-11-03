@@ -32,6 +32,16 @@ class Locus:
     outline: list[tuple[int, int]]
 
 
+def locus_json(lc: Locus) -> dict:
+    return {
+        "n": lc.n,
+        "label": lc.label,
+        "phrase": lc.phrase,
+        "box": {"x1": lc.box.x1, "y1": lc.box.y1, "x2": lc.box.x2, "y2": lc.box.y2},
+        "outline": [[x, y] for x, y in lc.outline],
+    }
+
+
 def sanitize_box(box: Box, img_w: int, img_h: int) -> Box | None:
     # scaled_to passes a non-positive frame through unscaled, so reject it here first.
     if box.w <= 0 or box.h <= 0:

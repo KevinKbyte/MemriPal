@@ -1,6 +1,7 @@
 """FastAPI app: health, static shell (MEM-001), POST /loci (MEM-015), demo photo (MEM-017),
 POST /split (MEM-020), POST /associate (MEM-021), demo notes (MEM-023), POST /scenes (MEM-028),
-POST /recall/audio and the demo recall replay (MEM-032), deploy guards (MEM-034), signed records (MEM-036)."""
+POST /recall/audio and the demo recall replay (MEM-032), deploy guards (MEM-034), signed records (MEM-036),
+POST /station (MEM-083)."""
 
 import base64
 import hmac
@@ -41,7 +42,7 @@ from memripal.bodies import (
 )
 from memripal.demo_room import room_photo
 from memripal.imaging import MAX_UPLOAD_BYTES, ImageRejected, process_upload, sniff, validate_processed
-from memripal.loci import Locus, find_loci
+from memripal.loci import find_loci, locus_json
 from memripal.meta_client import MetaClient
 from memripal.place import FixturePlaceProvider, PlaceProvider
 from memripal.recall_relay import (
@@ -54,6 +55,7 @@ from memripal.recall_relay import (
     transcript_or_none,
 )
 from memripal.record_sign import record_key, sig_ok, sign_record
+from memripal.routes_station import make_station_router
 from memripal.scenes import render_scene
 from memripal.security_headers import SecurityHeaders
 from memripal.split import SplitRejected, check_notes, split_list, split_notes
@@ -155,16 +157,6 @@ class _BodyCap:
         except _BodyTooLarge:
             # Routes read the whole body before responding, so no response has started yet.
             await _error(413, "too_large")(scope, receive, send)
-
-
-def _locus_json(lc: Locus) -> dict:
-    return {
-        "n": lc.n,
-        "label": lc.label,
-        "phrase": lc.phrase,
-        "box": {"x1": lc.box.x1, "y1": lc.box.y1, "x2": lc.box.x2, "y2": lc.box.y2},
-        "outline": [[x, y] for x, y in lc.outline],
-    }
 
 
 def create_app(
@@ -347,7 +339,7 @@ def create_app(
                 "height": processed.height,
                 "photo_sha": processed.sha,
                 "reask_used": result.reask_used,
-                "loci": [_locus_json(lc) for lc in result.loci],
+                "loci": [locus_json(lc) for lc in result.loci],
             }
         )
 
@@ -493,6 +485,8 @@ def create_app(
             }
         )
 
+    # Before the /static mount; shares this app's passcode guard, like /loci (MEM-083).
+    app.include_router(make_station_router(backend, _passcode_error))
     app.mount("/static", static_files(STATIC_DIR), name="static")
     return app
 
