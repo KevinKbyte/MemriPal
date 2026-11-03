@@ -16,9 +16,11 @@
 //       [{n, label, box}], points = /split points [{label, source_quote}].
 //       deps = {doc, fetch, store}; store = createPalaceStore(adapter).
 //       auto false: shows #route-review (hidden=false) with one <li> per locus in #route (text
-//       includes the label), each holding <button>s with data-action "up" / "down" / "drop"; a
-//       pending drop adds a "confirm-drop" button in that <li>; after a confirmed drop
-//       #route-undo shows (hidden=false) and a click restores the locus and hides it again.
+//       includes the label), each holding a grip <button> data-action "drag" (MEM-081: drag or
+//       ArrowUp/ArrowDown reorders; no up/down buttons) and, while #route-edit is pressed, a trash
+//       <button> data-action "drop"; a pending drop adds a "confirm-drop" button in that <li>;
+//       after a confirmed drop #route-toast shows (hidden=false) and a #route-undo click restores
+//       the locus and hides the toast again.
 //       Nothing is generated until #generate is clicked. auto true: no review, no click needed,
 //       #route-review stays hidden.
 //       Generate: store.saveRoute(order); points[i] pairs with order[i]; POST /associate per pair
@@ -66,10 +68,10 @@ const POINTS = ITEMS.map((label) => ({ label, source_quote: `Buy ${label}` }));
 const SCENE = (item) => `data:image/jpeg;base64,U0NFTkU${item}`;
 
 const IDS = [
-  "route-review", "route", "route-undo", "generate", "auto", "walk", "walk-prev", "walk-next", "walk-step",
+  "route-review", "route", "route-edit", "route-live", "route-toast", "route-toast-text", "route-undo", "generate", "auto", "walk", "walk-prev", "walk-next", "walk-step",
   "scenes", "scene-overlay", "assoc-status", "associations", "upload-status", "scene", "loci", "status",
 ];
-const page = () => fakePage(IDS, { hidden: ["route-review", "route-undo", "walk", "scene-overlay"] });
+const page = () => fakePage(IDS, { hidden: ["route-review", "route-toast", "walk", "scene-overlay"] });
 
 /** Opaque server signature the fake /associate returns for an item (MEM-036). */
 const sigOf = (item) => `sig_${item}`;
@@ -191,10 +193,11 @@ describe("createRouteReview", () => {
   });
 });
 
-// Covers: MEM-030
-// Requirement: in the page, arrow buttons reorder the route, one click on drop never deletes
-// (confirm first, then Undo is offered), nothing generates before Generate, associations follow
-// the reviewed order, and the reviewed route is saved so it survives a reload.
+// Covers: MEM-030, MEM-081
+// Requirement: in the page, the grip reorders the route (MEM-081: keyboard arrows on the grip), one
+// click on the Edit-revealed trash never deletes (confirm first, then the Undo snackbar is offered),
+// nothing generates before Generate, associations follow the reviewed order, and the reviewed route
+// is saved so it survives a reload.
 describe("runEncode: route review in the page", () => {
   test("review is shown and nothing is generated until Generate is clicked", async () => {
     const { p, store } = setup();
@@ -210,15 +213,15 @@ describe("runEncode: route review in the page", () => {
     assert.deepEqual(f.assoc(), ITEMS.map((item, i) => [item, LABELS[i]]));
   });
 
-  test("down arrow reorders; associations follow the new order and the route is saved", async () => {
+  test("grip ArrowDown/ArrowUp reorders; associations follow the new order and the route is saved", async () => {
     const { p, adapter, store } = setup();
     const f = flowFetch();
     const run = api("runEncode")(input(), { doc: p.doc, fetch: f.fn, store });
     await until(() => lis(p).length === 3, "3 loci listed");
-    p.fire(button(lis(p)[0], "down"), "click");
+    p.fire(button(lis(p)[0], "drag"), "keydown", { key: "ArrowDown", preventDefault() {} });
     await until(() => labelOf(lis(p)[0]) === "door", "lamp moved down");
     assert.deepEqual(lis(p).map(labelOf), ["door", "lamp", "clock"]);
-    p.fire(button(lis(p)[2], "up"), "click");
+    p.fire(button(lis(p)[2], "drag"), "keydown", { key: "ArrowUp", preventDefault() {} });
     await until(() => labelOf(lis(p)[1]) === "clock", "clock moved up");
     p.fire(p.els.generate, "click");
     await run;
@@ -238,6 +241,9 @@ describe("runEncode: route review in the page", () => {
     const { p, store } = setup();
     const run = api("runEncode")(input(), { doc: p.doc, fetch: flowFetch().fn, store });
     await until(() => lis(p).length === 3, "3 loci listed");
+    assert.equal(button(lis(p)[1], "drop"), null, "no trash until Edit is pressed");
+    p.fire(p.els["route-edit"], "click");
+    await until(() => button(lis(p)[1], "drop"), "trash shown in Edit mode");
     p.fire(button(lis(p)[1], "drop"), "click");
     await settle();
     assert.equal(lis(p).length, 3, "one click on drop must not delete");
@@ -246,11 +252,11 @@ describe("runEncode: route review in the page", () => {
     p.fire(confirm, "click");
     await until(() => lis(p).length === 2, "dropped after confirm");
     assert.deepEqual(lis(p).map(labelOf), ["lamp", "clock"]);
-    assert.equal(p.els["route-undo"].hidden, false, "Undo offered after a drop");
+    assert.equal(p.els["route-toast"].hidden, false, "Undo snackbar offered after a drop");
     p.fire(p.els["route-undo"], "click");
     await until(() => lis(p).length === 3, "restored by Undo");
     assert.deepEqual(lis(p).map(labelOf), LABELS);
-    assert.equal(p.els["route-undo"].hidden, true, "Undo hidden once nothing is left to undo");
+    assert.equal(p.els["route-toast"].hidden, true, "snackbar hidden once nothing is left to undo");
     p.fire(p.els.generate, "click");
     await run;
   });
@@ -260,6 +266,8 @@ describe("runEncode: route review in the page", () => {
     const f = flowFetch();
     const run = api("runEncode")(input({ points: POINTS.slice(0, 2) }), { doc: p.doc, fetch: f.fn, store });
     await until(() => lis(p).length === 3, "3 loci listed");
+    p.fire(p.els["route-edit"], "click");
+    await until(() => button(lis(p)[1], "drop"), "trash shown in Edit mode");
     p.fire(button(lis(p)[1], "drop"), "click");
     await until(() => button(lis(p)[1], "confirm-drop"), "confirm offered");
     p.fire(button(lis(p)[1], "confirm-drop"), "click");
