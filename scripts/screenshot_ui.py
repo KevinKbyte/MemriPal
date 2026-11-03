@@ -32,6 +32,17 @@ def significant_errors(errors: list[Error]) -> list[Error]:
     return [e for e in errors if urlsplit(e[1]).path != "/favicon.ico"]
 
 
+def show_tab(page, name: str) -> None:
+    # MEM-072: controls live in tab panels; tabbar.js swallows the click, so the URL never changes.
+    page.click(f'a.tab[href="#{name}"]')
+
+
+def set_drawer(page, want_open: bool) -> None:
+    # The handle is a <summary>, so a click toggles: click only when the drawer is not already as wanted.
+    if bool(page.evaluate("() => document.getElementById('drawer').open")) != want_open:
+        page.click(".drawer-handle")
+
+
 def run(url: str, outdir: str) -> list[Error]:
     # Lazy import: the module (and significant_errors) must load where playwright is absent.
     from playwright.sync_api import sync_playwright
@@ -56,25 +67,36 @@ def run(url: str, outdir: str) -> list[Error]:
             page.goto(url)
             page.screenshot(path=str(out / "initial.png"), full_page=True)
             # MEM-025: the demo only shows place chips when the place toggle is on.
+            show_tab(page, "settings")
             assert page.query_selector("#place-toggle"), "missing #place-toggle"
             page.check("#place-toggle")
+            show_tab(page, "routes")
+            set_drawer(page, True)
             page.click("#load-demo")
             page.wait_for_timeout(DEMO_WAIT_MS)
             page.screenshot(path=str(out / "load_demo.png"), full_page=True)
             items = page.eval_on_selector_all("#loci li", "els => els.map(e => e.textContent)")
+            show_tab(page, "settings")
             page.set_input_files("#backup-import", str(ROUTE_BACKUP))
             page.wait_for_timeout(IMPORT_WAIT_MS)
             # Import refreshes only the history list; the route view renders its home on page load.
             page.reload()
             page.wait_for_timeout(IMPORT_WAIT_MS)
+            set_drawer(page, True)
             page.screenshot(path=str(out / "route_view.png"), full_page=True)
             # MEM-077: the Kendall demo route on the real map, phone width, one fresh page per scheme.
             for scheme in ("light", "dark"):
                 demo = browser.new_page(viewport=DEMO_VIEWPORT, color_scheme=scheme)
                 watch(demo)
                 demo.goto(url)
+                set_drawer(demo, True)
                 demo.click("#load-demo")
+                # Load demo opens the route itself (MEM-072); go back so its card's Open button is reachable.
+                demo.get_by_role("button", name="Back to routes").click()
+                set_drawer(demo, True)
                 demo.get_by_role("button", name=f"Open {DEMO_ROUTE_NAME}").click()
+                # At phone width the open drawer covers the map the shot is for.
+                set_drawer(demo, False)
                 demo.wait_for_selector(MAP_IDLE, timeout=MAP_IDLE_TIMEOUT_MS)
                 demo.screenshot(path=str(out / f"demo_route_{scheme}.png"), full_page=True)
                 demo.close()
