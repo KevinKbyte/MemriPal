@@ -72,17 +72,19 @@ Route recommendation:
 
 Flow shape:
 
-- (a) A stepper with skip: keywords -> placements -> mnemonics (chosen; dissent from the plan's three independent
-  checkboxes).
-  Pros: matches the data dependency (placements need keywords; the route pick needs the keyword count).
-  Cons: one more control state per step.
-- (b) Three independent checkboxes.
-  Pros: fewer screens.
-  Cons: lets the user tick a step whose input does not exist yet.
+- (a) Deconstruct with three checkboxes, as Kev's spec asks ("with check boxes for keywords, mnemonics, recommended
+  associations"), with the dependency encoded: checking mnemonics or recommended associations auto-checks keywords;
+  keywords cannot be unchecked while a dependent box is checked; a disabled box shows why (chosen).
+  Pros: matches the spec; one screen; the dependency rule prevents a step without its input.
+  Cons: the dependency logic lives in the checkbox state and needs its own tests.
+- (b) A stepper with skip: keywords -> placements -> mnemonics (rejected; the eval's dissent).
+  Pros: follows the data dependency by construction (placements need keywords; the route pick needs the keyword
+  count).
+  Cons: departs from the spec Kev wrote; more screens for the same three steps.
 
 ## Decision
 
-Breakdown (a), station block (a), mnemonics (a), recommendation (a), stepper (a). Stored as KV `list:<id>`
+Breakdown (a), station block (a), mnemonics (a), recommendation (a), checkboxes (a). Stored as KV `list:<id>`
 `MemorizeItem {id, title, text, keywords[{label, source_quote}], route_id, placements{station_id: {record, sig}},
 remember_by?, created_at}`; `Route.lists` holds a pointer; backup `lists[]` carries these items (amends 0033).
 Photo-less demo stations send a sentinel JPEG with `SEND_IMAGE` False (`src/memripal/backend.py::SEND_IMAGE`, used by
@@ -92,8 +94,8 @@ Photo-less demo stations send a sentinel JPEG with `SEND_IMAGE` False (`src/memr
 
 Every chosen option either adds no prompt template or keeps the new text outside the digest, so fixture mode keeps
 working on the public URL and no recorded fixture is orphaned. (b) options each add a template, a nondeterministic
-ranking, or a dependency that does not exist. The stepper follows the real dependency order; checkboxes allow invalid
-states.
+ranking, or a dependency that does not exist. The checkboxes are what the spec asks for; auto-checking keywords and
+locking it while a dependent is checked gives the stepper's dependency guarantee without its extra screens.
 
 ## Consequences
 
