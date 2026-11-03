@@ -128,3 +128,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0048](0048-memorize-breakdown-and-route-recommendation.md) Memorize reuses `/split` notes + `/associate` per
   station, client-side mnemonics, deterministic Jaccard route recommendation, `MemorizeItem` fills backup `lists[]`
   (amends 0033) (over `/deconstruct`, Spark ranking, or embeddings).
+- [0049](0049-recall-schedule-and-push-reminders.md) Recall schedule = countdown doubling with an S+1d floor; in-app
+  due list baseline, web push + Capacitor local notifications for phone reminders, `.ics` fallback (over SM-2,
+  `.ics`-only, or local notifications only). Stretch.
