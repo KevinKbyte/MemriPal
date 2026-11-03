@@ -219,7 +219,9 @@ class TestRouteViewShot:
             Path(str(kw.get("path", a[0] if a else ""))).name for n, _, a, kw in log if n == "screenshot"
         ]
         assert shots[0] == "initial.png"
-        assert sorted(shots) == ["initial.png", "load_demo.png", "route_view.png"]
+        # MEM-077 adds the demo route shots (TestDemoRouteShots); these three stay, each shot once.
+        for name in ("initial.png", "load_demo.png", "route_view.png"):
+            assert shots.count(name) == 1, (name, shots)
         for name in shots:
             assert (tmp_path / name).is_file(), name
 
@@ -238,3 +240,106 @@ class TestRouteViewShot:
             if n == "screenshot" and Path(str(kw.get("path", a[0] if a else ""))).name == "route_view.png"
         ]
         assert route_shot and route_shot[0] > imports[0], "route_view.png must be shot after the import"
+
+
+# Covers: MEM-077
+# Requirement: the screenshot run shows the Kendall demo route drawn on the real map (plan
+# 2026-11-02-real-map S6 criterion 5): it writes demo_route_light.png and demo_route_dark.png, each at a
+# 375 px wide viewport in the matching prefers-color-scheme (viewport / color_scheme on new_page or
+# new_context, or set_viewport_size / emulate_media). Before each demo shot it has clicked #load-demo,
+# then opened the demo route's card by its Open button name "Open <DEMO_ROUTE_NAME>", then waited for
+# the real map's first idle (the `.real-map:not(.real-map-pending)` selector the S5 e2e waits on), with
+# no navigation between that Open and the shot. DEMO_ROUTE_NAME is a module-level str equal to
+# static/demo_route.js DEMO_ROUTE.name (quoted there as a string literal). The existing initial,
+# load_demo and route_view shots are kept. Driven with the fake playwright above; no browser.
+DEMO_ROUTE_JS = REPO_ROOT / "static" / "demo_route.js"
+DEMO_SHOTS = {"demo_route_light.png": "light", "demo_route_dark.png": "dark"}
+NAVIGATIONS = ("goto", "reload", "new_page", "new_context")
+
+
+def _shot_name(entry):
+    name, _, args, kwargs = entry
+    if name != "screenshot":
+        return None
+    return Path(str(kwargs.get("path", args[0] if args else ""))).name
+
+
+def _media_states(log):
+    """Viewport width and colour scheme in force at each log index, per the calls the run made."""
+    width, scheme, states = None, "light", []
+    for name, _, args, kwargs in log:
+        if name in ("new_page", "new_context"):
+            vp = kwargs.get("viewport")
+            if isinstance(vp, dict) and "width" in vp:
+                width = vp["width"]
+            if "color_scheme" in kwargs:
+                scheme = kwargs["color_scheme"]
+        elif name == "set_viewport_size":
+            vp = kwargs.get("viewport_size", args[0] if args else None)
+            if isinstance(vp, dict) and "width" in vp:
+                width = vp["width"]
+        elif name == "emulate_media" and "color_scheme" in kwargs:
+            scheme = kwargs["color_scheme"]
+        states.append((width, scheme))
+    return states
+
+
+def _is_load_demo_click(entry):
+    name, selector, args, kwargs = entry
+    text = repr((selector, args, kwargs))
+    return name in ("click", "get_by_role", "get_by_text") and ("#load-demo" in text or "'Load demo'" in text)
+
+
+class TestDemoRouteShots:
+    def _demo_name(self):
+        module = _load()
+        name = getattr(module, "DEMO_ROUTE_NAME", None)
+        assert isinstance(name, str) and name.strip(), "screenshot_ui.py defines a non-empty DEMO_ROUTE_NAME"
+        return name
+
+    def test_demo_route_name_matches_demo_route_js(self):
+        name = self._demo_name()
+        assert DEMO_ROUTE_JS.is_file(), "static/demo_route.js exists"
+        text = DEMO_ROUTE_JS.read_text(encoding="utf-8")
+        quoted = [f'"{name}"', f"'{name}'", f"`{name}`"]
+        assert any(q in text for q in quoted), f"{name!r} not a literal in demo_route.js"
+
+    def test_run_writes_light_and_dark_demo_route_shots_plus_the_existing_three(self, monkeypatch, tmp_path):
+        _, log = _run_with_fake_browser(monkeypatch, tmp_path)
+        shots = [s for s in (_shot_name(e) for e in log) if s]
+        expected = sorted([*DEMO_SHOTS, "initial.png", "load_demo.png", "route_view.png"])
+        assert sorted(shots) == expected
+        for name in shots:
+            assert (tmp_path / name).is_file(), name
+
+    def test_each_demo_shot_is_375_px_in_its_colour_scheme(self, monkeypatch, tmp_path):
+        _, log = _run_with_fake_browser(monkeypatch, tmp_path)
+        states = _media_states(log)
+        seen = {}
+        for i, entry in enumerate(log):
+            shot = _shot_name(entry)
+            if shot in DEMO_SHOTS:
+                seen[shot] = states[i]
+        assert set(seen) == set(DEMO_SHOTS), f"demo shots taken: {sorted(seen)}"
+        for shot, scheme in DEMO_SHOTS.items():
+            assert seen[shot] == (375, scheme), f"{shot}: (width, scheme) {seen[shot]}"
+
+    def test_each_demo_shot_follows_load_demo_open_and_real_map_idle(self, monkeypatch, tmp_path):
+        name = self._demo_name()
+        _, log = _run_with_fake_browser(monkeypatch, tmp_path)
+        shot_at = {_shot_name(e): i for i, e in enumerate(log) if _shot_name(e) in DEMO_SHOTS}
+        assert set(shot_at) == set(DEMO_SHOTS), f"demo shots taken: {sorted(shot_at)}"
+        for shot, k in shot_at.items():
+            opens = [i for i in range(k) if f"Open {name}" in repr(log[i][1:])]
+            assert opens, f"{shot}: demo route card never opened by 'Open {name}'"
+            j = opens[-1]
+            clicked = any(_is_load_demo_click(log[i]) for i in range(j))
+            assert clicked, f"{shot}: no #load-demo click before Open"
+            waits = [
+                i
+                for i in range(j + 1, k)
+                if log[i][0].startswith("wait_for") and "real-map-pending" in repr(log[i][1:])
+            ]
+            assert waits, f"{shot}: no wait for the real map's first idle between Open and the shot"
+            navs = [log[i][0] for i in range(j + 1, k) if log[i][0] in NAVIGATIONS]
+            assert navs == [], f"{shot}: navigation {navs} between Open and the shot"
