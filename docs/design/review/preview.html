@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MemriPal route review design preview</title>
+    <!-- Design preview only (MEM-081): the Load-demo route review with a drag handle per row, an Edit toggle that
+         reveals the trash, an inline remove confirm and an Undo snackbar. Not part of the app.
+         Serve the repo root over HTTP and open /docs/design/review/preview.html. -->
+    <link rel="icon" href="../../../static/icon.svg">
+    <link rel="stylesheet" href="../../../static/style.css">
+    <link rel="stylesheet" href="../../../static/theme-painterly.css">
+    <link rel="stylesheet" href="review.css">
+    <link rel="stylesheet" href="preview.css">
+  </head>
+  <body>
+    <svg class="defs" aria-hidden="true">
+      <symbol id="i-grip" viewBox="0 0 20 20">
+        <circle cx="7" cy="4" r="1.6"/><circle cx="13" cy="4" r="1.6"/>
+        <circle cx="7" cy="10" r="1.6"/><circle cx="13" cy="10" r="1.6"/>
+        <circle cx="7" cy="16" r="1.6"/><circle cx="13" cy="16" r="1.6"/>
+      </symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24">
+        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+      </symbol>
+    </svg>
+    <main class="preview-grid">
+      <section class="panel">
+        <p class="preview-label">1. Default</p>
+        <h2>Review your route</h2>
+        <div class="route-head">
+          <p class="route-hint">Drag the dots to reorder. Tap Edit to remove a place.</p>
+          <button class="btn route-edit" type="button" aria-pressed="false">Edit</button>
+        </div>
+        <ol class="route-list">
+          <li class="route-row"><button class="btn route-grip" type="button" aria-label="Reorder Front door"><svg aria-hidden="true"><use href="#i-grip"/></svg></button><span class="route-label">Front door</span></li>
+          <li class="route-row"><button class="btn route-grip" type="button" aria-label="Reorder Kitchen table"><svg aria-hidden="true"><use href="#i-grip"/></svg></button><span class="route-label">Kitchen table</span></li>
+          <li class="route-row"><button class="btn route-grip" type="button" aria-label="Reorder Bookshelf"><svg aria-hidden="true"><use href="#i-grip"/></svg></button><span class="route-label">Bookshelf by the long window in the hallway</span></li>
+          <li class="route-row"><button class="btn route-grip" type="button" aria-label="Reorder Bathroom mirror"><svg aria-hidden="true"><use href="#i-grip"/></svg></button><span class="route-label">Bathroom mirror</span></li>
+        </ol>
+      </section>
+
+      <section class="panel">
+        <p class="preview-label">2. Dragging row 2 down</p>
+        <h2>Review your route</h2>
+        <div class="route-head">
+          <p class="route-hint">Drag the dots to reorder. Tap Edit to remove a place.</p>
+          <button class="btn route-edit" type="button" aria-pressed="false">Edit</button>
+        </div>
+        <ol class="route-list is-dragging">
+          <li class="route-row"><button class="btn route-grip" type="button" aria-label="Reorder Front door"><svg aria-hidden="true"><use href="#i-grip"/></svg></button><span class="route-label">Front door</span></li>
+          <li class="route-row"><button class="btn route-grip" type="button" aria-label="Reorder Bookshelf"><svg aria-hidden="true"><use href="#i-grip"/></svg></button><span class="route-label">Bookshelf by the long window in the hallway</span></li>
+          <li class="route-row dragging"><button class="btn route-grip" type="button" aria-label="Reorder Kitchen table"><svg aria-hidden="true"><use href="#i-grip"/></svg></button><span class="route-label">Kitchen table</span></li>
+          <li class="route-row"><button class="btn route-grip" type="button" aria-label="Reorder Bathroom mirror"><svg aria-hidden="true"><use href="#i-grip"/></svg></button><span class="route-label">Bathroom mirror</span></li>
+        </ol>
+      </section>
+
+      <section class="panel">
+        <p class="preview-label">3. Edit mode</p>
+        <h2>Review your route</h2>
+        <div class="route-head">
+          <p class="route-hint">Drag the dots to reorder. Tap Edit to remove a place.</p>
+          <button class="btn route-edit" type="button" aria-pressed="true">Done</button>
+        </div>
+        <ol class="route-list">
+          <li class="route-row"><button class="btn route-grip" type="button" aria-label="Reorder Front door"><svg aria-hidden="true"><use href="#i-grip"/></svg></button><span class="route-label">Front door</span><button class="btn route-trash" type="button" aria-label="Remove Front door"><svg aria-hidden="true"><use href="#i-trash"/></svg></button></li>
+          <li class="route-row"><button class="btn route-grip" type="button" aria-label="Reorder Kitchen table"><svg aria-hidden="true"><use href="#i-grip"/></svg></button><span class="route-label">Kitchen table</span><button class="btn route-trash" type="button" aria-label="Remove Kitchen table"><svg aria-hidden="true"><use href="#i-trash"/></svg></button></li>
+          <li class="route-row"><button class="btn route-grip" type="button" aria-label="Reorder Bookshelf"><svg aria-hidden="true"><use href="#i-grip"/></svg></button><span class="route-label">Bookshelf by the long window in the hallway</span><button class="btn route-trash" type="button" aria-label="Remove Bookshelf"><svg aria-hidden="true"><use href="#i-trash"/></svg></button></li>
+          <li class="route-row"><button class="btn route-grip" type="button" aria-label="Reorder Bathroom mirror"><svg aria-hidden="true"><use href="#i-grip"/></svg></button><span class="route-label">Bathroom mirror</span><button class="btn route-trash" type="button" aria-label="Remove Bathroom mirror"><svg aria-hidden="true"><use href="#i-trash"/></svg></button></li>
+        </ol>
+      </section>
+
+      <section class="panel">
+        <p class="preview-label">4. Confirm remove</p>
+        <h2>Review your route</h2>
+        <div class="route-head">
+          <p class="route-hint">Drag the dots to reorder. Tap Edit to remove a place.</p>
+          <button class="btn route-edit" type="button" aria-pressed="true">Done</button>
+        </div>
+        <ol class="route-list">
+          <li class="route-row"><button class="btn route-grip" type="button" aria-label="Reorder Front door"><svg aria-hidden="true"><use href="#i-grip"/></svg></button><span class="route-label">Front door</span><button class="btn route-trash" type="button" aria-label="Remove Front door"><svg aria-hidden="true"><use href="#i-trash"/></svg></button></li>
+          <li class="route-row confirming"><button class="btn route-grip" type="button" aria-label="Reorder Kitchen table"><svg aria-hidden="true"><use href="#i-grip"/></svg></button><span class="route-label">Kitchen table</span><span class="route-ask">Remove this place?</span><button class="btn route-confirm" type="button">Remove</button><button class="btn" type="button">Keep</button></li>
+          <li class="route-row"><button class="btn route-grip" type="button" aria-label="Reorder Bookshelf"><svg aria-hidden="true"><use href="#i-grip"/></svg></button><span class="route-label">Bookshelf by the long window in the hallway</span><button class="btn route-trash" type="button" aria-label="Remove Bookshelf"><svg aria-hidden="true"><use href="#i-trash"/></svg></button></li>
+        </ol>
+      </section>
+
+      <section class="panel">
+        <p class="preview-label">5. Removed, Undo snackbar</p>
+        <h2>Review your route</h2>
+        <div class="route-head">
+          <p class="route-hint">Drag the dots to reorder. Tap Edit to remove a place.</p>
+          <button class="btn route-edit" type="button" aria-pressed="true">Done</button>
+        </div>
+        <ol class="route-list">
+          <li class="route-row"><button class="btn route-grip" type="button" aria-label="Reorder Front door"><svg aria-hidden="true"><use href="#i-grip"/></svg></button><span class="route-label">Front door</span><button class="btn route-trash" type="button" aria-label="Remove Front door"><svg aria-hidden="true"><use href="#i-trash"/></svg></button></li>
+          <li class="route-row"><button class="btn route-grip" type="button" aria-label="Reorder Bookshelf"><svg aria-hidden="true"><use href="#i-grip"/></svg></button><span class="route-label">Bookshelf by the long window in the hallway</span><button class="btn route-trash" type="button" aria-label="Remove Bookshelf"><svg aria-hidden="true"><use href="#i-trash"/></svg></button></li>
+        </ol>
+        <div class="route-toast" role="status"><span class="route-toast-text">Removed Kitchen table</span><button class="btn route-undo" type="button">Undo</button></div>
+      </section>
+    </main>
+  </body>
+</html>

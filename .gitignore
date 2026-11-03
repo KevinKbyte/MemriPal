@@ -15,6 +15,7 @@ docs/sdlc-runs/
 # render-budget snapshots (HOOKS-382 scripts/render_snapshot.py)
 docs/design/route/.render-snapshot/
 docs/design/map/.render-snapshot/
+docs/design/**/.render-snapshot/
 # render-budget override audit log: local state keyed by absolute checkout paths
 docs/design/**/.render-budget-overrides.jsonl
 www/
@@ -22,3 +23,5 @@ node_modules/
 android/app/build/
 android/.gradle/
 android/build/
+# design preview shots (screenshot_review_design.py output)
+docs/design/**/shots/
