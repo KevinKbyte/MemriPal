@@ -1,4 +1,4 @@
-// Shared index.html id lists for the markup tests (MEM-044, MEM-048, MEM-050, MEM-051). Not a test file itself (no
+// Shared index.html id lists for the markup tests (MEM-044, MEM-048, MEM-050, MEM-051, MEM-081). Not a test file itself (no
 // describe/test); index_markup.test.mjs and index_markup_routes.test.mjs import it.
 
 // MEM-048 (plan B3, Part A S1/S2/S4): the 14 ids the final markup adds to the 44 live ids.
@@ -40,3 +40,11 @@ export const MEM051_IDS = [
 // armed and Undo until a delete (Part A S5). #recall-map and #recall-mode sit in the already-hidden #recall.
 export const MEM051_MAY_START_HIDDEN = ["route-view", "route-view-delete-confirm", "route-view-delete-cancel",
   "route-view-undo"];
+
+// MEM-081 (ADR 0041): the route review's Edit toggle, polite live region and Undo snackbar (with its text).
+// #route-undo (a 748a5e1 id) moves inside #route-toast.
+export const MEM081_IDS = ["route-edit", "route-live", "route-toast", "route-toast-text"];
+
+// MEM-081: the snackbar shows only after a remove (it mirrors canUndo); #route-undo inside it no longer
+// carries hidden itself.
+export const MEM081_MAY_START_HIDDEN = ["route-toast"];

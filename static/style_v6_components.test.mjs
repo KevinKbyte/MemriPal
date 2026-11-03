@@ -2,7 +2,8 @@
 // Requirement: the live components take the v6 look (MEM-044 A3; F6, F7, F12, F15): each said-vs-palace
 // row reads "You said:" before the said text and "In your palace:" before the palace quote, with
 // span.said-label/.said-text/.said-quote on their own lines and 0 classes added to the OL/LI; each
-// #route li shows its number and keeps its label + controls on one row at 360 px; the #loci numbers match
+// route review row (.route-row, MEM-081) shows its number and keeps grip, label and trash on one row at
+// 360 px; the #loci numbers match
 // the canvas badges, whose fill and text are exported app.js constants at >= 4.5:1; the Show/Hide
 // toggles, the history delete status line and the native file input are styled from tokens; the
 // lit live-board row takes its colours from tokens; nothing that would trap #scene-overlay or the
@@ -70,7 +71,21 @@ const effective = (re) => Object.fromEntries(TOP.filter((r) => r.parts.some((p) 
   .flatMap((r) => r.decls));
 const usesToken = (rule) => rule.decls.some(([, v]) => /var\(\s*--[\w-]+/.test(v));
 
-const ROUTE_LI = /^#route (> )?li$/;
+// MEM-081: the route review row is li.route-row (grip, .route-label, trash), styled by class.
+const ROUTE_ROW = /^(#route (> )?)?(li)?\.route-row$/;
+const ROUTE_LABEL = /^(#route (> )?)?((li)?\.route-row )?(> )?(span)?\.route-label$/;
+const ROUTE_ASK = /^(#route (> )?)?((li)?\.route-row(\.confirming)? )?(> )?(span)?\.route-ask$/;
+// flex-basis from the cascade of one selector: an explicit flex-basis wins, else the flex shorthand's basis
+// (a lone unitless number means basis 0%).
+function flexBasis(d) {
+  if (d["flex-basis"]) return d["flex-basis"];
+  const parts = (d.flex ?? "").split(/\s+/).filter(Boolean);
+  if (parts.length === 3) return parts[2];
+  const len = parts.find((x) => !/^-?\d*\.?\d+$/.test(x));
+  if (len) return len;
+  return parts.length ? "0%" : "";
+}
+const isZero = (v) => /^0(\.0+)?(px|%|rem|em)?$/.test(v ?? "");
 
 /** Fake document: elements with children, text nodes, and a log of every HTML-string write. */
 function fakeDoc() {
@@ -173,30 +188,29 @@ describe("MEM-044 A3 F6 said-vs-palace labels", () => {
   }
 });
 
-// Covers: MEM-044
-// Requirement: F12 - every #route li shows its route number (a CSS counter or the list-item marker)
-// while #route li > span:first-child stays the place label, and the #loci list numbers its places
-// exactly as the canvas badges do.
+// Covers: MEM-044, MEM-081
+// Requirement: F12 - every route review row (.route-row, MEM-081) shows its route number through a
+// counter on .route-row::before that .route-row increments, while .route-label is the place label rule
+// (min-width 0 and flex-basis 0, so a long label shrinks instead of pushing the trash to a new line),
+// and the #loci list numbers its places exactly as the canvas badges do.
 describe("MEM-044 A3 F12 route and loci numbering", () => {
-  test("each #route li shows its number via a counter ::before/::marker or a list-item marker", () => {
-    const pseudo = rulesWhere(/^#route (> )?li::(before|marker)$/)
+  test("each .route-row shows its number via a counter on .route-row::before", () => {
+    const pseudo = rulesWhere(/^(#route (> )?)?(li)?\.route-row::before$/)
       .filter((r) => /counter\(/.test(decl(r, "content") ?? ""));
     const counters = pseudo.flatMap((r) => [...decl(r, "content").matchAll(/counter\(\s*([\w-]+)/g)])
       .map((m) => m[1]);
-    const incremented = (name) => name === "list-item" || TOP.some((r) => r.parts.some((p) =>
-      ROUTE_LI.test(p)) && new RegExp(`\\b${name}\\b`).test(decl(r, "counter-increment") ?? ""));
-    const viaCounter = counters.length > 0 && counters.every(incremented);
-    const li = effective(ROUTE_LI);
-    const listStyle = `${li["list-style"] ?? ""} ${li["list-style-type"] ?? ""}`;
-    const viaMarker = /list-item/.test(li.display ?? "list-item") && !/\bnone\b/.test(listStyle);
-    assert.ok(viaCounter || viaMarker,
-      `#route li shows no number: display ${li.display}, list-style "${listStyle.trim()}", ` +
-      `counters [${counters.join(", ")}]`);
+    const incremented = (name) => TOP.some((r) => r.parts.some((p) =>
+      ROUTE_ROW.test(p)) && new RegExp(`\\b${name}\\b`).test(decl(r, "counter-increment") ?? ""));
+    assert.ok(counters.length > 0, "no .route-row::before rule with content: counter(...)");
+    const missing = counters.filter((c) => !incremented(c));
+    assert.deepEqual(missing, [], `.route-row never increments counter(s) ${missing.join(", ")}`);
   });
 
-  test("#route li > span:first-child is still the label rule", () => {
-    assert.ok(rulesWhere(/^#route (> )?li > span:first-child$/).length,
-      "the #route li > span:first-child rule is gone");
+  test(".route-label is the label rule: min-width 0, flex-basis 0", () => {
+    assert.ok(rulesWhere(ROUTE_LABEL).length, "style.css has no .route-label rule");
+    const label = effective(ROUTE_LABEL);
+    assert.ok(isZero(label["min-width"]), `.route-label min-width is "${label["min-width"]}"`);
+    assert.ok(isZero(flexBasis(label)), `.route-label flex-basis is "${flexBasis(label)}" (flex: ${label.flex})`);
   });
 
   test("#loci keeps its ordered-list numbering (the canvas badge numbers 1..n)", () => {
@@ -284,11 +298,12 @@ describe("MEM-044 A3 F15 badge contrast", () => {
   });
 });
 
-// Covers: MEM-044
+// Covers: MEM-044, MEM-081
 // Requirement: F7 and the other live controls take the v6 look from tokens: the association/scene
 // Show/Hide toggles, the history "Could not delete" status line, the native file input button, and a
-// #route li row that keeps its label and Up/Down/Drop controls together (Drop never wraps alone at
-// 360 px); the lit live-board row takes background and color from tokens.
+// .route-row (MEM-081) that keeps its grip, label and trash together (a wrapping flex row whose
+// .route-label has flex-basis 0 and min-width 0, so the trash never wraps alone at 360 px); the lit
+// live-board row takes background and color from tokens.
 describe("MEM-044 A3 component styling from tokens", () => {
   test("a token rule styles the Show/Hide toggles (button[aria-expanded], #associations > button)", () => {
     const hits = rulesWhere(/button\[aria-expanded|^#(associations|scenes) > button/).filter(usesToken);
@@ -307,19 +322,16 @@ describe("MEM-044 A3 component styling from tokens", () => {
     assert.ok(hits.length, "no ::file-selector-button rule using var(--...) tokens");
   });
 
-  test("Drop never wraps alone", () => {
-    const li = effective(ROUTE_LI);
-    const label = effective(/^#route (> )?li > span:first-child$/);
-    const display = li.display ?? "";
-    const wrap = `${li["flex-wrap"] ?? ""} ${li["flex-flow"] ?? ""}`;
-    const grid = /grid/.test(display) && Boolean(li["grid-template-columns"]);
-    const shrinks = /^0(px)?$/.test(label["min-width"] ?? "");
-    const nowrap = /flex/.test(display) && /\bnowrap\b/.test(wrap) && shrinks;
-    const basis = `${label.flex ?? ""} ${label["flex-basis"] ?? ""}`;
-    const fullLabel = /flex/.test(display) && /\bwrap\b/.test(wrap) && /\b100%/.test(basis);
-    assert.ok(grid || nowrap || fullLabel,
-      `#route li { display: ${display}; wrap: ${wrap.trim()} } label { flex: ${basis.trim()}; ` +
-      `min-width: ${label["min-width"]} } lets Drop wrap alone`);
+  test("the trash never wraps alone", () => {
+    const row = effective(ROUTE_ROW);
+    const label = effective(ROUTE_LABEL);
+    const display = row.display ?? "";
+    const wrap = `${row["flex-wrap"] ?? ""} ${row["flex-flow"] ?? ""}`;
+    assert.match(display, /flex/, `.route-row display is "${display}"`);
+    assert.match(wrap, /\bwrap\b/, `.route-row flex-wrap is "${wrap.trim()}" (the confirm needs to wrap)`);
+    assert.ok(isZero(label["min-width"]) && isZero(flexBasis(label)),
+      `.route-label { flex: ${label.flex}; flex-basis: ${flexBasis(label)}; min-width: ${label["min-width"]} } ` +
+      "lets the trash wrap alone");
   });
 
   test(".live-board li.lit takes background and color from tokens", () => {
@@ -402,20 +414,20 @@ describe("MEM-044 A3 scene and recall surfaces", () => {
   });
 });
 
-// Covers: MEM-044
-// Requirement: F15 at 360 px: the route review's pending-drop row ("Drop this place?" + Confirm drop +
-// Cancel) never leaves Cancel alone on its own line (the prompt span takes a full line, so the two
-// buttons share the next one); the scene overlay's close button is pinned to the overlay's top-right
+// Covers: MEM-044, MEM-081
+// Requirement: F15 at 360 px: the route review's pending-remove row ("Remove this place?" + Remove +
+// Keep, MEM-081) never leaves Keep alone on its own line (.route-ask takes a full line via flex-basis
+// 100% in a wrapping .route-row, so the two buttons share the next one); the scene overlay's close button is pinned to the overlay's top-right
 // (position absolute/fixed with top and right, never left/inset), so viewport point (5,5) stays
 // backdrop and a click there still closes the overlay.
 describe("MEM-044 F15 360 px wraps and overlay close placement", () => {
-  test("Cancel never wraps alone", () => {
-    const prompt = effective(/^#route (> )?li > span(:not\(:first-child\)|:nth-child\(2\)|:nth-of-type\(2\)|:last-of-type| \+ span| ~ span)$/);
-    const basis = `${prompt.flex ?? ""} ${prompt["flex-basis"] ?? ""} ${prompt.width ?? ""}`;
-    const li = effective(ROUTE_LI);
-    const wraps = /flex/.test(li.display ?? "") && /\bwrap\b/.test(`${li["flex-wrap"] ?? ""} ${li["flex-flow"] ?? ""}`);
-    assert.ok(wraps && /\b100%/.test(basis),
-      `the "Drop this place?" span (#route li > span:not(:first-child)) { flex: ${basis.trim()} } lets Cancel wrap alone`);
+  test("Keep never wraps alone", () => {
+    const ask = effective(ROUTE_ASK);
+    const basis = flexBasis(ask);
+    const row = effective(ROUTE_ROW);
+    const wraps = /flex/.test(row.display ?? "") && /\bwrap\b/.test(`${row["flex-wrap"] ?? ""} ${row["flex-flow"] ?? ""}`);
+    assert.ok(wraps && basis === "100%",
+      `.route-ask { flex: ${ask.flex}; flex-basis: ${basis} } in .route-row lets Keep wrap alone`);
   });
 
   test("the overlay close button sits top-right, clear of point (5,5)", () => {
@@ -424,5 +436,22 @@ describe("MEM-044 F15 360 px wraps and overlay close placement", () => {
     assert.ok(btn.right && btn.right !== "auto", `#scene-overlay button right is "${btn.right}"`);
     assert.ok(btn.top && btn.top !== "auto", `#scene-overlay button top is "${btn.top}"`);
     assert.ok(!btn.inset && (!btn.left || btn.left === "auto"), `#scene-overlay button is pinned left (${btn.left ?? btn.inset})`);
+  });
+});
+
+// Covers: MEM-081
+// Requirement: only the route review grip claims the touch gesture (touch-action: none on .route-grip),
+// so the rest of each row still scrolls the page; the old Up/Down/Drop layout rule
+// "#route li > span:not(:first-child)" is gone, since it would force the new .route-label (a span after
+// the grip) onto its own line.
+describe("MEM-081 route review grip and retired row rules", () => {
+  test(".route-grip sets touch-action: none", () => {
+    const g = effective(/^(#route (> )?)?(\.route-row (> )?)?(button)?\.route-grip$/);
+    assert.equal(g["touch-action"], "none", `.route-grip touch-action is "${g["touch-action"]}"`);
+  });
+
+  test('the selector "#route li > span:not(:first-child)" is gone', () => {
+    const hits = rulesWhere(/^#route (> )?li > span:not\(:first-child\)$/);
+    assert.deepEqual(hits.map((r) => r.parts.join(", ")), []);
   });
 });

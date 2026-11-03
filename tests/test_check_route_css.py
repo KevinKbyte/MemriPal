@@ -118,6 +118,14 @@ class TestCheckRules:
     def test_unknown_id(self):
         assert check("#nope { color: var(--ink); }\n") == ["unknown id #nope"]
 
+    # Covers: MEM-081
+    # Requirement: the route review ids MEM-081 adds to index.html (#route-edit, #route-live,
+    # #route-toast, #route-toast-text) are known ids, so route CSS may target them.
+    @pytest.mark.parametrize("new_id", ["route-edit", "route-live", "route-toast", "route-toast-text"])
+    def test_mem081_route_review_ids_are_allowed(self, new_id):
+        assert new_id in _load().ALLOWED_IDS
+        assert check(f"#{new_id} {{ color: var(--ink); }}\n") == []
+
     def test_class_missing_from_contract(self):
         assert check(".ghost { color: var(--ink); }\n") == ["class .ghost missing from contract"]
 

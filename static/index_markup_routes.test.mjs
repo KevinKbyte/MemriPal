@@ -8,7 +8,8 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { MEM048_IDS, MEM050_IDS, MEM050_MAY_START_HIDDEN, MEM051_IDS } from "./index_ids_test.mjs";
+import { MEM048_IDS, MEM050_IDS, MEM050_MAY_START_HIDDEN, MEM051_IDS, MEM081_IDS, MEM081_MAY_START_HIDDEN }
+  from "./index_ids_test.mjs";
 
 const HTML = readFileSync(new URL("./index.html", import.meta.url), "utf8");
 
@@ -256,5 +257,90 @@ describe("index.html: S5 Route view + S8 recall map ids (MEM-051)", () => {
     }
     assert.ok(inside(byId("recall-map"), "recall"), "#recall-map inside #recall");
     assert.ok(inside(byId("recall-mode"), "recall"), "#recall-mode inside #recall");
+  });
+});
+
+// Covers: MEM-081
+// Requirement: the route review (ADR 0041) carries the drag + Edit-revealed trash markup inside
+// #route-review: a .route-head holding the hint "Drag the dots to reorder. Tap Edit to remove a place."
+// (.route-hint) and #route-edit (a button, aria-pressed="false", text "Edit"); #route is an ol.route-list;
+// #route-live is a polite sr-only live region; #route-toast.route-toast (role="status") starts hidden and
+// holds #route-toast-text and #route-undo.route-undo "Undo", which no longer carries hidden itself. Each
+// id appears exactly once, and no element in #route-review has a style attribute (CSP).
+describe("index.html: route review drag + Edit markup (MEM-081)", () => {
+  const classesOf = (el) => (el?.attrs.class ?? "").split(/\s+/).filter(Boolean);
+  const withClass = (c, root = byId("route-review")) => all(root ?? { children: [] }).filter((e) => classesOf(e).includes(c));
+  const insideEl = (el, anc) => {
+    for (let p = el?.parent; p; p = p.parent) if (p === anc) return true;
+    return false;
+  };
+  const text = (el) => (el ? textOf(el).replace(/\s+/g, " ").trim() : null);
+
+  for (const id of [...MEM081_IDS, "route", "route-undo"]) {
+    test(`#${id} present exactly once, inside #route-review`, () => {
+      assert.equal(idCount(id), 1, `#${id} count`);
+      assert.ok(inside(byId(id), "route-review"), `#${id} inside #route-review`);
+    });
+  }
+
+  test("the MEM-081 ids do not reuse an existing id", () => {
+    const overlap = MEM081_IDS.filter((id) => LIVE_IDS.includes(id) || NEW_IDS.includes(id) || MEM050_IDS.includes(id)
+      || MEM051_IDS.includes(id));
+    assert.deepEqual(overlap, []);
+  });
+
+  test(".route-head holds #route-edit: a button, aria-pressed false, text Edit", () => {
+    const heads = withClass("route-head");
+    assert.equal(heads.length, 1, "one .route-head inside #route-review");
+    const edit = byId("route-edit");
+    assert.equal(edit?.tag, "button", "#route-edit is a button");
+    assert.ok(insideEl(edit, heads[0]), "#route-edit inside .route-head");
+    assert.equal(edit.attrs["aria-pressed"], "false");
+    assert.equal(text(edit), "Edit");
+  });
+
+  test(".route-hint in .route-head says exactly how to reorder and remove", () => {
+    const hints = withClass("route-hint");
+    assert.equal(hints.length, 1, "one .route-hint inside #route-review");
+    assert.ok(insideEl(hints[0], withClass("route-head")[0]), ".route-hint inside .route-head");
+    assert.equal(text(hints[0]), "Drag the dots to reorder. Tap Edit to remove a place.");
+  });
+
+  test("#route is an ol.route-list", () => {
+    const route = byId("route");
+    assert.equal(route?.tag, "ol");
+    assert.ok(classesOf(route).includes("route-list"), `#route class is "${route?.attrs.class ?? ""}"`);
+  });
+
+  test("#route-live is a polite sr-only live region", () => {
+    const live = byId("route-live");
+    assert.ok(live, "#route-live is missing");
+    assert.equal(live.attrs["aria-live"], "polite");
+    assert.ok(classesOf(live).includes("sr-only"), `#route-live class is "${live.attrs.class ?? ""}"`);
+    assert.ok(!("hidden" in live.attrs), "#route-live must not be hidden (screen readers skip hidden regions)");
+  });
+
+  test("#route-toast.route-toast is a hidden status holding #route-toast-text and #route-undo.route-undo Undo", () => {
+    const toast = byId("route-toast");
+    assert.ok(toast, "#route-toast is missing");
+    assert.ok(classesOf(toast).includes("route-toast"), `#route-toast class is "${toast.attrs.class ?? ""}"`);
+    assert.equal(toast.attrs.role, "status");
+    assert.ok("hidden" in toast.attrs, "#route-toast starts hidden");
+    assert.ok(MEM081_MAY_START_HIDDEN.includes("route-toast"));
+    assert.ok(inside(byId("route-toast-text"), "route-toast"), "#route-toast-text inside #route-toast");
+    const undo = byId("route-undo");
+    assert.ok(inside(undo, "route-toast"), "#route-undo inside #route-toast");
+    assert.equal(undo.tag, "button");
+    assert.ok(classesOf(undo).includes("route-undo"), `#route-undo class is "${undo.attrs.class ?? ""}"`);
+    assert.equal(text(undo), "Undo");
+    assert.ok(!("hidden" in undo.attrs), "#route-undo no longer carries hidden (the toast hides it)");
+  });
+
+  test("no element in #route-review has a style attribute (CSP: no inline styles)", () => {
+    const review = byId("route-review");
+    assert.ok(review, "#route-review is missing");
+    const styled = [review, ...all(review)].filter((e) => "style" in e.attrs)
+      .map((e) => `<${e.tag}${e.attrs.id ? ` id="${e.attrs.id}"` : ""}>`);
+    assert.deepEqual(styled, []);
   });
 });
