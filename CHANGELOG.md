@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.33] - 2026-11-02
+
+### Added
+
+- Real map: the route view shows a self-hosted Kendall Square basemap (PMTiles extract, light and dark styles, vendored icon sprite), falling back to the sketch map when it cannot load (MEM-074, MEM-075, MEM-076, MEM-078).
+- Station overlay on the real map: numbered station markers, a station list whose items open each station's detail and stored study item, and markers that select into it; a station marker doubles in size on hover (MEM-076, MEM-077).
+- Load demo also seeds the Kendall demo route, so the real map has a route to show (MEM-077).
+
+### Fixed
+
+- The route is clipped to the map, and off-map stations are pinned to its edge with an arrow (MEM-076).
+- Backups: a station without a photo now exports and restores instead of failing; ADR 0043 (MEM-054, MEM-077).
+
 ## [0.20.32] - 2026-11-02
 
 ### Fixed
