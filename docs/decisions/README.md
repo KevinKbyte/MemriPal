@@ -115,3 +115,7 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
   the demo route by id, skipping photo-less routes, or a placeholder JPEG).
 - [0044](0044-route-review-drag-and-edit-trash.md) Route review reorders by drag (grip, pointer + keyboard) and removes
   through an Edit-revealed trash with confirm + Undo (over swipe-to-reveal or long-press).
+- [0045](0045-map-first-shell-tabs-and-panel-placement.md) Map-first shell build: four hash-addressed `.tab-panel`
+  sections toggled by `hidden` + `aria-current`; legacy panels rehomed to Recall/Settings tabs and the Routes drawer;
+  real map mounted in `.map-wrap` filling home above the tabbar (over per-tab pages, CSS `:target`, deleting the
+  panels, or keeping them stacked on home).

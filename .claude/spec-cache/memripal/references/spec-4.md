@@ -88,11 +88,13 @@ Actors: `tests/conftest.py`, ruff, the agent-workflow queue drain, `scripts/merg
   uncaught; closed by the agent-workflow follow-up (drain runs a repo-declared check command).
 
 Tests: tests/test_lint_gate.py
-## MEM-072 Route-first flow: map-first shell, set the route, pick loci from alternatives, capture anytime (PLANNED)
+## MEM-072 Route-first flow: map-first shell, set the route, pick loci from alternatives, capture anytime (PARTIAL)
 
-PLANNED, not built, unverified: design only (docs/design/route/). ADR [0038](../../../../docs/decisions/0038-route-first-flow.md)
-(amended 2026-11-01: map-first shell, map source).
-Decided-by: ADR-0038
+PARTIAL: map-first shell built (home real map, right drawer, bottom tabbar Routes/Landmarks/Recall/Settings, Load demo
+lands on the map); loci generation/alternatives (S2-S4) still PLANNED. ADRs
+[0038](../../../../docs/decisions/0038-route-first-flow.md) (amended 2026-11-01: map-first shell, map source),
+[0045](../../../../docs/decisions/0045-map-first-shell-tabs-and-panel-placement.md) (shell build).
+Decided-by: ADR-0038, ADR-0045
 Root problem: the route design is capture-first, but Kev requires route-first: set the route, the app generates
 landmark loci with alternatives, the user swaps or adds them fine-grained, and own landmark photos supplement the
 route at any time (as a generation hint or a user-added stop). Kev then rejected the card-list layout for a
@@ -117,6 +119,10 @@ Map-first shell (2026-11-01, contract `docs/design/route/route-contract-2.md`):
 - Accept (shell): exactly one route's path in `#route`; filter All at any pan/zoom puts only in-viewport (+ margin)
   off-route landmarks in the DOM; route list DOM rows stay bounded at 1000 routes; long-press and keyboard open the
   same card; each `?s=` / `?lm=` state screenshots at 375 px with no page or console errors.
+- Accept (shell build, ADR 0045): Load demo -> real map fills the viewport above the tabbar with the Kendall route, at
+  375x812 and 1280x800, light and dark; tabbar visible at the bottom; each tab click sets `aria-current` on itself
+  only and shows its panel; drawer opens/closes; every existing id stays exactly once; `#scene-overlay` stays a direct
+  child of `main`.
 
 Card-list flow (2026-10-31); S2-S9 flow rules still apply:
 - **Superseded by MEM-072 map-first shell (above):** S1 entry is route setup: `#routes-new` reads "New route". Now
@@ -139,6 +145,8 @@ Card-list flow (2026-10-31); S2-S9 flow rules still apply:
   all at 6/8 with 3 candidates adds 2 and keeps 1 as an alternative; Add all at 8/8 is disabled with a reason;
   capture button present on S1-S9; no capture screen shows a required hint-or-stop choice; check_route_css.py and
   design_gate.py pass at 375 px.
+
+Tests: static/tabbar.test.mjs, static/index_markup.test.mjs, tests/test_real_map_e2e.py
 
 ## MEM-073 Retire the room-photo upload flow (step 1 of 2)
 
