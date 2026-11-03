@@ -5,6 +5,28 @@ import re
 from e2e_support import open_page, route_labels, step, texts, wait_status_ready
 
 
+def show_tab(page, name):
+    # MEM-072: each shell tab panel is hidden until its a.tab is clicked.
+    page.click(f'nav.tabbar a.tab[href="#{name}"]')
+
+
+def open_drawer(page):
+    # MEM-072: Routes home (#load-demo, #status, #public-banner) sits in the drawer, closed by default;
+    # the handle toggles, so click it only while closed.
+    show_tab(page, "routes")
+    if not page.eval_on_selector("#drawer", "d => d.open"):
+        page.click("#drawer .drawer-handle")
+
+
+def load_demo(page):
+    # MEM-072: Load demo opens the demo route and switches to the Routes tab asynchronously; wait for
+    # that before showing the Recall tab (#route-review, #walk, #recall, #history live there).
+    open_drawer(page)
+    page.click("#load-demo")
+    page.wait_for_selector("#route-view:not([hidden])", timeout=60000)
+    show_tab(page, "recall")
+
+
 @step("1 load page")
 def s_load(ctx, page):
     open_page(page, ctx.base + ctx.home)
@@ -17,7 +39,7 @@ def s_load(ctx, page):
 
 @step("2 load demo -> route review")
 def s_demo(ctx, page):
-    page.click("#load-demo")
+    load_demo(page)
     page.wait_for_selector("#route-review:not([hidden])", timeout=60000)
     labels = route_labels(page)
     ctx.shot(page, "02_route_review")
@@ -244,6 +266,7 @@ def s_history_on_load(ctx, page, rehearsal_after, rates_after):
     page.reload()
     wait_status_ready(page)
     page.wait_for_timeout(1500)
+    show_tab(page, "recall")
     vis = page.is_visible("#history")
     rows = texts(page, "#rehearsals li > span")
     rates = texts(page, "#hit-rates li")
