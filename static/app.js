@@ -12,6 +12,7 @@ import { createRehearsalStore } from "./rehearsals.js";
 import { createRouteStore } from "./route_store.js";
 import { migrateLocalStorage } from "./storage_migrate.js";
 import { createThumbnail } from "./thumbnail.js";
+import { initTabbar } from "./tabbar.js";
 
 export { isPublicHost, showPublicBanner } from "./public_banner.js";
 // MEM-044 F15: canvas badge colours (v6 --bad on white, >= 4.5:1); a canvas cannot read CSS tokens.
@@ -397,6 +398,7 @@ function wireUpload() {
 
 // Guard keeps the module importable under node --test.
 if (typeof document !== "undefined") {
+  initTabbar(document);
   const media = navigator.mediaDevices;
   // Distinct databases: createIdbAdapter only creates its object store on a database's first open.
   const palace = { dbName: "memripal-palace", storeName: "palace", prefix: "memripal.palace:" };
