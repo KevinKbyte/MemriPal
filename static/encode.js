@@ -1,11 +1,14 @@
 // @ts-check
-// Encode UI (MEM-030): route review (arrow reorder; drop = confirm, then Undo) -> generate
-// (associations, resumable, then scenes) -> walk view. Lives outside app.js (near its line cap).
+// Encode UI (MEM-030): route review (route_review.js, MEM-081) -> generate (associations,
+// resumable, then scenes) -> walk view. Lives outside app.js (near its line cap).
 // Model text only ever reaches the page via textContent; image srcs pass isSafeImageSrc.
 
 import { demoUpload, runAssociations, showUpload, shownChannels } from "./app.js";
 import { associationKey } from "./palace_store.js";
+import { reviewRoute, textEl } from "./route_review.js";
 import { runScenes, sceneView } from "./scenes.js";
+
+export { createRouteReview } from "./route_review.js";
 
 /**
  * @typedef {{x1: number, y1: number, x2: number, y2: number}} Box
@@ -15,161 +18,6 @@ import { runScenes, sceneView } from "./scenes.js";
  * @typedef {ReturnType<typeof import("./palace_store.js").createPalaceStore>} Store
  * @typedef {{doc: Document, fetch: typeof fetch, store: Store}} EncodeDeps
  */
-
-/**
- * Route review state: one-step moves, a drop is only pending until confirmed, Undo is a stack.
- * @param {Locus[]} loci never mutated
- */
-export function createRouteReview(loci) {
-  let order = [...loci];
-  /** @type {number | null} */
-  let pending = null;
-  /** @type {Array<{index: number, locus: Locus}>} */
-  const dropped = [];
-  /** @param {number} i */
-  const inRange = (i) => Number.isInteger(i) && i >= 0 && i < order.length;
-  return {
-    order: () => [...order],
-    /**
-     * @param {number} i
-     * @param {number} delta -1 (up) or 1 (down)
-     */
-    move(i, delta) {
-      const j = i + delta;
-      if ((delta !== 1 && delta !== -1) || !inRange(i) || !inRange(j)) return false;
-      [order[i], order[j]] = [order[j], order[i]];
-      // The pending index would now point at a different locus.
-      pending = null;
-      return true;
-    },
-    /** @param {number} i */
-    requestDrop(i) {
-      pending = inRange(i) ? i : null;
-    },
-    pendingDrop: () => pending,
-    cancelDrop() {
-      pending = null;
-    },
-    confirmDrop() {
-      if (pending === null) return false;
-      const index = pending;
-      dropped.push({ index, locus: order[index] });
-      order = order.filter((_, k) => k !== index);
-      pending = null;
-      return true;
-    },
-    undo() {
-      const last = dropped.pop();
-      if (!last) return false;
-      order = [...order.slice(0, last.index), last.locus, ...order.slice(last.index)];
-      pending = null;
-      return true;
-    },
-    canUndo: () => dropped.length > 0,
-  };
-}
-
-/**
- * @param {Document} doc
- * @param {string} tag
- * @param {unknown} text
- */
-function textEl(doc, tag, text) {
-  const e = doc.createElement(tag);
-  e.textContent = text == null ? "" : String(text);
-  return e;
-}
-
-/**
- * @param {Document} doc
- * @param {string} action data-action, the stable hook tests and styles use
- * @param {string} text
- * @param {string} label accessible name naming the locus
- * @param {() => void} onClick
- */
-function actionButton(doc, action, text, label, onClick) {
-  const b = /** @type {HTMLButtonElement} */ (doc.createElement("button"));
-  b.type = "button";
-  b.dataset.action = action;
-  b.textContent = text;
-  b.setAttribute("aria-label", label);
-  b.addEventListener("click", onClick);
-  return b;
-}
-
-/**
- * Show the review list; resolves with the reviewed order once Generate is clicked. Page-root
- * handlers are assigned (not added), so a later run's review never inherits an earlier one's
- * listeners (Load demo is disabled while a run is pending, so two reviews never overlap).
- * @param {Locus[]} loci
- * @param {Document} doc
- * @returns {Promise<Locus[]>}
- */
-function reviewRoute(loci, doc) {
-  const panel = doc.getElementById("route-review");
-  const list = doc.getElementById("route");
-  const undo = doc.getElementById("route-undo");
-  const generate = doc.getElementById("generate");
-  const review = createRouteReview(loci);
-  if (!panel || !list || !generate) return Promise.resolve(review.order());
-  // A move rebuilds every row, removing the focused button, so focus follows the moved place to its
-  // same button (or its other move button, once that one is disabled at the first/last slot).
-  /** @param {{locus: Locus, action: "up" | "down"} | null} [focus] */
-  const render = (focus = null) => {
-    const all = review.order();
-    /** @type {HTMLButtonElement | null} */
-    let target = null;
-    list.replaceChildren(
-      ...all.map((locus, i) => {
-        const li = doc.createElement("li");
-        li.append(textEl(doc, "span", locus.label));
-        /** @param {() => unknown} change @param {{locus: Locus, action: "up" | "down"} | null} [next] */
-        const act = (change, next = null) => () => {
-          change();
-          render(next);
-        };
-        if (review.pendingDrop() === i) {
-          li.append(
-            textEl(doc, "span", " Drop this place?"),
-            actionButton(doc, "confirm-drop", "Confirm drop", `Confirm drop of ${locus.label}`, act(() => review.confirmDrop())),
-            actionButton(doc, "cancel-drop", "Cancel", `Keep ${locus.label}`, act(() => review.cancelDrop())),
-          );
-        } else {
-          const up = actionButton(doc, "up", "Up", `Move ${locus.label} up`, act(() => review.move(i, -1), { locus, action: "up" }));
-          const down = actionButton(doc, "down", "Down", `Move ${locus.label} down`, act(() => review.move(i, 1), { locus, action: "down" }));
-          up.disabled = i === 0;
-          down.disabled = i === all.length - 1;
-          if (focus && focus.locus === locus) {
-            const [same, other] = focus.action === "up" ? [up, down] : [down, up];
-            target = same.disabled ? other : same;
-          }
-          li.append(up, down, actionButton(doc, "drop", "Drop", `Drop ${locus.label}`, act(() => review.requestDrop(i))));
-        }
-        return li;
-      }),
-    );
-    // Focused only once in the page: a detached button cannot take focus. (Cast: tsc narrows a
-    // let assigned inside the map callback back to null.)
-    /** @type {HTMLButtonElement | null} */ (target)?.focus();
-    if (undo) undo.hidden = !review.canUndo();
-  };
-  if (undo) {
-    undo.onclick = () => {
-      review.undo();
-      render();
-    };
-  }
-  render();
-  panel.hidden = false;
-  return new Promise((resolve) => {
-    generate.onclick = () => {
-      generate.onclick = null;
-      panel.hidden = true;
-      if (undo) undo.hidden = true;
-      resolve(review.order());
-    };
-  });
-}
 
 /**
  * Walk view: one step at a time with prev/next, each showing item, locus, scene and channels.
