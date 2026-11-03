@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.34] - 2026-11-03
+
+### Added
+
+- Start screen: King Memri (Pal) replaces the empty-state picture as a blinking SVG, shown still under reduced motion and hidden once a palace or a route exists; every static SVG is linted for scripts, styles, handlers and external links (MEM-082).
+
 ## [0.20.33] - 2026-11-02
 
 ### Added
