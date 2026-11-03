@@ -237,9 +237,12 @@ describe("index.html: S5 Route view + S8 recall map ids (MEM-051)", () => {
     });
   }
 
-  test("#route-view is a section holding the map, stations, practice and delete controls", () => {
+  // MEM-072 (map-first shell) moved #route-map out of #route-view into the home .map-wrap; the map's new
+  // home is pinned in index_markup_shell.test.mjs. #route-view keeps the stations and route controls.
+  test("#route-view is a section holding the stations, practice and delete controls (map: .map-wrap, MEM-072)", () => {
     assert.equal(byId("route-view")?.tag, "section");
-    for (const id of ["route-map", "route-view-stations", "route-view-practice", "route-view-delete",
+    assert.ok(!inside(byId("route-map"), "route-view"), "#route-map moved out of #route-view (MEM-072)");
+    for (const id of ["route-view-stations", "route-view-practice", "route-view-delete",
       "route-view-delete-confirm", "route-view-delete-cancel", "route-view-undo"]) {
       assert.ok(inside(byId(id), "route-view"), `#${id} inside #route-view`);
     }

@@ -48,3 +48,12 @@ export const MEM081_IDS = ["route-edit", "route-live", "route-toast", "route-toa
 // MEM-081: the snackbar shows only after a remove (it mirrors canUndo); #route-undo inside it no longer
 // carries hidden itself.
 export const MEM081_MAY_START_HIDDEN = ["route-toast"];
+
+// MEM-072 (map-first shell, ADR 0038): the ids the shell adds. Every older id only moves (each still exactly once):
+// the four tab panels, the map chip, the route drawer and the Landmarks tab list.
+export const MEM072_IDS = [
+  "tab-routes", "tab-landmarks", "tab-recall", "tab-settings", "map-chip", "drawer", "landmarks-list",
+];
+
+// MEM-072: Routes (the map) is the home tab, so only the other three tab panels start hidden.
+export const MEM072_MAY_START_HIDDEN = ["tab-landmarks", "tab-recall", "tab-settings"];
