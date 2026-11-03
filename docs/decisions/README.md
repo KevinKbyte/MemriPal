@@ -134,3 +134,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0050](0050-two-flows-one-codebase-push-only-service-worker.md) Phone and desktop flows share one codebase via the
   900 px breakpoint + capability checks; push-only network-first root `/sw.js`, skipped under Capacitor (over two
   apps, UA sniffing, no worker, or a caching worker).
+- [0051](0051-static-part-sub-loci.md) Opt-in "Find parts" sub-loci: SAM over a `STATIC_PARTS` phrase list gated by
+  `MOVABLE_NOUNS`, nested `Station.sub_loci`, meta-mode replay fixtures (over always-on parts, Spark phrases, or flat
+  extra stations). Stretch.
