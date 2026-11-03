@@ -6,6 +6,7 @@
 import { countInOrder } from "./recall_match.js";
 import { routeHitRates } from "./rehearsals.js";
 import { learnedCount, renderRouteMap } from "./route_map.js";
+import { showTab } from "./tabbar.js";
 
 /**
  * @typedef {import("./route_store.js").Route} Route
@@ -166,6 +167,11 @@ export function createRouteView({ doc, routes, rehearsals, onPractice, realMap }
     await renderRates(route);
     setHidden("routes-home", true);
     setHidden("route-view", false);
+    // MEM-072: the opened route owns the Routes tab map, its chip and the Landmarks list.
+    const chip = byId("map-chip");
+    if (chip) chip.textContent = route.name;
+    byId("landmarks-list")?.replaceChildren(...route.stations.map((s) => textEl("li", s.name)));
+    showTab("routes", doc);
   };
 
   /** @param {boolean} armed */
@@ -229,6 +235,7 @@ export function createRouteView({ doc, routes, rehearsals, onPractice, realMap }
     mountRealMap("recall-map", current);
     setHidden("route-view", true);
     setHidden("recall", false);
+    showTab("recall", doc);
     onPractice(current, map);
   };
 
@@ -239,9 +246,15 @@ export function createRouteView({ doc, routes, rehearsals, onPractice, realMap }
   onClick("route-view-delete-confirm", confirmDelete);
   onClick("route-view-undo", undoDelete);
   onClick("route-view-practice", practice);
+  // MEM-072: capture runs inside the route drawer, so Map a new route opens it.
+  onClick("routes-new", () => {
+    const drawer = /** @type {HTMLDetailsElement | null} */ (byId("drawer"));
+    if (drawer) drawer.open = true;
+  });
 
   return {
     renderHome,
+    openRoute,
     /** After a route run: Learned on S1 and the practiced route's hit rates. */
     async refresh(/** @type {Route} */ route) {
       await renderHome();

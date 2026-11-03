@@ -348,7 +348,8 @@ export function wireApp(deps) {
     session = null;
     setRunOpen(false);
     // MEM-077: also seed the Kendall demo route (local only, idempotent); a failed write never blocks the room demo.
-    deps.routes?.seedRoute(DEMO_ROUTE).then(() => routeView?.renderHome(), () => {});
+    // MEM-072: then open it on the Routes tab map (openRoute shows the tab, chip and landmarks).
+    deps.routes?.seedRoute(DEMO_ROUTE).then(() => routeView?.renderHome()).then(() => routeView?.openRoute(DEMO_ROUTE.id)).catch(() => {});
     lookupDemoPlace({ doc, fetch: fetchFn, place: deps.place });
     const auto = Boolean(/** @type {HTMLInputElement | null} */ (byId("auto"))?.checked);
     // Disabled while a load runs, so a second click cannot build the palace twice; runDemoPalace never
