@@ -149,6 +149,7 @@ class TestServerLaunch:
             "MEMRIPAL_ALLOWED_HOSTS": "evil.example",
         }
         env = mod.server_env(base)
+        env.pop("MEMRIPAL_RATE_PER_MIN", None)  # harness-set value, pinned by the rate-limit test below
         assert env == {
             "PATH": "/usr/bin",
             "SYSTEMROOT": "C:/Windows",
@@ -157,7 +158,19 @@ class TestServerLaunch:
         }
 
     def test_server_env_from_empty_base_still_forces_fixture_mode(self, mod):
-        assert mod.server_env({}) == {"MEMRIPAL_MODE": "fixture", "MEMRIPAL_ALLOWED_HOSTS": PUBLIC_HOST}
+        env = mod.server_env({})
+        env.pop("MEMRIPAL_RATE_PER_MIN", None)  # harness-set value, pinned by the rate-limit test below
+        assert env == {"MEMRIPAL_MODE": "fixture", "MEMRIPAL_ALLOWED_HOSTS": PUBLIC_HOST}
+
+    # Requirement: every e2e request comes from 127.0.0.1 and one run makes ~30 POSTs in under a
+    # minute, so the e2e server must run with a per-IP rate limit high enough that a full run never
+    # gets a 429 (the app default of 30/min made step 11's Load demo POST /split 429). server_env
+    # sets MEMRIPAL_RATE_PER_MIN to a positive int >= 1000, overriding any inherited value.
+    @pytest.mark.parametrize("base", [{}, {"MEMRIPAL_RATE_PER_MIN": "1", "PATH": "/usr/bin"}])
+    def test_server_env_sets_a_rate_limit_a_full_run_never_trips(self, mod, base):
+        env = mod.server_env(base)
+        assert "MEMRIPAL_RATE_PER_MIN" in env, "e2e server would inherit the app's 30/min default"
+        assert int(env["MEMRIPAL_RATE_PER_MIN"]) >= 1000
 
     def test_server_env_does_not_mutate_its_input(self, mod):
         base = {"MEMRIPAL_PASSCODE": "x", "HOME": "/h"}
