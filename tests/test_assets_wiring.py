@@ -2,7 +2,9 @@
 # Requirement: the generated assets are wired into the page. The web manifest lists the PNG install
 # icons (192 and 512, each declaring its real pixel size) after the existing SVG icon, every icon and
 # the empty-state picture are served as images, index.html shows one decorative empty-state picture
-# directly above the photo canvas, and its style can never override the hidden attribute. MEM-044 P1
+# directly above the photo canvas, and its style can never override the hidden attribute. MEM-082
+# supersedes MEM-040's empty-state.webp picture: the empty state is now Pal, /static/assets/pal-idle.svg
+# (served as SVG; the Pal files themselves are pinned in tests/test_pal_start_assets.py). MEM-044 P1
 # links the painterly theme last; it is served as CSS and can never override hidden either.
 import json
 import re
@@ -23,7 +25,8 @@ MANIFEST = STATIC / "manifest.webmanifest"
 STYLE = STATIC / "style.css"
 # The app refuses non-loopback Host headers (MEM-015 host guard).
 LOOPBACK_URL = "http://127.0.0.1"
-EMPTY_STATE_SRC = "/static/assets/empty-state.webp"
+# MEM-082 supersedes the MEM-040 pin "/static/assets/empty-state.webp": the start screen shows Pal.
+EMPTY_STATE_SRC = "/static/assets/pal-idle.svg"
 
 SVG_ICON = {"src": "/static/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}
 PNG_ICONS = [
@@ -150,18 +153,19 @@ def test_every_manifest_icon_served_as_image(client):
         )
 
 
-# Covers: MEM-040
-# Requirement: the empty-state picture is served 200 as a WebP image.
-def test_empty_state_picture_served_as_webp(client):
+# Covers: MEM-040, MEM-082
+# Requirement: the empty-state picture is served 200 as an SVG image. MEM-082 supersedes the MEM-040
+# pin that it is a WebP (empty-state.webp, RIFF/WEBP body): it is now Pal, pal-idle.svg.
+def test_empty_state_picture_served_as_svg(client):
     resp = client.get(EMPTY_STATE_SRC)
     assert resp.status_code == 200, f"GET {EMPTY_STATE_SRC} -> {resp.status_code}"
-    assert _content_type(resp) == "image/webp", _content_type(resp)
-    assert resp.content[:4] == b"RIFF" and resp.content[8:12] == b"WEBP", "body is not a WebP file"
+    assert _content_type(resp) == "image/svg+xml", _content_type(resp)
+    assert b"<svg" in resp.content[:200], "body is not an SVG document"
 
 
-# Covers: MEM-040
-# Requirement: index.html has one decorative empty-state <img> (empty alt, the WebP src), shown on
-# load (no hidden attribute).
+# Covers: MEM-040, MEM-082
+# Requirement: index.html has one decorative empty-state <img> (empty alt, src the Pal idle SVG; MEM-082
+# supersedes MEM-040's WebP src), shown on load (no hidden attribute).
 def test_index_has_one_decorative_empty_state_img():
     events = _events()
     _, tag, attrs = events[_empty_state_index(events)]
