@@ -377,3 +377,62 @@ Actors: the user; `static/route_review.js` (new; `createRouteReview` re-exported
 
 Tests: static/encode.test.mjs, static/route_review*.test.mjs, static/index_markup*.test.mjs,
 tests/test_screenshot_review_design.py
+
+## MEM-083 Mount the station route (PLANNED)
+
+Plan: `docs/plans/2026-11-03-demo-flow.md` S1. Actors: `src/memripal/routes_station.py`, `src/memripal/app.py`.
+- `POST /station` from `routes_station.py` is mounted on the app.
+- Accept: TestClient `POST /station` returns 200 on a valid photo; 4xx on a bad one.
+
+Tests: (filled at land)
+
+## MEM-084 Offline walking-graph routing and geocode (PLANNED)
+
+Decision: ADR [0046](../../../../docs/decisions/0046-offline-walking-graph-routing-and-geocode.md), address fields
+ADR [0053](../../../../docs/decisions/0053-station-street-address-and-poi-precision.md). Plan S2.
+- `scripts/build_walk_graph.py`: one Overpass bbox query with retry, tested against a recorded response; writes a
+  committed compact walk graph + named-POI JSON. POIs keep `addr:housenumber` / `addr:street`, else the enclosing
+  building's addr tags.
+- Pure JS module: A* (haversine heuristic); geocode by normalized fuzzy match + aliases ("kendall/mit t", "meta
+  office" = 42.36554,-71.0809); alias entries carry `address`; snap to the largest component; straight-line fallback
+  flagged as such.
+- Accept: A* Kendall T -> 100 Binney stays within 40 m of the `DEMO_ROUTE` polyline and is 600-750 m long; every demo
+  phrase resolves; a miss returns >= 1 suggestion; the fallback result is flagged; 100 Binney resolves with address
+  "100 Binney St"; POI JSON + graph < 1 MB.
+
+Tests: (filled at land)
+
+## MEM-085 Auto-loci candidates and swap (PLANNED)
+
+Decision: ADR [0047](../../../../docs/decisions/0047-derived-auto-loci-and-swap.md), ADR
+[0053](../../../../docs/decisions/0053-station-street-address-and-poi-precision.md). Plan S3.
+- Pure `candidates(polyline, pois)`: 30-50 m from the route, deduped, ranked, evenly spaced, in route order; each
+  carries `address`; none within 15 m of an existing station (seeded stations have no `osm_id`).
+- `static/route_store.js` swap / add / undo; keys `candidate:osm:<osm_id>` / `candidate:st:<station_id>`; no photo
+  loss; `MAX_STATIONS` = 8. `coordsOf` / `round4` take a dp parameter: 5 dp public / seeded / alias, 4 dp GPS /
+  map-click. The 6 `static/demo_route.js` stations carry hand-verified addresses and 5-dp coords.
+- Accept: the Kendall route gives >= 6 candidates in route order; swap round-trips `photo_ref`; undo restores; backup
+  v2 export unchanged; every candidate has an address or a "near <street>" label; no candidate within 15 m of an
+  existing station; seeded stations keep 5 dp, GPS-captured stay 4 dp.
+
+Tests: (filled at land)
+
+## MEM-087 Memorize: notes split, keyword edit, route recommendation (PLANNED)
+
+Decision: ADR [0048](../../../../docs/decisions/0048-memorize-breakdown-and-route-recommendation.md). Plan S5.
+- Client for `/split` notes mode; keyword edit -> `split_list`; `/associate` per (keyword, station); client-side
+  mnemonics; Jaccard + capacity route recommendation with a reason; MemorizeItem `list:<id>` + backup `lists[]`;
+  Deconstruct checkbox dependency rules.
+- Spark fixtures recorded for the 6-technique demo text; every template digest has a fixture.
+- Accept: 6 keywords from the demo text; edited keywords re-split with 0 model calls; the recommendation picks a route
+  with >= 6 free stations and shows a reason; a fixture-mode run makes 0 live calls.
+
+Tests: (filled at land)
+
+## MEM-090 Recall schedule (pure module) (PLANNED)
+
+Decision: ADR [0049](../../../../docs/decisions/0049-recall-schedule-and-push-reminders.md). Plan S8.
+- Pure schedule module matching ADR 0049's simulated schedules exactly.
+- Accept: S = 11-03 18:00 with T = 11-21; no deadline; T = S+12h; T already passed.
+
+Tests: (filled at land)
