@@ -119,6 +119,24 @@ export function stationError(status, code) {
 }
 
 /**
+ * A map-derived auto-locus candidate as static/auto_loci.js candidates() returns it (MEM-085, ADR 0047):
+ * key "candidate:osm:<osm_id>", the POI's name, lat/lng given past 5 dp, its address and display label.
+ */
+export function mapCandidate(osmId, overrides = {}) {
+  const address = overrides.address === undefined ? "245 Third St" : overrides.address;
+  return {
+    key: `candidate:osm:${osmId}`,
+    osm_id: osmId,
+    name: `Landmark ${osmId}`,
+    lat: 42.3630149,
+    lng: -71.0838262,
+    address,
+    label: address ?? "near Third St",
+    ...overrides,
+  };
+}
+
+/**
  * fetch spy: every call is recorded; each call is answered by the next responder in `plan` (a
  * function returning a Response or a promise; throwing rejects like a network error).
  */
