@@ -52,10 +52,12 @@ Deadline: official hard deadline **Wed Nov 4, 9:00 PM ET** (`hackathon.md:191`, 
 
 ## Credits
 
-- [ ] Kev: Meta Model API $150 credits claimed individually by Nov 4, 9:00 PM ET (`hackathon.md:117`); card on file.
+- [x] Kev: Meta Model API $150 credits claimed individually by Nov 4, 9:00 PM ET (`hackathon.md:117`).
+- [ ] Kev: Meta Model API card on Billing page.
 - [ ] Kev: Modal credit form TODOs (gates only the off-by-default `MEMRIPAL_SEG_PROVIDER=modal` adapter).
 - [x] Baseten: $100 granted; model id `meta-models/muse-spark-open-1026` (README "Modes").
-- [ ] Kev: Fireworks serverless preview ends Oct 29; do not rely on `MEMRIPAL_CHAT_PROVIDER=fireworks` after it.
+- [x] Fireworks: $100 granted; model id `accounts/fireworks/models/muse-spark-open` (README "Modes").
+- [x] Kev: Fireworks still serves `muse-spark-open` after the Oct 29 preview end (confirmed 2026-11-03).
 
 ## Optional
 

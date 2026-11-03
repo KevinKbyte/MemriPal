@@ -439,13 +439,107 @@ limit <code class="cite">src/memripal/ratelimit.py::ApiGuard@had0c95f5</code>, t
 </tr>
 </tbody>
 </table></div>
-<p>Commands: <code>uv run uvicorn memripal.app:app</code>, <code>sh scripts/check.sh</code>, <code>sh scripts/merge_branch.sh &lt;worktree&gt;</code>.
-Script exit codes: 0 clean, 1 failure, 2 bad usage (README "Setup").</p>
-<h2 id="how-tests">HOW: tests<a class="headerlink" href="#how-tests" title="Link to this section">#</a></h2>
+<p>No <code>[project.scripts]</code> entry points (<code>pyproject.toml</code>); every CLI is a file under <code>scripts/</code>.</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Does</th>
+<th>Exit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>uv sync</code>, then <code>uv run uvicorn memripal.app:app</code></td>
+<td>Serve the app, fixture mode</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>sh scripts/check.sh</code></td>
+<td>ruff, pytest, two <code>node --test</code> globs (<code class="cite">scripts/check.sh:5-9@h494d8d86</code>)</td>
+<td>first failure (<code>set -e</code>)</td>
+</tr>
+<tr>
+<td><code>sh scripts/merge_branch.sh &lt;worktree&gt;</code></td>
+<td>Refuse dirty tree (<code class="cite">scripts/merge_branch.sh:152@hdab9e2ea</code>), rebase, <code>check.sh</code> (<code class="cite">scripts/merge_branch.sh:168@h9e0e574d</code>), enqueue via <code>request_merge.py --wait</code> (<code class="cite">scripts/merge_branch.sh:179@hc22f2777</code>) or ff <code>main</code> with up to 3 re-bump rounds (<code class="cite">scripts/merge_branch.sh:10@h91e9dbc9</code>), re-run <code>check.sh</code> in the primary (<code class="cite">scripts/merge_branch.sh:188@h236dd9b9</code>)</td>
+<td>2 bad usage, else failing step's code</td>
+</tr>
+<tr>
+<td><code>uv run --with playwright python scripts/e2e_drive.py --out &lt;dir&gt;</code></td>
+<td>22-step browser drive (<code class="cite">scripts/e2e_drive.py::exit_code@hed4f7a0d</code>)</td>
+<td>0 all pass, 1 failure, 2 server never ready</td>
+</tr>
+<tr>
+<td><code>scripts/screenshot_ui.py</code>, <code>screenshot_design.py</code>, <code>screenshot_map.py</code>, <code>check_route_css.py</code></td>
+<td>Visual-verify and design CSS lint (README "Setup")</td>
+<td>0 clean, 1 problem, 2 bad usage</td>
+</tr>
+<tr>
+<td><code>powershell -File scripts/run_live.ps1 [cmd]</code></td>
+<td>Developer-only live mode; decrypts the DPAPI key into the child env</td>
+<td>child's code; 2 missing key file</td>
+</tr>
+<tr>
+<td><code>scripts/make_synthetic_fixtures.py</code>, <code>promote_live_cache.py</code>, <code>build_map_extract.py</code></td>
+<td>Fixtures, live-cache promotion, offline map rebuild</td>
+<td>see each docstring</td>
+</tr>
+</tbody>
+</table></div>
+<p>Hooks (<code>.githooks/pre-commit</code>; enable with <code>git config core.hooksPath .githooks</code>), each failure sets exit 1:</p>
 <ul>
-<li>Python <code>tests/test_*.py</code>, per module or route; lint runs inside pytest (<a href="decisions/0037-lint-in-pytest.md">ADR 0037</a>).</li>
-<li>Frontend <code>static/*.test.mjs</code> under <code>node --test</code>; design previews <code>docs/design/v6/tests/*.test.mjs</code>.</li>
-<li>End to end: <code>scripts/e2e_drive.py</code> (22 Playwright steps, not in <code>scripts/check.sh</code>).</li>
+<li>Secret-shaped strings and EXIF images: <code>scripts/precommit_scan.py</code> (<code class="cite">.githooks/pre-commit:6@h1d6c6922</code>).</li>
+<li>Staged <code>*.py</code>: <code>ruff format --check</code> on the working-tree copy (<code class="cite">.githooks/pre-commit:12@h4611a802</code>).</li>
+<li>Staged <code>docs/decisions/*</code>: <code>tests/test_decisions_structure.py</code> (<code class="cite">.githooks/pre-commit:17@h9781e017</code>).</li>
+<li>KB anchor gate <code>$AW/scripts/kb_anchor_gate.py</code> (<code class="cite">.githooks/pre-commit:27@hd303a54b</code>) and docs-sync
+  <code>$AW/githooks/pre_commit_docs_sync.py</code> (<code class="cite">.githooks/pre-commit:36@h65340490</code>); <code>AW</code> defaults to
+  <code>$HOME/projects/agent-workflow</code>, missing file fails closed.</li>
+</ul>
+<h2 id="how-tests">HOW: tests<a class="headerlink" href="#how-tests" title="Link to this section">#</a></h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Suite</th>
+<th>Location</th>
+<th>Run</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Python (81 files), per module, route or script</td>
+<td><code>tests/test_*.py</code>; shared helper <code>tests/shooter_support.py</code></td>
+<td><code>uv run pytest -q [tests/test_x.py]</code></td>
+</tr>
+<tr>
+<td>Lint</td>
+<td>one <code>ruff-lint</code> item per pytest run (<code class="cite">tests/conftest.py::RuffLintItem@hba26a39b</code>, <a href="decisions/0037-lint-in-pytest.md">ADR 0037</a>)</td>
+<td>any pytest run</td>
+</tr>
+<tr>
+<td>Frontend (88 files)</td>
+<td><code>static/*.test.mjs</code>; <code>static/*_test.mjs</code> fall outside the glob</td>
+<td><code>node --test "static/*.test.mjs"</code></td>
+</tr>
+<tr>
+<td>Design previews</td>
+<td><code>docs/design/v6/tests/*.test.mjs</code></td>
+<td><code>node --test "docs/design/v6/tests/*.test.mjs"</code></td>
+</tr>
+<tr>
+<td>Build scripts</td>
+<td><code>scripts/*.test.mjs</code></td>
+<td><code>npm test</code> (<code class="cite">package.json:6@he68046e0</code>)</td>
+</tr>
+<tr>
+<td>End to end</td>
+<td><code>scripts/e2e_drive.py</code>, steps in <code>scripts/e2e_steps.py</code></td>
+<td>see CLI table; needs local Chrome</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>Pass globs, not a bare directory, to <code>node --test</code> (Node 22 reads a directory as a module path).</li>
+<li>Hooks and merge script are tested too: <code>tests/test_githook_precommit.py</code>, <code>tests/test_merge_branch*.py</code>.</li>
 </ul>
 <h2 id="how-design-decisions">HOW: design decisions<a class="headerlink" href="#how-design-decisions" title="Link to this section">#</a></h2>
 <p>Index: <a href="decisions/README.md">decisions/README.md</a>. Load-bearing:
@@ -463,7 +557,11 @@ Script exit codes: 0 clean, 1 failure, 2 bad usage (README "Setup").</p>
 <li>CORS unwired (<code class="cite">src/memripal/cors.py::add_cors@h3e407690</code>): the Android shell cannot reach the API yet.</li>
 <li><code class="cite">src/memripal/stt_provider.py::select_stt_provider@hdf37e953</code> has no app caller; <code>/recall/audio</code> always uses Muse.</li>
 <li><code>static/db/</code> SQLite worker (<code class="cite">static/db/client.js:1@hb0f07ec9</code>) has no non-test caller; stores use IndexedDB.</li>
-<li>The README pipeline diagram still shows the room-photo flow.</li>
+<li>README is stale for the route-first flow: its intro ("starts from one photo"), pipeline diagram and the
+  <code>pyproject.toml</code> description still describe the room-photo chain. Trust ADR 0038/0040 over README.</li>
+<li><code>scripts/check.sh</code> skips <code>scripts/*.test.mjs</code>; only <code>npm test</code> runs them.</li>
+<li>The docs-sync pre-commit gate needs <code>$AW/githooks/pre_commit_docs_sync.py</code>; until that agent-workflow change
+  lands every commit here fails closed.</li>
 </ul>
 <h2 id="remaining-owner-gates">Remaining owner gates<a class="headerlink" href="#remaining-owner-gates" title="Link to this section">#</a></h2>
 <ul>
