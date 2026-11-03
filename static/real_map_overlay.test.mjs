@@ -331,3 +331,70 @@ describe("real map: station overlay, pinning, a11y, attribution (MEM-077)", () =
     });
   }
 });
+
+// Covers: MEM-076, MEM-077
+// Requirement: reopening a route mounts the real map again on the same sketch svg without stacking maps.
+// A repeat mount first releases the previous one: the old map is removed (map.remove()), its .real-map box
+// leaves the DOM, and the svg goes back to its sketch place (same index under the route view) with its
+// sketch viewBox, no route-map-overlay class, no .lm-arrow and no lm-pinned left over, all before the new
+// map's first idle, so the route view shows the sketch, never a blank or doubled map. After the new idle
+// the svg is the overlay of the new map only. A newer mount started while an older one is still loading
+// wins: the older resolves null and exactly one map and one .real-map box exist.
+describe("real map: repeat mount reuses one map box (MEM-076, MEM-077)", () => {
+  const boxes = (view) => findAll(view, (n) => hasClass(n, "real-map"));
+  const arrows = (svg) => findAll(svg, (n) => hasClass(n, "lm-arrow"));
+  const pinned = (svg) => findAll(svg, (n) => hasClass(n, "lm-pinned"));
+
+  test("mount twice: old map removed, svg back in its sketch place before the new idle, one box", async () => {
+    const r = rig();
+    const sketchViewBox = r.svg.getAttribute("viewBox");
+    const sketchIndex = r.view.children.indexOf(r.svg);
+    const first = await mountIdle(r);
+    await moveTo(first, { center: WEST });
+    assert.ok(descendantOf(r.svg, first.getContainer()), "precondition: svg is the first map's overlay");
+    assert.ok(pinned(r.svg).length > 0, "precondition: a station is pinned on the first map");
+
+    const second = await r.loader.mount(r.svg, r.stations);
+    assert.ok(second?.map, "second mount made a map");
+    assert.ok(second.map !== first, "second mount made a new map");
+    assert.equal(first.removed, true, "first map's remove() was called");
+    assert.equal(r.libs.maps.length, 2, "one new map instance per mount");
+    assert.equal(boxes(r.view).length, 1, "exactly one .real-map box under the route view");
+    assert.ok(boxes(r.view)[0] === second.map.getContainer(), "the remaining box is the second map's");
+    assert.equal(descendantOf(first.getContainer(), r.view), false, "first box left the route view");
+
+    // Before the second map idles: the sketch is back where it was, as the sketch.
+    assert.ok(r.svg.parent === r.view, "svg back directly under the route view");
+    assert.equal(r.view.children.indexOf(r.svg), sketchIndex, "svg back at its original index");
+    assert.equal(r.svg.getAttribute("viewBox"), sketchViewBox, "sketch viewBox restored");
+    assert.equal(hasClass(r.svg, "route-map-overlay"), false, "overlay class removed");
+    assert.equal(arrows(r.svg).length, 0, "no .lm-arrow left on the sketch");
+    assert.equal(pinned(r.svg).length, 0, "no lm-pinned left on the sketch");
+    assert.equal(r.svg.hidden, false, "sketch visible while the second map loads");
+
+    setSize(second.map.getContainer(), 375, 300);
+    second.map.emit("load");
+    second.map.emit("idle");
+    await settle(5);
+    assert.ok(descendantOf(r.svg, second.map.getContainer()), "svg is the second map's overlay");
+    assert.equal(boxes(r.view).length, 1, "still exactly one .real-map box");
+    assert.equal(stationNodes(r.svg).length, r.stations.length, "marker count == station count");
+    assert.equal(arrows(r.svg).length, r.stations.length, "one .lm-arrow per station, none duplicated");
+  });
+
+  test("a newer mount started while the older is still loading wins: older null, one map, one box", async () => {
+    const r = rig();
+    const older = r.loader.mount(r.svg, r.stations);
+    const newer = r.loader.mount(r.svg, r.stations);
+    const [a, b] = await Promise.all([older, newer]);
+    assert.ok(a === null, "older mount resolves null");
+    assert.ok(b?.map, "newer mount made the map");
+    assert.equal(r.libs.maps.length, 1, "exactly one map instance");
+    assert.equal(boxes(r.view).length, 1, "exactly one .real-map box");
+    assert.ok(boxes(r.view)[0] === b.map.getContainer(), "the box is the newer map's");
+    b.map.emit("load");
+    b.map.emit("idle");
+    await settle(5);
+    assert.ok(descendantOf(r.svg, b.map.getContainer()), "svg is the newer map's overlay");
+  });
+});
