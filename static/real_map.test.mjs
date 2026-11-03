@@ -112,6 +112,11 @@ function fakeLibs({ mapThrows = false } = {}) {
     getContainer() {
       return typeof this.opts?.container === "object" ? this.opts.container : null;
     }
+    getCanvasContainer() {
+      // MEM-077: the overlay contract sets aria-hidden here; a plain fake element, sized like the container.
+      return (this._canvasContainer ??= { attrs: {}, setAttribute(k, v) { this.attrs[k] = String(v); },
+        getAttribute(k) { return this.attrs[k] ?? null; }, style: {}, classList: { add() {}, remove() {} } });
+    }
     addControl() { return this; }
     resize() { return this; }
     remove() { this.removed = true; }
@@ -419,6 +424,18 @@ describe("real map: loader and sketch fallback (MEM-076)", () => {
 
     res.map.emit("idle");
     await settle(5);
-    assert.ok(!inDom(r.view, r.svg) || r.svg.hidden, "sketch removed or hidden after the first idle");
+    // Superseded by MEM-077 overlay: the first idle no longer hides the sketch; the same svg becomes the
+    // station overlay (class route-map-overlay, visible, still under the route view, inside the map box).
+    const box = res.map.getContainer();
+    const under = (n, root) => {
+      for (let p = n?.parent; p; p = p.parent) if (p === root) return true;
+      return false;
+    };
+    const cls = r.svg.classList.contains("route-map-overlay") ||
+      String(r.svg.getAttribute("class") ?? "").split(/\s+/).includes("route-map-overlay");
+    assert.ok(cls, `sketch svg becomes the overlay after the first idle; class ${r.svg.getAttribute("class")}`);
+    assert.equal(r.svg.hidden, false, "overlay visible");
+    assert.ok(under(r.svg, r.view), "overlay still under the route view");
+    assert.ok(box && under(r.svg, box), "overlay inside the map container");
   });
 });
