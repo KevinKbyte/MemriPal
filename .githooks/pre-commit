@@ -26,4 +26,13 @@ if [ ! -f "$KB_GATE" ]; then
 else
     python "$KB_GATE" --repo . || status=1
 fi
+
+# PDOC-005 (A18): docs/onboarding.html must match docs/onboarding.md; fail closed when absent.
+DOCS_SYNC="$AW/githooks/pre_commit_docs_sync.py"
+if [ ! -f "$DOCS_SYNC" ]; then
+    echo "pre-commit: docs-sync gate missing: $DOCS_SYNC (set AW to the agent-workflow checkout)" >&2
+    status=1
+else
+    python "$DOCS_SYNC" --root . || status=1
+fi
 exit $status
