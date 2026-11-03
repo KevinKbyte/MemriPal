@@ -4,7 +4,7 @@
 // hit rates, and the live passcode header. The one home of the page wiring app.js calls; model text
 // only via textContent.
 
-import { formatHealth, lookupDemoPlace } from "./app.js";
+import { formatHealth, lookupDemoPlace, showPal } from "./app.js";
 import { DEMO_ROUTE } from "./demo_route.js";
 import { errorCode, runDemoPalace } from "./encode.js";
 import { createHistory } from "./history.js";
@@ -43,8 +43,8 @@ const MAX_RECALL_MS = 3 * 60 * 1000;
  *   confirm: () => boolean | Promise<boolean>,
  *   wait?: (ms: number) => Promise<unknown>,
  *   place?: ReturnType<typeof import("./place.js").createPlaceState>,
- *   setInterval?: (fn: () => void, ms: number) => unknown,
- *   clearInterval?: (handle: any) => void,
+ *   setInterval?: (fn: () => void, ms: number) => unknown, clearInterval?: (handle: any) => void,
+ *   matchMedia?: (query: string) => {matches: boolean},
  *   routes?: ReturnType<typeof import("./route_store.js").createRouteStore>,
  *   thumbnail?: import("./backup_routes.js").Thumbnail,
  *   realMap?: import("./route_view.js").RealMap,
@@ -159,6 +159,7 @@ export function wireApp(deps) {
     if (e) e.addEventListener("click", () => void fn());
   };
   showPublicBanner(doc, deps.location.hostname);
+  showPal(deps);
   // A fixture-mode server answers every speech relay call "live_only", so its runs never ask for the mic;
   // Start awaits this, so a click racing a slow /healthz cannot take the mic path first.
   const healthMode = showHealth(doc, deps.fetch);

@@ -3,3 +3,5 @@ fixtures/demo/notes.txt text eol=lf
 .claude/spec-cache/memripal/references/spec-*.md merge=union
 # Vendored sqlite-wasm node build: byte-exact so the sha256 in vendor-node/sqlite-wasm/VERSION holds.
 vendor-node/** -text
+# Pal SVGs are byte copies of the pal-design source; tests/test_pal_start_assets.py pins their sha256 (MEM-082).
+static/assets/*.svg -text

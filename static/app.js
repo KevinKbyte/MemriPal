@@ -157,6 +157,16 @@ async function drawResult(payload, isCurrent, deps) {
   return true;
 }
 
+/**
+ * MEM-082: the start-screen Pal blinks (pal-idle.svg) unless the user prefers reduced motion; with no
+ * matchMedia (older WebViews, node tests) the idle Pal stays.
+ * @param {{doc: Document, matchMedia?: (query: string) => {matches: boolean}}} deps
+ */
+export function showPal({ doc, matchMedia }) {
+  const pal = /** @type {HTMLImageElement | null} */ (doc.getElementById("empty-state"));
+  if (pal && matchMedia?.("(prefers-reduced-motion: reduce)").matches) pal.src = "/static/assets/pal-still.svg";
+}
+
 // One gate for every upload source, so a photo pick and "Load demo" never race each other.
 const uploads = latestOnly();
 
@@ -420,6 +430,8 @@ if (typeof document !== "undefined") {
       getUserMedia: media ? media.getUserMedia.bind(media) : undefined,
       AudioContext: globalThis.AudioContext || /** @type {any} */ (globalThis).webkitAudioContext,
       location,
+      // Lazy and optional like getUserMedia: a host without matchMedia keeps the idle Pal.
+      matchMedia: globalThis.matchMedia ? (query) => globalThis.matchMedia(query) : undefined,
       confirm: () => window.confirm("Delete this rehearsal?"),
     }),
   );

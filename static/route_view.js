@@ -111,6 +111,8 @@ export function createRouteView({ doc, routes, rehearsals, onPractice, realMap }
     try {
       const list = await routes.listRoutes();
       byId("routes-list")?.replaceChildren(...(await Promise.all(list.map(card))));
+      // MEM-082: Pal is the start screen's empty state, so any route (stored or Load demo's) hides it for good.
+      if (list.length) setHidden("empty-state", true);
       say(homeError);
     } catch {
       byId("routes-list")?.replaceChildren();
