@@ -347,3 +347,25 @@ NFR: CSP unchanged (`img-src 'self' data: blob:`); SMIL in an `<img>` runs no sc
   lint passes on every `static/**/*.svg`; CSP strings unchanged.
 
 Tests: tests/test_assets_wiring.py (replaces the `empty-state.webp` asserts at :26 and :153-159; adds the SVG lint)
+## MEM-081 Route review: drag to reorder, Edit-revealed trash
+
+Supersedes the Up/Down/Drop row buttons of the Load-demo route review. ADR 0044.
+Root problem: reordering took many Up/Down taps and a destructive Drop sat on every row.
+Actors: the user; `static/route_review.js` (new; `createRouteReview` re-exported by `static/encode.js`),
+`static/index.html` `#route-review`.
+- Row: `N.` | grip button (data-action drag, "Reorder <label>") | label | trash (data-action drop, "Remove <label>"),
+  the trash rendered only while `#route-edit` is pressed (aria-pressed, Edit/Done). Leaving edit mode cancels a confirm.
+- Drag: pointerdown on the grip -> li.dragging + list.is-dragging; pointermove moves the row live to `dropSlot`
+  (count of other rows' midpoints < clientY); pointerup commits via `moveTo(from, to)`; pointercancel/Escape revert.
+- Keyboard on the grip: ArrowUp/ArrowDown one step, Home/End to the ends; focus stays on the moved grip; `#route-live`
+  (polite) says "<label> moved to position i of N".
+- Delete: first trash tap arms ("Remove this place?" Remove/Keep); Remove drops it and shows `#route-toast`
+  "Removed <label>" with `#route-undo` Undo (stack); the toast mirrors canUndo; Generate hides it.
+- Model: `moveTo(from, to)` false when out of range or from === to; `move(i, delta)` kept.
+- Design shots: `scripts/screenshot_review_design.py` sizes the viewport to the page's scrollHeight (no full_page,
+  which misplaces sticky elements); 2 widths x 2 themes.
+- Accept: trash absent until Edit is pressed; one trash tap removes nothing; confirm + Undo restores; a drag or arrow
+  key reorder is the order Generate passes to `store.saveRoute`.
+
+Tests: static/encode.test.mjs, static/route_review*.test.mjs, static/index_markup*.test.mjs,
+tests/test_screenshot_review_design.py

@@ -113,3 +113,5 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0043](0043-station-photo-optional-in-backups.md) Station `photo` optional in backup v2: omitted on export when none
   is stored, accepted absent on import, still validated when present; partially supersedes 0033 (d) (over excluding
   the demo route by id, skipping photo-less routes, or a placeholder JPEG).
+- [0044](0044-route-review-drag-and-edit-trash.md) Route review reorders by drag (grip, pointer + keyboard) and removes
+  through an Edit-revealed trash with confirm + Undo (over swipe-to-reveal or long-press).
