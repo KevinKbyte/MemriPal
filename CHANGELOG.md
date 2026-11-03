@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.39] - 2026-11-03
+
+### Added
+
+- Onboarding page (docs/onboarding.md + generated docs/onboarding.html, project_docs generator) with CLI, tests and gotchas tables plus the hooks list; the pre-commit hook runs agent-workflow's PDOC-005 docs-sync leg, which fails closed if the leg is absent; the submission checklist gains API credit status (HANDOFF-2).
+
 ## [0.20.38] - 2026-11-03
 
 ### Added
