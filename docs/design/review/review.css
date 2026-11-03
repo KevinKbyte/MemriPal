@@ -153,8 +153,9 @@
   border-color: var(--lamp);
 }
 
+/* Hover only darkens the border: --ink text on a --lamp fill drops to 1.5:1 in dark mode. */
 .route-toast .route-undo:hover {
-  background: var(--lamp);
+  border-color: var(--lamp-ink);
 }
 
 .sr-only {
