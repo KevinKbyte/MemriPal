@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.38] - 2026-11-03
+
+### Added
+
+- Demo-flow design docs: ADRs 0046-0053 (offline walking routes + geocode, auto-loci + swap, Memorize breakdown + route recommendation, recall schedule + push reminders, two flows in one codebase, static-part sub-loci, floor-plan palace, station street address + POI coord precision) and the build plan docs/plans/2026-11-03-demo-flow.md (MEM-083..MEM-093).
+
 ## [0.20.37] - 2026-11-03
 
 ### Changed
