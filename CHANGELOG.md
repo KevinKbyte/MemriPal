@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.35] - 2026-11-03
+
+### Changed
+
+- Route review: reorder places by dragging the grip (pointer or keyboard) instead of tapping Up/Down; the trash appears only after tapping Edit, asks to confirm, and the removal can be undone from a toast; ADR 0044 (MEM-081).
+
 ## [0.20.34] - 2026-11-03
 
 ### Added
