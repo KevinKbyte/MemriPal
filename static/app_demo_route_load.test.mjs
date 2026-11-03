@@ -3,14 +3,15 @@
 // route"). Clicking Load demo puts static/demo_route.js DEMO_ROUTE into the route store as one saved route:
 // its id, name and kind "daily", its 6 stations in docs/design/map/preview.js order with the preview's
 // titles as names and the preview's coords (within 1e-4, the store's 4 dp). S1 #routes-list then shows its
-// card (Open button aria-label "Open <DEMO_ROUTE.name>", no Draft chip), and opening it lists the 6
-// stations on S5 and mounts the real map on #route-map with all 6 in-bbox stations. Seeding is idempotent:
+// card (Open button aria-label "Open <DEMO_ROUTE.name>", no Draft chip). Since the map-first shell (MEM-072)
+// Load demo also opens the route: the 6 stations list on S5 and the real map mounts on #route-map with all 6
+// in-bbox stations; nothing mounts the map before Load demo. Seeding is idempotent:
 // a second Load demo, also after a reload over the same store, keeps exactly one demo route. Seeding
-// never touches the server (no /station, /baseline or coordinate-bearing request) and never mounts the
-// map before route-view entry. The room demo on the same click is unchanged (one /loci POST, #recall shown;
+// never touches the server (no /station, /baseline or coordinate-bearing request). The room demo on the same
+// click is unchanged (one /loci POST, #recall shown;
 // its existing tests pin the rest), and a route store whose writes fail never breaks it or leaks a rejection.
 // Loading path: the existing #load-demo click (flow.js wireApp) seeds deps.routes when deps.routes is
-// present; no new control. Landing on S5 stays with B10, which retires the room demo that owns #recall here.
+// present; no new control.
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -59,14 +60,6 @@ async function loadDemoRoute(b, count = 1) {
   await settle(20);
 }
 
-async function openCard(b, li) {
-  const open = find(li, (n) => n.tagName === "BUTTON" && n.dataset.action === "open");
-  assert.ok(open, "the demo route card has an Open button");
-  b.p.fire(open, "click");
-  await until(() => !el(b, "route-view").hidden, "#route-view shown for the demo route", TURNS);
-  await settle(20);
-}
-
 /** The demo route module, or {} while it does not exist (so RED fails on an assertion naming it). */
 async function demoModule() {
   const mod = await import("./demo_route.js").catch(() => ({}));
@@ -77,8 +70,8 @@ async function demoModule() {
 const LATLON_TEXT = /-?\d{1,3}\.\d{2,}\s*(?:,|\/|_|&\w+=|;)\s*-?\d{1,3}\.\d{2,}/;
 
 // Covers: MEM-077
-// Requirement: Load demo adds the Kendall demo route to the route store and S1; opening it shows the
-// 6 stations and mounts the real map with them.
+// Requirement: Load demo adds the Kendall demo route to the route store and S1 and opens it (MEM-072): the
+// 6 stations show and the real map mounts with them, never before Load demo.
 describe("Load demo seeds the Kendall demo route (plan S6, MEM-077)", () => {
   test("one saved route of 6 stations: preview titles in order, preview coords, all in the bbox", async (t) => {
     const rejections = watchRejections(t);
@@ -123,15 +116,17 @@ describe("Load demo seeds the Kendall demo route (plan S6, MEM-077)", () => {
     assert.ok(!li.textContent.includes("Draft"), "no Draft chip on the demo route");
   });
 
-  test("opening the card lists the 6 stations on S5 and mounts the real map once with them", async (t) => {
+  test("Load demo opens the route: 6 stations on S5 and one real-map mount with them, none before (MEM-072)", async (t) => {
     const rejections = watchRejections(t);
     const { b, realMap } = start();
+    await settle(20);
+    assert.equal(realMap.calls.length, 0, "no map mount before Load demo");
     await loadDemoRoute(b);
-    assert.equal(realMap.calls.length, 0, "no map mount before route-view entry");
-    await openCard(b, cards(b)[0]);
+    await until(() => !el(b, "route-view").hidden, "#route-view shown by Load demo (MEM-072)", TURNS);
+    await settle(20);
     const items = findAll(el(b, "route-view-stations"), (n) => n.tagName === "LI");
     assert.deepEqual(items.map((li) => li.textContent), PREVIEW.map((p) => p.title));
-    assert.equal(realMap.calls.length, 1, "one real-map mount on route-view entry");
+    assert.equal(realMap.calls.length, 1, "one real-map mount when Load demo opens the route");
     const [call] = realMap.calls;
     assert.equal(call.svg, el(b, "route-map"), "mounted on #route-map");
     assert.equal(call.stations.length, 6, "mounted with all 6 demo stations");
