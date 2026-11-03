@@ -1,12 +1,12 @@
-// Covers: MEM-042, MEM-054
-// Requirement: the page offers a "Download backup" button and a backup file input, both visible on a
-// fresh page. Download writes memripal-backup.json (backup v2) through a Blob URL on a clicked
+// Covers: MEM-042, MEM-054, MEM-072
+// Requirement: the page offers a "Download backup" button and a backup file input, both visible in the
+// Settings tab (MEM-072) on a fresh page. Download writes memripal-backup.json (backup v2) through a Blob URL on a clicked
 // <a download>, then revokes the URL; a store over a cap shows an error line and writes no file.
 // Beside the button one line reads "Backups never include map coordinates or street photos. Station
 // names and photos can still show where you walk." Import checks the file size against
 // MAX_BACKUP_BYTES (8 MiB) before reading it, shows "n added, m already present" (plus ", k skipped"
 // when k > 0; plan D11), "Older backup format, not supported" for a v1 file, or
-// "Import failed: <reason>" as text, re-renders the history, and imported strings (incl. an
+// "Import failed: <reason>" as text, re-renders the history in the Recall tab (MEM-072), and imported strings (incl. an
 // <img onerror> payload) render as literal text: no img element is created.
 // Contract (RED; GREEN wires static/palace_export.js into wireApp via flow.js / encode.js):
 //   index.html has <button id="backup-export">, <input id="backup-import" type="file">, #backup-status.
@@ -20,6 +20,7 @@ import { readFileSync } from "node:fs";
 
 import { fakePage, findAll, jsonResponse, settle, until, visibleText } from "./fake_dom_test.mjs";
 import { POINT, associationKey, backup, backupV1, entry, fullRecord, rehearsal, snapshot, stores } from "./backup_fixtures_test.mjs";
+import { showTab } from "./tabbar.js";
 
 const flow = await import("./flow.js").catch((err) => ({ __missing: String(err) }));
 const mod = await import("./palace_export.js").catch((err) => ({ __missing: String(err) }));
@@ -77,7 +78,7 @@ function pageFromHtml() {
 const tagOf = (id) => HTML.match(new RegExp(`<[a-z][a-z0-9]*\\b[^>]*\\bid="${id}"[^>]*>`, "i"))?.[0] ?? null;
 
 /**
- * A freshly opened page over `s` (backup_fixtures stores). URL.createObjectURL / revokeObjectURL are
+ * A freshly opened page over `s` (backup_fixtures stores), on the Settings tab (MEM-072). URL.createObjectURL / revokeObjectURL are
  * mocked on t; every <a> the code creates gets a click() spy recording its href/download at click time.
  */
 function boot(t, s = stores()) {
@@ -116,8 +117,12 @@ function boot(t, s = stores()) {
     confirm: () => true,
     wait: async () => {},
   });
+  showTab("settings", p.doc);
   return { p, s, blobs, revoked, clicks };
 }
+
+/** The user opens tab `name` (tabbar.js showTab, MEM-072). */
+const openTab = (b, name) => showTab(name, b.p.doc);
 
 const el = (b, id) => {
   const e = b.p.els[id];
@@ -162,9 +167,10 @@ function watchRejections(t) {
   return seen;
 }
 
-// Covers: MEM-042, MEM-054
-// Requirement: E1 the backup controls are on the page: a visible "Download backup" button, a visible
-// file input to import a backup, a status line, and the one-line privacy note beside the button
+// Covers: MEM-042, MEM-054, MEM-072
+// Requirement: E1 the backup controls are on the page in the Settings tab (MEM-072): a visible "Download
+// backup" button, a visible file input to import a backup, a status line, and the one-line privacy note
+// beside the button
 // (B9 copy: "Backups never include map coordinates or street photos. Station names and photos can
 // still show where you walk.").
 describe("MEM-042 E1: backup controls on a fresh page", () => {
@@ -188,9 +194,10 @@ describe("MEM-042 E1: backup controls on a fresh page", () => {
   });
 });
 
-// Covers: MEM-042, MEM-054
+// Covers: MEM-042, MEM-054, MEM-072
 // Requirement: E1 Download backup writes memripal-backup.json (backup v2) from a Blob URL on a clicked <a download>
-// and revokes the URL after the click; a store over an I1 cap shows an error line and writes no file.
+// and revokes the URL after the click; a store over an I1 cap shows an error line, visible in the Settings
+// tab (MEM-072), and writes no file.
 describe("MEM-042 E1: Download backup", () => {
   test("click -> Blob of the backup JSON, <a download=memripal-backup.json> clicked, URL revoked after", async (t) => {
     const s = stores();
@@ -224,10 +231,11 @@ describe("MEM-042 E1: Download backup", () => {
   });
 });
 
-// Covers: MEM-042, MEM-054
+// Covers: MEM-042, MEM-054, MEM-072
 // Requirement: I1/I5 + B9 import checks file.size against MAX_BACKUP_BYTES (8 MiB) before reading,
 // then reports "n added, m already present" (plus ", k skipped" when k > 0; D11) or
-// "Import failed: <reason>" as one text line; a rejected file writes nothing.
+// "Import failed: <reason>" as one text line, visible in the Settings tab (MEM-072); a rejected file
+// writes nothing.
 describe("MEM-054 I1/I5: Import from the file input", () => {
   test("a file over MAX_BACKUP_BYTES is refused before file.text() is called", async (t) => {
     const rejections = watchRejections(t);
@@ -278,23 +286,28 @@ describe("MEM-054 I1/I5: Import from the file input", () => {
   });
 });
 
-// Covers: MEM-042
-// Requirement: I5 the rehearsal history and hit rates re-render after an import, without a reload.
+// Covers: MEM-042, MEM-072
+// Requirement: I5 the rehearsal history and hit rates in the Recall tab (MEM-072) re-render after an
+// import from the Settings tab (MEM-072), without a reload.
 describe("MEM-042 I5: history after import", () => {
   test("imported demo rehearsals are listed with their hit rates", async (t) => {
     const b = boot(t);
     await settle(30);
+    openTab(b, "recall");
     assert.equal(historyRows(b).length, 0, "empty history before import");
+    openTab(b, "settings");
     chooseFile(b, fileOf(JSON.stringify(backup({ rehearsals: [rehearsal(), rehearsal()] }))));
+    openTab(b, "recall");
     await until(() => historyRows(b).length === 2, "imported runs listed", TURNS);
     assert.ok(shown(b, "hit-rates"), "hit rates visible");
     assert.ok(visibleText(el(b, "hit-rates")).includes(`${POINT.label}: 2/2`), "hit rates include the imported runs");
   });
 });
 
-// Covers: MEM-042
+// Covers: MEM-042, MEM-072
 // Requirement: I6 imported strings reach the page only as text: an <img onerror> payload in a
-// transcript, a point label and a record field renders literally and creates no img element.
+// transcript, a point label and a record field renders literally in the Recall tab (MEM-072) history
+// and creates no img element.
 describe("MEM-042 I6: imported strings render as text", () => {
   test("an <img onerror> payload renders as literal text; no img element, no HTML write", async (t) => {
     const b = boot(t);
@@ -303,6 +316,7 @@ describe("MEM-042 I6: imported strings render as text", () => {
     const r = rehearsal({ transcript: PAYLOAD, points: [{ ...POINT, label: PAYLOAD, source_quote: PAYLOAD, span: PAYLOAD }] });
     const assoc = { record: fullRecord("milk", "lamp", { question: PAYLOAD, visual: PAYLOAD }), status: "valid" };
     chooseFile(b, fileOf(JSON.stringify(backup({ associations: [assoc], rehearsals: [r] }))));
+    openTab(b, "recall");
     await until(() => historyRows(b).length === 1, "imported run listed", TURNS);
     assert.equal(status(b), "2 added, 0 already present");
     assert.ok(visibleText(el(b, "hit-rates")).includes(`${PAYLOAD}: 1/1`), "point label shown literally in hit rates");
@@ -317,9 +331,9 @@ describe("MEM-042 I6: imported strings render as text", () => {
   });
 });
 
-// Covers: MEM-054
+// Covers: MEM-054, MEM-072
 // Requirement: B9 crit 7 + D11 / crit 9 at the page: a v1 backup file shows "Older backup format, not
-// supported" and writes nothing; importing the same v2 file twice shows "0 added, 2 already present"
+// supported", visible in the Settings tab (MEM-072), and writes nothing; importing the same v2 file twice shows "0 added, 2 already present"
 // the second time and leaves the store as the first import left it.
 describe("MEM-054 import status: v1 refused, double import", () => {
   test('a v1 file -> "Older backup format, not supported", nothing written', async (t) => {
