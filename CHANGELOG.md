@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.36] - 2026-11-03
+
+### Fixed
+
+- E2E driver: the e2e server now runs with a per-IP rate limit a full run never trips, so steps 11 (reload) and 12 (rehearsal delete) no longer fail on a `POST /split` 429 (MEM-034).
+
 ## [0.20.35] - 2026-11-03
 
 ### Changed
