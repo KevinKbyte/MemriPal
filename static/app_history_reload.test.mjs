@@ -1,7 +1,7 @@
-// Covers: MEM-033
-// Requirement: stored rehearsals are visible as soon as the page opens: with one or more saved runs
-// of the demo palace, the rehearsal history (and its hit rates) shows on load without running "Load
-// demo" again, also right after a recall replay and a reload. Every history row has a "View" control
+// Covers: MEM-033, MEM-072
+// Requirement: stored rehearsals are visible in the Recall tab (MEM-072) as soon as the page opens: with
+// one or more saved runs of the demo palace, the rehearsal history (and its hit rates) shows on load in
+// the Recall tab without running "Load demo" again, also right after a recall replay and a reload. Every history row has a "View" control
 // that opens that run's "what you said vs what is in the palace" from the stored record alone (said
 // text for a hit, "not said" for a miss, plus the palace's source quote), set via textContent only.
 // Removing a run via that history still needs a confirm and offers Undo. With no saved runs the page
@@ -9,7 +9,8 @@
 // Contract (RED; GREEN implements in static/flow.js, and static/index.html if the history moves):
 //   wireApp renders the demo palace's history on start (no click needed). The #rehearsals list (or
 //     whichever index.html element holds it) and every index.html ancestor of it are not hidden once
-//     >= 1 run is stored; with 0 runs #recall keeps its initial hidden state.
+//     >= 1 run is stored and the user opens the Recall tab (tabbar.js showTab("recall"), MEM-072);
+//     with 0 runs #recall keeps its initial hidden state.
 //   Each #rehearsals row (<li>, direct child) keeps <button data-action="delete-rehearsal"> and gains a
 //     <button> whose text starts "View"; its click renders renderSaidVsPalace(record) of THAT row's
 //     stored record into a shown page element. No network request, no palace points needed.
@@ -21,6 +22,7 @@ import { readFileSync } from "node:fs";
 import { fakePage, findAll, jsonResponse, memoryAdapter, record, settle, until, visibleText } from "./fake_dom_test.mjs";
 import { createPalaceStore } from "./palace_store.js";
 import { createRehearsalStore } from "./rehearsals.js";
+import { showTab } from "./tabbar.js";
 
 const flow = await import("./flow.js").catch((err) => ({ __missing: String(err) }));
 
@@ -145,7 +147,7 @@ async function seeded() {
   return { rehAdapter, a, b };
 }
 
-/** A freshly opened page (a reload) over the given stores; never clicks Load demo. */
+/** A freshly opened page (a reload) over the given stores, on the Recall tab (MEM-072); never clicks Load demo. */
 function boot(opts = {}) {
   const p = pageFromHtml();
   const server = opts.server ?? demoServer();
@@ -166,6 +168,7 @@ function boot(opts = {}) {
     },
     wait: async () => {},
   });
+  showTab("recall", p.doc);
   return { p, server, rehAdapter, palaceAdapter, confirms };
 }
 
@@ -223,9 +226,10 @@ function watchRejections(t) {
   return seen;
 }
 
-// Covers: MEM-033
-// Requirement: saved rehearsals of the demo palace are listed (with per-point hit rates) as soon as
-// the page opens, in the same order "Load demo" shows them; with none saved the page is unchanged.
+// Covers: MEM-033, MEM-072
+// Requirement: saved rehearsals of the demo palace are listed (with per-point hit rates) in the Recall
+// tab (MEM-072) as soon as the page opens, in the same order "Load demo" shows them; with none saved
+// the page is unchanged.
 describe("rehearsal history on page load", () => {
   test("stored runs are listed on load without Load demo: one row per demo-palace run, plus hit rates", async (t) => {
     const rejections = watchRejections(t);
@@ -293,10 +297,10 @@ describe("rehearsal history on page load", () => {
   });
 });
 
-// Covers: MEM-033
-// Requirement: every history row opens that run's "what you said vs what is in the palace" (said text
-// for a hit, "not said" for a miss, with the palace's source quote), from the stored record alone;
-// stored text is shown as text, never as markup.
+// Covers: MEM-033, MEM-072
+// Requirement: every history row in the Recall tab (MEM-072) opens that run's "what you said vs what is
+// in the palace" (said text for a hit, "not said" for a miss, with the palace's source quote), from the
+// stored record alone; stored text is shown as text, never as markup.
 describe("per-run said-vs-palace view", () => {
   test("each row's View renders that run's said vs palace from the stored record alone", async (t) => {
     const rejections = watchRejections(t);
@@ -351,9 +355,9 @@ describe("per-run said-vs-palace view", () => {
   });
 });
 
-// Covers: MEM-033
-// Requirement: removing a run via the history shown on load still asks to confirm first and offers
-// a visible Undo that puts the identical record back.
+// Covers: MEM-033, MEM-072
+// Requirement: removing a run via the history shown on load in the Recall tab (MEM-072) still asks to
+// confirm first and offers a visible Undo that puts the identical record back.
 describe("removing a run via the history shown on load", () => {
   test("declined confirm keeps the run; accepted removes it with a visible Undo that restores it", async () => {
     const { rehAdapter, a } = await seeded();
