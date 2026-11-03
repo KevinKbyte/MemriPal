@@ -249,15 +249,17 @@ Decided-by: ADR-0041
 Root problem: two basemaps (map, sketch) must share one route renderer, and markers must stay bounded at 1000+
 landmarks.
 Actors: the MEM-076 loader, MapLibre `map.project`, the route overlay SVG.
-NFR: DOM marker count == in-viewport count after every `moveend`.
+NFR: DOM marker count == station count + in-viewport landmark count after every `moveend`.
 - One SVG overlay above the canvas, re-positioned via `map.project([lon, lat])` on `move`; no route layers in the style.
-- Markers: only stations and landmarks inside the viewport bounds (plus the ADR 0038 margin) exist in the DOM,
-  recomputed on `moveend`.
+- Markers: stations (3-8 per route) are always drawn, pinned to the map edge when off-map (Q2 below). Viewport
+  culling (viewport + 25% margin, `map-shell.js` `cull()`, recomputed on `moveend`) applies only to off-route
+  landmarks, per ADR 0038 rule 3; the app has none yet. Amended 2026-11-02 (item 11): previously all stations and
+  landmarks were culled, which contradicted Q2.
 - A11y: map canvas container `aria-hidden="true"`; the route and landmark lists stay the accessible path.
 - Attribution: Protomaps + "(c) OpenStreetMap contributors" visible without interaction at 375 px.
 - Any station outside the bbox -> the whole route renders as sketch.
 - Accept: each station's overlay point within 1 px of `map.project` after a pan and a zoom; marker DOM count ==
-  in-viewport count at 3 viewports; canvas container `aria-hidden="true"`; attribution text visible at 375 px; one
+  station count + in-viewport landmark count at 3 viewports; canvas container `aria-hidden="true"`; attribution text visible at 375 px; one
   out-of-bbox station -> sketch and 0 extract fetches.
 
 Product rule, route as memory palace (Kev, 2026-11-02): the route IS the palace, so it must be worth keeping.
