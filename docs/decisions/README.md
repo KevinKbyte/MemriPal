@@ -107,3 +107,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0041](0041-real-map-whole-file-pmtiles.md) Real map: bundled Kendall Square PMTiles extract fetched whole into
   pmtiles `FileSource`, validated, sketch fallback; maplibre-gl 5.24 CSP build; own Python extract script; amends 0038
   condition 2 (over HTTP Range, a z/x/y tile dir, MapLibre 6, or the Go `pmtiles extract` CLI).
+- [0042](0042-kendall-demo-route-seeding.md) Kendall demo route: frozen `static/demo_route.js` module, seeded by the
+  existing Load demo click via new `route_store.seedRoute` (keeps coords) (over a backup fixture or new fixture file, a
+  dedicated button, or reusing `restoreRoute`, which drops coords).

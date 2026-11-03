@@ -214,8 +214,8 @@ sh scripts/check.sh
 ```
 
 Visual-verify the UI against a running app (needs local Chrome): screenshots `initial.png`, `load_demo.png` (after
-clicking Load demo) and `route_view.png` (after importing `fixtures/demo/route_backup.json` through backup import) into
-`<outdir>`; prints the loci items. Exit 0 clean, 1 on any page/console error (a
+clicking Load demo), `route_view.png` (after importing `fixtures/demo/route_backup.json` through backup import) and
+`demo_route_light.png`/`demo_route_dark.png` (the Kendall demo route on the real map, 375 px) into `<outdir>`; prints the loci items. Exit 0 clean, 1 on any page/console error (a
 `/favicon.ico` 404 is ignored), 2 on bad usage.
 
 ```bash
