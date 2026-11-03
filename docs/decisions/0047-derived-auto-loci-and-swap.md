@@ -42,8 +42,9 @@ Where candidates come from:
 
 Where the unused pool lives:
 
-- (a) Not stored: the pool is re-derived; only a candidate the user acted on persists, as KV `candidate:<osm_id>`
-  (chosen).
+- (a) Not stored: the pool is re-derived; only a candidate the user acted on persists: KV `candidate:osm:<osm_id>`
+  for a map-derived candidate, `candidate:st:<station_id>` for a swapped-out walk station (no OSM id); the value is
+  the full station, `photo_ref` included (chosen).
   Pros: no Route or Station schema change, so backup v2 import and export stay as they are; nothing to migrate.
   Cons: acted-on candidates are not in backups.
 - (b) Per-route `Route.alternates: Station[]` with `origin: "auto" | "walk"`; Landmarks tab a view over all routes
@@ -61,9 +62,9 @@ Where the unused pool lives:
 ## Decision
 
 Candidates (a), pool (a). Swap exchanges one station and one candidate in a single `putRoute`, never drops data
-(the outgoing station keeps its `photo_ref` and persists as a candidate), does not call `dropStation`, and respects
-`MAX_STATIONS`. The Landmarks tab is a derived view: the route's stations
-plus its unused auto candidates.
+(the outgoing station persists whole, `photo_ref` included, under its candidate key), does not call `dropStation`,
+and respects `MAX_STATIONS`. The Landmarks tab is a derived view: the route's stations plus its unused auto
+candidates.
 
 ## Why this over the others
 
@@ -76,5 +77,5 @@ user touched keeps the store minimal while the rest is recomputable.
 
 - New pure module (candidate derivation) with golden tests on the Kendall route: counts, order, dedupe, spacing.
 - Swap needs its own store method and test that the outgoing station's photo survives.
-- `candidate:<osm_id>` KV entries are local-only; backups do not carry them.
+- `candidate:osm:*` and `candidate:st:*` KV entries are local-only; backups do not carry them.
 - Not decided: tuning the 30 m vs 50 m radius per route density.

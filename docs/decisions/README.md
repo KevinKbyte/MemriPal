@@ -123,8 +123,8 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
   graph + named-POI JSON, in-process A*, fuzzy geocode with a mandatory "meta office" alias and map-click fallback
   (over pmtiles roads, Google, public OSRM/Nominatim/Overpass, Stadia, ORS live, or an osmium/osmnx toolchain).
 - [0047](0047-derived-auto-loci-and-swap.md) Auto-loci derived on demand from the POI table along the route; only
-  acted-on candidates persist (`candidate:<osm_id>`); swap moves in one `putRoute`, never drops (over Spark-named
-  landmarks, `Route.alternates`, `Station.alternates`, or a global library).
+  acted-on candidates persist (`candidate:osm:<osm_id>` / `candidate:st:<station_id>`); swap moves in one
+  `putRoute`, never drops (over Spark-named landmarks, `Route.alternates`, `Station.alternates`, or a global library).
 - [0048](0048-memorize-breakdown-and-route-recommendation.md) Memorize reuses `/split` notes + `/associate` per
   station, client-side mnemonics, deterministic Jaccard route recommendation, `MemorizeItem` fills backup `lists[]`
   (amends 0033) (over `/deconstruct`, Spark ranking, or embeddings).
