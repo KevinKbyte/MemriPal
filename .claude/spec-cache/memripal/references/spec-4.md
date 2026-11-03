@@ -320,3 +320,30 @@ Actors: Muse Spark; `src/memripal/station.py`.
   no segment request with that phrase; "parked car" then "brick arch" -> exactly 1 box.
 
 Tests: tests/test_station.py
+
+## MEM-082 Start-screen Pal
+
+Supersedes the `empty-state.webp` parts of MEM-040 (Kev, 2026-11-03). Manifest icons, the `style.css` 360 px rules
+and the palace hide rule stay.
+Decided-by: none
+Root problem: the start screen showed a static WebP; the app mascot (Pal) should greet the user, animated where
+motion is allowed, without widening the CSP or adding script to an image.
+Actors: the user; `static/index.html`, app JS, `static/assets/pal-idle.svg`, `static/assets/pal-still.svg`; source
+dog-mascot `public/pal/` (`export_pal.js`).
+NFR: CSP unchanged (`img-src 'self' data: blob:`); SMIL in an `<img>` runs no script; ASCII only.
+- Assets: `static/assets/pal-idle.svg` (SMIL auto-blink, 4 s loop, `repeatCount="indefinite"`) and
+  `static/assets/pal-still.svg` (same frame, no animation), copied from dog-mascot `public/pal/`; bytes identical to
+  the source.
+- `index.html`: `<img id="empty-state" src="/static/assets/pal-idle.svg" alt="">`, same position as MEM-040; a bare
+  `<img>`, no `<object>`, `<embed>` or inline SVG.
+- Reduced motion: when `matchMedia('(prefers-reduced-motion: reduce)')` matches, app JS sets `src` to
+  `/static/assets/pal-still.svg`.
+- Visibility: gets the `hidden` attribute once a palace's places render (MEM-040 rule, kept) AND once a route exists
+  (e.g. Load demo seeds the Kendall route, MEM-077); stays hidden for the page session.
+- Lint: every `static/**/*.svg` contains none of `<script`, `<style`, `style=`, `on*=` attributes, `foreignObject`,
+  or an external href (`http:`, `https:`, `//`).
+- Accept: `#empty-state` src is `pal-idle.svg`, alt empty, no `<object>`/`<embed>`; both SVGs byte-equal the
+  dog-mascot sources; reduced motion -> `pal-still.svg`; hidden after places render and after a route exists; SVG
+  lint passes on every `static/**/*.svg`; CSP strings unchanged.
+
+Tests: tests/test_assets_wiring.py (replaces the `empty-state.webp` asserts at :26 and :153-159; adds the SVG lint)
