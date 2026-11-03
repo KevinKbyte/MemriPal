@@ -156,6 +156,11 @@ def _load(name):
     return module
 
 
+def _open_drawer(page):
+    if not page.locator("#drawer").evaluate("d => d.open", timeout=TIMEOUT_MS):
+        page.locator(".drawer-handle").click(timeout=TIMEOUT_MS)
+
+
 def _drive(page, data):
     """Load -> seed -> open the route -> first idle -> station roads -> mouse pan -> wheel zoom.
 
@@ -166,16 +171,17 @@ def _drive(page, data):
         data["route_name"], data["stations"] = page.evaluate(DEMO_JS)
     page.evaluate(SEED_JS, [data["route_name"], data["stations"]])
     page.reload()
+    _open_drawer(page)  # MEM-072: the route list lives in the route drawer
     page.get_by_role("button", name=f"Open {data['route_name']}").click(timeout=TIMEOUT_MS)
-    # real_map.js drops .real-map-pending on the map's first idle.
-    page.locator("#route-view .real-map:not(.real-map-pending)").wait_for(timeout=TIMEOUT_MS)
+    # real_map.js drops .real-map-pending on the map's first idle; the map is the shell's .map-wrap (MEM-072).
+    page.locator(".map-wrap .real-map:not(.real-map-pending)").wait_for(timeout=TIMEOUT_MS)
     data["phases"].append("load")
 
     page.evaluate(SETTLE_JS)
     data["station_roads"] = page.evaluate(ROADS_JS, [data["stations"], ROAD_BOX_PX / 2, list(NOT_STREETS)])
     data["phases"].append("roads")
 
-    box = page.locator("#route-view .real-map").bounding_box()
+    box = page.locator(".map-wrap .real-map").bounding_box()
     cx, cy = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
     data["views"].append(page.evaluate(VIEW_JS))
     page.evaluate(ARM_IDLE_JS)
@@ -384,3 +390,110 @@ class TestDemoRouteOnKendallStreets:
         assert demo_run["http_errors"] == []
         page_errors = [e for e in demo_run["events"] if e["kind"].startswith("http")]
         assert page_errors == []
+
+
+SHELL_VIEWPORTS = {"phone": (375, 812), "desktop": (1280, 800)}
+SHELL_TABS = ("routes", "landmarks", "recall", "settings")
+SHELL_KEYS = [(vp, s) for vp in SHELL_VIEWPORTS for s in ("light", "dark")]
+TABS_JS = "() => [...document.querySelectorAll('.tabbar .tab')].map((a) => a.getAttribute('aria-current'))"
+PANELS_JS = "() => [...document.querySelectorAll('.tab-panel')].filter((p) => !p.hidden).map((p) => p.id)"
+
+
+def _shell_drive(page, shot):
+    """MEM-072 shell: open the demo route from the drawer, then measure the map, drawer and tab bar."""
+    page.goto(shot["base"] + "/")
+    name, stations = page.evaluate(DEMO_JS)
+    page.evaluate(SEED_JS, [name, stations])
+    page.reload()
+    _open_drawer(page)
+    page.get_by_role("button", name=f"Open {name}").click(timeout=TIMEOUT_MS)
+    page.locator(".map-wrap .real-map:not(.real-map-pending)").wait_for(timeout=TIMEOUT_MS)
+    shot["drawer_left"] = page.locator("#drawer").bounding_box()["x"]
+    shot["map_open"] = page.locator(".map-wrap .real-map").bounding_box()
+    page.locator(".drawer-handle").click(timeout=TIMEOUT_MS)
+    shot["drawer"] = [page.locator("#drawer").evaluate("d => d.open")]
+    shot["map"] = page.locator(".map-wrap .real-map").bounding_box()
+    shot["tabbar"] = page.locator("nav.tabbar").bounding_box()
+    shot["tabbar_bg"] = page.locator("nav.tabbar").evaluate("n => getComputedStyle(n).backgroundColor")
+    drawer, body = page.locator("#drawer"), page.locator(".drawer-body")
+    for _ in range(2):  # open (body visible), then close (body hidden)
+        page.locator(".drawer-handle").click(timeout=TIMEOUT_MS)
+        shot["drawer"] += [drawer.evaluate("d => d.open"), body.is_visible()]
+    for tab in SHELL_TABS:
+        page.locator(f'nav.tabbar a.tab[href="#{tab}"]').click(timeout=TIMEOUT_MS)
+        shot["tabs"].append((tab, page.evaluate(TABS_JS), page.evaluate(PANELS_JS)))
+
+
+@pytest.fixture(scope="module")
+def shell_run(tmp_path_factory):
+    require_chrome()
+    from playwright.sync_api import sync_playwright
+
+    drive = _load("e2e_drive")
+    out = tmp_path_factory.mktemp("shell-e2e")
+    shots = {}
+    with drive.serve(out) as base:
+        assert base is not None, f"fixture server never got ready; see {out / 'server.log'}"
+        with sync_playwright() as p:
+            browser = p.chromium.launch(channel="chrome")
+            try:
+                for vp, (w, h) in SHELL_VIEWPORTS.items():
+                    for scheme in ("light", "dark"):
+                        shot = {"base": base, "vw": w, "vh": h, "tabs": [], "error": None}
+                        context = browser.new_context(viewport={"width": w, "height": h}, color_scheme=scheme)
+                        try:
+                            _shell_drive(context.new_page(), shot)
+                        except Exception as exc:  # each criterion test reports the error
+                            shot["error"] = f"{type(exc).__name__}: {exc}"
+                        finally:
+                            context.close()
+                        shots[(vp, scheme)] = shot
+            finally:
+                browser.close()
+    return shots
+
+
+# Covers: MEM-072
+# Requirement: in a real Chrome at 375x812 and 1280x800, light and dark, the map-first shell's real map
+# fills the viewport above the fixed bottom tab bar (left 0, top 0, full width, bottom at the tab bar's
+# top); the route drawer opens and closes from its handle, and at 1280 an open drawer shrinks the map
+# beside it; each tab click marks only itself aria-current="page" and shows only its panel; the tab bar
+# takes a different background in dark mode.
+class TestMapFirstShellE2E:
+    @pytest.mark.parametrize("key", SHELL_KEYS, ids=lambda k: "-".join(k))
+    def test_map_fills_the_viewport_above_the_tabbar(self, shell_run, key):
+        shot = shell_run[key]
+        assert shot["error"] is None, shot["error"]
+        m, bar = shot["map"], shot["tabbar"]
+        assert abs(m["x"]) <= 1 and abs(m["y"]) <= 1, f"map box origin {m}"
+        assert abs(m["width"] - shot["vw"]) <= 1, f"map width {m['width']} vs viewport {shot['vw']}"
+        assert abs(m["y"] + m["height"] - bar["y"]) <= 1, f"map bottom vs tabbar top {bar['y']}"
+        assert abs(bar["y"] + bar["height"] - shot["vh"]) <= 1, f"tabbar not at the viewport bottom: {bar}"
+
+    @pytest.mark.parametrize("key", SHELL_KEYS, ids=lambda k: "-".join(k))
+    def test_drawer_opens_and_closes_from_its_handle(self, shell_run, key):
+        shot = shell_run[key]
+        assert shot["error"] is None, shot["error"]
+        assert shot["drawer"] == [False, True, True, False, False], "handle: close, open + body, close"
+
+    @pytest.mark.parametrize("scheme", ["light", "dark"])
+    def test_open_drawer_shrinks_the_map_at_1280(self, shell_run, scheme):
+        shot = shell_run[("desktop", scheme)]
+        assert shot["error"] is None, shot["error"]
+        m = shot["map_open"]
+        assert m["x"] + m["width"] <= shot["drawer_left"] + 1, (m, shot["drawer_left"])
+
+    @pytest.mark.parametrize("key", SHELL_KEYS, ids=lambda k: "-".join(k))
+    def test_each_tab_marks_only_itself_current_and_shows_its_panel(self, shell_run, key):
+        shot = shell_run[key]
+        assert shot["error"] is None, shot["error"]
+        assert [t for t, _, _ in shot["tabs"]] == list(SHELL_TABS)
+        for i, (tab, currents, panels) in enumerate(shot["tabs"]):
+            assert currents == ["page" if j == i else None for j in range(len(SHELL_TABS))], (tab, currents)
+            assert panels == [f"tab-{tab}"], f"{tab}: visible panels {panels}"
+
+    @pytest.mark.parametrize("vp", list(SHELL_VIEWPORTS))
+    def test_tabbar_background_follows_dark_mode(self, shell_run, vp):
+        light, dark = shell_run[(vp, "light")], shell_run[(vp, "dark")]
+        assert light["error"] is None and dark["error"] is None, (light["error"], dark["error"])
+        assert light["tabbar_bg"] != dark["tabbar_bg"], light["tabbar_bg"]
