@@ -343,3 +343,46 @@ class TestDemoRouteShots:
             assert waits, f"{shot}: no wait for the real map's first idle between Open and the shot"
             navs = [log[i][0] for i in range(j + 1, k) if log[i][0] in NAVIGATIONS]
             assert navs == [], f"{shot}: navigation {navs} between Open and the shot"
+
+
+# Covers: MEM-072
+# Requirement: on the map-first shell (MEM-072) the route list and Load demo live in the route drawer and
+# the place and backup settings on the Settings tab, so the screenshot run opens the drawer (a .drawer-handle
+# click) before every #load-demo click and every "Open <DEMO_ROUTE_NAME>", and selects the Settings tab (a
+# click on a.tab[href="#settings"]) before touching #place-toggle or #backup-import, each with no
+# navigation between that step and the control. Driven with the fake playwright above; no browser.
+def _last_before(log, k, pred):
+    hits = [i for i in range(k) if pred(log[i])]
+    return hits[-1] if hits else -1
+
+
+def _is_nav(entry):
+    return entry[0] in NAVIGATIONS
+
+
+def _is_drawer_open(entry):
+    return entry[0] == "click" and ".drawer-handle" in repr(entry[1:])
+
+
+def _is_settings_tab(entry):
+    return entry[0] == "click" and 'a.tab[href="#settings"]' in repr(entry[1:]).replace("'", '"')
+
+
+class TestShellNavigation:
+    def test_drawer_opened_before_each_load_demo_and_open_demo_route(self, monkeypatch, tmp_path):
+        name = TestDemoRouteShots()._demo_name()
+        _, log = _run_with_fake_browser(monkeypatch, tmp_path)
+        steps = [i for i, e in enumerate(log) if _is_load_demo_click(e) or f"Open {name}" in repr(e[1:])]
+        assert steps, "run never clicked #load-demo or opened the demo route"
+        for k in steps:
+            drawer, nav = _last_before(log, k, _is_drawer_open), _last_before(log, k, _is_nav)
+            assert drawer > nav, f"step {k} {log[k][:2]}: no .drawer-handle click since the last navigation"
+
+    def test_settings_tab_selected_before_place_toggle_and_backup_import(self, monkeypatch, tmp_path):
+        _, log = _run_with_fake_browser(monkeypatch, tmp_path)
+        for sel in ("#place-toggle", "#backup-import"):
+            uses = [i for i, e in enumerate(log) if sel in repr(e[1:])]
+            assert uses, f"run never touched {sel}"
+            for k in uses:
+                tab, nav = _last_before(log, k, _is_settings_tab), _last_before(log, k, _is_nav)
+                assert tab > nav, f"{sel} at {k}: no Settings tab click since the last navigation"
