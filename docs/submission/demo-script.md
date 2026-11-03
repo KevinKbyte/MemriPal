@@ -7,6 +7,8 @@ rubric table (`hackathon.md:211`) is an empty placeholder; the Discord list is t
 Recording rules:
 
 - Record in LIVE `meta` mode (`scripts/run_live.ps1`), except the 5 s offline cut.
+- Kev's face stays out (dog-mascot ADR 0001, record wide, face out): Pal, the dog mascot, is on camera in Kev's place,
+  driven live by Kev's face through MediaPipe; the webcam proof panel stays out of frame. Kev's voice stays.
 - Every fixture or replay segment carries the on-screen caption **"recorded replay"** (`hackathon.md:92`).
 - Show only work built during the event; the opening line says so (`rules.md:7`, `rules.md:125-127`).
 - Total runtime <= 3:00; the hero beat <= 60 s.
@@ -14,10 +16,10 @@ Recording rules:
 | Time | Beat | On screen | Voice-over (draft) | Rubric |
 | --- | --- | --- | --- | --- |
 | 0:00-0:10 | Framing + built-here line | Title card: "MemriPal: place-based recall coach for speeches, not a study chatbot" | "MemriPal is a place-based recall coach for speeches, not a study chatbot. Everything you see was built during this hackathon, starting Oct 26." | Demo quality; compliance |
-| 0:10-0:25 | Problem | Kev at a lectern, notes in hand | "Reading a speech off notes loses the room. The method of loci works, but building a memory palace by hand takes hours." | Impact |
-| 0:25-0:50 | Upload -> route | Photo upload; loci boxes appear in walking order | "I photograph a room I know. Muse Spark names the objects, SAM 3.1 boxes each one, and plain code orders them into a walking route." | Use of Meta AI tooling; Technical depth |
-| 0:50-1:15 | Associations -> scenes -> walk | Paste speech notes; points split; multisensory associations; Muse Image scenes on the photo; walk view | "Muse Spark splits my notes into key points and ties each to a spot, checked by a validator. Muse Image paints each scene onto my own photo." | Use of Meta AI tooling; Impact |
-| 1:15-2:15 | **Hero: spoken recall** (60 s) | ~40 s: Kev eyes closed, recites the pitch walking the palace in his head, deliberately skipping one point; the board (badge "LIVE") lights each point as he says it, the skipped point stays unlit; presses Done. ~12 s: end screen, got/missed per locus; the skipped point shows missed; Kev clicks "Mark got it" (or re-recites it in a second run) and the count updates. ~8 s: close on the rehearsal history and per-point hit rates. | (Kev's own spoken pitch; no voice-over) | Demo quality; Impact; Technical depth |
+| 0:10-0:25 | Problem | Pal on camera, head down, mirroring Kev reading his notes | "Reading a speech off notes loses the room. The method of loci works, but building a memory palace by hand takes hours." | Impact |
+| 0:25-0:50 | Load demo -> route | Click Load demo; the demo photo loads and loci boxes appear in walking order | "Load demo starts from one photo of a room. Muse Spark names the objects, SAM 3.1 boxes each one, and plain code orders them into a walking route." | Use of Meta AI tooling; Technical depth |
+| 0:50-1:15 | Associations -> scenes -> walk | Demo speech notes split into points; multisensory associations; Muse Image scenes on the photo; walk view | "Muse Spark splits my notes into key points and ties each to a spot, checked by a validator. Muse Image paints each scene onto the photo." | Use of Meta AI tooling; Impact |
+| 1:15-2:15 | **Hero: spoken recall** (60 s) | ~40 s: Pal's eyes close while Kev recites the pitch, walking the palace in his head and deliberately skipping one point; the board (badge "LIVE") lights each point as he says it, the skipped point stays unlit; Kev presses Done. ~12 s: end screen, got/missed per locus; the skipped point shows missed; Kev clicks "Mark got it" (or re-recites it in a second run) and the count updates. ~8 s: close on the rehearsal history and per-point hit rates. | (Kev's own spoken pitch; no voice-over) | Demo quality; Impact; Technical depth |
 | 2:15-2:20 | Offline cut (5 s) | Network off, Load demo runs; caption **"recorded replay: fixture mode, offline"** | (none) | Technical depth |
 | 2:20-2:45 | Model disclosure | Model names with their jobs; 8-10 s on the README `## Pipeline` mermaid diagram; 3-5 s on `static/recall_match.js` captioned "no LLM" | "Four Meta models: Muse Spark for the object names and associations, SAM 3.1 for the loci, Muse Image for the scenes, Muse Voice Transcribe for spoken recall. The matching is deterministic code, no LLM, so a speech can't prompt-inject the grader." | Use of Meta AI tooling; Technical depth |
 | 2:45-3:00 | Close | Deployed URL + repo URL; VR clip only if S9 (WebXR stretch) shipped | "Try it at the link: Load demo runs with no key. Walk your palace, say it eyes closed, re-recite only what you missed." | Demo quality; Impact |
