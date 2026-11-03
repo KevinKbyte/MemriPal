@@ -10,6 +10,7 @@ import { learnedCount, renderRouteMap } from "./route_map.js";
 /**
  * @typedef {import("./route_store.js").Route} Route
  * @typedef {ReturnType<typeof renderRouteMap>} RouteMap
+ * @typedef {ReturnType<typeof import("./real_map.js").createRealMapLoader>} RealMap
  */
 
 export const ROUTE_MODE_TEXT = "Route practice: say them in order";
@@ -31,11 +32,21 @@ export function routeRun(route, starts) {
  *   routes: ReturnType<typeof import("./route_store.js").createRouteStore>,
  *   rehearsals: ReturnType<typeof import("./rehearsals.js").createRehearsalStore>,
  *   onPractice: (route: Route, map: RouteMap) => void,
+ *   realMap?: RealMap,
  * }} deps
  */
-export function createRouteView({ doc, routes, rehearsals, onPractice }) {
+export function createRouteView({ doc, routes, rehearsals, onPractice, realMap }) {
   /** @param {string} id */
   const byId = (id) => doc.getElementById(id);
+  /**
+   * Real map over an already drawn sketch (MEM-076). Not awaited and failures swallowed: the sketch is
+   * the fallback, so a slow or broken map never delays or blanks the view.
+   * @param {string} id @param {Route} route
+   */
+  const mountRealMap = (id, route) => {
+    const svg = byId(id);
+    if (realMap && svg) realMap.mount(svg, route.stations).catch(() => {});
+  };
   /** @param {string} tag @param {string} text @param {string} [className] */
   const textEl = (tag, text, className) => {
     const e = doc.createElement(tag);
@@ -136,6 +147,7 @@ export function createRouteView({ doc, routes, rehearsals, onPractice }) {
       return li;
     }));
     renderRouteMap(byId("route-map"), route.stations, doc);
+    mountRealMap("route-map", route);
     for (const id of ["route-view-practice", "route-view-delete"]) setHidden(id, false);
     for (const id of ["route-view-delete-confirm", "route-view-delete-cancel"]) setHidden(id, true);
   };
@@ -212,6 +224,7 @@ export function createRouteView({ doc, routes, rehearsals, onPractice }) {
     const mode = byId("recall-mode");
     if (mode) mode.textContent = ROUTE_MODE_TEXT;
     const map = renderRouteMap(byId("recall-map"), current.stations, doc);
+    mountRealMap("recall-map", current);
     setHidden("route-view", true);
     setHidden("recall", false);
     onPractice(current, map);

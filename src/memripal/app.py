@@ -12,7 +12,6 @@ from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
-from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import Headers
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -58,6 +57,7 @@ from memripal.record_sign import record_key, sig_ok, sign_record
 from memripal.scenes import render_scene
 from memripal.security_headers import SecurityHeaders
 from memripal.split import SplitRejected, check_notes, split_list, split_notes
+from memripal.static_files import static_files
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 STATIC_DIR = REPO_ROOT / "static"
@@ -493,7 +493,7 @@ def create_app(
             }
         )
 
-    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+    app.mount("/static", static_files(STATIC_DIR), name="static")
     return app
 
 

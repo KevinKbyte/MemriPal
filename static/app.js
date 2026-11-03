@@ -6,6 +6,7 @@ import { withApiBase } from "./api_base.js";
 import { selectStore, wireApp } from "./flow.js";
 import { associationKey, createPalaceStore } from "./palace_store.js";
 import { createPlaceState, lookupPlace, wirePlace } from "./place.js";
+import { createRealMapLoader } from "./real_map.js";
 import { createIdbAdapter } from "./idb_adapter.js";
 import { createRehearsalStore } from "./rehearsals.js";
 import { createRouteStore } from "./route_store.js";
@@ -409,6 +410,8 @@ if (typeof document !== "undefined") {
       routes: globalThis.indexedDB
         ? createRouteStore(createIdbAdapter(globalThis.indexedDB, { dbName: "memripal-routes", storeName: "routes" }))
         : undefined,
+      // Bound for the same reason as wireUpload's fetch; the extract URL is absolute, so apiUrl leaves it alone.
+      realMap: createRealMapLoader({ fetch: withApiBase(fetch.bind(globalThis)) }),
       // Lazy lookup: a browser without createImageBitmap fails the export, not page load.
       thumbnail: createThumbnail({
         createImageBitmap: (photo) => globalThis.createImageBitmap(photo),

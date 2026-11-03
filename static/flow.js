@@ -46,6 +46,7 @@ const MAX_RECALL_MS = 3 * 60 * 1000;
  *   clearInterval?: (handle: any) => void,
  *   routes?: ReturnType<typeof import("./route_store.js").createRouteStore>,
  *   thumbnail?: import("./backup_routes.js").Thumbnail,
+ *   realMap?: import("./route_view.js").RealMap,
  * }} AppDeps
  */
 
@@ -256,7 +257,7 @@ export function wireApp(deps) {
   void renderHistory();
   wireBackup(deps, renderHistory);
   const routeView = deps.routes
-    ? createRouteView({ doc, routes: deps.routes, rehearsals, onPractice: (route, map) => {
+    ? createRouteView({ doc, routes: deps.routes, rehearsals, realMap: deps.realMap, onPractice: (route, map) => {
       discardSpeaking();
       session = null;
       setRunOpen(false);
