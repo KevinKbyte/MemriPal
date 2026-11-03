@@ -1,0 +1,130 @@
+[
+  {
+    "osm_id": "node/1001",
+    "name": "Kendall Square Clock",
+    "lat": 42.36255,
+    "lng": -71.08529,
+    "address": null,
+    "street": "Main St"
+  },
+  {
+    "osm_id": "node/1002",
+    "name": "One Broadway",
+    "lat": 42.36258,
+    "lng": -71.08441,
+    "address": "1 Broadway",
+    "street": "Broadway"
+  },
+  {
+    "osm_id": "node/1003",
+    "name": "Blue Bottle Coffee",
+    "lat": 42.36323,
+    "lng": -71.08424,
+    "address": "201 Third St",
+    "street": "Third St"
+  },
+  {
+    "osm_id": "node/1004",
+    "name": "Flour Bakery",
+    "lat": 42.3631,
+    "lng": -71.08369,
+    "address": "190 Third St",
+    "street": "Third St"
+  },
+  {
+    "osm_id": "node/1005",
+    "name": "Kendall Rooftop Garden",
+    "lat": 42.36346,
+    "lng": -71.08321,
+    "address": null,
+    "street": "Third St"
+  },
+  {
+    "osm_id": "node/1006",
+    "name": "Dunkin'",
+    "lat": 42.36426,
+    "lng": -71.08343,
+    "address": "255 Third St",
+    "street": "Third St"
+  },
+  {
+    "osm_id": "node/1007",
+    "name": "Bench Plaque",
+    "lat": 42.36435,
+    "lng": -71.0826,
+    "address": null,
+    "street": null
+  },
+  {
+    "osm_id": "node/1008",
+    "name": "Linskey Way Sculpture",
+    "lat": 42.36495,
+    "lng": -71.08345,
+    "address": null,
+    "street": "Linskey Way"
+  },
+  {
+    "osm_id": "node/1009",
+    "name": "Third Square Mural",
+    "lat": 42.36524,
+    "lng": -71.08222,
+    "address": "350 Third St",
+    "street": "Third St"
+  },
+  {
+    "osm_id": "node/1010",
+    "name": "Dunkin'",
+    "lat": 42.36597,
+    "lng": -71.08175,
+    "address": "145 Binney St",
+    "street": "Binney St"
+  },
+  {
+    "osm_id": "node/1011",
+    "name": "Toomey Park",
+    "lat": 42.36535,
+    "lng": -71.08121,
+    "address": null,
+    "street": "Binney St"
+  },
+  {
+    "osm_id": "node/1011",
+    "name": "Toomey Park",
+    "lat": 42.36535,
+    "lng": -71.08121,
+    "address": null,
+    "street": "Binney St"
+  },
+  {
+    "osm_id": "node/1012",
+    "name": "Cambridge Innovation Center",
+    "lat": 42.36201,
+    "lng": -71.08468,
+    "address": "245 Main St",
+    "street": "Main St"
+  },
+  {
+    "osm_id": "node/1013",
+    "name": "MIT Museum",
+    "lat": 42.3632,
+    "lng": -71.08479,
+    "address": "314 Main St",
+    "street": "Main St"
+  },
+  {
+    "osm_id": "way/2001",
+    "name": "Kendall Hotel",
+    "lat": 42.36434,
+    "lng": -71.08431,
+    "address": "350 Main St",
+    "street": "Main St"
+  },
+  {
+    "osm_id": "way/2002",
+    "name": "Binney Street Garage",
+    "lat": 42.36461,
+    "lng": -71.08219,
+    "address": "200 Binney St",
+    "street": "Binney St"
+  }
+]
