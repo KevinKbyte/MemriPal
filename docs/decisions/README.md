@@ -131,3 +131,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0049](0049-recall-schedule-and-push-reminders.md) Recall schedule = countdown doubling with an S+1d floor; in-app
   due list baseline, web push + Capacitor local notifications for phone reminders, `.ics` fallback (over SM-2,
   `.ics`-only, or local notifications only). Stretch.
+- [0050](0050-two-flows-one-codebase-push-only-service-worker.md) Phone and desktop flows share one codebase via the
+  900 px breakpoint + capability checks; push-only network-first root `/sw.js`, skipped under Capacitor (over two
+  apps, UA sniffing, no worker, or a caching worker).
