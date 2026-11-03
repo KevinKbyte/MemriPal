@@ -7,7 +7,8 @@
 // rule) and 0 orphan selectors (each style.css class is in index.html or a class literal in static/*.js);
 // F13: #auto and its label sit inside #routes-settings (MEM-048; was #load-demo's container); every text/file/password input has a
 // <label for> inside one .field wrapper (display grid or block); main has no bare <label>/<input> child;
-// #auto stays a native visible checkbox; button and .btn (incl. the F7 Show/Hide aria-expanded toggles)
+// #auto stays a native visible checkbox with no hidden ancestor except a MEM-072 section.tab-panel (start-hidden,
+// revealed by tabbar.js showTab, so it is checked as revealed); button and .btn (incl. the F7 Show/Hide aria-expanded toggles)
 // keep min-height >= 44px; no wrapper between main and #scene-overlay sets an A1-forbidden property.
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -280,7 +281,11 @@ describe("MEM-044 A2 v6 shell + control markup (static/index.html, F13)", () => 
     assert.ok(auto, "#auto is missing");
     assert.equal(auto.tag, "input");
     assert.equal((auto.attrs.type ?? "").toLowerCase(), "checkbox", "#auto is not type=checkbox");
-    for (const el of [auto, ...ancestors(auto)]) {
+    for (const found of [auto, ...ancestors(auto)]) {
+      // MEM-072: a section.tab-panel starts hidden and tabbar.js showTab reveals it; check it as revealed.
+      const tabPanel = found !== auto && found.tag === "section" && classes(found).includes("tab-panel");
+      const { hidden: _revealed, ...shownAttrs } = found.attrs;
+      const el = tabPanel ? { ...found, attrs: shownAttrs } : found;
       assert.ok(!("hidden" in el.attrs), `${desc(el)} around #auto is hidden`);
       for (const r of rulesMatching(el)) {
         const at = `${r.parts.join(", ")} (on ${desc(el)})`;
