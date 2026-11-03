@@ -327,6 +327,34 @@ export function createRouteStore(adapter, { now = Date.now, newId = () => crypto
       return out;
     }),
 
+    /**
+     * Demo seed (MEM-077): writes a fixed route as saved, keeping each station's coords (unlike a backup
+     * import, ADR 0033). Demo stations have no photo: photo_ref is a fresh id with nothing stored under it.
+     * An id already stored wins: nothing is written, null returned, so repeat seeds keep one route.
+     * @param {{ id: string, name: string, kind: string,
+     *   stations: ReadonlyArray<{ id: string, n: number, name: string, coords?: unknown }> }} input
+     * @returns {Promise<Route | null>}
+     */
+    seedRoute: ({ id, name, kind, stations }) => serial(async () => {
+      const map = await routes();
+      if (map.has(id)) return null;
+      /** @type {Route} */
+      const r = {
+        id, name, kind: kindOf(kind), status: "saved", created_at: new Date(now()).toISOString(), lists: [],
+        stations: stations.map((s) => {
+          /** @type {Station} */
+          const st = { id: s.id, n: s.n, name: s.name, photo_ref: newId(), status: "named" };
+          const c = coordsOf(s.coords);
+          if (c) st.coords = c;
+          return st;
+        }),
+      };
+      // Cached only once persisted, as in restoreRoute: a failed seed leaves nothing for a retry to skip.
+      const out = await persist(clone(r), [putRoute(r)]);
+      map.set(id, r);
+      return out;
+    }),
+
     /** @param {string} routeId @param {{ name?: string, kind?: string }} fields */
     finishSave: (routeId, { name, kind }) => serial(async () => {
       const r = await mustGet(routeId);

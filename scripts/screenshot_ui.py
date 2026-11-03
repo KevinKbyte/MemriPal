@@ -1,4 +1,5 @@
-"""Screenshot the UI before/after "Load demo", plus an imported backup's route view (MEM-017, MEM-073).
+"""Screenshot the UI before/after "Load demo", plus an imported backup's route view (MEM-017, MEM-073)
+and the Kendall demo route on the real map at 375 px, light and dark (MEM-077).
 
 Fails on page/console errors.
 
@@ -16,6 +17,12 @@ DEMO_WAIT_MS = 4000
 IMPORT_WAIT_MS = 2000
 # A backup-v2 route of 3 named stations; importing it is the only way to create a route (ADR 0040).
 ROUTE_BACKUP = Path(__file__).resolve().parents[1] / "fixtures" / "demo" / "route_backup.json"
+# Must equal static/demo_route.js DEMO_ROUTE.name: its card's Open button is named "Open <name>" (MEM-077).
+DEMO_ROUTE_NAME = "Kendall walk"
+DEMO_VIEWPORT = {"width": 375, "height": 812}
+# The real map's first idle: the selector the S5 e2e waits on (static/real_map.js drops the pending class).
+MAP_IDLE = ".real-map:not(.real-map-pending)"
+MAP_IDLE_TIMEOUT_MS = 30000
 
 Error = tuple[str, str]  # (message text, source URL)
 
@@ -37,12 +44,15 @@ def run(url: str, outdir: str) -> list[Error]:
         if msg.type == "error":
             errors.append((msg.text, msg.location.get("url", "")))
 
+    def watch(page) -> None:
+        page.on("pageerror", lambda exc: errors.append((str(exc), page.url)))
+        page.on("console", on_console)
+
     with sync_playwright() as p:
         browser = p.chromium.launch(channel="chrome")
         try:
             page = browser.new_page(viewport={"width": 1100, "height": 900})
-            page.on("pageerror", lambda exc: errors.append((str(exc), page.url)))
-            page.on("console", on_console)
+            watch(page)
             page.goto(url)
             page.screenshot(path=str(out / "initial.png"), full_page=True)
             # MEM-025: the demo only shows place chips when the place toggle is on.
@@ -58,6 +68,16 @@ def run(url: str, outdir: str) -> list[Error]:
             page.reload()
             page.wait_for_timeout(IMPORT_WAIT_MS)
             page.screenshot(path=str(out / "route_view.png"), full_page=True)
+            # MEM-077: the Kendall demo route on the real map, phone width, one fresh page per scheme.
+            for scheme in ("light", "dark"):
+                demo = browser.new_page(viewport=DEMO_VIEWPORT, color_scheme=scheme)
+                watch(demo)
+                demo.goto(url)
+                demo.click("#load-demo")
+                demo.get_by_role("button", name=f"Open {DEMO_ROUTE_NAME}").click()
+                demo.wait_for_selector(MAP_IDLE, timeout=MAP_IDLE_TIMEOUT_MS)
+                demo.screenshot(path=str(out / f"demo_route_{scheme}.png"), full_page=True)
+                demo.close()
         finally:
             browser.close()
     print(f"items: {items}")

@@ -5,6 +5,7 @@
 // only via textContent.
 
 import { formatHealth, lookupDemoPlace } from "./app.js";
+import { DEMO_ROUTE } from "./demo_route.js";
 import { errorCode, runDemoPalace } from "./encode.js";
 import { createHistory } from "./history.js";
 import { createIdbAdapter } from "./idb_adapter.js";
@@ -345,6 +346,8 @@ export function wireApp(deps) {
     discardSpeaking();
     session = null;
     setRunOpen(false);
+    // MEM-077: also seed the Kendall demo route (local only, idempotent); a failed write never blocks the room demo.
+    deps.routes?.seedRoute(DEMO_ROUTE).then(() => routeView?.renderHome(), () => {});
     lookupDemoPlace({ doc, fetch: fetchFn, place: deps.place });
     const auto = Boolean(/** @type {HTMLInputElement | null} */ (byId("auto"))?.checked);
     // Disabled while a load runs, so a second click cannot build the palace twice; runDemoPalace never
