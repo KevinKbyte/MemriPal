@@ -122,3 +122,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0046](0046-offline-walking-graph-routing-and-geocode.md) Route search runs offline: build-time Overpass walking
   graph + named-POI JSON, in-process A*, fuzzy geocode with a mandatory "meta office" alias and map-click fallback
   (over pmtiles roads, Google, public OSRM/Nominatim/Overpass, Stadia, ORS live, or an osmium/osmnx toolchain).
+- [0047](0047-derived-auto-loci-and-swap.md) Auto-loci derived on demand from the POI table along the route; only
+  acted-on candidates persist (`candidate:<osm_id>`); swap moves in one `putRoute`, never drops (over Spark-named
+  landmarks, `Route.alternates`, `Station.alternates`, or a global library).
