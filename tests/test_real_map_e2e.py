@@ -1,12 +1,15 @@
-# Covers: MEM-078
+# Covers: MEM-078, MEM-077
 # Requirement: the real Kendall map must not widen the CSP, add a third-party origin or leak location
 # (plan 2026-11-02-real-map S5; ADR 0041 conditions 6 and 9). The web CSP header and the native shell's
 # CSP meta stay byte-equal to their pre-map values; in a real Chrome against the fixture-mode app, opening
 # a route whose stations sit inside the Kendall bbox mounts the MapLibre map, and across load, a mouse pan
 # and a wheel zoom there are 0 securitypolicyviolation events, 0 requests to a non-page origin, 0 request
 # URLs carrying a lat/lon pair, every worker is a same-origin script (no blob: worker), and the extract
-# answers as application/vnd.pmtiles. Skips (never fails) where playwright or the Chrome channel is absent,
-# matching tests/shooter_support.py::require_chrome. Run: uv run --with playwright pytest
+# answers as application/vnd.pmtiles. All of that holds for both a test-seeded route and the Kendall demo
+# route (static/demo_route.js DEMO_ROUTE, plan S6); on the demo route every station sits on a rendered
+# street (a roads feature within a 12 px box of its projected point) and no request fails or answers
+# HTTP >= 400 (plan S6 criteria 2 and 4). Skips (never fails) where playwright or the Chrome channel is
+# absent, matching tests/shooter_support.py::require_chrome. Run: uv run --with playwright pytest
 # tests/test_real_map_e2e.py
 import importlib.util
 import os
@@ -109,6 +112,42 @@ ARM_IDLE_JS = """
 """
 VIEW_JS = "() => { const m = window.__e2eMaps[0], c = m.getCenter(); return [c.lng, c.lat, m.getZoom()]; }"
 
+# The demo route's own data, read from the served module so the test tracks it (never #load-demo).
+DEMO_JS = """
+async () => {
+  const { DEMO_ROUTE } = await import(location.origin + "/static/demo_route.js");
+  return [DEMO_ROUTE.name, DEMO_ROUTE.stations.map((s) => [s.name, s.coords.lat, s.coords.lon])];
+}
+"""
+# Resolves once the map is idle: at once if it already is, else on its next "idle".
+SETTLE_JS = """
+() => new Promise((resolve, reject) => {
+  const map = window.__e2eMaps[0];
+  if (!map) return reject(new Error("no map instance captured"));
+  if (map.loaded() && map.areTilesLoaded() && !map.isMoving()) return resolve(true);
+  const guard = setTimeout(() => reject(new Error("map never went idle")), 20000);
+  map.once("idle", () => { clearTimeout(guard); resolve(true); });
+})
+"""
+# Streets only: rail, runway and taxiway lines share the roads source layer but are not walkable streets.
+NOT_STREETS = ("roads_rail", "roads_runway", "roads_taxiway")
+ROAD_BOX_PX = 12
+ROADS_JS = """
+([stations, half, notStreets]) => {
+  const map = window.__e2eMaps[0];
+  const c = map.getCanvas();
+  return stations.map(([name, lat, lon]) => {
+    const p = map.project([lon, lat]);
+    const box = [[p.x - half, p.y - half], [p.x + half, p.y + half]];
+    const roads = map.queryRenderedFeatures(box)
+      .filter((f) => f.sourceLayer === "roads" && !notStreets.includes(f.layer.id));
+    const inView = p.x >= 0 && p.y >= 0 && p.x <= c.clientWidth && p.y <= c.clientHeight;
+    const layers = [...new Set(roads.map((f) => f.layer.id))];
+    return { name, x: p.x, y: p.y, inView, roads: roads.length, layers };
+  });
+}
+"""
+
 
 def _load(name):
     spec = importlib.util.spec_from_file_location(f"{name}_under_test", SCRIPTS / f"{name}.py")
@@ -118,14 +157,23 @@ def _load(name):
 
 
 def _drive(page, data):
-    """Load -> seed -> open the route -> first idle -> mouse pan -> wheel zoom; records each phase reached."""
+    """Load -> seed -> open the route -> first idle -> station roads -> mouse pan -> wheel zoom.
+
+    Records each phase reached. The "demo" variant seeds DEMO_ROUTE's stations instead of STATIONS.
+    """
     page.goto(data["base"] + "/")
-    page.evaluate(SEED_JS, [ROUTE_NAME, [list(s) for s in STATIONS]])
+    if data["variant"] == "demo":
+        data["route_name"], data["stations"] = page.evaluate(DEMO_JS)
+    page.evaluate(SEED_JS, [data["route_name"], data["stations"]])
     page.reload()
-    page.get_by_role("button", name=f"Open {ROUTE_NAME}").click(timeout=TIMEOUT_MS)
+    page.get_by_role("button", name=f"Open {data['route_name']}").click(timeout=TIMEOUT_MS)
     # real_map.js drops .real-map-pending on the map's first idle.
     page.locator("#route-view .real-map:not(.real-map-pending)").wait_for(timeout=TIMEOUT_MS)
     data["phases"].append("load")
+
+    page.evaluate(SETTLE_JS)
+    data["station_roads"] = page.evaluate(ROADS_JS, [data["stations"], ROAD_BOX_PX / 2, list(NOT_STREETS)])
+    data["phases"].append("roads")
 
     box = page.locator("#route-view .real-map").bounding_box()
     cx, cy = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
@@ -147,15 +195,17 @@ def _drive(page, data):
     data["phases"].append("zoom")
 
 
-@pytest.fixture(scope="module")
-def map_run(tmp_path_factory):
+def _run(tmp_path_factory, variant):
+    """One real-Chrome run of _drive against a fresh fixture server; variant is "seeded" or "demo"."""
     require_chrome()
     from playwright.sync_api import sync_playwright
 
     drive = _load("e2e_drive")
     support = _load("e2e_support")
-    out = tmp_path_factory.mktemp("real-map-e2e")
+    out = tmp_path_factory.mktemp(f"real-map-e2e-{variant}")
     data = {"phases": [], "views": [], "requests": [], "workers": [], "extract": [], "error": None}
+    data |= {"variant": variant, "route_name": ROUTE_NAME, "stations": [list(s) for s in STATIONS]}
+    data |= {"failed": [], "http_errors": [], "station_roads": []}
     with drive.serve(out) as base:
         assert base is not None, f"fixture server never got ready; see {out / 'server.log'}"
         data["base"] = base
@@ -166,6 +216,14 @@ def map_run(tmp_path_factory):
                 context = browser.new_context(viewport={"width": 1280, "height": 900})
                 context.add_init_script(INIT_JS)
                 context.on("request", lambda r: data["requests"].append(r.url))
+                failed, http_errors = data["failed"], data["http_errors"]
+                context.on("requestfailed", lambda r: failed.append(f"{r.method} {r.url} {r.failure}"))
+                context.on(
+                    "response",
+                    lambda r: (
+                        r.status >= 400 and http_errors.append(f"{r.status} {r.request.method} {r.url}")
+                    ),
+                )
                 context.on(
                     "response",
                     lambda r: (
@@ -186,6 +244,22 @@ def map_run(tmp_path_factory):
             finally:
                 browser.close()
     return data
+
+
+@pytest.fixture(scope="module")
+def seeded_run(tmp_path_factory):
+    return _run(tmp_path_factory, "seeded")
+
+
+@pytest.fixture(scope="module")
+def demo_run(tmp_path_factory):
+    return _run(tmp_path_factory, "demo")
+
+
+@pytest.fixture(params=["seeded", "demo"])
+def map_run(request):
+    """Each S5 criterion holds for a test-seeded route and the Kendall demo route (one browser run each)."""
+    return request.getfixturevalue(f"{request.param}_run")
 
 
 def _need(data, *phases):
@@ -261,7 +335,7 @@ class TestRealMapPageE2E:
         leaks = sorted({u for u in map_run["requests"] if LATLON_PAIR.search(unquote(u))})
         assert leaks == []
         # Two-decimal prefixes ("42.36", "-71.08") catch a single rounded or truncated coordinate, too.
-        for name, lat, lon in STATIONS:
+        for name, lat, lon in map_run["stations"]:
             marks = (f"{lat:.4f}"[:5], f"{lon:.4f}"[:6])
             hits = [u for u in map_run["requests"] if any(m in unquote(u) for m in marks)]
             assert hits == [], f"{name} coordinates in {hits}"
@@ -279,3 +353,34 @@ class TestRealMapPageE2E:
         assert all(st == 200 and ct == "application/vnd.pmtiles" for st, ct in map_run["extract"]), map_run[
             "extract"
         ]
+
+
+# Covers: MEM-077
+# Requirement: the Kendall demo route renders on the real map with every station on a street: per
+# station, queryRenderedFeatures in a 12 px box around its projected point returns >= 1 roads feature,
+# and the run makes 0 failed requests and gets 0 HTTP responses >= 400 (plan 2026-11-02-real-map S6
+# criteria 2 and 4; same-origin and no-coords-in-URL are pinned for this run by TestRealMapPageE2E).
+class TestDemoRouteOnKendallStreets:
+    def test_demo_route_seeds_and_mounts_the_real_map(self, demo_run):
+        _need(demo_run, "load")
+        assert demo_run["route_name"] != ROUTE_NAME
+        assert len(demo_run["stations"]) >= 3
+
+    def test_every_demo_station_has_a_roads_feature_within_12px(self, demo_run):
+        _need(demo_run, "load", "roads")
+        got = demo_run["station_roads"]
+        assert [r["name"] for r in got] == [s[0] for s in demo_run["stations"]]
+        off_street = [r for r in got if not r["inView"] or r["roads"] < 1]
+        assert off_street == [], f"stations without a roads feature in a {ROAD_BOX_PX} px box: {off_street}"
+
+    def test_no_failed_requests(self, demo_run):
+        _need(demo_run, "load", "roads", "pan", "zoom")
+        assert demo_run["failed"] == []
+        page_failed = [e for e in demo_run["events"] if e["kind"] == "requestfailed"]
+        assert page_failed == []
+
+    def test_no_http_error_responses(self, demo_run):
+        _need(demo_run, "load", "roads", "pan", "zoom")
+        assert demo_run["http_errors"] == []
+        page_errors = [e for e in demo_run["events"] if e["kind"].startswith("http")]
+        assert page_errors == []
