@@ -1,6 +1,8 @@
 # 0042: Kendall demo route lives in a frozen code module, seeded by Load demo via route_store.seedRoute
 
 Status: Accepted
+Amended by [0053](0053-station-street-address-and-poi-precision.md): seeded coords are stored at 5 dp, not 4, and
+the 6 seeded stations carry hand-verified street addresses.
 Date: 2026-11-02
 Source: MEM-077 (`.claude/spec-cache/memripal/references/spec-4.md`); plan `docs/plans/2026-11-02-real-map.md` slice S6;
 commits 4269149, b772120.

@@ -140,3 +140,7 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0052](0052-place-space-and-floor-plan-palace.md) Floor-plan palace: `Route.space` "geo" | "plan", normalized
   `plan_xy` on an SVG overlay, number reading with Python range checks and an unplaced tray (over overloading
   `Route.kind`, a separate store, or MapLibre raster). Deferred.
+- [0053](0053-station-street-address-and-poi-precision.md) Optional `Station.address` (hand-verified seeds and
+  aliases, then OSM addr tags, else "near <street>"); public-place coords at 5 dp, own GPS stays 4 dp; plain "Open
+  in Maps" link; backups unchanged; amends 0031, 0042 (over 5 dp everywhere, coords in backups, `geo:` URIs, or a
+  nearest-way label).

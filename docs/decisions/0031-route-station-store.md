@@ -1,6 +1,8 @@
 # 0031: Route + station store on the phone via the injected KV adapter; pending-before-upload; coords at 4 dp
 
 Status: Accepted
+Amended by [0053](0053-station-street-address-and-poi-precision.md): the 4 dp cap applies to the user's own GPS
+location only; public POI, seeded and alias coords are stored at 5 dp; optional `Station.address`.
 Date: 2026-10-31
 Source: MEM-048 (`.claude/spec-cache/memripal/references/spec-3.md`); map-to-palace plan
 (`docs/plans/2026-10-31-map-to-palace.md`) D4, D10 and slice B3.
