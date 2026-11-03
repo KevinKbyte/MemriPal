@@ -1,6 +1,8 @@
 # 0033: Backup v2 carries routes and lists by field allowlist, never coordinates, with 640 px thumbnails and its own 8 MiB cap
 
 Status: Accepted
+Partially superseded by [0043](0043-station-photo-optional-in-backups.md): station `photo` optional; (d) "no
+photo-less routes downstream" no longer holds.
 Amends: [0028](0028-palace-backup-export-import.md) options (a) scope and (b) images, and its byte cap.
 Date: 2026-10-31
 Source: MEM-054 (`.claude/spec-cache/memripal/references/spec-3.md`); map-to-palace plan

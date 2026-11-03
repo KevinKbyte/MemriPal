@@ -110,3 +110,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0042](0042-kendall-demo-route-seeding.md) Kendall demo route: frozen `static/demo_route.js` module, seeded by the
   existing Load demo click via new `route_store.seedRoute` (keeps coords) (over a backup fixture or new fixture file, a
   dedicated button, or reusing `restoreRoute`, which drops coords).
+- [0043](0043-station-photo-optional-in-backups.md) Station `photo` optional in backup v2: omitted on export when none
+  is stored, accepted absent on import, still validated when present; partially supersedes 0033 (d) (over excluding
+  the demo route by id, skipping photo-less routes, or a placeholder JPEG).

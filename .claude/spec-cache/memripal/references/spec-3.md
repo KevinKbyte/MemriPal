@@ -582,21 +582,20 @@ and the additive rule stand.
   (createRouteStore), thumbnail, loadImage}`. Top-level `lists[]` is pinned only as an array until B7.
 - Export: saved routes only; within them named stations only (pending stations and draft routes skipped; pending
   photo bytes never read). Route keys exactly `{id, name, kind, created_at, stations, lists}`, each list `{id, name,
-  status}`. Station keys exactly `{id, n, name, status, box, profile, taps, photo}`; absent box/profile/taps -> null.
-  Never exported: coords, per-station timestamps, EXIF, baseline (Mapillary) images/ids/links/credits.
+  status}`. Station keys exactly `{id, n, name, status, box, profile, taps}` + `photo` if any; absent box/profile/taps
+  -> null. Never exported: coords, per-station timestamps, EXIF, baseline (Mapillary) images/ids/links/credits.
 - Thumbnails: `thumbnail(bytes, {maxSide: 640, quality: 0.7})` re-encodes the stored photo to an EXIF-free JPEG,
-  long side <= 640; box scaled to the thumbnail.
+  long side <= 640; box scaled to the thumbnail. No stored photo -> no `photo` key, box null (2026-11-02, ADR 0043).
 - Caps: `MAX_BACKUP_BYTES` = 8388608 (8 MiB) for export and import; `MAX_IMPORT_BYTES` stays 1048576 (recall-relay
   chunk / record-signing meaning). Over the cap -> refused at export; import text over it refused before
   `JSON.parse` (the file input checks size before `file.text()`); exactly the cap is read.
 - Import: v2 only; a v1 file -> "Older backup format, not supported", nothing written. Any route / station / photo
   failure refuses the whole file, nothing written: routes or lists not an array, missing station name, non-integer
   `n`, station status pending, unknown route kind, non-ISO `created_at`, 9 stations, box outside the thumbnail, any
-  extra station / route / top-level key, coords or lat keys. Photo must be a `data:image/jpeg;base64,` URL that
-  decodes via `loadImage`; png, `javascript:` or undecodable -> refused. Imported routes are written through
-  `deps.routes` with status "saved".
-- Collisions (D11): a route whose id is already stored is skipped, never overwritten or duplicated; the stored one
-  wins.
+  extra station / route / top-level key, coords or lat keys. `photo` optional (amended 2026-11-02, ADR 0043; was
+  required); if present it must be a `data:image/jpeg;base64,` URL that decodes via `loadImage`; png, `javascript:`
+  or undecodable -> refused. Imported routes are written through `deps.routes` with status "saved".
+- Collisions (D11): a route whose id is already stored is skipped, never overwritten or duplicated; the stored one wins.
 - UI: `#backup-status` reads "n added, m already present", plus ", k skipped" when k > 0; else "Import failed:
   <reason>". Note beside `#backup-export`: "Backups never include map coordinates or street photos. Station names
   and photos can still show where you walk."
