@@ -11,21 +11,171 @@
     <meta name="theme-color" content="#1f3a5f">
 
   </head>
-  <body>
+  <body class="map-shell">
     <header class="topbar">
       <h1 class="brand">MemriPal</h1>
     </header>
     <main>
-      <p id="public-banner" class="notice" hidden>live needs passcode / try Load demo</p>
-      <p id="status">Checking backend...</p>
-      <section id="routes-home" class="panel">
-        <h2>Your routes</h2>
-        <p>Walk a route once, learn it for good, then use it to remember what matters.</p>
-        <ol id="routes-list"></ol>
-        <div class="btn-row">
-          <button id="routes-new" class="btn btn-primary" type="button">New walk</button>
-          <button id="load-demo" class="btn btn-primary" type="button">Load demo</button>
+      <section id="tab-routes" class="tab-panel">
+        <div class="map-wrap">
+          <svg id="route-map" class="route-map" viewBox="0 0 320 200" role="img" aria-label="Route map"></svg>
         </div>
+        <p id="map-chip" class="map-chip" aria-live="polite"></p>
+        <details id="drawer" class="drawer">
+          <summary class="drawer-handle">
+            <span class="when-closed">Route settings</span>
+            <span class="when-open">Close</span>
+          </summary>
+          <div class="drawer-body">
+            <p id="public-banner" class="notice" hidden>live needs passcode / try Load demo</p>
+            <p id="status">Checking backend...</p>
+            <section id="route-view" class="panel" hidden>
+              <ol id="route-view-stations"></ol>
+              <div class="btn-row">
+                <button id="route-view-practice" class="btn btn-primary" type="button">Practice this route</button>
+                <button id="route-view-delete" class="btn" type="button">Delete route</button>
+                <button id="route-view-delete-confirm" class="btn" type="button" hidden>Confirm delete</button>
+                <button id="route-view-delete-cancel" class="btn" type="button" hidden>Cancel</button>
+                <button id="route-view-undo" class="btn" type="button" hidden>Undo delete</button>
+              </div>
+            </section>
+            <section id="routes-home" class="panel">
+              <h2>Your routes</h2>
+              <p>Walk a route once, learn it for good, then use it to remember what matters.</p>
+              <ol id="routes-list"></ol>
+              <div class="btn-row">
+                <button id="routes-new" class="btn btn-primary" type="button">Map a new route</button>
+                <button id="load-demo" class="btn btn-primary" type="button">Load demo</button>
+              </div>
+            </section>
+            <section id="capture-session" class="panel" hidden>
+              <h2>Walking: capture</h2>
+              <div id="capture-safety" class="notice" hidden>
+                <p>Stay aware of traffic and people around you. Stop before you take a photo.</p>
+                <button id="capture-safety-ok" class="btn" type="button">OK</button>
+              </div>
+              <ol id="capture-strip"></ol>
+              <label class="check"><input id="capture-locate" type="checkbox">
+                Use my location for this walk (stays on this device)</label>
+              <div class="btn-row">
+                <button id="capture-finish" class="btn" type="button" disabled>Finish walk</button>
+              </div>
+              <p id="capture-count"></p>
+            </section>
+            <section id="station-card" class="panel" hidden>
+              <h2>Station</h2>
+              <div class="field">
+                <label for="station-name">Station name</label>
+                <input id="station-name" type="text" maxlength="40" autocomplete="off">
+              </div>
+              <p id="station-name-error" class="notice" role="alert" hidden></p>
+              <dl id="station-profile"></dl>
+              <fieldset id="station-taps">
+                <legend>Your notes on this spot</legend>
+                <p>Sound</p>
+                <div id="tap-sound" class="btn-row"></div>
+                <p>Smell</p>
+                <div id="tap-smell" class="btn-row"></div>
+                <p>Feel</p>
+                <div id="tap-feel" class="btn-row"></div>
+                <p>Mood</p>
+                <div id="tap-mood" class="btn-row"></div>
+                <p>Next turn</p>
+                <div id="tap-turn" class="btn-row"></div>
+              </fieldset>
+              <div class="btn-row">
+                <button id="station-save" class="btn btn-primary" type="button">Save name</button>
+                <button id="station-drop" class="btn" type="button">Drop station</button>
+                <button id="station-drop-confirm" class="btn" type="button" hidden>Yes, drop it</button>
+                <button id="station-drop-cancel" class="btn" type="button" hidden>Keep it</button>
+                <button id="station-undo" class="btn" type="button" hidden>Undo drop</button>
+              </div>
+            </section>
+          </div>
+        </details>
+      </section>
+      <section id="tab-landmarks" class="tab-panel" hidden>
+        <h2>Landmarks</h2>
+        <ol id="landmarks-list"></ol>
+      </section>
+      <section id="tab-recall" class="tab-panel" hidden>
+        <section id="walk" class="panel" hidden>
+          <h2>Walk your palace</h2>
+          <div id="walk-step"></div>
+          <div class="btn-row">
+            <button id="walk-prev" class="btn" type="button">Previous</button>
+            <button id="walk-next" class="btn" type="button">Next</button>
+          </div>
+        </section>
+        <section id="recall" class="panel" hidden>
+          <h2>Recall your palace</h2>
+          <p id="recall-mode"></p>
+          <svg id="recall-map" class="route-map" viewBox="0 0 320 200" role="img" aria-label="Route map"></svg>
+          <div class="btn-row">
+            <button id="recall-start" class="btn btn-primary" type="button">Start recall</button>
+            <button id="recall-replay" class="btn" type="button">Play the replay of a recorded session</button>
+          </div>
+          <textarea id="recall-typed" rows="4" aria-label="Type what you remember" hidden></textarea>
+          <button id="recall-submit" class="btn" type="button">Done</button>
+          <div id="recall-live"></div>
+          <div id="recall-results"></div>
+        </section>
+        <section id="history" class="panel" hidden>
+          <h2>Rehearsals</h2>
+          <ol id="rehearsals"></ol>
+          <button id="rehearsal-undo" class="btn" type="button" hidden>Undo delete</button>
+          <div id="history-view"></div>
+          <h3>Hit rate per point</h3>
+          <ul id="hit-rates"></ul>
+        </section>
+        <section class="panel">
+          <p class="eyebrow">Start: the demo</p>
+          <p id="meta-notice" class="notice" hidden>
+            Your photo is sent to Meta's AI APIs to find places in it.</p>
+          <div class="field">
+            <label for="photo">Take or choose a photo</label>
+            <input id="photo" type="file" accept="image/*" capture="environment">
+          </div>
+        </section>
+        <div class="panel">
+          <p id="upload-status" role="status"></p>
+          <img id="empty-state" src="/static/assets/pal-idle.svg" alt="">
+          <div id="scene-wrap">
+            <canvas id="scene" width="0" height="0"></canvas>
+          </div>
+          <ol id="loci"></ol>
+          <p id="assoc-status" role="status"></p>
+          <div id="associations"></div>
+        </div>
+        <section id="route-review" class="panel" hidden>
+          <h2>Review your route</h2>
+          <div class="field">
+            <label for="finish-name">Route name</label>
+            <input id="finish-name" type="text" maxlength="40" autocomplete="off">
+          </div>
+          <fieldset id="finish-kind">
+            <legend>Kind</legend>
+            <label class="check"><input type="radio" name="finish-kind" value="daily" checked> Daily</label>
+            <label class="check"><input type="radio" name="finish-kind" value="occasional"> Occasional</label>
+          </fieldset>
+          <div class="route-head">
+            <p class="route-hint">Drag the dots to reorder. Tap Edit to remove a place.</p>
+            <button id="route-edit" class="btn route-edit" type="button" aria-pressed="false">Edit</button>
+          </div>
+          <ol id="route" class="route-list"></ol>
+          <p id="route-live" class="sr-only" aria-live="polite"></p>
+          <div id="route-toast" class="route-toast" role="status" hidden>
+            <span id="route-toast-text" class="route-toast-text"></span>
+            <button id="route-undo" class="btn route-undo" type="button">Undo</button>
+          </div>
+          <div class="btn-row">
+            <button id="finish-save" class="btn btn-primary" type="button">Save route</button>
+            <button id="generate" class="btn btn-primary" type="button">Generate</button>
+          </div>
+        </section>
+        <div id="scenes" aria-live="polite"></div>
+      </section>
+      <section id="tab-settings" class="tab-panel" hidden>
         <details id="routes-settings">
           <summary>Live settings</summary>
           <div class="field">
@@ -35,158 +185,45 @@
           <label class="check"><input id="auto" type="checkbox">
             Skip the Finish walk review: save in capture order with a default name</label>
         </details>
-      </section>
-      <section id="route-view" class="panel" hidden>
-        <svg id="route-map" class="route-map" viewBox="0 0 320 200" role="img" aria-label="Route map"></svg>
-        <ol id="route-view-stations"></ol>
-        <div class="btn-row">
-          <button id="route-view-practice" class="btn btn-primary" type="button">Practice this route</button>
-          <button id="route-view-delete" class="btn" type="button">Delete route</button>
-          <button id="route-view-delete-confirm" class="btn" type="button" hidden>Confirm delete</button>
-          <button id="route-view-delete-cancel" class="btn" type="button" hidden>Cancel</button>
-          <button id="route-view-undo" class="btn" type="button" hidden>Undo delete</button>
-        </div>
-      </section>
-      <section class="panel">
-        <p class="eyebrow">Start: the demo</p>
-        <p id="meta-notice" class="notice" hidden>
-          Your photo is sent to Meta's AI APIs to find places in it.</p>
-        <div class="field">
-          <label for="photo">Take or choose a photo</label>
-          <input id="photo" type="file" accept="image/*" capture="environment">
-        </div>
-      </section>
-      <section id="capture-session" class="panel" hidden>
-        <h2>Walking: capture</h2>
-        <div id="capture-safety" class="notice" hidden>
-          <p>Stay aware of traffic and people around you. Stop before you take a photo.</p>
-          <button id="capture-safety-ok" class="btn" type="button">OK</button>
-        </div>
-        <ol id="capture-strip"></ol>
-        <label class="check"><input id="capture-locate" type="checkbox">
-          Use my location for this walk (stays on this device)</label>
-        <div class="btn-row">
-          <button id="capture-finish" class="btn" type="button" disabled>Finish walk</button>
-        </div>
-        <p id="capture-count"></p>
-      </section>
-      <section id="station-card" class="panel" hidden>
-        <h2>Station</h2>
-        <div class="field">
-          <label for="station-name">Station name</label>
-          <input id="station-name" type="text" maxlength="40" autocomplete="off">
-        </div>
-        <p id="station-name-error" class="notice" role="alert" hidden></p>
-        <dl id="station-profile"></dl>
-        <fieldset id="station-taps">
-          <legend>Your notes on this spot</legend>
-          <p>Sound</p>
-          <div id="tap-sound" class="btn-row"></div>
-          <p>Smell</p>
-          <div id="tap-smell" class="btn-row"></div>
-          <p>Feel</p>
-          <div id="tap-feel" class="btn-row"></div>
-          <p>Mood</p>
-          <div id="tap-mood" class="btn-row"></div>
-          <p>Next turn</p>
-          <div id="tap-turn" class="btn-row"></div>
+        <fieldset id="place-settings" class="panel">
+          <legend>Place history (optional)</legend>
+          <label class="check">
+            <input id="place-toggle" type="checkbox"> Use my location for place history</label>
+          <div class="field">
+            <label for="place-typed">Or type a place</label>
+            <input id="place-typed" type="text" maxlength="255" autocomplete="off">
+          </div>
+          <div id="places"></div>
         </fieldset>
-        <div class="btn-row">
-          <button id="station-save" class="btn btn-primary" type="button">Save name</button>
-          <button id="station-drop" class="btn" type="button">Drop station</button>
-          <button id="station-drop-confirm" class="btn" type="button" hidden>Yes, drop it</button>
-          <button id="station-drop-cancel" class="btn" type="button" hidden>Keep it</button>
-          <button id="station-undo" class="btn" type="button" hidden>Undo drop</button>
-        </div>
-      </section>
-      <fieldset id="place-settings" class="panel">
-        <legend>Place history (optional)</legend>
-        <label class="check">
-          <input id="place-toggle" type="checkbox"> Use my location for place history</label>
-        <div class="field">
-          <label for="place-typed">Or type a place</label>
-          <input id="place-typed" type="text" maxlength="255" autocomplete="off">
-        </div>
-        <div id="places"></div>
-      </fieldset>
-      <div class="panel">
-        <p id="upload-status" role="status"></p>
-        <img id="empty-state" src="/static/assets/pal-idle.svg" alt="">
-        <div id="scene-wrap">
-          <canvas id="scene" width="0" height="0"></canvas>
-        </div>
-        <ol id="loci"></ol>
-        <p id="assoc-status" role="status"></p>
-        <div id="associations"></div>
-      </div>
-      <section id="route-review" class="panel" hidden>
-        <h2>Review your route</h2>
-        <div class="field">
-          <label for="finish-name">Route name</label>
-          <input id="finish-name" type="text" maxlength="40" autocomplete="off">
-        </div>
-        <fieldset id="finish-kind">
-          <legend>Kind</legend>
-          <label class="check"><input type="radio" name="finish-kind" value="daily" checked> Daily</label>
-          <label class="check"><input type="radio" name="finish-kind" value="occasional"> Occasional</label>
-        </fieldset>
-        <div class="route-head">
-          <p class="route-hint">Drag the dots to reorder. Tap Edit to remove a place.</p>
-          <button id="route-edit" class="btn route-edit" type="button" aria-pressed="false">Edit</button>
-        </div>
-        <ol id="route" class="route-list"></ol>
-        <p id="route-live" class="sr-only" aria-live="polite"></p>
-        <div id="route-toast" class="route-toast" role="status" hidden>
-          <span id="route-toast-text" class="route-toast-text"></span>
-          <button id="route-undo" class="btn route-undo" type="button">Undo</button>
-        </div>
-        <div class="btn-row">
-          <button id="finish-save" class="btn btn-primary" type="button">Save route</button>
-          <button id="generate" class="btn btn-primary" type="button">Generate</button>
-        </div>
-      </section>
-      <div id="scenes" aria-live="polite"></div>
-      <section id="walk" class="panel" hidden>
-        <h2>Walk your palace</h2>
-        <div id="walk-step"></div>
-        <div class="btn-row">
-          <button id="walk-prev" class="btn" type="button">Previous</button>
-          <button id="walk-next" class="btn" type="button">Next</button>
-        </div>
-      </section>
-      <section id="recall" class="panel" hidden>
-        <h2>Recall your palace</h2>
-        <p id="recall-mode"></p>
-        <svg id="recall-map" class="route-map" viewBox="0 0 320 200" role="img" aria-label="Route map"></svg>
-        <div class="btn-row">
-          <button id="recall-start" class="btn btn-primary" type="button">Start recall</button>
-          <button id="recall-replay" class="btn" type="button">Play the replay of a recorded session</button>
-        </div>
-        <textarea id="recall-typed" rows="4" aria-label="Type what you remember" hidden></textarea>
-        <button id="recall-submit" class="btn" type="button">Done</button>
-        <div id="recall-live"></div>
-        <div id="recall-results"></div>
-      </section>
-      <section id="history" class="panel" hidden>
-        <h2>Rehearsals</h2>
-        <ol id="rehearsals"></ol>
-        <button id="rehearsal-undo" class="btn" type="button" hidden>Undo delete</button>
-        <div id="history-view"></div>
-        <h3>Hit rate per point</h3>
-        <ul id="hit-rates"></ul>
-      </section>
-      <section id="backup" class="panel">
-        <h2>Backup</h2>
-        <button id="backup-export" class="btn" type="button">Download backup</button>
-        <p>Backups never include map coordinates or street photos. Station names and photos can still show where you walk.</p>
-        <div class="field">
-          <label for="backup-import">Import a backup</label>
-          <input id="backup-import" type="file" accept="application/json,.json">
-        </div>
-        <p id="backup-status" role="status"></p>
+        <section id="backup" class="panel">
+          <h2>Backup</h2>
+          <button id="backup-export" class="btn" type="button">Download backup</button>
+          <p>Backups never include map coordinates or street photos. Station names and photos can still show where you walk.</p>
+          <div class="field">
+            <label for="backup-import">Import a backup</label>
+            <input id="backup-import" type="file" accept="application/json,.json">
+          </div>
+          <p id="backup-status" role="status"></p>
+        </section>
       </section>
       <div id="scene-overlay" hidden></div>
     </main>
+    <nav class="tabbar" aria-label="Main">
+      <ul>
+        <li><a class="tab" href="#routes" aria-current="page">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19c3-6 11-2 14-12"></path><circle cx="5" cy="19" r="2"></circle><circle cx="19" cy="7" r="2"></circle></svg>
+          Routes</a></li>
+        <li><a class="tab" href="#landmarks">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6-6.5-6-11a6 6 0 0 1 12 0c0 4.5-6 11-6 11z"></path><circle cx="12" cy="10" r="2"></circle></svg>
+          Landmarks</a></li>
+        <li><a class="tab" href="#recall">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"></path><path d="M9 10.5l2 2 4-4"></path></svg>
+          Recall</a></li>
+        <li><a class="tab" href="#settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"></path></svg>
+          Settings</a></li>
+      </ul>
+    </nav>
     <script type="module" src="/static/app.js"></script>
   </body>
 </html>
