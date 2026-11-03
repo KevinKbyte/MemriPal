@@ -104,3 +104,5 @@ locking it while a dependent is checked gives the stepper's dependency guarantee
 - `static/recall_match.js` exports its tokenizer.
 - `remember_by` feeds the recall schedule ([0049](0049-recall-schedule-and-push-reminders.md)).
 - The sentinel JPEG must never reach the model: test with `SEND_IMAGE` False.
+- The checkbox dependency rules (dependents auto-check keywords; keywords locked while a dependent is checked) need
+  unit tests.
