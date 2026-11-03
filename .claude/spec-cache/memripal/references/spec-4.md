@@ -260,6 +260,27 @@ NFR: DOM marker count == in-viewport count after every `moveend`.
   in-viewport count at 3 viewports; canvas container `aria-hidden="true"`; attribution text visible at 375 px; one
   out-of-bbox station -> sketch and 0 extract fetches.
 
+Product rule, route as memory palace (Kev, 2026-11-02): the route IS the palace, so it must be worth keeping.
+- Every route has a real A->B purpose: a place the user goes often or now and then and could reach without GPS
+  (e.g. station -> Meta office). That practical use is why the brain keeps it; study items attach afterwards.
+- A stable landmark at every turn: permanent buildings, corners and fixtures, never transient things (MEM-079).
+- Walkable from the station list alone: the ordered list replays the whole walk with no map. Demo routes (S6) obey this
+  rule.
+
+Map behaviours (Kev Q1-Q3, 2026-11-02; preview `docs/design/map/`, shots via `scripts/screenshot_map.py`):
+- Q1: panning never draws the route over the side panel; the overlay is clipped to the map (`.mp-wrap` overflow
+  hidden).
+- Q2: a station whose true spot is off the map is pinned to the map edge at the nearest point to that spot, with class
+  `lm-pinned` and an `.lm-arrow` rotated toward it; a station on the map is never pinned.
+- Q3 list-detail: the station list item IS the station's detail (profile + its one stored study item across the 8
+  channels). Markers select into the list: a marker click or Enter/Space expands that item, moves focus into it, rings
+  the marker (`lm-selected`) and eases the map so the station is pinned or nudged into view. On phone the list grows
+  to max-height 60%. Escape collapses it and refocuses its button. This replaces the map-shell `#lm-card` popover
+  (route-contract-2 M.3, amended there) on the real map.
+- Accept: after a pan no overlay pixel lies outside the map; every off-map station has `lm-pinned` + `.lm-arrow`
+  and no on-map station has `lm-pinned`; clicking a marker expands exactly its list item with focus inside and the
+  marker has `lm-selected`; Escape collapses it and focuses its button.
+
 ## MEM-078 Real map: security and privacy (PLANNED)
 
 PLANNED, not built, unverified. ADR [0041](../../../../docs/decisions/0041-real-map-whole-file-pmtiles.md) conditions

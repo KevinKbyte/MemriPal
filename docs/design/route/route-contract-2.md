@@ -37,7 +37,7 @@ MapLibre + PMTiles is staged behind ADR 0038's conditions.
 | trigger | result |
 |---|---|
 | route picked (drawer row) | Map drifts to frame the route (800 ms viewBox tween), path draws in, landmarks pop in staggered; reduced motion = instant. Chip, drawer fields and `#map-title` sync. |
-| click, Enter/Space, or ~500 ms long-press on `g.lm` | `#lm-card` opens beside the marker; Escape or `#lm-card-close` closes and refocuses the marker. |
+| click, Enter/Space, or ~500 ms long-press on `g.lm` | `#lm-card` opens beside the marker; Escape or `#lm-card-close` closes and refocuses the marker. **Superseded on the real map by MEM-077 Q3 list-detail (2026-11-02):** the marker expands its station list item (focus moves in, marker ringed `lm-selected`); Escape collapses it and refocuses its button; no `#lm-card` popover. |
 | filter = All | `#offroute` holds only landmarks inside the viewBox + 25% margin (DOM nodes exist only there); recomputed on pan end, zoom end and tween end; a focused node is kept. |
 | topic typed | Must match an existing topic (else `aria-invalid`); recents first in the datalist; route colour updates. |
 | search / scroll in Existing routes | Recents, then groups by topic (sorted); only rows in view + overscan exist; arrows/Home/End/PageUp/PageDown rove focus. |
