@@ -1,7 +1,8 @@
 // Covers: MEM-054
 // Requirement: Backup v2 (plan D6 / D11 / B9, ADR amends 0028). The file is {v: 2, routes, lists,
 // associations, rehearsals}: saved routes only, named stations only, every station exactly {id, n,
-// name, status, box, profile, taps, photo}, never coordinates, timestamps per station, EXIF or
+// name, status, box, profile, taps, photo} (photo omitted and box null for a station with no stored
+// photo, ADR 0043; see palace_export_photoless.test.mjs), never coordinates, timestamps per station, EXIF or
 // baseline (Mapillary) data; photos are the stored photo re-encoded to 640 px long side, quality 0.7,
 // box scaled to it. MAX_BACKUP_BYTES = 8 MiB caps export and import (checked before parse). Import
 // takes v2 only (a v1 file -> "Older backup format, not supported"), refuses the whole file on any
