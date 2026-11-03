@@ -130,9 +130,17 @@
           <label class="check"><input type="radio" name="finish-kind" value="daily" checked> Daily</label>
           <label class="check"><input type="radio" name="finish-kind" value="occasional"> Occasional</label>
         </fieldset>
-        <ol id="route"></ol>
+        <div class="route-head">
+          <p class="route-hint">Drag the dots to reorder. Tap Edit to remove a place.</p>
+          <button id="route-edit" class="btn route-edit" type="button" aria-pressed="false">Edit</button>
+        </div>
+        <ol id="route" class="route-list"></ol>
+        <p id="route-live" class="sr-only" aria-live="polite"></p>
+        <div id="route-toast" class="route-toast" role="status" hidden>
+          <span id="route-toast-text" class="route-toast-text"></span>
+          <button id="route-undo" class="btn route-undo" type="button">Undo</button>
+        </div>
         <div class="btn-row">
-          <button id="route-undo" class="btn" type="button" hidden>Undo drop</button>
           <button id="finish-save" class="btn btn-primary" type="button">Save route</button>
           <button id="generate" class="btn btn-primary" type="button">Generate</button>
         </div>

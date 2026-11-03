@@ -184,6 +184,7 @@ def s_narrow(ctx, browser):
         ctx.shot(page, "16_360_initial")
         page.click("#load-demo")
         page.wait_for_selector("#route-review:not([hidden])", timeout=60000)
+        page.click("#route-edit")
         page.locator("#route li").nth(0).locator("button[data-action=drop]").click()
         m["route_pending_drop"] = hscroll(page)
         ctx.shot(page, "17_360_route_review")

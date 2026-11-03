@@ -33,21 +33,26 @@ def _route_btn(page, i, action):
 
 @step("3 route reorder")
 def s_reorder(ctx, page, before):
-    _route_btn(page, 0, "down").click()
+    # The grip's keyboard equivalent of a drag: ArrowDown/ArrowUp move the place one step.
+    _route_btn(page, 0, "drag").press("ArrowDown")
     after = route_labels(page)
     ok_swap = after[0] == before[1] and after[1] == before[0]
-    up0 = _route_btn(page, 0, "up").is_disabled()
-    downlast = page.locator("#route li").last.locator("button[data-action=down]").is_disabled()
+    _route_btn(page, 0, "drag").press("ArrowUp")
+    top_stays = route_labels(page) == after
+    page.locator("#route li").last.locator("button[data-action=drag]").press("ArrowDown")
+    last_stays = route_labels(page) == after
     # Move it back so the fixture pairings stay as recorded.
-    _route_btn(page, 1, "up").click()
+    _route_btn(page, 1, "drag").press("ArrowUp")
     back = route_labels(page)
-    ok = ok_swap and up0 and downlast and back == before
-    detail = f"swap={ok_swap} up0_disabled={up0} downLast_disabled={downlast} restored={back == before}"
+    ok = ok_swap and top_stays and last_stays and back == before
+    detail = f"swap={ok_swap} top_up_noop={top_stays} last_down_noop={last_stays} restored={back == before}"
     ctx.rec("3 route reorder", ok, detail)
 
 
 @step("4 route drop+confirm+undo")
 def s_drop(ctx, page, before):
+    # Remove is reachable only in edit mode: Edit reveals each row's trash (data-action drop).
+    page.click("#route-edit")
     _route_btn(page, 1, "drop").click()
     pending = _route_btn(page, 1, "confirm-drop").count() == 1
     still = len(route_labels(page)) == len(before)

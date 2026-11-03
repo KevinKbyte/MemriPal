@@ -35,7 +35,7 @@ finish-name finish-kind finish-save route-view route-map route-view-stations rou
 route-view-baseline route-view-lists route-view-add-list route-view-in-use route-view-delete
 route-view-delete-confirm route-view-delete-cancel route-view-undo list-panel list-name list-notes
 list-split list-retire list-retire-confirm list-retire-cancel list-retire-undo recall-mode recall-map
-history-intrusions""".split()
+history-intrusions route-edit route-live route-toast route-toast-text""".split()
 )
 BANNED_PROPS = ("transform", "filter", "contain", "perspective", "will-change", "backdrop-filter")
 # SVG children of .route-map are the only element-type selectors allowed (circle/text/polyline written

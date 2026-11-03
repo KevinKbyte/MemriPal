@@ -261,45 +261,176 @@ button[aria-expanded]:hover {
   color: var(--bad);
 }
 
-/* F12: the flex row hides the li marker, so a counter on an absolute ::before numbers it; the label
-   takes the first line whole, so Up/Down/Drop wrap together and Drop never sits alone at 360 px. */
-#route {
-  counter-reset: route;
-  padding-left: 0;
+/* MEM-081 route review: drag handle reorder, Edit reveals trash, inline confirm, Undo snackbar.
+   Ported verbatim into static/style.css; no inline styles anywhere (CSP), drag feedback by class only. */
+.route-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 
-#route li {
-  position: relative;
+.route-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* Edit is a toggle: pressed reads as the primary "Done" until the user leaves edit mode. */
+.route-edit[aria-pressed="true"],
+.route-edit[aria-pressed="true"]:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+
+.route-list {
+  counter-reset: route;
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+.route-row {
   counter-increment: route;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.25rem 0.5rem;
   margin-bottom: 0.5rem;
-  padding-left: 2.5rem;
+  padding: 0.25rem 0.25rem 0.25rem 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
 }
 
-/* Fixed right-aligned box so a 3-digit place number ("100.") never runs into the label. */
-#route li::before {
+.route-row::before {
   content: counter(route) ".";
-  position: absolute;
-  left: 0;
-  top: 0.1rem;
-  width: 2.25rem;
+  flex: 0 0 2rem;
   text-align: right;
   font: 600 0.9rem/1.5 var(--mono);
   color: var(--muted);
 }
 
-#route li > span:first-child {
-  flex: 1 1 100%;
+.route-label {
+  flex: 1 1 0;
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
-/* The pending-drop prompt takes its own line, so Confirm drop and Cancel share the next one at 360 px. */
-#route li > span:not(:first-child) {
+/* Icon buttons: 44 px square targets, the glyph is an inline svg drawn in currentColor. */
+.route-grip,
+.route-trash {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+}
+
+.route-grip svg,
+.route-trash svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  fill: currentColor;
+}
+
+/* touch-action: only the handle claims the gesture, so the rest of the row still scrolls the page. */
+.route-grip {
+  cursor: grab;
+  touch-action: none;
+}
+
+.route-trash {
+  color: var(--bad);
+}
+
+.route-trash:hover {
+  background: var(--bad-soft);
+}
+
+/* The row being dragged lifts; the list shows a grabbing cursor while a drag runs. */
+.route-row.dragging {
+  border-color: var(--primary);
+  background: var(--surface-2);
+  box-shadow: var(--shadow);
+}
+
+.route-list.is-dragging,
+.route-list.is-dragging .route-grip {
+  cursor: grabbing;
+}
+
+/* Pending removal: the question takes its own line, Remove and Keep share the next one at 360 px. */
+.route-row.confirming {
+  border-color: var(--bad);
+  background: var(--bad-soft);
+}
+
+.route-ask {
   flex: 1 1 100%;
+  padding-left: 2.5rem;
+  font-weight: 700;
+  color: var(--bad);
+}
+
+.route-confirm {
+  margin-left: 2.5rem;
+  color: var(--on-bad);
+  background: var(--bad);
+  border-color: var(--bad);
+}
+
+.route-confirm:hover {
+  color: var(--on-bad);
+  background: var(--bad);
+}
+
+/* Snackbar: sticks to the bottom of the viewport while the review panel is on screen. */
+.route-toast {
+  position: sticky;
+  bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.5rem 0.5rem 1rem;
+  border-radius: 12px;
+  background: var(--ink);
+  color: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.route-toast-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.route-toast .route-undo {
+  color: var(--ink);
+  background: var(--lamp-soft);
+  border-color: var(--lamp);
+}
+
+/* Hover only darkens the border: --ink text on a --lamp fill drops to 1.5:1 in dark mode. */
+.route-toast .route-undo:hover {
+  border-color: var(--lamp-ink);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* The tier-1 scene is the whole photo, zoomed by an inline transform; the frame crops it. */

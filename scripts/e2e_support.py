@@ -98,7 +98,7 @@ def hscroll(page):
 
 
 def route_labels(page):
-    return texts(page, "#route li > span:first-child")
+    return texts(page, "#route li .route-label")
 
 
 # Waits use locators, which poll in Playwright's isolated world: an eval'd JS-string predicate
