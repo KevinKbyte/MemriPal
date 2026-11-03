@@ -100,7 +100,19 @@ function stringsOf(v, keys) {
  * @param {RouteStore} routes @param {Thumbnail} thumbnail @param {any} st
  */
 async function stationOut(routes, thumbnail, st) {
-  const t = await thumbnail(await routes.getPhoto(st.photo_ref), { ...THUMB });
+  const stored = await routes.getPhoto(st.photo_ref);
+  const base = {
+    id: st.id,
+    n: st.n,
+    name: st.name,
+    status: "named",
+    box: null,
+    profile: stringsOf(st.profile, PROFILE_KEYS),
+    taps: stringsOf(st.taps, TAP_KEYS),
+  };
+  // A seeded demo station has no photo (ADR 0043): no photo key, and no box since a box needs a photo.
+  if (stored === null || stored === undefined) return base;
+  const t = await thumbnail(stored, { ...THUMB });
   const kx = t.width / t.sourceWidth;
   const ky = t.height / t.sourceHeight;
   /** @param {number} v @param {number} k @param {number} max */
@@ -113,16 +125,7 @@ async function stationOut(routes, thumbnail, st) {
       x2: fit(Math.max(b.x1, b.x2), kx, t.width), y2: fit(Math.max(b.y1, b.y2), ky, t.height),
     }
     : null;
-  return {
-    id: st.id,
-    n: st.n,
-    name: st.name,
-    status: "named",
-    box,
-    profile: stringsOf(st.profile, PROFILE_KEYS),
-    taps: stringsOf(st.taps, TAP_KEYS),
-    photo: JPEG_PREFIX + base64(await bytesOf(t.bytes)),
-  };
+  return { ...base, box, photo: JPEG_PREFIX + base64(await bytesOf(t.bytes)) };
 }
 
 /**
@@ -168,10 +171,21 @@ function stringMapIn(v, keys, what) {
  * @param {unknown} st @param {LoadImage} loadImage
  */
 async function stationIn(st, loadImage) {
-  if (!isObject(st) || !exactKeys(st, STATION_KEYS)) throw new Error("bad station");
+  // `photo` is optional (ADR 0043); every other key is required and nothing else is allowed.
+  const hasPhoto = isObject(st) && Object.hasOwn(st, "photo");
+  const keys = hasPhoto ? STATION_KEYS : STATION_KEYS.filter((k) => k !== "photo");
+  if (!isObject(st) || !exactKeys(st, keys)) throw new Error("bad station");
   const { id, n, name, status, box, profile, taps, photo } = st;
   if (typeof id !== "string" || !UUID_RE.test(id) || !Number.isInteger(n) || n < 1) throw new Error("bad station");
   if (!shortText(name, NAME_MAX) || status !== "named") throw new Error("bad station");
+  if (!hasPhoto) {
+    if (box !== null) throw new Error("station box needs a photo");
+    return {
+      id, n, name, box: null,
+      profile: stringMapIn(profile, PROFILE_KEYS, "profile"),
+      taps: stringMapIn(taps, TAP_KEYS, "taps"),
+    };
+  }
   // Checked before decode, so no other scheme (javascript:, http:, png) ever reaches loadImage.
   if (typeof photo !== "string" || !JPEG_URL_RE.test(photo)) throw new Error("station photo is not a JPEG");
   const bytes = Uint8Array.from(atob(photo.slice(JPEG_PREFIX.length)), (c) => c.charCodeAt(0));

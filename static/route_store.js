@@ -303,7 +303,7 @@ export function createRouteStore(adapter, { now = Date.now, newId = () => crypto
      * under a fresh photo_ref. An id already stored wins (D11): nothing is written, null returned.
      * @param {{ id: string, name: string, kind: string, created_at: string, lists: RouteList[],
      *   stations: Array<{ id: string, n: number, name: string, box: Box | null,
-     *     profile: Record<string, string> | null, taps: Record<string, string> | null, photo: any }> }} input
+     *     profile: Record<string, string> | null, taps: Record<string, string> | null, photo?: any }> }} input
      * @returns {Promise<Route | null>}
      */
     restoreRoute: ({ id, name, kind, created_at, lists, stations }) => serial(async () => {
@@ -319,7 +319,8 @@ export function createRouteStore(adapter, { now = Date.now, newId = () => crypto
         if (s.profile) st.profile = { ...s.profile };
         if (s.taps) st.taps = { ...s.taps };
         r.stations.push(st);
-        writes.push(putPhoto(st.photo_ref, s.photo));
+        // A photo-less station (ADR 0043) restores with no photo record.
+        if (s.photo !== undefined) writes.push(putPhoto(st.photo_ref, s.photo));
       }
       // Cached only once persisted: a failed import write must leave no route for a retry to see as present.
       const out = await persist(clone(r), [...writes, putRoute(r)]);
