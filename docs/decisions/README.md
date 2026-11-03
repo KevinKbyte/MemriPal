@@ -119,3 +119,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
   sections toggled by `hidden` + `aria-current`; legacy panels rehomed to Recall/Settings tabs and the Routes drawer;
   real map mounted in `.map-wrap` filling home above the tabbar (over per-tab pages, CSS `:target`, deleting the
   panels, or keeping them stacked on home).
+- [0046](0046-offline-walking-graph-routing-and-geocode.md) Route search runs offline: build-time Overpass walking
+  graph + named-POI JSON, in-process A*, fuzzy geocode with a mandatory "meta office" alias and map-click fallback
+  (over pmtiles roads, Google, public OSRM/Nominatim/Overpass, Stadia, ORS live, or an osmium/osmnx toolchain).
