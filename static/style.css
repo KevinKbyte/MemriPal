@@ -463,7 +463,7 @@ li.said-missed {
 
 /* MEM-077: after the first idle the sketch svg is the station overlay, laid over the map canvas inside the
    clipping .real-map box (under MapLibre's controls). Drags pass through to the map. */
-.route-map.route-map-overlay {
+.route-map-overlay.route-map {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -489,10 +489,31 @@ li.said-missed {
   stroke-width: 2;
 }
 
+/* MEM-077: a station marker is hard to see at rest, so hover doubles it about its own centre. */
 .route-node {
   fill: var(--surface);
   stroke: var(--primary);
   stroke-width: 2;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 120ms ease-out;
+}
+
+@media (hover: hover) {
+  .route-node:hover {
+    transform: scale(2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-node {
+    transition: none;
+  }
+}
+
+/* The overlay svg passes drags through; its markers still take hover. */
+.route-map-overlay .route-node {
+  pointer-events: auto;
 }
 
 .route-node.lit {
