@@ -9,7 +9,7 @@ const LEVENSHTEIN_SLACK = 2;
 const COVERAGE_SLACK = 4;
 
 // Function words carry no recall signal; key-term coverage counts content words only.
-const STOPWORDS = new Set(
+export const STOPWORDS = new Set(
   (
     "a an the and or but nor so of to in on at by for with from as into onto about is are was were be been " +
     "being am it its this that these those there here i me my we us our you your he him his she her they " +
@@ -34,7 +34,7 @@ const STOPWORDS = new Set(
  * @param {number} offset
  * @returns {Token[]}
  */
-function tokenize(text, offset) {
+export function tokenize(text, offset) {
   const tokens = [];
   for (const m of text.matchAll(/[A-Za-z0-9]+/g)) {
     const s = offset + /** @type {number} */ (m.index);

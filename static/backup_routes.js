@@ -253,3 +253,61 @@ export async function importRoutes(routes, loadImage) {
   for (const r of routes) out.push(await routeIn(r, loadImage));
   return out;
 }
+
+// MemorizeItem (ADR 0048, amends 0033): the backup's top-level lists[]; remember_by is the only optional key.
+const ITEM_KEYS = ["id", "title", "text", "keywords", "route_id", "placements", "created_at"];
+const KEYWORD_KEYS = ["label", "source_quote"];
+const PLACEMENT_KEYS = ["record", "sig"];
+const MAX_KEYWORDS = 12; // split.py MAX_POINTS
+const TEXT_MAX = 20480; // split.py MAX_NOTES_BYTES
+
+/** @param {any} it one MemorizeItem's allowlisted fields; the server-signed record is kept as sent. */
+function itemOut(it) {
+  const out = {
+    id: it.id,
+    title: it.title,
+    text: it.text,
+    keywords: it.keywords.map((/** @type {any} */ k) => ({ label: k.label, source_quote: k.source_quote })),
+    route_id: it.route_id,
+    placements: Object.fromEntries(
+      Object.entries(it.placements).map(([sid, p]) => [sid, { record: p.record, sig: p.sig }]),
+    ),
+    created_at: it.created_at,
+  };
+  return it.remember_by === undefined ? out : { ...out, remember_by: it.remember_by };
+}
+
+/** Export side: every MemorizeItem, allowlisted fields only. @param {any[]} items */
+export function exportLists(items) {
+  return items.map(itemOut);
+}
+
+/** @param {unknown} it */
+function itemIn(it) {
+  if (!isObject(it)) throw new Error("bad list");
+  const keys = Object.hasOwn(it, "remember_by") ? [...ITEM_KEYS, "remember_by"] : ITEM_KEYS;
+  if (!exactKeys(it, keys)) throw new Error("bad list");
+  const { id, title, text, keywords, route_id, placements, created_at, remember_by } = it;
+  if (typeof id !== "string" || !UUID_RE.test(id) || typeof route_id !== "string" || !UUID_RE.test(route_id)) {
+    throw new Error("bad list");
+  }
+  if (!shortText(title, NAME_MAX) || typeof text !== "string" || text.length > TEXT_MAX) throw new Error("bad list");
+  if (typeof created_at !== "string" || !isoRoundTrips(created_at)) throw new Error("bad list");
+  if (remember_by !== undefined && (typeof remember_by !== "string" || !isoRoundTrips(remember_by))) {
+    throw new Error("bad list");
+  }
+  const kwOk = Array.isArray(keywords) && keywords.length >= 1 && keywords.length <= MAX_KEYWORDS
+    && keywords.every((k) => isObject(k) && exactKeys(k, KEYWORD_KEYS)
+      && shortText(k.label, NAME_MAX) && typeof k.source_quote === "string" && k.source_quote.trim() !== "");
+  if (!kwOk) throw new Error("bad list keywords");
+  const plOk = isObject(placements) && Object.entries(placements).every(([sid, p]) => UUID_RE.test(sid)
+    && isObject(p) && exactKeys(p, PLACEMENT_KEYS) && isObject(p.record) && typeof p.sig === "string");
+  if (!plOk) throw new Error("bad list placements");
+  return itemOut(it);
+}
+
+/** Import side: every item checked; throws on the first bad one, so nothing partial is restored. @param {unknown[]} lists */
+export function importLists(lists) {
+  if (!Array.isArray(lists)) throw new Error("bad lists");
+  return lists.map(itemIn);
+}

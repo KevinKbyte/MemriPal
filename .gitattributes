@@ -1,5 +1,8 @@
 # The demo notes text is part of the split replay key: a CRLF checkout would miss the replay (MEM-023).
 fixtures/demo/notes.txt text eol=lf
+fixtures/demo/study_techniques.txt text eol=lf
+# Byte-exact base64 of fixtures/demo/photo.jpg; static/memorize.js sends it as the /split replay key (MEM-087).
+static/assets/demo_photo.json -text
 .claude/spec-cache/memripal/references/spec-*.md merge=union
 # Vendored sqlite-wasm node build: byte-exact so the sha256 in vendor-node/sqlite-wasm/VERSION holds.
 vendor-node/** -text
