@@ -461,6 +461,28 @@ li.said-missed {
   visibility: hidden;
 }
 
+/* MEM-077: after the first idle the sketch svg is the station overlay, laid over the map canvas inside the
+   clipping .real-map box (under MapLibre's controls). Drags pass through to the map. */
+.route-map.route-map-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: none;
+  border-radius: 0;
+  pointer-events: none;
+}
+
+/* Author CSS: the UA [hidden] rule does not reach SVG elements. */
+.route-map-overlay [hidden] {
+  display: none;
+}
+
+/* Edge pin (Q2): points from a pinned station toward its off-map spot. */
+.lm-arrow {
+  fill: var(--primary);
+}
+
 .route-line {
   fill: none;
   stroke: var(--line);

@@ -2,10 +2,12 @@
 // Real Kendall map loader (MEM-076, plan S3, ADR 0041 conditions 1-4): a geo route with every station inside
 // the extract bbox gets a MapLibre map over the self-hosted PMTiles extract; anything else, and any failure on
 // the way, keeps the SVG sketch (static/route_map.js). The sketch stays until the map's first idle, so the
-// route view is never blank.
+// route view is never blank; then the same svg becomes the station overlay (static/real_map_overlay.js, MEM-077).
 //
 // Every URL resolves against this module, never root-relative and never via the API base: the native shell
 // sends root-relative paths cross-origin, and Capacitor may answer a missing asset with index.html 200.
+
+import { attachOverlay, detachOverlay } from "./real_map_overlay.js";
 
 /** Extract bounds, same as scripts/build_map_extract.py. */
 export const REAL_MAP_BBOX = Object.freeze({ west: -71.1083, south: 42.3494, east: -71.0719, north: 42.3764 });
@@ -155,11 +157,36 @@ export function createRealMapLoader({ fetch, loadLibs, doc = globalThis.document
     return t === "dark" || t === "light" ? t : null;
   }
 
+  /**
+   * Per svg, its latest mount. A repeat mount (reopening a route) replaces the previous map, so boxes never
+   * stack and the svg returns to its sketch place first.
+   * @type {WeakMap<any, { map: any, box: any, viewBox: string | null }>}
+   */
+  const mounted = new WeakMap();
+
+  /** @param {any} svg */
+  function release(svg) {
+    const prev = mounted.get(svg);
+    if (!prev) return;
+    mounted.delete(svg);
+    if (!prev.box) return;
+    if (svg.parentNode === prev.box) {
+      prev.box.before(svg);
+      detachOverlay(svg, prev.viewBox);
+    }
+    prev.map.remove();
+    prev.box.remove();
+  }
+
   return {
     async mount(svg, stations) {
+      release(svg);
       if (!inRealMapBbox(stations)) return null;
+      const entry = { map: null, box: null, viewBox: svg.getAttribute("viewBox") };
+      mounted.set(svg, entry);
       const maplibregl = await prepare();
-      if (!maplibregl) return null;
+      // A newer mount of the same svg started while this one waited: it owns the svg now.
+      if (!maplibregl || mounted.get(svg) !== entry) return null;
       const box = doc.createElement("div");
       // Pending: laid over the sketch and invisible until the first idle (static/style.css .real-map).
       box.classList.add("real-map", "real-map-pending");
@@ -183,6 +210,9 @@ export function createRealMapLoader({ fetch, loadLibs, doc = globalThis.document
         box.remove();
         return null;
       }
+      Object.assign(entry, { map, box });
+      // The station list is the accessible path; the canvas is decoration to a screen reader.
+      map.getCanvasContainer().setAttribute("aria-hidden", "true");
       const mq = win.matchMedia(DARK_QUERY);
       const theme = () => explicitTheme() ?? (mq.matches ? "dark" : "light");
       map.setStyle(styleHref(theme()), styleOptions);
@@ -194,7 +224,7 @@ export function createRealMapLoader({ fetch, loadLibs, doc = globalThis.document
       map.once("remove", () => mq.removeEventListener("change", onScheme));
       map.once("idle", () => {
         box.classList.remove("real-map-pending");
-        svg.setAttribute("hidden", "");
+        attachOverlay(map, svg, stations, doc);
       });
       return { map };
     },
