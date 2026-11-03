@@ -137,3 +137,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0051](0051-static-part-sub-loci.md) Opt-in "Find parts" sub-loci: SAM over a `STATIC_PARTS` phrase list gated by
   `MOVABLE_NOUNS`, nested `Station.sub_loci`, meta-mode replay fixtures (over always-on parts, Spark phrases, or flat
   extra stations). Stretch.
+- [0052](0052-place-space-and-floor-plan-palace.md) Floor-plan palace: `Route.space` "geo" | "plan", normalized
+  `plan_xy` on an SVG overlay, number reading with Python range checks and an unplaced tray (over overloading
+  `Route.kind`, a separate store, or MapLibre raster). Deferred.
