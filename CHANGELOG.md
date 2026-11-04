@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.69] - 2026-11-04
+
+### Fixed
+
+- Spark loci calls no longer come back empty: every spark_json send adds 8192 reasoning-headroom tokens to max_completion_tokens at send time, so cache keys and fixtures are unchanged (MEM-014, ADR 0077).
+- Upstream 502s now log their cause at WARNING (route, exception class, status, a 500-char body excerpt) with every configured provider key masked as ***; a chat provider failure never logs its body, and error responses stay {"error": code} (MEM-014, MEM-015).
+
 ## [0.20.66] - 2026-11-04
 
 ### Changed
