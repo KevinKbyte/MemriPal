@@ -67,3 +67,9 @@ answers. (C) keeps the demo working for everyone and still lets keyed visitors g
   session's HTTP client.
 - With `MEMRIPAL_RECORD_KEY` unset the HMAC secret is random per process (as for record signatures), so a key's $5
   state restarts with the server; deploys set the record key, so the limit holds across restarts there.
+- A key's spend dir is created only once Meta has accepted the key (security review, 2026-11-04): a request on a
+  key with no state yet holds its charges in a process-wide in-memory table under the guard lock, which still
+  counts against the cap for every concurrent request on that key, and writes them to `spent.json` once Meta
+  answers anything but 401/403 (or the call raises, as it may have been billed). A 401/403 drops them, so random
+  keys leave nothing on disk. Chosen over deferring every charge until the response (concurrent first calls
+  could then all pass the cap) and over a periodic sweep of empty dirs (the growth still happens between sweeps).

@@ -558,7 +558,9 @@ Actors: a visitor with a Meta API key; the 5 model routes; Meta's API.
 - Empty, whitespace, non-ASCII, control-char, repeated or >512-char keys: 400 `bad_meta_key` before any upstream
   call. Header `X-Memripal-Byok`: `invalid` | `limit` (503 `byok_limit_reached`) | `rejected:<model>` (502
   `byok_key_rejected`; /scenes stays tier 3). Unknown values are never rendered.
-- The key is never logged, cached, persisted, echoed, or sent to any host but Meta's API.
+- The key is never logged, cached, persisted, echoed, or sent to any host but Meta's API. Its spend state is written
+  only once Meta has accepted the key (any answer but 401/403); until then its charges count in memory, so a
+  refused key leaves no `byok/` dir and the cap still holds for concurrent first calls.
 - Accept: concurrent BYOK and shared requests each carry their own Bearer; a bad key header -> 400 with zero
   upstream requests; an upstream 401 echoing the key leaks it to no log, response, live cache, spend state or
   ModelRequest.gen_params; the same key under a new guard stays capped and its state holds no key substring; the
