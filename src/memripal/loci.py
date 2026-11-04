@@ -131,6 +131,72 @@ def disambiguate(selected: list[tuple[str, Box]]) -> list[tuple[str, str, Box]]:
     return [(label, phrase, b) for label, (phrase, b) in zip(labels, selected, strict=True)]
 
 
+Pt = tuple[int, int]
+
+
+def _c2(b: Box) -> Pt:
+    """Doubled centroid: integer coordinates keep every orientation test exact."""
+    return (b.x1 + b.x2, b.y1 + b.y2)
+
+
+def _orient(a: Pt, b: Pt, c: Pt) -> int:
+    v = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+    return (v > 0) - (v < 0)
+
+
+def _on_box(a: Pt, b: Pt, p: Pt) -> bool:
+    return min(a[0], b[0]) <= p[0] <= max(a[0], b[0]) and min(a[1], b[1]) <= p[1] <= max(a[1], b[1])
+
+
+def _legs_meet(p1: Pt, p2: Pt, q1: Pt, q2: Pt) -> bool:
+    """Closed legs share a point, ignoring a coincident shared endpoint (two loci at one centroid)."""
+    shared = {p1, p2} & {q1, q2}
+    if shared:
+        s = next(iter(shared))
+        po, qo = (p2 if p1 == s else p1), (q2 if q1 == s else q1)
+        if po == s or qo == s:
+            return False
+        d1, d2 = (po[0] - s[0], po[1] - s[1]), (qo[0] - s[0], qo[1] - s[1])
+        return d1[0] * d2[1] == d1[1] * d2[0] and d1[0] * d2[0] + d1[1] * d2[1] > 0
+    o1, o2 = _orient(p1, p2, q1), _orient(p1, p2, q2)
+    o3, o4 = _orient(q1, q2, p1), _orient(q1, q2, p2)
+    if o1 * o2 < 0 and o3 * o4 < 0:
+        return True
+    return (
+        (o1 == 0 and _on_box(p1, p2, q1))
+        or (o2 == 0 and _on_box(p1, p2, q2))
+        or (o3 == 0 and _on_box(q1, q2, p1))
+        or (o4 == 0 and _on_box(q1, q2, p2))
+    )
+
+
+def _meetings(c: list[Pt]) -> list[tuple[int, int]]:
+    n = len(c) - 1
+    return [(i, j) for i in range(n) for j in range(i + 2, n) if _legs_meet(c[i], c[i + 1], c[j], c[j + 1])]
+
+
+def _uncross(ordered: list[tuple[str, str, Box]]) -> list[tuple[str, str, Box]]:
+    """2-opt from the reading order: reverse the stretch between two meeting legs when that shortens the walk.
+
+    Each reversal strictly shortens the walk, so the loop ends. A proper crossing always shortens; a
+    degenerate collinear or touching meeting that no reversal shortens falls back to a walk sorted top to
+    bottom, then left to right, which is y-monotone and so never meets itself.
+    """
+    path = list(ordered)
+    while True:
+        c = [_c2(it[2]) for it in path]
+        hits = _meetings(c)
+        if not hits:
+            return path
+        for i, j in hits:
+            a, b, d, e = c[i], c[i + 1], c[j], c[j + 1]
+            if math.dist(a, d) + math.dist(b, e) < math.dist(a, b) + math.dist(d, e) - 1e-9:
+                path[i + 1 : j + 1] = path[i + 1 : j + 1][::-1]
+                break
+        else:
+            return sorted(ordered, key=lambda it: (_c2(it[2])[1], _c2(it[2])[0]))
+
+
 def route_order(items: list[tuple[str, str, Box]], img_h: int) -> list[Locus]:
     rows: list[list[tuple[str, str, Box]]] = []
     first_y = 0.0
@@ -140,7 +206,7 @@ def route_order(items: list[tuple[str, str, Box]], img_h: int) -> list[Locus]:
             rows.append([])
             first_y = cy
         rows[-1].append(it)
-    ordered = [it for row in rows for it in sorted(row, key=lambda t: _centroid(t[2])[0])]
+    ordered = _uncross([it for row in rows for it in sorted(row, key=lambda t: _centroid(t[2])[0])])
     return [
         Locus(
             n=n,
