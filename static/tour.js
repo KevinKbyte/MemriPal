@@ -1,7 +1,8 @@
 // @ts-check
-// Pal's first-run tour (MEM-095) and its Settings replay (MEM-112). Ported from docs/design/tutorial/preview.js.
-// Step text goes in via textContent only, never parsed as HTML.
+// Pal's first-run tour (MEM-095), its Settings replay (MEM-112) and step 3's emoji stickers (MEM-117). Ported from
+// docs/design/tutorial/preview.js. Step text goes in via textContent only, never parsed as HTML.
 import { showTab } from "./tabbar.js";
+import { rollAll, rollOne } from "./stickers.js";
 
 export const TOUR_KEY = "memripal.tour.done";
 
@@ -35,6 +36,7 @@ export const STEPS = [
       { spot: "Scratching post", icon: E(0x1F3AB), item: "belly-rub voucher, wax paw seal" },
       { spot: "Window", icon: E(0x1F451), item: "spare paper crown, in case of rain, or a coup" },
     ],
+    after: "I break each item into keywords and mash their emoji into one sticker. Tap a sticker to re-roll it.",
     next: "Next" },
   { story: true, title: "Then I walk it again",
     body: "At the store I stroll the house in my head. Each spot hands back its item:",
@@ -95,6 +97,12 @@ const HOUSE_H = 200;
 const PIN_R = 9;
 const LABEL_WRAP = 10; // labels longer than this many characters break onto one line per word
 const LABEL_LEAD = 11;
+const STICKER_R = 13; // badge radius; also the clamp margin that keeps a corner sticker inside the viewBox
+const STICKER_BIG = 18;
+const STICKER_SMALL = 11;
+// Parts after the first overlap it, lower right then lower left, so 2-3 emoji read as one merged picture.
+const STICKER_OFFSETS = [[0, 0], [8, 7], [-8, 7]];
+const ROLL_MS = 300;
 
 /**
  * Wire the #tour dialog, #tour-toast and #tour-replay; open the tour at step 1 for a first-time visitor.
@@ -117,7 +125,18 @@ export function wireTour(doc, store) {
   const back = $("tour-back");
   const next = $("tour-next");
   const toast = $("tour-toast");
+  const roll = $("tour-roll");
   let cur = 0;
+  // House-step stickers: rolled once, then kept while the page is open so Next/Back shows the same pictures.
+  // groups/icons point at the nodes of the step currently drawn, so a re-roll repaints in place and keeps focus.
+  /** @type {import("./stickers.js").Composite[] | null} */
+  let stickers = null;
+  /** @type {any[]} */
+  let groups = [];
+  /** @type {any[]} */
+  let icons = [];
+  /** @type {any[]} */
+  const rollTimers = [];
   /** @type {any} */
   let toastTimer = null;
 
@@ -133,12 +152,20 @@ export function wireTour(doc, store) {
     return e;
   }
 
-  /** @param {any} r */
-  function figRow(r) {
+  /**
+   * A house-step row (sticker given) shows the sticker's parts as its icon plus a keyword caption.
+   * @param {any} r @param {import("./stickers.js").Composite} [sticker]
+   */
+  function figRow(r, sticker) {
     const li = el("li", "fig-row" + (r.done ? " is-done" : "") + (r.faded ? " is-faded" : ""));
     li.appendChild(el("span", "fig-spot", r.spot));
-    if (r.icon) li.appendChild(el("span", "fig-icon", r.icon));
+    if (sticker) {
+      icons.push(li.appendChild(el("span", "fig-icon", sticker.parts.join(""))));
+    } else if (r.icon) {
+      li.appendChild(el("span", "fig-icon", r.icon));
+    }
     li.appendChild(el("span", "fig-item", r.item));
+    if (sticker) li.appendChild(el("span", "tour-kw", sticker.keywords.join(" + ")));
     if (r.sub) {
       const ol = el("ol", "fig-sub");
       for (const c of r.sub) ol.appendChild(figRow(c));
@@ -203,6 +230,58 @@ export function wireTour(doc, store) {
     return svg;
   }
 
+  /**
+   * One locus's sticker, anchored at its box's top-right corner (pins hold the top-left) and clamped so the
+   * badge stays inside the viewBox. Its parts are painted by paintSticker.
+   * @param {string} spot @param {number[]} b @param {number} i
+   */
+  function stickerGroup(spot, b, i) {
+    const x = Math.min(Math.max(b[0] + b[2], STICKER_R), HOUSE_W - STICKER_R);
+    const y = Math.min(Math.max(b[1], STICKER_R), HOUSE_H - STICKER_R);
+    const g = svgEl("g",
+      { transform: `translate(${x} ${y})`, role: "button", tabindex: 0, "aria-label": `Re-roll ${spot}` }, "tour-sticker");
+    g.addEventListener("click", () => reroll([i]));
+    g.addEventListener("keydown", (/** @type {any} */ e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault(); // Space would otherwise scroll the page
+      reroll([i]);
+    });
+    return g;
+  }
+
+  /** @param {any} g @param {import("./stickers.js").Composite} s */
+  function paintSticker(g, s) {
+    // compose() yields 1..3 parts, one per keyword, so every part has an offset.
+    const parts = s.parts.map((p, n) => {
+      const [dx, dy] = STICKER_OFFSETS[n];
+      const t = svgEl("text", {
+        x: dx, y: dy, "font-size": n ? STICKER_SMALL : STICKER_BIG,
+        "text-anchor": "middle", "dominant-baseline": "central",
+      });
+      t.textContent = p;
+      return t;
+    });
+    g.replaceChildren(svgEl("circle", { r: STICKER_R }), ...parts);
+  }
+
+  /**
+   * Re-roll the given loci on the drawn house step: new composites, repainted sticker and row icon, a spin.
+   * @param {number[]} idx
+   */
+  function reroll(idx) {
+    let rolled = /** @type {import("./stickers.js").Composite[]} */ (stickers);
+    for (const i of idx) rolled = rollOne(rolled, i);
+    stickers = rolled;
+    for (const i of idx) {
+      const g = groups[i];
+      paintSticker(g, stickers[i]);
+      icons[i].textContent = stickers[i].parts.join("");
+      g.classList.add("is-rolling");
+      win.clearTimeout(rollTimers[i]);
+      rollTimers[i] = win.setTimeout(() => g.classList.remove("is-rolling"), ROLL_MS);
+    }
+  }
+
   function placeSpot() {
     const sel = /** @type {any} */ (STEPS[cur]).target || null;
     const target = sel ? doc.querySelector(sel) : null;
@@ -236,12 +315,24 @@ export function wireTour(doc, store) {
     $("tour-title").textContent = s.title;
     $("tour-body").textContent = s.body;
     // #tour-house is optional markup (older shells lack it); the figure only draws where it exists.
+    // Sticker items come from the house step's fig rows (one per box, same order). Math.random is read inside
+    // compose at call time, so tests can mock it.
+    const rolled = s.house ? (stickers ??= rollAll(s.fig.map((/** @type {any} */ r) => r.item))) : null;
+    groups = [];
+    icons = [];
     if (house) {
-      house.replaceChildren(...(s.house ? [houseFig(s.house)] : []));
+      const svg = rolled ? houseFig(s.house) : null;
+      if (svg) {
+        groups = s.house.map((/** @type {any} */ h, /** @type {number} */ n) => stickerGroup(h.spot, h.box, n));
+        groups.forEach((g, n) => paintSticker(g, rolled[n]));
+        svg.append(...groups);
+      }
+      house.replaceChildren(...(svg ? [svg] : []));
       house.hidden = !s.house;
     }
-    fig.replaceChildren(...(s.fig ?? []).map(figRow));
+    fig.replaceChildren(...(s.fig ?? []).map((/** @type {any} */ r, /** @type {number} */ n) => figRow(r, rolled?.[n])));
     fig.hidden = !s.fig;
+    roll.hidden = !s.house;
     after.textContent = s.after ?? "";
     after.hidden = !s.after;
     back.hidden = i === 0;
@@ -278,6 +369,8 @@ export function wireTour(doc, store) {
     else close(false);
   });
   back.addEventListener("click", () => { if (cur > 0) show(cur - 1); });
+  // Visible only on the house step, so groups always belong to the drawn house.
+  roll.addEventListener("click", () => reroll(groups.map((_, n) => n)));
   $("tour-skip").addEventListener("click", () => close(true));
   $("tour-replay")?.addEventListener("click", () => {
     showTab("routes", doc);

@@ -34,6 +34,7 @@
         { spot: "Scratching post", icon: E(0x1F3AB), item: "belly-rub voucher, wax paw seal" },
         { spot: "Window", icon: E(0x1F451), item: "spare paper crown, in case of rain, or a coup" }
       ],
+      after: "I break each item into keywords and mash their emoji into one sticker. Tap a sticker to re-roll it.",
       next: "Next" },
     { story: true, title: "Then I walk it again",
       body: "At the store I stroll the house in my head. Each spot hands back its item:",
