@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.46] - 2026-11-03
+
+### Added
+
+- Judges-only live deploy: shared access key traded at /access for a signed HttpOnly cookie; Cloud Run behind a global HTTPS ALB + Cloud Armor (scripts/deploy_edge_gcp.sh); MODE-driven secrets and IAM grants in deploy_cloud_run.sh; client IP from trusted proxy hops, IPv6 keyed by /64 (MEM-103..105, ADR 0056).
+
 ## [0.20.45] - 2026-11-03
 
 ### Changed
