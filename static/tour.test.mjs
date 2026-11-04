@@ -556,14 +556,15 @@ describe("step 3 dog house: segmented spots, numbered pins, route (MEM-095)", ()
   });
 });
 
-// Covers: MEM-117
+// Covers: MEM-117, MEM-130
 // Requirement: MEM-117 amends MEM-095. Step 3's dog house gains a sticker per locus: houseFig appends 5
 // g.tour-sticker after the pins, in walk order (SVG namespace, role=button, tabindex 0, aria-label
-// "Re-roll <spot>"), each anchored at its box's top-right corner (x + w, y) clamped inside the 320x200 viewBox;
+// "Sticker on <spot>" since MEM-130), each anchored at its box's top-right corner (x + w, y) clamped inside the 320x200 viewBox;
 // its text children are stickers.compose(STEPS[2].fig[i].item).parts, the first in a larger font. Each step-3 fig
 // row's icon shows the same parts joined and a .tour-kw caption gives the item's keywords joined by " + " (row 1
 // "sizzling + bacon"). STEPS[2].after is "I break each item into keywords and mash their emoji into one sticker.
-// Tap a sticker to re-roll it." Steps without a house show no sticker and no caption.
+// Drag a sticker onto another spot, or tap New sticker for a fresh one." (MEM-130). Steps without a house show no
+// sticker and no caption.
 const stkMod = await import("./stickers.js").catch((err) => ({ __missing: String(err) }));
 
 function needStk(name) {
@@ -571,13 +572,14 @@ function needStk(name) {
   return stkMod[name];
 }
 
-const BREAKDOWN = "I break each item into keywords and mash their emoji into one sticker. Tap a sticker to re-roll it.";
+const BREAKDOWN = "I break each item into keywords and mash their emoji into one sticker. "
+  + "Drag a sticker onto another spot, or tap New sticker for a fresh one.";
 const figItems = () => need("STEPS")[2].fig.map((r) => r.item);
 const composed = (v) => figItems().map((item) => needStk("compose")(item, () => v).parts);
 const houseSvgOf = (dom) => dom.$("tour-house").querySelector("svg");
 const stickerFor = (dom, spot) => {
-  const g = houseSvgOf(dom).querySelectorAll("g.tour-sticker").find((e) => e.getAttribute("aria-label") === `Re-roll ${spot}`);
-  assert.ok(g, `no g.tour-sticker with aria-label "Re-roll ${spot}"`);
+  const g = houseSvgOf(dom).querySelectorAll("g.tour-sticker").find((e) => e.getAttribute("aria-label") === `Sticker on ${spot}`);
+  assert.ok(g, `no g.tour-sticker with aria-label "Sticker on ${spot}"`);
   return g;
 };
 const partsOf = (g) => g.querySelectorAll("text").map((t) => t.textContent);
@@ -619,7 +621,7 @@ describe("step 3 stickers on Pal's dog house (MEM-117)", () => {
     assert.equal(at("tour-sticker").length, 5, "5 g.tour-sticker as direct children of the house svg");
     assert.ok(Math.min(...at("tour-sticker")) > Math.max(...at("pin")), "every sticker comes after every pin");
     const gs = svg.querySelectorAll("g.tour-sticker");
-    assert.deepEqual(gs.map((g) => g.getAttribute("aria-label")), HOUSE_SPOTS.map((s) => `Re-roll ${s}`));
+    assert.deepEqual(gs.map((g) => g.getAttribute("aria-label")), HOUSE_SPOTS.map((s) => `Sticker on ${s}`));
     for (const g of gs) {
       assert.equal(g.namespaceURI, SVG_NS, "sticker built with createElementNS");
       assert.equal(g.getAttribute("role"), "button");
@@ -691,14 +693,15 @@ describe("step 3 stickers on Pal's dog house (MEM-117)", () => {
   });
 });
 
-// Covers: MEM-117
-// Requirement: "Roll all" (#tour-roll, in .tour-actions) shows only on the house step and re-rolls every locus;
-// a click or Enter/Space on one g.tour-sticker re-rolls that locus only (sticker and fig row icon); a re-rolled
-// sticker carries is-rolling for 300 ms; rolls are kept while the tour is open (Next then Back); #tour-roll joins
-// the focus trap's visible buttons. tour.css styles .tour-sticker, .tour-kw and .is-rolling and turns the roll
+// Covers: MEM-117, MEM-130
+// Requirement: "New sticker" (#tour-roll, in .tour-actions; "Roll all" before MEM-130) shows only on the house
+// step and re-rolls every locus when no sticker is selected. Since MEM-130 a click or Enter/Space on one
+// g.tour-sticker only selects it (never re-rolls); New sticker then re-rolls that locus only (sticker and fig row
+// icon); a re-rolled sticker carries is-rolling for 300 ms; rolls are kept while the tour is open (Next then
+// Back); #tour-roll joins the focus trap's visible buttons. tour.css styles .tour-sticker, .tour-kw and .is-rolling and turns the roll
 // animation off under prefers-reduced-motion: reduce.
 describe("rolling stickers on step 3 (MEM-117)", () => {
-  test("#tour-roll 'Roll all' is visible on step 3 only", () => {
+  test("#tour-roll 'New sticker' is visible on step 3 only", () => {
     const steps = need("STEPS");
     const dom = wire();
     const roll = dom.$("tour-roll");
@@ -706,10 +709,10 @@ describe("rolling stickers on step 3 (MEM-117)", () => {
       if (i > 0) next(dom);
       assert.equal(roll.hidden, i !== 2, `#tour-roll hidden on step ${i + 1}: ${roll.hidden}`);
     });
-    assert.equal(roll.textContent, "Roll all");
+    assert.equal(roll.textContent, "New sticker");
   });
 
-  test("Roll all re-rolls every sticker and fig icon, stays on step 3, keeps 5 stickers, 5 pins, 1 route", (t) => {
+  test("New sticker with none selected re-rolls every sticker and fig icon, stays on step 3, keeps 5/5/1", (t) => {
     const rng = { v: 0 };
     const dom = onHouse(t, rng);
     const before = allParts(dom);
@@ -718,7 +721,7 @@ describe("rolling stickers on step 3 (MEM-117)", () => {
     assert.equal(stepN(dom), "3");
     const svg = houseSvgOf(dom);
     for (const [sel, n] of [["g.tour-sticker", 5], ["g.pin", 5], ["polyline.route-line", 1]]) {
-      assert.equal(svg.querySelectorAll(sel).length, n, `${sel} after Roll all`);
+      assert.equal(svg.querySelectorAll(sel).length, n, `${sel} after New sticker`);
     }
     const after = allParts(dom);
     assert.deepEqual(after, composed(0.999));
@@ -726,13 +729,16 @@ describe("rolling stickers on step 3 (MEM-117)", () => {
     assert.deepEqual(figIcons(dom), composed(0.999).map((p) => p.join("")), "fig icons follow the roll");
   });
 
-  test("clicking one sticker re-rolls only that locus and its fig icon", (t) => {
+  test("clicking one sticker never re-rolls it; New sticker then re-rolls only that locus and its fig icon", (t) => {
     const rng = { v: 0 };
     const dom = onHouse(t, rng);
     const before = allParts(dom);
     const iconsBefore = figIcons(dom);
     rng.v = 0.999;
     dom.click(stickerFor(dom, "Chew-toy throne"));
+    assert.deepEqual(allParts(dom), before, "a click on a sticker selects it and re-rolls nothing");
+    assert.deepEqual(figIcons(dom), iconsBefore, "a click on a sticker leaves every fig icon");
+    dom.click(dom.$("tour-roll"));
     const after = allParts(dom);
     assert.deepEqual(after[2], composed(0.999)[2], "Chew-toy throne re-rolled");
     assert.notDeepEqual(after[2], before[2], "Chew-toy throne sticker changed");
@@ -743,24 +749,27 @@ describe("rolling stickers on step 3 (MEM-117)", () => {
     assert.equal(houseSvgOf(dom).querySelectorAll("g.tour-sticker").length, 5);
   });
 
-  test("Enter and Space on a sticker re-roll only that locus", (t) => {
+  test("Enter and Space on a sticker select it and never re-roll (MEM-130)", (t) => {
     const rng = { v: 0 };
     const dom = onHouse(t, rng);
     const before = allParts(dom);
     rng.v = 0.999;
     stickerFor(dom, "Doormat").dispatchEvent(makeEvent("keydown", { key: "Enter" }));
-    assert.deepEqual(allParts(dom)[0], composed(0.999)[0], "Enter re-rolled the Doormat");
+    assert.deepEqual(allParts(dom), before, "Enter re-rolled nothing");
+    assert.equal(stickerFor(dom, "Doormat").getAttribute("aria-pressed"), "true", "Enter selected the Doormat");
     stickerFor(dom, "Window").dispatchEvent(makeEvent("keydown", { key: " " }));
-    const after = allParts(dom);
-    assert.deepEqual(after[4], composed(0.999)[4], "Space re-rolled the Window");
-    for (const i of [1, 2, 3]) assert.deepEqual(after[i], before[i], `${HOUSE_SPOTS[i]} untouched`);
+    assert.deepEqual(allParts(dom), before, "Space re-rolled nothing");
+    assert.equal(stickerFor(dom, "Window").getAttribute("aria-pressed"), "true", "Space selected the Window");
+    assert.deepEqual(allParts(dom), composed(0), "every sticker keeps its first roll");
     assert.equal(stepN(dom), "3", "Enter/Space on a sticker does not change the step");
   });
 
   test("a re-rolled sticker carries is-rolling for 300 ms; the others never do", (t) => {
     const dom = onHouse(t);
     dom.click(stickerFor(dom, "Water bowl"));
-    assert.equal(rolling(dom, "Water bowl"), true, "is-rolling on click");
+    assert.equal(rolling(dom, "Water bowl"), false, "selecting a sticker does not spin it (MEM-130)");
+    dom.click(dom.$("tour-roll"));
+    assert.equal(rolling(dom, "Water bowl"), true, "is-rolling on New sticker");
     for (const s of HOUSE_SPOTS.filter((x) => x !== "Water bowl")) assert.equal(rolling(dom, s), false, `${s} not rolling`);
     mock.timers.tick(299);
     assert.equal(rolling(dom, "Water bowl"), true, "still rolling at 299 ms");
@@ -768,7 +777,7 @@ describe("rolling stickers on step 3 (MEM-117)", () => {
     assert.equal(rolling(dom, "Water bowl"), false, "done at 300 ms");
   });
 
-  test("Roll all marks every sticker is-rolling, cleared after 300 ms", (t) => {
+  test("New sticker with none selected marks every sticker is-rolling, cleared after 300 ms", (t) => {
     const dom = onHouse(t);
     dom.click(dom.$("tour-roll"));
     for (const s of HOUSE_SPOTS) assert.equal(rolling(dom, s), true, `${s} rolling`);
@@ -790,7 +799,7 @@ describe("rolling stickers on step 3 (MEM-117)", () => {
     assert.deepEqual(figIcons(dom), icons);
   });
 
-  test("focus trap: step 3 Shift+Tab from Next reaches Back then Roll all; step 4 skips the hidden Roll all", () => {
+  test("focus trap: step 3 Shift+Tab from Next reaches Back then New sticker; step 4 skips the hidden one", () => {
     const dom = wire();
     next(dom, 2);
     assert.equal(dom.doc.activeElement?.id, "tour-next");
