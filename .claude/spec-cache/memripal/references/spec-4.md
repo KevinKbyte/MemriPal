@@ -462,3 +462,20 @@ NFR: CSP-safe (presentation attributes only, no `style`); glyph set via `textCon
   no `style` attribute on any added node.
 
 Tests: static/real_map_overlay_emoji.test.mjs
+## MEM-101 Spec MEM ids defined once
+
+Root problem: parallel branches each claim the next MEM id; a collision (e.g. commit 95331c4) reached main unnoticed
+because nothing checked MEM uniqueness (ADR numbers are already checked by tests/test_decisions_structure.py).
+- A definition is a line matching `## MEM-NNN ...` in any `.claude/spec-cache/memripal/references/spec*.md`; only the
+  heading's first id counts.
+- `scripts/spec_ids.py` exposes pure `duplicate_mem_errors(paths) -> list[str]`: one error per id defined more than
+  once, naming the id and every `file:line` defining it, in id order; [] when clean.
+- Ignored: cross-refs in body text, `**Superseded by MEM-NNN**`, `Amends MEM-NNN`, ids in non-heading lines.
+- pytest-collected (tests/test_spec_ids.py) so `scripts/check.sh`, and so `scripts/merge_branch.sh` after its rebase
+  onto main, fails on a duplicate.
+- No reservation/claims file: numbers are the lowest free on the branch base at land time; on collision the
+  later-landing branch renumbers.
+- Accept: a duplicate in one file and across two files each yield an error; superseded refs and cross-refs yield none;
+  the real spec-cache yields [].
+
+Tests: tests/test_spec_ids.py

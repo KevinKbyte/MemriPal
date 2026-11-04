@@ -214,6 +214,13 @@ Run all checks (ruff, pytest, node tests):
 sh scripts/check.sh
 ```
 
+Check MEM id uniqueness: exit 1 when a MEM id is defined by more than one `## MEM-NNN` heading across
+`.claude/spec-cache/memripal/references/spec*.md`; also runs inside pytest via `tests/test_spec_ids.py` (MEM-101).
+
+```bash
+uv run python scripts/spec_ids.py [spec.md...]
+```
+
 Visual-verify the UI against a running app (needs local Chrome): screenshots `initial.png`, `load_demo.png` (after
 clicking Load demo), `route_view.png` (after importing `fixtures/demo/route_backup.json` through backup import) and
 `demo_route_light.png`/`demo_route_dark.png` (the Kendall demo route on the real map, 375 px) into `<outdir>`; prints the loci items. Exit 0 clean, 1 on any page/console error (a
