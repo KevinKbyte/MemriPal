@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.62] - 2026-11-04
+
+### Added
+
+- Stickers on the demo photo (MEM-045, ADR 0068): after Load demo, the Recall tab shows a Stickers panel where you pick a spot, upload your own picture with a short description, and Pal sticks it (die-cut, tilted) onto that spot of the landmark photo; Peel off asks to confirm and offers Undo; stickers persist across reloads in a client-side IndexedDB pool (localStorage fallback), uploads downscaled to a 256px JPEG before storing.
+
 ## [0.20.60] - 2026-11-04
 
 ### Fixed
