@@ -18,7 +18,7 @@ export { createCaptureSession } from "./route_capture.js";
  * @typedef {{
  *   id: string, n: number, name: string, photo_ref: string, status: "pending" | "named" | "error",
  *   box?: Box, profile?: Record<string, string>, taps?: Record<string, string>, coords?: Coords,
- *   address?: string, osm_id?: string,
+ *   address?: string, osm_id?: string, emoji?: string,
  * }} Station
  * @typedef {{ key: string, osm_id?: string, name?: string, lat?: number, lng?: number,
  *   address?: string | null }} Candidate auto_loci.js candidates() entry, or a bare { key } of a stored one

@@ -12,9 +12,12 @@ const PIN_TOP = 48;
 const PIN_BOTTOM = 24;
 // Points right from the station's centre, clear of the 6 px node; rotated toward the true spot.
 const ARROW_PATH = "M22 0 L14 -6 L14 6 Z";
+// Landmark glyph (MEM-100, ADR 0055): baseline this far above the station's centre; round pushpin by default.
+const EMOJI_RISE = 30;
+const EMOJI_DEFAULT = "\u{1F4CD}";
 
 /**
- * @typedef {{ id?: string, coords?: { lat?: unknown, lon?: unknown } }} Station
+ * @typedef {{ id?: string, emoji?: string, coords?: { lat?: unknown, lon?: unknown } }} Station
  */
 
 /** @param {any} svg @returns {any[]} */
@@ -51,7 +54,21 @@ export function attachOverlay(map, svg, stations, doc) {
         arrow.setAttribute("d", ARROW_PATH);
         node.before(arrow);
       }
-      return { node, arrow, station: /** @type {Station} */ (byId.get(id)) };
+      const station = /** @type {Station} */ (byId.get(id));
+      let emoji = kids(svg).find((e) => has(e, "lm-emoji") && e.getAttribute("data-station-id") === id);
+      if (!emoji) {
+        emoji = doc.createElementNS(SVG_NS, "text");
+        emoji.classList.add("lm-emoji");
+        emoji.setAttribute("data-station-id", id);
+        emoji.setAttribute("aria-hidden", "true");
+        // Presentation attributes, not CSS, so the glyph needs no style rule; centred on the station.
+        emoji.setAttribute("text-anchor", "middle");
+        emoji.setAttribute("font-size", "20");
+        node.after(emoji);
+      }
+      // textContent, never markup: the value is user data.
+      emoji.textContent = station.emoji || EMOJI_DEFAULT;
+      return { node, arrow, emoji, station };
     });
   const lines = kids(svg).filter((n) => has(n, "route-line"));
 
@@ -63,13 +80,15 @@ export function attachOverlay(map, svg, stations, doc) {
     for (const line of lines) line.setAttribute("points", points);
     // Every station is always drawn (never culled). One whose spot is off the map is pressed against the
     // edge inset nearest to it with an arrow toward the spot; one on the map near the edge is only nudged in.
-    for (const { node, arrow, station } of markers) {
+    for (const { node, arrow, emoji, station } of markers) {
       const p = map.project(lonLat(station));
       const x = Math.min(Math.max(p.x, PIN_SIDE), w - PIN_SIDE);
       const y = Math.min(Math.max(p.y, PIN_TOP), h - PIN_BOTTOM);
       const off = p.x < 0 || p.y < 0 || p.x > w || p.y > h;
       node.setAttribute("cx", fmt(x));
       node.setAttribute("cy", fmt(y));
+      emoji.setAttribute("x", fmt(x));
+      emoji.setAttribute("y", fmt(y - EMOJI_RISE));
       node.classList.toggle("lm-pinned", off);
       arrow.toggleAttribute("hidden", !off);
       if (off) {
@@ -92,7 +111,7 @@ export function detachOverlay(svg, viewBox) {
   svg.classList.remove("route-map-overlay");
   if (viewBox != null) svg.setAttribute("viewBox", viewBox);
   for (const n of kids(svg)) {
-    if (has(n, "lm-arrow")) n.remove();
+    if (has(n, "lm-arrow") || has(n, "lm-emoji")) n.remove();
     else n.classList?.remove("lm-pinned");
   }
 }
