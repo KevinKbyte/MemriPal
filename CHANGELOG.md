@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.73] - 2026-11-04
+
+### Added
+
+- Zero-route Routes tab shows the real map centered on Kendall Square (inside the self-hosted extract) with a call-to-action card: the slogan "Make what's important unforgettable" plus Load demo and Map a new route buttons, which no longer hide only inside the closed Route settings drawer; `mountAt(svg, center, zoom)` in `static/real_map.js` reuses the station mount's `place()` path, and a center outside the extract creates no map; `#empty-slogan` follows `#empty-state` (MEM-114, amends MEM-088 and MEM-040, ADR 0074).
+
+### Fixed
+
+- On phones narrower than ~456px the empty-map call-to-action card sits just above the Route settings drawer handle instead of reaching under it (MEM-114).
+
 ## [0.20.72] - 2026-11-04
 
 ### Added
