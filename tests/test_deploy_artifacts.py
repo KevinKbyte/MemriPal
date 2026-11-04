@@ -105,6 +105,34 @@ def test_dockerfile_never_sets_meta_mode():
     assert not re.search(r"MEMRIPAL_MODE\s*[= ]\s*[\"']?meta", _read(DOCKERFILE))
 
 
+def _env_values(args: str) -> dict[str, str]:
+    """ENV K=V ... (multi-pair) or legacy ENV K V -> {name: unquoted value}."""
+    tokens = shlex.split(args)
+    if not tokens:
+        return {}
+    if "=" in tokens[0]:
+        return dict(t.split("=", 1) for t in tokens if "=" in t)
+    return {tokens[0]: " ".join(tokens[1:])}
+
+
+# Requirement: the non-root runtime user has no home dir, so the image pins the Meta spend-guard
+# state dir (MEMRIPAL_META_SPEND_DIR) to a writable absolute path under /tmp/ (ADR 0068).
+def test_dockerfile_sets_writable_meta_spend_dir():
+    values = [
+        v
+        for kw, args in _instructions()
+        if kw == "ENV"
+        for k, v in _env_values(args).items()
+        if k == "MEMRIPAL_META_SPEND_DIR"
+    ]
+    assert values, "Dockerfile has no ENV MEMRIPAL_META_SPEND_DIR (spend guard falls back to a missing $HOME)"
+    path = PurePosixPath(values[-1])
+    assert path.is_absolute() and path.parts[:2] == ("/", "tmp") and len(path.parts) > 2, (
+        f"MEMRIPAL_META_SPEND_DIR={values[-1]!r} is not an absolute path under /tmp/"
+    )
+    assert ".." not in path.parts, f"MEMRIPAL_META_SPEND_DIR={values[-1]!r} escapes /tmp/"
+
+
 def _ignored(rel: str, patterns: list[tuple[bool, str]]) -> bool:
     """Docker-style last-match-wins: a pattern matching a path or any ancestor dir decides it."""
     parts = PurePosixPath(rel).parts
