@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.66] - 2026-11-04
+
+### Changed
+
+- Design gate axe problems name each offending node's selector and html snippet (MEM-119).
+
 ## [0.20.65] - 2026-11-04
 
 ### Changed
