@@ -460,3 +460,59 @@ NFR: ASCII only; station ids, coords, addresses, emoji and taps unchanged.
 - Accept: the demo route shows landmarks only; no facing-dependent direction words anywhere in its text.
 
 Tests: static/demo_route_no_directions.test.mjs
+## MEM-134 Emoji tags replace the sense quick-taps
+
+ADR [0079](../../../../docs/decisions/0079-emoji-tags-replace-sense-taps.md). Amends MEM-110 and ADR 0063 (card
+display of the sound/smell/feel/mood taps); `taps` storage unchanged.
+Decided-by: ADR-0079
+Root problem: Kev ask 2026-11-04: "can we just have emojis, so that itll be compact and also user gets more choices -
+they can search through for the right emoji, though muse can power the initial auto generation based on the context,
+and user can change it to however they like afterward". The fixed sense taps (birds, traffic, water, ...) are bulky
+and offer few choices.
+Actors: `static/emoji_data.js` (new), `static/emoji_tags.js` (new), `static/route_store.js`,
+`static/backup_routes.js`, `static/station_card.js`, `static/index.html`; the user editing a station card.
+NFR: ASCII-only source (emoji as `\u{...}` escapes); deterministic, no network call; no data loss (`taps` kept);
+every delete needs arm + confirm + Undo; fits 375px with no horizontal scroll; chips >= 44px.
+- Data: station gains `emojis: string[]` (0..`MAX_EMOJIS`=6, unique, non-empty, <= 16 UTF-16 units) and
+  `emojisEdited: boolean` (true once the user adds or removes one). `taps` and `TAP_GROUPS` unchanged; `associate.py`,
+  backup and `landmark_facts` keep reading `taps`. The card drops the sound/smell/feel/mood grids; the turn grid stays.
+- `emoji_data.js`: frozen `EMOJI` of `{ e, name, keywords }`, >= 120 entries (sounds, smells, food, weather/feel,
+  moods, nature, animals, buildings, transport, objects), lower-case words; covers every `TAP_EMOJI` glyph; name
+  "bird" -> U+1F426.
+- `searchEmoji(query, list = EMOJI, limit = 48)`: trimmed, lower-cased, non-string -> ""; "" -> first `limit`. Match:
+  name, a name word or a keyword starts with q. Rank: exact name, name prefix, other; stable within a rank. Never
+  throws.
+- `TAP_EMOJI`: legacy tap label -> emoji for every sense value except smell "None"; required traffic U+1F697, birds
+  U+1F426, water U+1F4A7, voices U+1F5E3 U+FE0F, quiet U+1F92B, music U+1F3B5, coffee U+2615, rain U+1F327 U+FE0F,
+  calm U+1F60C. `migrateTaps(taps)`: sound, smell, feel, mood in that order, case-insensitive; unknown, None and turn
+  skipped; deduped; null/undefined -> [].
+- `museEmojis(station)` (1..6): deterministic keyword match over the Muse-made context (name,
+  `profile.visual/spatial/conceptual`, category): the `landmark_emoji.js` `emojiFor` glyph unless `EMOJI_DEFAULT`,
+  then `EMOJI` entries whose name or a keyword appears as a whole word (optional s/es plural), in first-appearance
+  order; deduped, capped; no match -> `[EMOJI_DEFAULT]`.
+- `startingEmojis(station)`: `emojisEdited === true` with an array -> copy of stored `emojis` (a user edit wins over
+  any regeneration); else `normalizeEmojis([...migrateTaps(taps), ...museEmojis(station)])`. `normalizeEmojis`:
+  trimmed non-empty strings <= 16 units, deduped, capped; non-array -> [].
+- `setStationEmojis(routeId, stationId, emojis, { edited = true } = {})`: stores `normalizeEmojis(emojis)`;
+  `emojisEdited = edited || prior true` (an auto save never clears a user edit); serial + persist like
+  `setStationTaps`. Import/restore paths that copy `taps` also copy both fields.
+- Backup: `STATION_KEYS` gains `emojis`, `emojisEdited`; export writes them when present; import validates (strings
+  per `normalizeEmojis`; boolean) and refuses other types in the existing error style; round-trip kept.
+- Card: `ul#station-emojis.emoji-row` (aria-label "Senses at this spot") of `li > button.emoji-chip` (aria-label =
+  entry name or the emoji); `button#emoji-add` "+" (aria-label "Add an emoji", disabled at `MAX_EMOJIS`); hidden
+  `button#emoji-remove`, `button#emoji-undo` "Undo", and `div#emoji-picker` holding `input#emoji-search` (type
+  search, aria-label "Search emojis") and `div#emoji-results` of `button.emoji-pick`.
+- `show()`: when not user-edited and stored `emojis` differ, persists `startingEmojis` once with `{ edited: false }`.
+  Add toggles the picker; input re-renders `searchEmoji` results; a pick appends (if absent, < 6) and saves edited.
+  Chip click arms it (aria-pressed "true") and shows `#emoji-remove` "Remove <emoji>"; confirm removes, saves
+  edited, shows Undo; Undo restores the prior list, saves edited, hides itself.
+- `#station-tap-summary`: turn lines only; the sense lines are replaced by the emoji row.
+- Accept: `searchEmoji("bird")[0].e` is U+1F426, `searchEmoji("")` has 48, "BIRD" equals "bird"; `museEmojis` for a
+  profile with "coffee" and "trees" includes U+2615 and a tree, never []; an edited station keeps its emojis through
+  `startingEmojis` and card show; `migrateTaps({sound:"Birds",smell:"Coffee",feel:"Warm",mood:"Calm",turn:"Left"})`
+  starts [U+1F426, U+2615], contains U+1F60C, no turn glyph, and stored `taps` are unchanged after show; add
+  persists edited; remove needs arm + confirm; Undo restores; backup round-trips, bad types refused; 375px
+  screenshot shows chip row and picker with no horizontal scroll.
+- Out of scope: a live Spark call per station for auto-fill (ADR 0079 option B, follow-up).
+
+Tests: static/emoji_tags.test.mjs, static/station_card_emoji.test.mjs

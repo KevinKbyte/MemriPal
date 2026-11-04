@@ -226,3 +226,5 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
   long-press drag, or a drag handle per sticker).
 - [0079](0079-chat-route-intent-client-side.md) Chat route intent: client regex + `create_route` copilot tool over
   `planRoute`; demo routes generated offline (over LLM tool-calling or a button).
+- [0079](0079-emoji-tags-replace-sense-taps.md) Emoji tags replace sense taps, auto-filled by keyword match over the
+  Muse profile; `taps` kept (over a live Spark call or fixed taps).

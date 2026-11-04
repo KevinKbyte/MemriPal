@@ -234,6 +234,8 @@ Source: Kev, "I took pictures of the route, can you add multisensory info for th
 - Accept: every `DEMO_ROUTE` station has all 4 tap keys with values in `TAP_GROUPS` and all 3 profile keys, ASCII and
   <= 200 chars; after `seedRoute`, the stored stations carry equal `taps`/`profile` that are not the same objects as
   the `DEMO_ROUTE` ones.
+- **Superseded by MEM-134** for the card's sense display only: the sound/smell/feel/mood taps now show as emoji tags
+  (via `migrateTaps`); the seeded `taps` stay stored unchanged and the turn summary stays.
 
 Tests: static/demo_route_taps.test.mjs
 
