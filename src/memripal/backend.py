@@ -445,20 +445,27 @@ class MetaBackend:
         if not result.ok:
             # CallResult.error is "<status> <safe code>" and already key-redacted; the body is never quoted.
             failed = BackendTimeout if result.error in TIMEOUT_ERRORS else BackendCallFailed
-            raise self._logged(failed(f"{req.method} call failed: {result.error}"), req.method, result)
+            raise self._logged(failed(f"{req.method} call failed: {result.error}"), req.method, result, chat)
         try:
             value = parse(result.body)
         except (ValueError, KeyError, IndexError, TypeError) as exc:
             invalid = BackendReplyInvalid(f"{req.method} response incomplete or malformed")
-            raise self._logged(invalid, req.method, result) from exc
+            raise self._logged(invalid, req.method, result, chat) from exc
         if not valid(value):
             invalid = BackendReplyInvalid(f"{req.method} response does not match its schema")
-            raise self._logged(invalid, req.method, result)
+            raise self._logged(invalid, req.method, result, chat)
         return self._store(store_req, value)
 
-    def _logged(self, exc: BackendCallFailed, method: str, result: Any) -> BackendCallFailed:
-        """Log the upstream cause server-side (the 502 body stays a bare code); key masked before the cut."""
-        body = result.body.decode("utf-8", "replace").replace(self._api_key, "***")[:LOG_BODY_CHARS]
+    def _logged(self, exc: BackendCallFailed, method: str, result: Any, chat: Any) -> BackendCallFailed:
+        """Log the upstream cause server-side (the 502 body stays a bare code); keys masked before the cut."""
+        if chat is not None:
+            return exc  # Never a provider's body: it may echo a key; call() logs the class only (MEM-106).
+        body = result.body.decode("utf-8", "replace")
+        # Every configured key, not just Meta's: a provider may echo its own key, or another's, in an error.
+        providers = (c for c in (self._chat, self._chat_fallback) if c is not None)
+        for key in filter(None, [self._api_key, *(getattr(c.client, "_api_key", None) for c in providers)]):
+            body = body.replace(key, "***")
+        body = body[:LOG_BODY_CHARS]
         name, status = type(exc).__name__, result.status
         _log.warning("%s upstream failure: %s: %s; status=%s body=%s", method, name, exc, status, body)
         return exc
