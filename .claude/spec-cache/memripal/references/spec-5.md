@@ -227,8 +227,8 @@ Actors: Kev (author of the photos and tap choices); `static/demo_route.js`, `sta
 NFR: seeded, not an import file (default picked; an import path stays possible later); the photos are not committed
 (the station card shows no photo; strangers appear in them).
 Source: Kev, "I took pictures of the route, can you add multisensory info for them too".
-- Each of the 6 stations in `DEMO_ROUTE` carries `taps` `{ sound, smell, feel, mood }` (no `turn`:
-  `static/route_view.js` renders `taps.turn` into the S5 list, MEM-077), values drawn from `TAP_GROUPS`, and
+- Each of the 6 stations in `DEMO_ROUTE` carries `taps` `{ sound, smell, feel, mood }` (exactly these 4
+  keys; the turn group was removed, MEM-135), values drawn from `TAP_GROUPS`, and
   `profile` `{ visual, spatial, conceptual }`, printable ASCII, <= 200 chars each. Hand-authored from the photos.
 - `seedRoute` persists both `taps` and `profile` as copies, so Load demo shows them with no import step.
 - Accept: every `DEMO_ROUTE` station has all 4 tap keys with values in `TAP_GROUPS` and all 3 profile keys, ASCII and

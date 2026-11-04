@@ -429,12 +429,12 @@ A screens S5/S8.
   to the rest. Coords never rendered as text; JS sets no inline style except the existing zoom transform; no
   innerHTML.
 - Practice (D9): `routePracticePoints(route)` -> points whose label and source_quote are the station name only
-  (turn cue shown, never matched). `createMatcher(points).starts()` gives each hit's window start (global
-  transcript token index, survives chunked appends; null if unmatched); `results()` keeps its five keys.
-  `countInOrder(starts)` (`recall_match.js`, pure) walks stations in route order and counts station k only when its
-  start is greater than the last counted start; earliest matching span per name (greedy, not a longest-subsequence
-  search). `renderLiveBoard(points, doc, {label, inOrder: matcher})` lights only counted rows, in the same relay
-  tick; without `inOrder` the board is unchanged (MEM-037).
+  (turn cue never matched; no longer shown: **Superseded by MEM-135**). `createMatcher(points).starts()` gives each
+  hit's window start (global transcript token index, survives chunked appends; null if unmatched); `results()` keeps
+  its five keys. `countInOrder(starts)` (`recall_match.js`, pure) walks stations in route order and counts station k
+  only when its start is greater than the last counted start; earliest matching span per name (greedy, not a
+  longest-subsequence search). `renderLiveBoard(points, doc, {label, inOrder: matcher})` lights only counted rows,
+  in the same relay tick; without `inOrder` the board is unchanged (MEM-037).
 - Rehearsal (`static/rehearsals.js`): a route run saves `mode: "route"` and `hits` `{[stationId]: boolean}`; a
   non-route save keeps exactly the MEM-033 fields. `learnedCount(route, records)` -> `{n, N}` from the latest
   `mode "route"` record: n = ids set true AND still on the route, N = current station count (n never > N).
@@ -531,11 +531,11 @@ Actors: walker on a 360px phone; `static/station_card.js` `createStationCard({do
 `{show(stationId)}`; `route_store.js` (`renameStation`, `setStationTaps`, `dropStation`/`undoDrop`); `route_capture.js`
 upload.
 - Profile: `show()` fills `#station-name` with the name and `#station-profile` (dl) with Visual/Spatial/Conceptual.
-- Taps: five groups render as buttons with `aria-pressed`: `#tap-sound` (Traffic Birds Water Voices Quiet Music),
+- Taps: four groups render as buttons with `aria-pressed`: `#tap-sound` (Traffic Birds Water Voices Quiet Music),
   `#tap-smell` (Food Coffee Flowers Fumes Rain None), `#tap-feel` (Warm Cold Windy Uphill Stairs Shade), `#tap-mood`
-  (Calm Busy Bright Cosy Grand Odd), `#tap-turn` (Straight Left Right Arrive). One value per group; tapping the
-  pressed one clears it. Persisted as `station.taps = {sound?, smell?, feel?, mood?, turn?}` holding the label; shown
-  pressed after reload.
+  (Calm Busy Bright Cosy Grand Odd). One value per group; tapping the pressed one clears it. Persisted as
+  `station.taps = {sound?, smell?, feel?, mood?}` holding the label; shown pressed after reload. The fifth group
+  `#tap-turn` (Straight Left Right Arrive) and `turn?` key: **Superseded by MEM-135**.
 - Name rule: non-empty, <= 3 words, no digits (B4 shape rule), and not equal (normalized: case/whitespace) to another
   station's name nor sharing its last word. A bad name shows `#station-name-error` and `#station-save` does not save;
   the station's own name never clashes with itself; fixing the name hides the error.

@@ -285,3 +285,23 @@ Decided-by: ADR-0078
   restores the prior stickers and items; a photo drop moves or swaps the placement, toasts, and Undo restores it.
 
 Tests: static/sticker_drag.test.mjs, plus updated tour and markup tests, tagged `// Covers: MEM-131`
+## MEM-135 Remove the next-turn direction cue
+
+Source: Kev, 2026-11-04: "also the next turn stuff - not sure why the user would need that when they can see it on the
+map themselves, and depending on the way they're facing they would have a different direction". A removal with no
+approach choice, so no ADR. Supersedes the turn group of MEM-050 and the turn cue of MEM-051 practice (spec-3.md).
+Decided-by: none
+Root problem: a Left/Right/Straight/Arrive cue is relative to the walker's facing, so it is wrong whenever they face
+another way, and the route map already draws the route.
+Actors: the walker; `static/station_card.js` (`TAP_GROUPS`, `TAP_GROUP_LABELS`, `tapSummary`); `static/route_view.js`
+S5 `#route-view-stations` rows.
+NFR: no data migration; stored routes keep loading; ASCII only.
+- The station card has no `#tap-turn` group and no "Next turn" heading.
+- `TAP_GROUPS` / `TAP_GROUP_LABELS` (`static/station_card.js`) have no `turn` key, so `tapSummary` lists no turn line.
+- `static/route_view.js` renders no " then <turn>" span in the S5 `#route-view-stations` rows.
+- A stored legacy `station.taps.turn` still loads harmlessly: ignored, not rendered. Backup export/import and
+  landmark_facts already allowlist only sound/smell/feel/mood.
+- Route geometry, map markers and the route map are unchanged.
+- Accept: no next-turn element on the route view; the map still renders one node per station.
+
+Tests: static/no_next_turn.test.mjs
