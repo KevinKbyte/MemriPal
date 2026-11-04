@@ -1,5 +1,5 @@
-// Covers: MEM-045, MEM-130
-// Requirement: on the photo, a placed sticker can be dragged to another spot (MEM-130). Each .sticker face carries
+// Covers: MEM-045, MEM-131
+// Requirement: on the photo, a placed sticker can be dragged to another spot (MEM-131). Each .sticker face carries
 // data-n (its locus). While dragging, the face follows the pointer as a percentage of the photo (client coords
 // mapped through the .sticker-layer rect). The drop snaps to the boxed locus under or nearest the drop point
 // (unboxed loci are never targets): onto an occupied locus the two stickers swap, onto an empty boxed locus the
@@ -117,9 +117,9 @@ const near = (styleValue, want, label) => {
   assert.ok(Math.abs(parseFloat(styleValue) - want) < 0.01, `${label}: ${styleValue} ~ ${want}%`);
 };
 
-// Covers: MEM-130
+// Covers: MEM-131
 // Requirement: faces carry their locus number and follow the pointer during a drag, in percent of the photo.
-describe("sticker_board drag follows the pointer (MEM-130)", () => {
+describe("sticker_board drag follows the pointer (MEM-131)", () => {
   test("each boxed placement's .sticker face carries data-n", async () => {
     const { p } = await setup();
     assert.deepEqual(photoStickers(p).map((s) => String(s.dataset.n)).sort(), ["1", "2"]);
@@ -137,9 +137,9 @@ describe("sticker_board drag follows the pointer (MEM-130)", () => {
   });
 });
 
-// Covers: MEM-130
+// Covers: MEM-131
 // Requirement: a drop swaps with an occupied locus or moves to an empty boxed one, toasts, and Undo restores.
-describe("sticker_board drop swaps or moves, with Undo (MEM-130)", () => {
+describe("sticker_board drop swaps or moves, with Undo (MEM-131)", () => {
   test("dropping locus 1 at (310, 170) swaps it with locus 2 and toasts the move", async () => {
     const { p, pool, up } = await setup();
     await drag(p, face(p, 1), [110, 70], [310, 170]);
@@ -178,9 +178,9 @@ describe("sticker_board drop swaps or moves, with Undo (MEM-130)", () => {
   });
 });
 
-// Covers: MEM-130
+// Covers: MEM-131
 // Requirement: the drop snaps to the nearest boxed locus; its own locus is a no-op; unboxed loci are never targets.
-describe("sticker_board drop snapping (MEM-130)", () => {
+describe("sticker_board drop snapping (MEM-131)", () => {
   test("a drop on the sticker's own locus leaves the pool untouched, shows no toast and re-centres the face", async () => {
     const { p, pool, up } = await setup();
     await drag(p, face(p, 1), [110, 70], [90, 60]);
@@ -207,9 +207,9 @@ describe("sticker_board drop snapping (MEM-130)", () => {
   });
 });
 
-// Covers: MEM-130
+// Covers: MEM-131
 // Requirement: a tap or click on a placed sticker never changes the pool (no regenerate, no move).
-describe("sticker_board tap never changes the pool (MEM-130)", () => {
+describe("sticker_board tap never changes the pool (MEM-131)", () => {
   test("pointerdown + pointerup + click on a face leaves placements and the stored sticker unchanged", async () => {
     const { p, pool, up } = await setup();
     const before = await pool.get(up.id);
@@ -225,10 +225,10 @@ describe("sticker_board tap never changes the pool (MEM-130)", () => {
   });
 });
 
-// Covers: MEM-130
+// Covers: MEM-131
 // Requirement: style.css lets a placed photo sticker take pointer events (its layer stays pointer-events: none) and
 // turns off touch panning on it so a finger drag moves the sticker, not the page.
-describe("sticker_board drag CSS (MEM-130)", () => {
+describe("sticker_board drag CSS (MEM-131)", () => {
   const css = readFileSync(new URL("./style.css", import.meta.url), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
   const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
     .map((m) => ({ sel: m[1].trim(), body: m[2] }))

@@ -1,4 +1,4 @@
-// Fake DOM for static/tour.test.mjs (MEM-095, MEM-112, MEM-117, MEM-130). Not a test file itself (no describe/test).
+// Fake DOM for static/tour.test.mjs (MEM-095, MEM-112, MEM-117, MEM-131). Not a test file itself (no describe/test).
 //
 // DOM contract static/tour.js may rely on (mirrors docs/design/tutorial/preview.html, which index.html adopts):
 //   #tab-routes, #tab-landmarks, #tab-recall, #tab-settings section.tab-panel; #tab-settings holds button#tour-replay.
@@ -10,8 +10,8 @@
 //       ol.tour-dots (empty; tour.js builds one li per step), button#tour-skip.tour-skip;
 //       h2#tour-title, p#tour-body, div#tour-house.tour-house[hidden], ol#tour-fig.tour-fig[hidden],
 //       p#tour-after[hidden],
-//       div.btn-row.tour-actions > button#tour-roll.btn[hidden] "New sticker" (MEM-117, MEM-130),
-//         button#tour-roll-undo.btn[hidden] "Undo" (MEM-130), button#tour-back, button#tour-next
+//       div.btn-row.tour-actions > button#tour-roll.btn[hidden] "New sticker" (MEM-117, MEM-131),
+//         button#tour-roll-undo.btn[hidden] "Undo" (MEM-131), button#tour-back, button#tour-next
 //   p#tour-toast.tour-toast[role=status][hidden] "Tour skipped. Replay it any time in Settings."
 // APIs supported: document.getElementById/querySelector/querySelectorAll/createElement/createElementNS/createTextNode/
 //   addEventListener/activeElement/body/defaultView; element textContent, hidden, id, className, classList

@@ -345,7 +345,7 @@ Source: Kev 2026-11-04, "why do we have to promptt o type the key when we alread
 Tests: tests/test_push_secret_gcp.py
 ## MEM-117 Pal's dog-house sticker step (emoji-composite stickers)
 
-Amended by MEM-130 (spec-6.md): tap/Enter/Space on a sticker selects, never re-rolls; `#tour-roll` is
+Amended by MEM-131 (spec-6.md): tap/Enter/Space on a sticker selects, never re-rolls; `#tour-roll` is
 "New sticker"; drag swaps stickers between spots.
 Amends MEM-095. Kev ask 2026-11-04: users stick a picture on each locus of the step-3 dog house; emoji are base
 stickers, merged into one memorable image; roll all or one; the tour shows the keyword breakdown.
@@ -397,6 +397,8 @@ Tests: static/stickers.test.mjs, static/tour.test.mjs
 
 ## MEM-109 Sticker step polish: keyboard reach, restartable roll, fresh rolls on replay
 
+Amended by MEM-131 (spec-6.md): Enter/Space on a focused tour sticker selects it (no longer re-rolls); step-3 Tab
+order is Skip, the 5 stickers, New sticker, Undo (when visible), Back, Next, then wraps.
 Amends MEM-117 and MEM-112. Source: slice brief 2026-11-04 (step 3 sticker polish gaps).
 Root problem: on step 3 the focus trap cycles only the card's buttons, so Tab never reaches a `g.tour-sticker` and a
 keyboard user cannot re-roll one locus; a second tap mid-roll repaints but the spin does not restart, so the tap

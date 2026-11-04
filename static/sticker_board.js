@@ -74,7 +74,7 @@ export function createStickerBoard({ doc, pool, makeImage, undo = createUndoStac
     img.alt = entry.desc;
     img.setAttribute("alt", entry.desc);
     img.src = entry.image;
-    // The browser's native image drag would cancel the pointer drag (MEM-130).
+    // The browser's native image drag would cancel the pointer drag (MEM-131).
     img.draggable = false;
     return img;
   }
@@ -86,7 +86,7 @@ export function createStickerBoard({ doc, pool, makeImage, undo = createUndoStac
   };
 
   /**
-   * MEM-130: move a placement to the boxed locus nearest the drop, swapping with any placement already there.
+   * MEM-131: move a placement to the boxed locus nearest the drop, swapping with any placement already there.
    * @param {View} v @param {import("./sticker_pool.js").Placement} p @param {string} desc
    * @param {number} cx @param {number} cy client coordinates of the drop
    */
@@ -119,7 +119,7 @@ export function createStickerBoard({ doc, pool, makeImage, undo = createUndoStac
   }
 
   /**
-   * MEM-130: the face follows the pointer (percent of the layer) and drops onto a locus; a tap changes nothing.
+   * MEM-131: the face follows the pointer (percent of the layer) and drops onto a locus; a tap changes nothing.
    * @param {any} s @param {View} v @param {import("./sticker_pool.js").Placement} p @param {string} desc
    */
   function wireFace(s, v, p, desc) {

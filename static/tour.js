@@ -231,7 +231,7 @@ export function wireTour(doc, store) {
   $("tour-replay")?.addEventListener("click", () => {
     showTab("routes", doc);
     hideToast();
-    houseStep.reset(); // a replay rolls step 3 fresh (MEM-109) with no selection or undo history (MEM-130)
+    houseStep.reset(); // a replay rolls step 3 fresh (MEM-109) with no selection or undo history (MEM-131)
     show(0);
   });
   win.addEventListener("resize", () => { if (!tour.hidden) placeSpot(); });

@@ -556,14 +556,14 @@ describe("step 3 dog house: segmented spots, numbered pins, route (MEM-095)", ()
   });
 });
 
-// Covers: MEM-117, MEM-130
+// Covers: MEM-117, MEM-131
 // Requirement: MEM-117 amends MEM-095. Step 3's dog house gains a sticker per locus: houseFig appends 5
 // g.tour-sticker after the pins, in walk order (SVG namespace, role=button, tabindex 0, aria-label
-// "Sticker on <spot>" since MEM-130), each anchored at its box's top-right corner (x + w, y) clamped inside the 320x200 viewBox;
+// "Sticker on <spot>" since MEM-131), each anchored at its box's top-right corner (x + w, y) clamped inside the 320x200 viewBox;
 // its text children are stickers.compose(STEPS[2].fig[i].item).parts, the first in a larger font. Each step-3 fig
 // row's icon shows the same parts joined and a .tour-kw caption gives the item's keywords joined by " + " (row 1
 // "sizzling + bacon"). STEPS[2].after is "I break each item into keywords and mash their emoji into one sticker.
-// Drag a sticker onto another spot, or tap New sticker for a fresh one." (MEM-130). Steps without a house show no
+// Drag a sticker onto another spot, or tap New sticker for a fresh one." (MEM-131). Steps without a house show no
 // sticker and no caption.
 const stkMod = await import("./stickers.js").catch((err) => ({ __missing: String(err) }));
 
@@ -693,9 +693,9 @@ describe("step 3 stickers on Pal's dog house (MEM-117)", () => {
   });
 });
 
-// Covers: MEM-117, MEM-130
-// Requirement: "New sticker" (#tour-roll, in .tour-actions; "Roll all" before MEM-130) shows only on the house
-// step and re-rolls every locus when no sticker is selected. Since MEM-130 a click or Enter/Space on one
+// Covers: MEM-117, MEM-131
+// Requirement: "New sticker" (#tour-roll, in .tour-actions; "Roll all" before MEM-131) shows only on the house
+// step and re-rolls every locus when no sticker is selected. Since MEM-131 a click or Enter/Space on one
 // g.tour-sticker only selects it (never re-rolls); New sticker then re-rolls that locus only (sticker and fig row
 // icon); a re-rolled sticker carries is-rolling for 300 ms; rolls are kept while the tour is open (Next then
 // Back); #tour-roll joins the focus trap's visible buttons. tour.css styles .tour-sticker, .tour-kw and .is-rolling and turns the roll
@@ -749,7 +749,7 @@ describe("rolling stickers on step 3 (MEM-117)", () => {
     assert.equal(houseSvgOf(dom).querySelectorAll("g.tour-sticker").length, 5);
   });
 
-  test("Enter and Space on a sticker select it and never re-roll (MEM-130)", (t) => {
+  test("Enter and Space on a sticker select it and never re-roll (MEM-131)", (t) => {
     const rng = { v: 0 };
     const dom = onHouse(t, rng);
     const before = allParts(dom);
@@ -767,7 +767,7 @@ describe("rolling stickers on step 3 (MEM-117)", () => {
   test("a re-rolled sticker carries is-rolling for 300 ms; the others never do", (t) => {
     const dom = onHouse(t);
     dom.click(stickerFor(dom, "Water bowl"));
-    assert.equal(rolling(dom, "Water bowl"), false, "selecting a sticker does not spin it (MEM-130)");
+    assert.equal(rolling(dom, "Water bowl"), false, "selecting a sticker does not spin it (MEM-131)");
     dom.click(dom.$("tour-roll"));
     assert.equal(rolling(dom, "Water bowl"), true, "is-rolling on New sticker");
     for (const s of HOUSE_SPOTS.filter((x) => x !== "Water bowl")) assert.equal(rolling(dom, s), false, `${s} not rolling`);

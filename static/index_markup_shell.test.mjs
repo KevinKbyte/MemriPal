@@ -322,11 +322,11 @@ describe("Pal's tour markup (MEM-095, MEM-112)", () => {
   });
 });
 
-// Covers: MEM-117, MEM-130
-// Requirement: Pal's dog-house step has a "New sticker" button#tour-roll ("Roll all" before MEM-130; type=button)
-// inside the tour card's .tour-actions row, hidden at load; tour.js shows it only on the house step. MEM-130 adds
+// Covers: MEM-117, MEM-131
+// Requirement: Pal's dog-house step has a "New sticker" button#tour-roll ("Roll all" before MEM-131; type=button)
+// inside the tour card's .tour-actions row, hidden at load; tour.js shows it only on the house step. MEM-131 adds
 // an "Undo" button#tour-roll-undo (type=button, hidden at load) as #tour-roll's next element sibling.
-describe("Pal's tour New sticker markup (MEM-117, MEM-130)", () => {
+describe("Pal's tour New sticker markup (MEM-117, MEM-131)", () => {
   test("#tour-roll is a hidden 'New sticker' button inside .tour-card > .tour-actions", () => {
     const btn = byId("tour-roll");
     assert.equal(btn?.tag, "button", "no button#tour-roll");
@@ -340,7 +340,7 @@ describe("Pal's tour New sticker markup (MEM-117, MEM-130)", () => {
     assert.ok(p, "#tour-roll inside .tour-card");
   });
 
-  test("#tour-roll-undo is a hidden 'Undo' button, the next element sibling of #tour-roll (MEM-130)", () => {
+  test("#tour-roll-undo is a hidden 'Undo' button, the next element sibling of #tour-roll (MEM-131)", () => {
     const roll = byId("tour-roll");
     const undo = byId("tour-roll-undo");
     assert.equal(undo?.tag, "button", "no button#tour-roll-undo");

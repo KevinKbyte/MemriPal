@@ -1,5 +1,5 @@
 // @ts-check
-// Sticker drag + snap (MEM-130, ADR 0074): a tap on a placed sticker never regenerates it. A press that moves past
+// Sticker drag + snap (MEM-131, ADR 0077): a tap on a placed sticker never regenerates it. A press that moves past
 // DRAG_SLOP_PX drags the sticker; the drop snaps it to the segmented object (locus box) under or nearest the drop
 // point. Shared by the tour's dog house (tour.js) and the photo's sticker layer (sticker_board.js).
 

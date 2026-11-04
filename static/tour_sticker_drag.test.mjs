@@ -106,14 +106,14 @@ function onHouse(t, rng = { v: 0 }) {
 beforeEach(() => mock.timers.enable({ apis: ["setTimeout"] }));
 afterEach(() => mock.timers.reset());
 
-// Covers: MEM-130
-// Requirement: MEM-130 amends MEM-117/MEM-109. On step 3 a tap never regenerates a sticker: a press that moves
+// Covers: MEM-131
+// Requirement: MEM-131 amends MEM-117/MEM-109. On step 3 a tap never regenerates a sticker: a press that moves
 // past the drag slop drags the g.tour-sticker (aria-label "Sticker on <spot>"), its translate following the
 // pointer mapped into the 320x200 viewBox through the house svg's client rect; the drop snaps to the box under
 // the point, else the box with the nearest edge, and swaps the two loci's sticker, fig row icon, fig item and
 // .tour-kw caption. Every sticker then returns to its box's anchor and the dropped one is selected at its new
 // spot. A drop on its own box, or a pointercancel, changes nothing. Touch drags work the same at 375px.
-describe("dragging a step 3 sticker onto another spot (MEM-130)", () => {
+describe("dragging a step 3 sticker onto another spot (MEM-131)", () => {
   test("dropping the Doormat sticker on the Window box swaps sticker, fig icon, item and keywords", (t) => {
     const rng = { v: 0 };
     const dom = onHouse(t, rng);
@@ -213,12 +213,12 @@ describe("dragging a step 3 sticker onto another spot (MEM-130)", () => {
   });
 });
 
-// Covers: MEM-130
+// Covers: MEM-131
 // Requirement: a click, a tap (pointerdown, pointerup, click), Enter or Space on a g.tour-sticker selects it and
 // never re-rolls: one sticker at a time carries is-selected and aria-pressed="true", the rest aria-pressed="false".
 // On a focused sticker ArrowRight/ArrowDown swaps it with the next spot and ArrowLeft/ArrowUp with the previous
 // one (defaultPrevented), focus following the moved sticker; an arrow past either end does nothing.
-describe("selecting and keyboard-moving step 3 stickers (MEM-130)", () => {
+describe("selecting and keyboard-moving step 3 stickers (MEM-131)", () => {
   test("no sticker starts selected; every sticker is a toggle button with aria-pressed=false", (t) => {
     const dom = onHouse(t);
     assert.deepEqual(pressed(dom), HOUSE_SPOTS.map(() => "false"));
@@ -282,12 +282,12 @@ describe("selecting and keyboard-moving step 3 stickers (MEM-130)", () => {
   });
 });
 
-// Covers: MEM-130
+// Covers: MEM-131
 // Requirement: "New sticker" (#tour-roll) re-rolls only the selected sticker, or all five when none is selected.
 // "Undo" (#tour-roll-undo) shows only on step 3 and only while there is something to undo; each click restores
 // the state before the latest re-roll or move (sticker and fig row icon), without rolling anything new; replaying
 // the tour from Settings starts with nothing to undo.
-describe("New sticker and Undo on step 3 (MEM-130)", () => {
+describe("New sticker and Undo on step 3 (MEM-131)", () => {
   test("New sticker re-rolls only the selected sticker", (t) => {
     const rng = { v: 0 };
     const dom = onHouse(t, rng);
@@ -355,12 +355,12 @@ describe("New sticker and Undo on step 3 (MEM-130)", () => {
   });
 });
 
-// Covers: MEM-130
+// Covers: MEM-131
 // Requirement: tour.css lets a sticker be dragged on touch screens and shows the drag affordance: .tour-sticker
 // has touch-action: none and cursor: grab, a dragged sticker (.is-dragging) cursor: grabbing, and a selected
 // sticker (.tour-sticker.is-selected) is marked with a design-token colour (var(--...)), never a hex literal.
 // STEPS[2].after tells the user how: drag a sticker onto another spot, or tap New sticker.
-describe("tour sticker drag styles and copy (MEM-130)", () => {
+describe("tour sticker drag styles and copy (MEM-131)", () => {
   const css = readFileSync(new URL("./tour.css", import.meta.url), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
   const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
     .map(([, sel, body]) => ({ sels: sel.split(",").map((s) => s.trim()), body }));

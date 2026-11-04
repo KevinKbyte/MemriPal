@@ -109,7 +109,7 @@ Tests: static/pal_chat.test.mjs
 
 ## MEM-045 Sticker pool and photo upload on the landmark photo
 
-Amended by MEM-130: photo stickers drag and snap to the nearest locus box; a tap never touches the pool.
+Amended by MEM-131: photo stickers drag and snap to the nearest locus box; a tap never touches the pool.
 Kev ask 2026-11-04: "or upload own images to sticker onto the place (eg. the kendall station) ... we can have a
 storage for stickers that have text desc so we can search the stickers rather than having to generate al the time";
 "generated stickers will automatically be added to that pool"; "emojis can be the base stickers to search from";
@@ -251,6 +251,7 @@ dark legible.
 
 Tests: static/pal_bubble_face_tour.test.mjs, static/tour_bubble_signal.test.mjs
 ## MEM-130 Sticker drag-snap with explicit regen
+## MEM-131 Sticker drag-snap with explicit regen
 
 Amends MEM-117 (tour house step) and MEM-045 (photo board). Kev ask 2026-11-04: "and also we should have as ux ui
 friendl as possible for the sticker regen process - i didnt know it would regenerate imediately when i was clickin on
@@ -262,7 +263,7 @@ Actors: the user; `static/sticker_drag.js` (new, shared drag + snap); `static/to
 (`#tour-roll`, `#tour-roll-undo`); `static/sticker_board.js` photo board.
 NFR: pointer events only (touch, mouse, pen), never `click`; keyboard parity; every change undoable; textContent only,
 no innerHTML; ASCII only.
-Decided-by: ADR-0074
+Decided-by: ADR-0077
 - `sticker_drag.js`: `DRAG_SLOP_PX = 6`; `boxDistance(point, box)` -> 0 inside, else distance to the nearest edge;
   `nearestBox(point, boxes)` -> index of the smallest box containing the point, else the nearest edge; ties go to the
   lower index; malformed boxes skipped; no usable box -> -1.
@@ -283,4 +284,4 @@ Decided-by: ADR-0074
   drop outside every box snaps to the nearest edge; New sticker re-rolls only the selection (all when none); Undo
   restores the prior stickers and items; a photo drop moves or swaps the placement, toasts, and Undo restores it.
 
-Tests: static/sticker_drag.test.mjs, plus updated tour and markup tests, tagged `// Covers: MEM-130`
+Tests: static/sticker_drag.test.mjs, plus updated tour and markup tests, tagged `// Covers: MEM-131`

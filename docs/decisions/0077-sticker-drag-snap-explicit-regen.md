@@ -1,8 +1,8 @@
-# 0074: Stickers drag and snap; regeneration is an explicit button
+# 0077: Stickers drag and snap; regeneration is an explicit button
 
 Status: Accepted
 Date: 2026-11-04
-Source: MEM-130 (`.claude/spec-cache/memripal/references/spec-6.md`).
+Source: MEM-131 (`.claude/spec-cache/memripal/references/spec-6.md`).
 
 ## Context
 

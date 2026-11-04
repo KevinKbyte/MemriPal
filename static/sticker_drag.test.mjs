@@ -1,4 +1,4 @@
-// Covers: MEM-130
+// Covers: MEM-131
 // Requirement: static/sticker_drag.js is the shared press-drag-drop helper for placed stickers (tour dog house and
 // photo sticker layer). A press that travels at least DRAG_SLOP_PX (6 CSS px) is a drag: the element gets
 // .is-dragging, the move is defaultPrevented and onMove(x, y, ev) gets client coordinates; pointerup then calls
@@ -54,9 +54,9 @@ function mulberry32(seed) {
   };
 }
 
-// Covers: MEM-130
+// Covers: MEM-131
 // Requirement: the drag threshold is 6 CSS px; a press that moves less is a tap, one that moves more is a drag.
-describe("sticker_drag DRAG_SLOP_PX (MEM-130)", () => {
+describe("sticker_drag DRAG_SLOP_PX (MEM-131)", () => {
   test("DRAG_SLOP_PX is 6", () => {
     assert.equal(api("DRAG_SLOP_PX"), 6);
   });
@@ -106,9 +106,9 @@ describe("sticker_drag DRAG_SLOP_PX (MEM-130)", () => {
   });
 });
 
-// Covers: MEM-130
+// Covers: MEM-131
 // Requirement: a gesture belongs to the pointer that started it, can be cancelled, and a tap fires once.
-describe("sticker_drag gesture ownership (MEM-130)", () => {
+describe("sticker_drag gesture ownership (MEM-131)", () => {
   test("a move from a different pointerId is ignored", () => {
     const { el, calls, fire } = wired();
     fire("pointerdown", 100, 100, { pointerId: 1 });
@@ -141,9 +141,9 @@ describe("sticker_drag gesture ownership (MEM-130)", () => {
   });
 });
 
-// Covers: MEM-130
+// Covers: MEM-131
 // Requirement: boxDistance is 0 inside or on the box edge, else the Euclidean distance to the nearest edge.
-describe("sticker_drag boxDistance (MEM-130)", () => {
+describe("sticker_drag boxDistance (MEM-131)", () => {
   const B = { x1: 0, y1: 0, x2: 10, y2: 10 };
 
   test("0 inside and on every edge and corner", () => {
@@ -168,11 +168,11 @@ describe("sticker_drag boxDistance (MEM-130)", () => {
   });
 });
 
-// Covers: MEM-130
+// Covers: MEM-131
 // Requirement: a drop binds to the smallest box containing it (a nested object beats the one around it), else the
 // box with the nearest edge; ties keep the lower index; null / NaN / missing-field boxes are skipped; with no usable
 // box the result is -1.
-describe("sticker_drag nearestBox (MEM-130)", () => {
+describe("sticker_drag nearestBox (MEM-131)", () => {
   test("the smallest containing box wins over the box around it, whatever the order", () => {
     const nb = api("nearestBox");
     const outer = { x1: 0, y1: 0, x2: 100, y2: 100 };

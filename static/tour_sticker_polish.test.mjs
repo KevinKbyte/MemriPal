@@ -64,11 +64,11 @@ function onHouse(t, rng = { v: 0 }) {
 beforeEach(() => mock.timers.enable({ apis: ["setTimeout"] }));
 afterEach(() => mock.timers.reset());
 
-// Covers: MEM-109, MEM-130
+// Covers: MEM-109, MEM-131
 // Requirement: MEM-109 amends MEM-117. On step 3 the focus trap cycles the card's visible buttons AND its
 // g.tour-sticker badges in document order: Skip, the five stickers in walk order (Doormat, Water bowl, Chew-toy
-// throne, Scratching post, Window), New sticker ("Roll all" before MEM-130), Back, Next, then wraps; Shift+Tab
-// walks the same ring backwards. Each trapped Tab is defaultPrevented. Since MEM-130 Enter or Space on a sticker
+// throne, Scratching post, Window), New sticker ("Roll all" before MEM-131), Back, Next, then wraps; Shift+Tab
+// walks the same ring backwards. Each trapped Tab is defaultPrevented. Since MEM-131 Enter or Space on a sticker
 // reached by Tab selects that sticker (aria-pressed="true") without re-rolling anything, and focus stays on it.
 describe("step 3 stickers are reachable by keyboard (MEM-109)", () => {
   const RING = ["tour-skip", ...HOUSE_SPOTS.map((s) => `Sticker on ${s}`), "tour-roll", "tour-back", "tour-next"];
@@ -104,7 +104,7 @@ describe("step 3 stickers are reachable by keyboard (MEM-109)", () => {
     assert.ok(dom.doc.activeElement === doormat, `two Tabs from Next reach the Doormat sticker, got ${focusName(dom)}`);
     rng.v = 0.999;
     dom.key("Enter");
-    assert.deepEqual(allParts(dom), before, "Enter re-rolled nothing (MEM-130)");
+    assert.deepEqual(allParts(dom), before, "Enter re-rolled nothing (MEM-131)");
     assert.equal(doormat.getAttribute("aria-pressed"), "true", "Enter selected the Doormat");
     assert.ok(dom.doc.activeElement === doormat, "focus stays on the Doormat sticker after Enter");
 
@@ -114,17 +114,17 @@ describe("step 3 stickers are reachable by keyboard (MEM-109)", () => {
     assert.ok(dom.doc.activeElement === bowl, `Tab from Doormat reaches Water bowl, got ${focusName(dom)}`);
     rng.v = 0.999;
     dom.key(" ");
-    assert.deepEqual(allParts(dom), before, "Space re-rolled nothing (MEM-130)");
+    assert.deepEqual(allParts(dom), before, "Space re-rolled nothing (MEM-131)");
     assert.equal(bowl.getAttribute("aria-pressed"), "true", "Space selected the Water bowl");
     assert.ok(dom.doc.activeElement === bowl, "focus stays on the Water bowl sticker after Space");
     assert.equal(stepN(dom), "3", "Enter/Space on a sticker does not change the step");
   });
 });
 
-// Covers: MEM-109, MEM-130
+// Covers: MEM-109, MEM-131
 // Requirement: MEM-109 amends MEM-117. Re-rolling a sticker that is still spinning restarts the spin: tour.js
 // removes is-rolling, forces a reflow (reads getBoundingClientRect) and adds is-rolling again, and the 300 ms
-// clear timer restarts from the second roll. A second re-roll mid-spin still re-rolls the locus. Since MEM-130 a
+// clear timer restarts from the second roll. A second re-roll mid-spin still re-rolls the locus. Since MEM-131 a
 // re-roll is the selected sticker plus New sticker (#tour-roll); a click on the sticker only selects it.
 describe("re-rolling a sticker mid-spin restarts the spin (MEM-109)", () => {
   const SPOT = "Chew-toy throne";
@@ -162,7 +162,7 @@ describe("re-rolling a sticker mid-spin restarts the spin (MEM-109)", () => {
     assert.notDeepEqual(composed(0)[I], composed(0.999)[I], "fixture: the two rolls differ for this locus");
     rng.v = 0.999;
     dom.click(stickerFor(dom, SPOT));
-    assert.deepEqual(allParts(dom)[I], composed(0)[I], "selecting the sticker re-rolls nothing (MEM-130)");
+    assert.deepEqual(allParts(dom)[I], composed(0)[I], "selecting the sticker re-rolls nothing (MEM-131)");
     dom.click(dom.$("tour-roll"));
     assert.deepEqual(allParts(dom)[I], composed(0.999)[I], "first New sticker re-rolled");
     mock.timers.tick(100);
