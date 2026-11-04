@@ -389,7 +389,9 @@ class TestPromptArgsContract:
         assert got == {"phrases": ["lamp"]}
         [kwargs] = client.chat_calls
         assert "prompt_args" not in kwargs
-        assert kwargs["max_completion_tokens"] == GEN_PARAMS["max_completion_tokens"]
+        # Spark's reasoning tokens count against the cap, so the sent cap adds headroom (send-time only).
+        headroom = backend_module.REASONING_HEADROOM_TOKENS
+        assert kwargs["max_completion_tokens"] == GEN_PARAMS["max_completion_tokens"] + headroom
         assert kwargs["temperature"] == GEN_PARAMS["temperature"]
         assert "book" in kwargs["prompt"] and "mug" in kwargs["prompt"]
 
