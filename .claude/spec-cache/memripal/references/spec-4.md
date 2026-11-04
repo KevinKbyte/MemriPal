@@ -418,7 +418,7 @@ Decision: ADR [0047](../../../../docs/decisions/0047-derived-auto-loci-and-swap.
 
 Tests: static/auto_loci.test.mjs, static/route_store_swap.test.mjs, static/route_store.test.mjs
 
-## MEM-087 Memorize: notes split, keyword edit, route recommendation (PLANNED)
+## MEM-087 Memorize: notes split, keyword edit, route recommendation
 
 Decision: ADR [0048](../../../../docs/decisions/0048-memorize-breakdown-and-route-recommendation.md). Plan S5.
 - Client for `/split` notes mode; keyword edit -> `split_list`; `/associate` per (keyword, station); client-side
@@ -437,7 +437,7 @@ Decision: ADR [0049](../../../../docs/decisions/0049-recall-schedule-and-push-re
 - Accept: S = 11-03 18:00 with T = 11-21; no deadline; T = S+12h; T already passed.
 
 Tests: static/recall_schedule.test.mjs
-## MEM-096 Real map resizes when its box gains size (PLANNED)
+
 ## MEM-096 Real map resizes when its box gains size
 
 - A map mounted into a 0x0 box (hidden route view) grows when the box later gains size: `static/real_map.js` observes
@@ -447,7 +447,7 @@ Tests: static/recall_schedule.test.mjs
 
 Tests: static/real_map_resize.test.mjs
 
-## MEM-100 Landmark emoji on the live map (PLANNED)
+## MEM-100 Landmark emoji on the live map
 
 Decided-by: ADR-0055
 Root problem: the live Routes map draws stations as bare circles; ADR 0038 rule 1 planned emoji landmark markers,
@@ -461,4 +461,4 @@ NFR: CSP-safe (presentation attributes only, no `style`); glyph set via `textCon
 - Accept: one `lm-emoji` per station at cy-30; a station without `emoji` shows U+1F4CD; none remain after detach;
   no `style` attribute on any added node.
 
-Tests: (filled at land)
+Tests: static/real_map_overlay_emoji.test.mjs
