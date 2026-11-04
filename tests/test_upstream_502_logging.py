@@ -212,3 +212,67 @@ class TestBackendLogsUpstreamCause:
         assert len(logged) == 1, logged
         for part in ("spark_json", "BackendTimeout", "status=None"):
             assert part in logged[0], (part, logged[0])
+
+
+PROVIDER_KEY = "fake-provider-key-upstream-log-ABCDEFGHIJ987"
+PROVIDER_MARKER = "PROVIDER-BODY-MARKER"
+
+
+def _status_500(request: httpx.Request) -> httpx.Response:
+    return httpx.Response(500, json={"error": {"code": "server_error", "message": "provider down"}})
+
+
+def _provider(handler, name: str = "baseten"):
+    from memripal.chat_provider import ChatProvider
+
+    client = MetaClient(PROVIDER_KEY, transport=httpx.MockTransport(handler), max_retries=0)
+    return ChatProvider(name, client, "m")
+
+
+def _post_with_providers(meta_handler, caplog, *, chat=None, chat_fallback=None):
+    caplog.set_level(logging.DEBUG)
+    client = MetaClient(FAKE_KEY, transport=httpx.MockTransport(meta_handler), max_retries=0)
+    backend = MetaBackend(FAKE_KEY, client=client, chat=chat, chat_fallback=chat_fallback)
+    return _post(backend, "loci")
+
+
+# Covers: MEM-014, MEM-015
+# Requirement: the upstream-failure WARNING on "memripal.backend" masks every configured key, not
+# only Meta's: a chat provider's key (from `chat` or `chat_fallback`) echoed in Meta's error body
+# is replaced by "***" and never reaches any log record; and a failed provider chat call logs only
+# the class-only "spark chat: <name> failed (<ClassName>), falling back to meta" line, never the
+# provider's upstream body, before Spark retries on Meta.
+class TestBackendLogMasksProviderSecrets:
+    def test_chat_fallback_key_echoed_by_meta_is_masked(self, caplog):
+        fallback = _provider(_status_400("unused"))
+
+        resp = _post_with_providers(_status_400(f"bad key {PROVIDER_KEY}"), caplog, chat_fallback=fallback)
+
+        _assert_bare_upstream(resp)
+        logged = _backend_warnings(caplog)
+        assert any("bad key" in m and "***" in m for m in logged), logged
+        assert PROVIDER_KEY not in caplog.text
+        assert PROVIDER_KEY not in resp.text
+
+    def test_chat_key_echoed_by_meta_after_provider_failure_is_masked(self, caplog):
+        chat = _provider(_status_500)
+
+        resp = _post_with_providers(_status_400(f"bad key {PROVIDER_KEY}"), caplog, chat=chat)
+
+        _assert_bare_upstream(resp)
+        logged = _backend_warnings(caplog)
+        assert any("spark chat: baseten failed (BackendCallFailed)" in m for m in logged), logged
+        assert any("bad key" in m and "***" in m for m in logged), logged
+        assert PROVIDER_KEY not in caplog.text
+        assert PROVIDER_KEY not in resp.text
+
+    def test_provider_failure_does_not_log_provider_body(self, caplog):
+        chat = _provider(_status_400(f"provider refused {PROVIDER_MARKER}"))
+
+        resp = _post_with_providers(_status_400("meta refused too"), caplog, chat=chat)
+
+        _assert_bare_upstream(resp)
+        logged = _backend_warnings(caplog)
+        assert any("spark chat: baseten failed (BackendCallFailed)" in m for m in logged), logged
+        assert PROVIDER_MARKER not in caplog.text
+        assert PROVIDER_MARKER not in resp.text
