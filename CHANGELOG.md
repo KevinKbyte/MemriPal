@@ -4,6 +4,11 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [0.20.70] - 2026-11-04
 
+### Changed
+
+- The Pal chat bubble shows Pal's face (a head crop of pal-still.svg) instead of the word "Pal"; its aria-label still names Pal (MEM-055).
+- While the first-run tour is open, the bubble ignores taps, Enter, arrow-key moves and drags (aria-disabled, dimmed) unless the current step targets it; tour.js publishes the step target as body data-tour-target (MEM-055, ADR 0072).
+
 ### Added
 
 - Six real photos of the Kendall demo route in `fixtures/demo/loci/` (Kendall/MIT station, One Broadway, Cafe Luna/Watermark, Third Square, Kendall boiler and tank building, pink sculpture at One Medical), EXIF-free and listed in `fixtures/MANIFEST.md`, for demos and deploy verification.
