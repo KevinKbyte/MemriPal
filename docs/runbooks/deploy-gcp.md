@@ -16,12 +16,23 @@ GKE adds cluster management; a VM needs patching and bills while idle.
 
 ## 1. One-time project setup
 
+0. Prerequisite: the gcloud CLI. On Windows install it with winget, then open a new terminal so `gcloud` is on PATH;
+   `sh` comes from Git for Windows (Git Bash). Elsewhere: <https://cloud.google.com/sdk/docs/install>.
+
+```powershell
+winget install --id Google.CloudSDK -e
+```
+
+   PowerShell does not accept the bash `VAR=value command` prefix used below. Each such command also has a PowerShell
+   form: set `$env:VAR`, run, then remove it, since `$env:` lasts for the whole PowerShell session.
+
 1. `gcloud auth login`
 2. `gcloud config set project <project>`
-3. Enable the APIs (`compute` is for the load balancer and Cloud Armor, step 5):
+3. Enable the APIs (`compute` is for the load balancer and Cloud Armor, step 5; `billingbudgets` is for the budget
+   command in step 2, which fails until it is enabled):
 
 ```bash
-gcloud services enable run.googleapis.com secretmanager.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com compute.googleapis.com
+gcloud services enable run.googleapis.com secretmanager.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com compute.googleapis.com billingbudgets.googleapis.com
 ```
 
 ## 2. Budget alert guard
@@ -30,8 +41,11 @@ The public URL can trigger paid model calls in live mode, so set a budget before
 Budgets & alerts, or):
 
 ```bash
-gcloud billing budgets create --billing-account=<billing-account-id> --display-name=memripal-cap --budget-amount=50USD --threshold-rule=percent=0.5 --threshold-rule=percent=0.9 --threshold-rule=percent=1.0
+gcloud billing budgets create --billing-account=<billing-account-id> --display-name=memripal-cap --budget-amount=50USD --filter-projects=projects/<project-id> --threshold-rule=percent=0.5 --threshold-rule=percent=0.9 --threshold-rule=percent=1.0
 ```
+
+`--filter-projects` scopes the budget to this project; without it the budget counts spend across the whole billing
+account.
 
 A budget alerts; it does not stop spend. Spend caps are D1: fixture default, passcode, `--max-instances=1`.
 SUPERSEDED for the judged deploy (ADR 0056): it runs live and the access key replaces the passcode. The in-process
@@ -79,6 +93,12 @@ Judged deploy, first pass (ingress still open; step 5 closes it):
 
 ```bash
 MODE=meta sh scripts/deploy_cloud_run.sh
+```
+
+PowerShell:
+
+```powershell
+$env:MODE = "meta"; sh scripts/deploy_cloud_run.sh; Remove-Item Env:MODE
 ```
 
 Optional env: `MODE` (`fixture` default, or `meta`; anything else is refused), `EDGE_HOST` (step 5), `GCP_PROJECT`
@@ -150,6 +170,12 @@ sh scripts/deploy_edge_gcp.sh
 
 ```bash
 MODE=meta EDGE_HOST=<host> sh scripts/deploy_cloud_run.sh
+```
+
+   PowerShell:
+
+```powershell
+$env:MODE = "meta"; $env:EDGE_HOST = "<host>"; sh scripts/deploy_cloud_run.sh; Remove-Item Env:MODE, Env:EDGE_HOST
 ```
 
 3. Cert wait: run the printed cert status command until it reads `ACTIVE` (typically 15-60 min after the IP resolves).
@@ -232,6 +258,12 @@ Stop all Meta spend (the app keeps serving fixture data):
 
 ```bash
 MODE=fixture EDGE_HOST=<host> sh scripts/deploy_cloud_run.sh
+```
+
+PowerShell:
+
+```powershell
+$env:MODE = "fixture"; $env:EDGE_HOST = "<host>"; sh scripts/deploy_cloud_run.sh; Remove-Item Env:MODE, Env:EDGE_HOST
 ```
 
 Faster, without a rebuild (until the next deploy):
