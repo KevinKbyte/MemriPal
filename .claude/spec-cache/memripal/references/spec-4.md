@@ -489,3 +489,23 @@ because nothing checked MEM uniqueness (ADR numbers are already checked by tests
   the real spec-cache yields [].
 
 Tests: tests/test_spec_ids.py
+## MEM-094 Meta spend guard
+
+Amends MEM-034 / ADR [0004](../../../../docs/decisions/0004-public-deploy-spend-guard.md) (its per-instance budget
+reset on restart).
+Decided-by: ADR-0059
+Root problem: Meta's spend limit only notifies and Kev's card is on file, so live judging could bill past the $150
+Meta credit. Kev, 2026-11-03: "as long as the judges are able to haev enough credits to use and judge, and that we
+dont go over for our meta".
+Actors: judges and the user (live mode); the server's Meta call sites (Spark chat, SAM, ASR); the chat providers of
+ADR [0023](../../../../docs/decisions/0023-chat-provider-adapter-reuses-meta-client.md).
+NFR: the estimate survives a server restart; the cap is configurable, default $135 (below the $150 credit, margin for
+estimate error).
+- Estimate: each Meta call adds its per-call cost estimate to a persisted running total.
+- Guard: once the total reaches the cap, the server refuses every further Meta call (Spark chat, SAM, ASR) with a
+  clear typed error; it never sends the request.
+- Chat fallback: a refused Spark chat call is served by Baseten or Fireworks instead.
+- Accept: at total >= cap no Meta request is sent and SAM/ASR return the typed refusal; chat answers via the fallback
+  provider; after a restart the total and the refusal hold.
+
+Tests: (filled at land)

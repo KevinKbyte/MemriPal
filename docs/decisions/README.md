@@ -160,3 +160,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
   `BackendCallFailed` inside `MetaBackend.call`, 120 s breaker, 30 s/5 s connect, 0 retries; `X-Memripal-Chat-Fallback`
   header via ContextVar + ASGI middleware drives a client toast (over a JSON body field, a wrapper backend, no
   breaker, or a flat 20 s timeout).
+- [0059](0059-meta-spend-guard.md) Persisted per-call Meta cost estimate; at a configurable cap (default $135, under the $150
+  credit) Meta calls get a typed refusal and chat falls back to Baseten or Fireworks; amends 0004 (over dashboard
+  notifications only, a billing API per call, or an unpersisted call count).
