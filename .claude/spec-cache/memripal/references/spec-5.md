@@ -345,6 +345,8 @@ Source: Kev 2026-11-04, "why do we have to promptt o type the key when we alread
 Tests: tests/test_push_secret_gcp.py
 ## MEM-117 Pal's dog-house sticker step (emoji-composite stickers)
 
+Amended by MEM-130 (spec-6.md): tap/Enter/Space on a sticker selects, never re-rolls; `#tour-roll` is
+"New sticker"; drag swaps stickers between spots.
 Amends MEM-095. Kev ask 2026-11-04: users stick a picture on each locus of the step-3 dog house; emoji are base
 stickers, merged into one memorable image; roll all or one; the tour shows the keyword breakdown.
 Root problem: step 3's house figure shows where each item goes but not the method's memorable image per locus; the

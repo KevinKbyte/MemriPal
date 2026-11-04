@@ -109,6 +109,7 @@ Tests: static/pal_chat.test.mjs
 
 ## MEM-045 Sticker pool and photo upload on the landmark photo
 
+Amended by MEM-130: photo stickers drag and snap to the nearest locus box; a tap never touches the pool.
 Kev ask 2026-11-04: "or upload own images to sticker onto the place (eg. the kendall station) ... we can have a
 storage for stickers that have text desc so we can search the stickers rather than having to generate al the time";
 "generated stickers will automatically be added to that pool"; "emojis can be the base stickers to search from";
@@ -249,3 +250,37 @@ dark legible.
   `.pal-bubble` leaves it live. After the tour ends the bubble works again.
 
 Tests: static/pal_bubble_face_tour.test.mjs, static/tour_bubble_signal.test.mjs
+## MEM-130 Sticker drag-snap with explicit regen
+
+Amends MEM-117 (tour house step) and MEM-045 (photo board). Kev ask 2026-11-04: "and also we should have as ux ui
+friendl as possible for the sticker regen process - i didnt know it would regenerate imediately when i was clickin on
+it since iw anted to drag it around on the picture, it should snap to the parts that are segmented and would associate
+in that hitbox of that segmented object"
+Root problem: a tap on a sticker re-rolled it at once, so a user reaching to drag it lost the sticker; nothing let them
+move a sticker onto another segmented spot.
+Actors: the user; `static/sticker_drag.js` (new, shared drag + snap); `static/tour.js` house step; `static/index.html`
+(`#tour-roll`, `#tour-roll-undo`); `static/sticker_board.js` photo board.
+NFR: pointer events only (touch, mouse, pen), never `click`; keyboard parity; every change undoable; textContent only,
+no innerHTML; ASCII only.
+Decided-by: ADR-0074
+- `sticker_drag.js`: `DRAG_SLOP_PX = 6`; `boxDistance(point, box)` -> 0 inside, else distance to the nearest edge;
+  `nearestBox(point, boxes)` -> index of the smallest box containing the point, else the nearest edge; ties go to the
+  lower index; malformed boxes skipped; no usable box -> -1.
+- `wireDrag`: pointerdown arms; a move past `DRAG_SLOP_PX` starts a drag; pointerup ends in a drop (dragging) or a
+  tap (not); pointercancel cancels with no change; never listens for `click`.
+- Tour house step (`static/tour.js`): click, tap, Enter or Space on a `g.tour-sticker` selects it (`is-selected`,
+  `aria-pressed="true"`) and never regenerates; aria-label "Sticker on <spot>". A drag drops on the `nearestBox` spot
+  and swaps sticker and item with it; arrow keys swap the selected sticker with its neighbour.
+- `#tour-roll` ("New sticker") re-rolls the selected sticker, or all when none is selected; `#tour-roll-undo`
+  ("Undo") undoes the latest New sticker or move; replay clears the selection and undo history.
+- `STEPS[2].after`: "I break each item into keywords and mash their emoji into one sticker. Drag a sticker onto
+  another spot, or tap New sticker for a fresh one."
+- Photo board (`static/sticker_board.js`): each `.sticker` face carries `data-n`, `pointer-events: auto`,
+  `touch-action: none`. A drop snaps to the `nearestBox` locus box (the segmented hitbox) and moves the placement
+  there, swapping with any placement already on it; one undo entry; `#sticker-toast` reads `Moved "<desc>" to
+  <label>.`; `#sticker-undo` restores. A tap never touches the pool.
+- Accept: a tap selects and never re-rolls; a move under 6 px stays a tap; pointercancel leaves state unchanged; a
+  drop outside every box snaps to the nearest edge; New sticker re-rolls only the selection (all when none); Undo
+  restores the prior stickers and items; a photo drop moves or swaps the placement, toasts, and Undo restores it.
+
+Tests: static/sticker_drag.test.mjs, plus updated tour and markup tests, tagged `// Covers: MEM-130`

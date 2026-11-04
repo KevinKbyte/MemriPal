@@ -216,3 +216,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
   and fixtures stay unchanged; `BackendCallFailed` is logged with a body excerpt masking every configured key (Meta and
   each chat provider), provider bodies never logged (over raising per-request caps in `gen_params` or lowering
   reasoning effort).
+- [0074](0074-sticker-drag-snap-explicit-regen.md) Tap selects a sticker, drag moves it and snaps to the nearest
+  segmented locus box, an explicit New sticker button regenerates, every change undoable (over tap-regen plus
+  long-press drag, or a drag handle per sticker).
