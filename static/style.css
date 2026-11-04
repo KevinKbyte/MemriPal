@@ -198,6 +198,20 @@ select {
   gap: 0.75rem;
 }
 
+/* MEM-122: the BYOK key is a text field (a password field invites password managers to save it), masked here.
+   Fallback where -webkit-text-security is unsupported: the characters blur into an unreadable smear. */
+#byok-key {
+  -webkit-text-security: disc;
+}
+
+@supports not (-webkit-text-security: disc) {
+  #byok-key {
+    color: transparent;
+    caret-color: var(--ink);
+    text-shadow: 0 0 0.45em var(--ink);
+  }
+}
+
 /* F13: each label stacks above its input. */
 /* minmax(0, 1fr): a control's intrinsic width (the native file input's, font dependent) never widens
    the page at 360px (e2e step 13). */
