@@ -6,6 +6,12 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ### Added
 
+- Pal chat bubble mounted on every screen (MEM-099, ADR 0064): `static/index.html` loads `/static/pal_bubble.js` right after `app.js`, and `mountPalBubble` adds one idempotent `/static/pal_bubble.css` stylesheet link to the document head, so the bubble loads its own stylesheet. Tests in `static/pal_bubble.test.mjs` and `tests/test_assets_wiring.py`.
+
+### Fixed
+
+- `scripts/run_live.ps1` help cites ADR 0064, not ADR 0054, for the Mapillary token (`tests/test_run_live.py`).
+
 - Pal's tour step 3 (MEM-117, ADR 0065): emoji composite stickers on Pal's dog house. Each item is broken into keywords (`static/stickers.js`: pool, keywords, search, compose, rollAll, rollOne) and their emoji are mashed into one sticker anchored at each spot's top-right corner. Tap, Enter or Space on a sticker re-rolls it; `#tour-roll` "Roll all" (house step only) re-rolls all five. Rows show the sticker as the icon with a `.tour-kw` keywords caption ("sizzling + bacon"). Rolls survive Next/Back; reduced motion disables the roll animation. Step-3 rows show a numbered badge in place of the visually hidden spot name so the card fits a 375x812 phone.
 
 ## [0.20.54] - 2026-11-04
