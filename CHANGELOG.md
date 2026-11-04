@@ -6,6 +6,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ### Added
 
+- Offline walk routing + geocode (MEM-084): scripts/build_walk_graph.py builds a compact Kendall walk graph and named-POI table from one Overpass query (committed under static/data/), and static/walk_route.js routes by A* snapped to the largest component with a flagged straight-line fallback and geocodes typed places over POIs plus aliases.
+
 - Auto-loci (MEM-085): static/auto_loci.js candidates() lists POIs within 50 m of a routed walk, deduped, 40 m apart, none within 15 m of a station, each with its address or a near-<street> label; route_store swapStation / undoSwap / addCandidate (max 8 stations, swapped-out stations kept under candidate keys with their photo); seeded and map stations keep 5-dp coords, GPS stays 4 dp; demo stations carry street addresses.
 
 ## [0.20.40] - 2026-11-03
