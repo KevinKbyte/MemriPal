@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [0.20.45] - 2026-11-03
 
+### Changed
+
+- Dev: `.claude/launch.json` gains a portable `app-main` preview entry (`uv run uvicorn memripal.app:app` on 127.0.0.1:8000, no absolute `--directory`).
+
 ### Added
 
 - MEM id uniqueness check: scripts/spec_ids.py + tests/test_spec_ids.py fail check.sh on a MEM id defined twice (MEM-101); CLAUDE.md numbering rule.
