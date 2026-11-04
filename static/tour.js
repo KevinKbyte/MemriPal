@@ -310,6 +310,8 @@ export function wireTour(doc, store) {
   function show(i) {
     cur = i;
     const s = /** @type {any} */ (STEPS[i]);
+    // pal_bubble.js reads this to stay inert unless the step targets it (ADR 0072).
+    doc.body.dataset.tourTarget = s.target ?? "";
     // Unhide first: focus() is a no-op on an element inside a hidden dialog.
     tour.hidden = false;
     tour.classList.toggle("is-welcome", s.target === null);
@@ -360,6 +362,7 @@ export function wireTour(doc, store) {
   /** @param {boolean} skipped */
   function close(skipped) {
     tour.hidden = true;
+    delete doc.body.dataset.tourTarget;
     try {
       store.setItem(TOUR_KEY, "1");
     } catch {

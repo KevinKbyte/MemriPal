@@ -4,18 +4,32 @@
   z-index: 1000;
   width: 56px;
   height: 56px;
+  padding: 0;
+  overflow: hidden;
   border-radius: 50%;
-  border: none;
-  font: inherit;
-  font-weight: 700;
-  color: #fff;
-  background: #3b6fd8;
+  /* Cream disc plus a blue ring: the face reads on light and dark pages alike. */
+  border: 3px solid #3b6fd8;
+  background: #fff4d6;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   cursor: grab;
   touch-action: none;
   user-select: none;
 }
 .pal-bubble:focus-visible { outline: 3px solid #ffbf47; outline-offset: 2px; }
+/* Head crop of the 512px pal-still.svg (head about x 100-410, y 50-395) centred in the disc. */
+.pal-bubble-face {
+  position: absolute;
+  width: 84px;
+  height: 84px;
+  left: -17px;
+  top: -11px;
+  pointer-events: none;
+}
+/* Inert while the tour is open, unless the open step targets the bubble (MEM-055, ADR 0072). */
+body[data-tour-target]:not([data-tour-target=".pal-bubble"]) .pal-bubble {
+  pointer-events: none;
+  opacity: 0.6;
+}
 /* Pal chat panel (MEM-116): messenger-style layout. Header, chat chips, scrolling bubbles, sticky composer.
    Colours come from the page theme tokens (style.css / theme-painterly.css) with light fallbacks. */
 .pal-panel {

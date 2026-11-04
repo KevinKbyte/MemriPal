@@ -6,6 +6,10 @@ import { messageNodes, typingNode, createComposer } from "./pal_chat.js";
 
 const POS_KEY = "memripal.palBubble.pos";
 const STYLE_HREF = "/static/pal_bubble.css";
+const FACE_SRC = "/static/assets/pal-still.svg";
+// tour.js keeps body data-tour-target = the open step's target selector (ADR 0072); the bubble is inert
+// while the tour is open unless that step targets it.
+const TOUR_SELF = ".pal-bubble";
 const SIZE = 56; // fallback before layout; pal_bubble.css .pal-bubble
 const MARGIN = 8;
 const STEP = 16; // arrow-key move, px
@@ -52,10 +56,24 @@ export async function mountPalBubble({ doc, win, storage, chats, reply }) {
   };
   linkStylesheet(doc);
   const root = make("div", "root");
-  const bubble = make("button", "bubble", "Pal");
+  const bubble = make("button", "bubble");
   bubble.className = "pal-bubble";
   bubble.setAttribute("aria-label", "Open Pal chats");
   bubble.setAttribute("aria-expanded", "false");
+  // Decorative: the aria-label already names Pal. pal_bubble.css crops it to the head.
+  const face = make("img", "face");
+  face.className = "pal-bubble-face";
+  face.src = FACE_SRC;
+  face.alt = "";
+  bubble.append(face);
+  const blocked = () => {
+    const t = doc.body.dataset?.tourTarget;
+    return t !== undefined && t !== TOUR_SELF;
+  };
+  const syncDisabled = () => {
+    if (blocked()) bubble.setAttribute("aria-disabled", "true");
+    else bubble.removeAttribute("aria-disabled");
+  };
   const panel = make("section", "panel");
   panel.className = "pal-panel";
   panel.setAttribute("aria-label", "Pal chats");
@@ -125,13 +143,17 @@ export async function mountPalBubble({ doc, win, storage, chats, reply }) {
   };
   place(pos.x, pos.y);
   win.addEventListener("resize", () => place(pos.x, pos.y));
+  syncDisabled();
+  if (win.MutationObserver) {
+    new win.MutationObserver(syncDisabled).observe(doc.body, { attributes: true, attributeFilter: ["data-tour-target"] });
+  }
 
   // --- drag: pointer events cover mouse and touch; a drag swallows the click that follows ---
   /** @type {{id: number, cx: number, cy: number, x: number, y: number} | null} */
   let press = null;
   let dragged = false;
   bubble.addEventListener("pointerdown", (/** @type {any} */ ev) => {
-    if (ev.button !== 0) return;
+    if (ev.button !== 0 || blocked()) return;
     press = { id: ev.pointerId, cx: ev.clientX, cy: ev.clientY, x: pos.x, y: pos.y };
     dragged = false;
     bubble.setPointerCapture?.(ev.pointerId);
@@ -159,6 +181,7 @@ export async function mountPalBubble({ doc, win, storage, chats, reply }) {
     if (open) await render();
   };
   bubble.addEventListener("click", () => {
+    if (blocked()) return;
     if (dragged) {
       dragged = false;
       return;
@@ -167,6 +190,7 @@ export async function mountPalBubble({ doc, win, storage, chats, reply }) {
   });
   const ARROWS = { ArrowLeft: [-STEP, 0], ArrowRight: [STEP, 0], ArrowUp: [0, -STEP], ArrowDown: [0, STEP] };
   bubble.addEventListener("keydown", (/** @type {any} */ ev) => {
+    if (blocked()) return;
     if (ev.key === "Enter") {
       // preventDefault also stops the browser's own Enter -> click, which would toggle it back.
       ev.preventDefault();
