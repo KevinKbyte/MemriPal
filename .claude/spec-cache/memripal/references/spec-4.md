@@ -428,7 +428,12 @@ Decision: ADR [0048](../../../../docs/decisions/0048-memorize-breakdown-and-rout
 - Accept: 6 keywords from the demo text; edited keywords re-split with 0 model calls; the recommendation picks a route
   with >= 6 free stations and shows a reason; a fixture-mode run makes 0 live calls.
 
-Tests: static/memorize.test.mjs, tests/test_split_demo_fixtures.py
+Tests: static/memorize.test.mjs (incl. associateKeywords sends station {name, profile, taps}, {} for a missing
+profile/taps), tests/test_split_demo_fixtures.py, tests/test_associate_station.py (/associate station block
+{name, profile, taps} in prompt args; SEND_IMAGE False; unknown station key 400 before any model call; live payload
+has no image and carries name/profile/taps), tests/test_demo_photo_json.py (static/assets/demo_photo.json decodes
+byte-exact to fixtures/demo/photo.jpg; scripts/gen_demo_photo_json.py regenerates it, --in/--out, repo-root
+defaults, missing input exits non-zero without traceback)
 
 ## MEM-090 Recall schedule (pure module) (PLANNED)
 
