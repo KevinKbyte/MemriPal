@@ -187,6 +187,8 @@ const MEM110_IDS = ["station-tap-summary"];
 const MEM110_MAY_START_HIDDEN = ["station-tap-summary"];
 // MEM-125: the Recall flashcards panel inside #tab-recall.
 const MEM125_IDS = ["flashcards", "flashcards-title", "flashcards-status", "flashcards-card"];
+// MEM-114: the zero-route empty-state slogan beside Pal; visible in the markup (never start-hidden).
+const MEM114_IDS = ["empty-slogan"];
 
 // Covers: MEM-044, MEM-095, MEM-112, MEM-045
 // Requirement: MEM-044 A2 v6 shell + control markup in static/index.html (see the file header).
@@ -197,18 +199,18 @@ describe("MEM-044 A2 v6 shell + control markup (static/index.html, F13)", () => 
   // adds its tab panel, map chip, drawer and landmarks-list ids (older ids only move); MEM-081 its 4 route review ids;
   // MEM-088 its 12 route builder / map empty-state ids; MEM-108 its 3 chat-fallback toast ids (#chat-fallback starts hidden);
   // MEM-110 its station tap summary id; MEM-095 its Pal tour ids; MEM-045 its sticker panel ids; MEM-125 its
-  // flashcards panel ids.
-  test("every 748a5e1 id kept exactly once; the only ids added are MEM-048's, MEM-050's, MEM-051's, MEM-072's, MEM-081's, MEM-088's, MEM-108's, MEM-110's, MEM-095's, MEM-045's and MEM-125's", () => {
+  // flashcards panel ids; MEM-114 its #empty-slogan id.
+  test("every 748a5e1 id kept exactly once; the only ids added are MEM-048's, MEM-050's, MEM-051's, MEM-072's, MEM-081's, MEM-088's, MEM-108's, MEM-110's, MEM-095's, MEM-045's, MEM-125's and MEM-114's", () => {
     const ids = ELS.map((e) => e.attrs.id).filter((id) => id !== undefined);
     const count = (id) => ids.filter((x) => x === id).length;
     const lost = BASE_IDS.filter((id) => count(id) !== 1);
     assert.deepEqual(lost, [], `748a5e1 ids missing or duplicated: ${lost.join(" ")}`);
     const allowed = new Set([...BASE_IDS, ...MEM048_IDS, ...MEM050_IDS, ...MEM051_IDS, ...MEM072_IDS, ...MEM081_IDS,
       ...MEM088_IDS, ...MEM108_IDS, ...MEM110_IDS,
-      ...MEM095_IDS, ...MEM045_IDS, ...MEM125_IDS]);
+      ...MEM095_IDS, ...MEM045_IDS, ...MEM125_IDS, ...MEM114_IDS]);
     const unexpected = ids.filter((id) => !allowed.has(id));
     assert.deepEqual(unexpected, [],
-      `ids outside 748a5e1 + MEM-048 + MEM-050 + MEM-051 + MEM-072 + MEM-081 + MEM-088 + MEM-108 + MEM-110 + MEM-095 + MEM-045 + MEM-125:${unexpected.join(" ")}`);
+      `ids outside 748a5e1 + MEM-048 + MEM-050 + MEM-051 + MEM-072 + MEM-081 + MEM-088 + MEM-108 + MEM-110 + MEM-095 + MEM-045 + MEM-125 + MEM-114: ${unexpected.join(" ")}`);
     const missing = MEM072_IDS.filter((id) => count(id) !== 1);
     assert.deepEqual(missing, [], `MEM-072 shell ids missing or duplicated: ${missing.join(" ")}`);
     const dupes = [...new Set(ids.filter((id) => count(id) > 1))];
@@ -375,4 +377,29 @@ describe("MEM-073 first screen has no room-photo copy", () => {
       assert.equal(at, -1, `index.html still says "${phrase}": ...${HTML.slice(Math.max(0, at - 40), at + 40)}...`);
     });
   }
+});
+
+// Covers: MEM-114
+// Requirement: the zero-route empty state shows the slogan "Find a home for every memory" beside Pal.
+describe("MEM-114 empty-state slogan markup (static/index.html)", () => {
+  test("#empty-slogan text is exactly 'Find a home for every memory'", () => {
+    const m = HTML.match(/<([a-z0-9]+)\b[^>]*\bid=["']empty-slogan["'][^>]*>([\s\S]*?)<\/\1>/i);
+    assert.ok(m, "index.html has no element with id empty-slogan");
+    assert.equal(m[2].replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim(), "Find a home for every memory");
+  });
+
+  test("#empty-slogan is not hidden in the markup", () => {
+    const el = byId("empty-slogan");
+    assert.ok(el, "index.html has no element with id empty-slogan");
+    assert.equal("hidden" in el.attrs, false, "#empty-slogan carries the hidden attribute");
+  });
+
+  test("#empty-slogan is the next element sibling after #empty-state", () => {
+    const pal = byId("empty-state");
+    const slogan = byId("empty-slogan");
+    assert.ok(slogan, "index.html has no element with id empty-slogan");
+    assert.equal(slogan.parent, pal.parent, "#empty-slogan is not in the same parent as #empty-state");
+    const sibs = pal.parent.children;
+    assert.equal(sibs[sibs.indexOf(pal) + 1], slogan, "#empty-slogan does not immediately follow #empty-state");
+  });
 });
