@@ -17,8 +17,8 @@ PUBLIC_HOST = "memripal-abc123-uc.a.run.app"
 FORM = "application/x-www-form-urlencoded"
 HTML = {"Accept": "text/html,application/xhtml+xml"}
 ENV_VARS = ("MEMRIPAL_MODE", "META_API_KEY", "MEMRIPAL_PASSCODE", "MEMRIPAL_ALLOWED_HOSTS", "K_SERVICE",
-            "MEMRIPAL_ACCESS_KEY", "MEMRIPAL_ACCESS_MAX_FAILS", "MEMRIPAL_LOCKOUT_S", "MEMRIPAL_MAX_BODY_BYTES",
-            "MEMRIPAL_TRUSTED_PROXY_HOPS", "MEMRIPAL_CALL_BUDGET")  # fmt: skip
+            "MEMRIPAL_ACCESS_KEY", "MEMRIPAL_ACCESS_MAX_FAILS", "MEMRIPAL_LOCKOUT_S",
+            "MEMRIPAL_MAX_BODY_BYTES", "MEMRIPAL_TRUSTED_PROXY_HOPS", "MEMRIPAL_CALL_BUDGET")  # fmt: skip
 SPLIT = json.dumps({"mode": "notes", "text": "First, the budget doubled.", "loci_count": 3}).encode()
 
 
