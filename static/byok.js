@@ -3,7 +3,8 @@
 // X-Memripal-Spend-Cap; the page names the cap in a dismissible top toast.
 // Bring your own key (MEM-122): only when that toast says "capped", it offers a key field. The
 // key lives in this module's memory only (no web storage, IndexedDB or cookie), rides only in X-Memripal-Meta-Key
-// on the 5 model routes, and is dropped on reload, on "Forget key", at its limit and when Meta refuses it.
+// on the 5 model routes, and is dropped on reload, on pagehide (bfcache), on "Forget key", at its limit and when
+// Meta refuses it.
 
 export const SPEND_CAP_HEADER = "X-Memripal-Spend-Cap";
 export const KEY_HEADER = "X-Memripal-Meta-Key";
@@ -124,6 +125,26 @@ export function forgetKey(doc) {
   keys.delete(doc);
   const chip = chips.get(doc);
   if (chip) chip.root.hidden = true;
+}
+
+/**
+ * The back/forward cache keeps a page's memory, key included (security review, 2026-11-04): pagehide forgets the
+ * key, hides the chip and empties the field; a pageshow restored from that cache (persisted) does the same, in
+ * case pagehide never ran. A no-op without a window (node tests, workers).
+ * @param {any} win
+ * @param {any} doc
+ */
+export function forgetOnPageHide(win, doc) {
+  if (!win || typeof win.addEventListener !== "function") return;
+  const clear = () => {
+    forgetKey(doc);
+    const parts = toasts.get(doc);
+    if (parts) parts.prompt.input.value = "";
+  };
+  win.addEventListener("pagehide", clear);
+  win.addEventListener("pageshow", (/** @type {any} */ ev) => {
+    if (ev?.persisted) clear();
+  });
 }
 
 /**

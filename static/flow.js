@@ -11,7 +11,7 @@ import { createHistory } from "./history.js";
 import { createIdbAdapter } from "./idb_adapter.js";
 import { chunkSamples, encodeWav, postRecallAudio, recordClip, TARGET_SAMPLE_RATE } from "./mic_wav.js";
 import { wireBackup } from "./backup_ui.js";
-import { showSpendCap, withMetaKey, withSpendCapNotice } from "./byok.js";
+import { forgetOnPageHide, showSpendCap, withMetaKey, withSpendCapNotice } from "./byok.js";
 import { localStorageAdapter } from "./palace_store.js";
 import { pointOf } from "./rehearsals.js";
 import { showPublicBanner } from "./public_banner.js";
@@ -134,6 +134,8 @@ export function wireApp(deps) {
   const fetchFn = withSpendCapNotice(withMetaKey(withPasscode(deps.fetch, doc), doc), (state) =>
     showSpendCap(doc, state),
   );
+  // MEM-122: the back/forward cache must not keep the visitor's key.
+  forgetOnPageHide(doc.defaultView, doc);
   /** @param {string} id */
   const byId = (id) => doc.getElementById(id);
   /** @param {string} id @param {() => unknown} fn */

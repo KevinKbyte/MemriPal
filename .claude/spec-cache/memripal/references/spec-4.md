@@ -544,11 +544,12 @@ limit on it and to not reuse it afterwards (delete key after done)"; "only for w
 only show up once we hit the limit".
 Actors: a visitor with a Meta API key; the 5 model routes; Meta's API.
 - Shown only when the spend cap toast is `capped`: "Free demo credit is used up. To keep going, paste your own Meta
-  API key. It stays in this tab only, is never saved, and stops at $5." Password field (autocomplete off),
-  [Continue], [Not now]; chip "Using your key ($5 limit)" + [Forget key]; at the limit "Your $5 limit is reached.
+  API key. It stays in this tab only, is never saved, and stops at $5." A CSS-masked text field (not a password
+  field, not in a form, no name; autocomplete/autocapitalize off, spellcheck false) so password managers do not
+  save it; [Continue] or Enter, [Not now]; chip "Using your key ($5 limit)" + [Forget key]; at the limit "Your $5 limit is reached.
   Key forgotten."; Meta refuses the key (401/403/404): "Your key can't use <model>". No model field.
-- The key lives in a page JS variable only (no web storage, IndexedDB or cookie); reload, Forget key, the limit and a
-  refusal drop it. It rides only in header `X-Memripal-Meta-Key`, only on /loci, /split, /associate, /scenes,
+- The key lives in a page JS variable only (no web storage, IndexedDB or cookie); reload, pagehide (and a
+  back/forward-cache pageshow), Forget key, the limit and a refusal drop it. It rides only in header `X-Memripal-Meta-Key`, only on /loci, /split, /associate, /scenes,
   /recall/audio; never in a body or URL. The header is on the Capacitor CORS allow-list.
 - Server: a fresh per-request MetaBackend + MetaClient (Meta's base URL only) + its own MetaSpendGuard under
   `<spend dir>/byok/<HMAC-SHA256(record key, key)>`, cap `MEMRIPAL_BYOK_SPEND_CAP_USD` (default 5); ASR uses the
