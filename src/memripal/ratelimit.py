@@ -93,14 +93,24 @@ def client_key(addr: str) -> str:
     return str(ip)
 
 
+def trusted_proxy_hops() -> int:
+    """MEMRIPAL_TRUSTED_PROXY_HOPS (MEM-102); invalid or < 1 falls back to 1 rather than failing startup."""
+    try:
+        hops = int(os.environ.get("MEMRIPAL_TRUSTED_PROXY_HOPS", "1"))
+    except ValueError:
+        return 1
+    return max(hops, 1)
+
+
 def client_ip(scope, trust_xff: bool) -> str:
-    """Key of the rightmost X-Forwarded-For entry on Cloud Run (leftmost are client-supplied), else peer."""
+    """Key of the Nth-from-right X-Forwarded-For entry on Cloud Run (leftmost are spoofable), else peer."""
     if trust_xff:
         values = Headers(scope=scope).getlist("x-forwarded-for")
         entries = [e.strip() for v in values for e in v.split(",") if e.strip()]
         if entries:
-            # Assumes direct *.run.app ingress; behind an external HTTPS LB the rightmost entry is the LB.
-            return client_key(entries[-1])
+            # 1 hop = direct *.run.app ingress; 2 = behind the external HTTPS LB, which appends itself last.
+            hops = trusted_proxy_hops()
+            return client_key(entries[-hops] if len(entries) >= hops else entries[0])
     client = scope.get("client")
     return client_key(client[0]) if client else ""
 
