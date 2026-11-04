@@ -332,3 +332,61 @@ slogan (Kev ~14:50 ET 2026-11-03): "Make what's important unforgettable".
 
 Tests: static/routes_empty_map.test.mjs, static/real_map_mount_at.test.mjs, static/app_routes_empty_map.test.mjs,
 static/index_markup.test.mjs (MEM-114 describe), static/app_route_new_flow.test.mjs (`#map-empty` gives way to the CTA)
+## MEM-132 Pal chat creates a walking route
+
+Kev ask: "is the chat also done and validated so that it can create automated routes, if you have E2E tests saved for
+the repo".
+Root problem: the Pal chat is local-only (no `reply` dep at selfMount) and the copilot dispatcher (`copilot_dispatch.js`)
+is a library wired nowhere, so typing "route from X to Y" does nothing.
+Actors: `static/chat_route.js` (new); `static/route_plan.js` (new, pure `planRoute`); `static/route_new.js` (MEM-088,
+now calls `planRoute`); `static/copilot_bridge.js` (new); `static/pal_bubble.js`; `static/flow.js`.
+NFR: deterministic, client-side, no server or LLM call; textContent only; never throws into the chat; ASCII.
+Decided-by: ADR-0079
+- `parseRouteIntent(text)` -> `{from, to}` or null. Matches, case-insensitive, optional leading "please"/trailing
+  punctuation: "route from X to Y", "walk from X to Y", "directions from X to Y", "take me from X to Y",
+  "walking route from X to Y". X and Y trimmed, non-empty; the last " to " splits them. Anything else, non-string or
+  blank -> null.
+- `planRoute(fromPhrase, toPhrase, {graph, pois})` -> `{ok: true, from, to, stations, name, walk}` or
+  `{ok: false, text}`; the MEM-088 Find core (geocode both, `route`, `candidates`, `pickStations`, name
+  "`From to To`" cut to 40). Blank phrase or geocode miss -> `ok: false` with `missText` (names suggestions, never a raw
+  error). `route_new.js` find() calls it; MEM-088 behavior unchanged.
+- `createRouteTool({routes, load, newId})` -> copilot tool `{name: "create_route", run({from, to})}`: loads graph +
+  POIs via `load()`, `planRoute`, then `routes.seedRoute({id, name, kind: "daily", stations})`; result
+  `{ok, id, name, text}`; inverse removes that route (undo). Plan miss -> `{ok: false, text}`, no route written, no
+  inverse.
+- `createChatRouteActor({dispatcher, onCreated})`: `act(text)` -> null for non-route text; else dispatches
+  `create_route` and resolves a reply string: created -> "Made your route NAME with N stops. It's on the Routes tab."
+  then `onCreated(id)`; miss -> the plan text; dispatcher refusal or throw -> "I couldn't make that route. Try again."
+- `copilot_bridge.js`: module singleton `setActor(actor)` / `getActor()` (null until set).
+- `pal_bubble.js`: `mountPalBubble` gains optional `act(text)`; on send, a non-null `act` reply is appended as the Pal
+  message and `reply` is not called; null falls through to `reply` as before. selfMount passes
+  `act: (t) => getActor()?.act(t) ?? null`.
+- `flow.js` after routeView: dispatcher with policy `{create_route: "allow"}`, the route tool, an undo stack;
+  `onCreated(id)` -> `renderHome()` then `openRoute(id)`; `setActor(...)`.
+- Accept: typing "route from Kendall T to Meta office" in the Pal composer adds a route card on the Routes tab and the
+  Pal reply names it; "hello" is untouched by `act`; an unmapped place gets the demo-area miss text; undo removes the
+  created route. Covered by static/chat_route.test.mjs, static/pal_bubble.test.mjs, E2E step `chat_route`.
+- Out of scope: LLM tool-calling (ADR 0079); typeahead (MEM-126, unmerged); places outside the mapped Kendall area.
+
+## MEM-133 Curated demo routes from the route pipeline
+
+Kev ask: "rather than throwing out the results from those E2E tests, we can use those as examples to populate the app
+with multiple routes - choosing the best routes that peopel would relate to on this map".
+Root problem: Load demo seeds one route, so the Routes tab shows little; the planner already makes good relatable
+routes that are thrown away.
+Actors: `scripts/gen_demo_routes.mjs` (new); `static/data/demo_routes.json` (generated, committed); `static/flow.js`
+Load demo.
+NFR: generator deterministic (same data -> byte-identical JSON); fixed ids; no network; ASCII.
+Decided-by: ADR-0079
+- `scripts/gen_demo_routes.mjs` runs `planRoute` over curated pairs on the committed graph + POIs and writes
+  `static/data/demo_routes.json`: `[{id, name, kind: "daily", stations}]`, ids `demo-route-commute`,
+  `demo-route-coffee`, `demo-route-landmarks`.
+- Routes: "Morning commute to the T" (Meta office -> Kendall T); "Coffee run" (Meta office -> a cafe POI); "Landmark
+  loop" (landmark POIs as stations sorted counter-clockwise by angle around their centroid: a simple polygon, no two
+  segments cross).
+- Load demo seeds them alongside DEMO_ROUTE; seeding is idempotent by id (a second Load demo adds no duplicate); a
+  fetch failure seeds DEMO_ROUTE alone.
+- Accept: after Load demo the Routes tab lists >= 3 routes incl. the fixed ids; no two non-adjacent station segments
+  of any route cross; the landmark loop's signed area > 0 (CCW); regenerating yields identical JSON. Covered by
+  static/demo_routes_seed.test.mjs, scripts/gen_demo_routes.test.mjs.
+- Out of scope: user-editable curated routes; places outside the mapped Kendall area.
