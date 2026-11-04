@@ -106,3 +106,11 @@ locking it while a dependent is checked gives the stepper's dependency guarantee
 - The sentinel JPEG must never reach the model: test with `SEND_IMAGE` False.
 - The checkbox dependency rules (dependents auto-check keywords; keywords locked while a dependent is checked) need
   unit tests.
+
+## Amendment 2026-11-03: SEND_IMAGE False whenever a station block is present
+
+A POST `/associate` carrying a `station` block `{name, profile, taps}` is sent with gen_params `send_image` False, so
+a photo-less demo station's sentinel JPEG never reaches the model. Name, profile and tap values ride in a new
+`ASSOCIATION_STATION` prompt template kept outside the templates digest (like `ASSOCIATION_PLACE`); the block rides in
+prompt args, so it still keys the cache. Without a station neither the arg nor the `send_image` key is set, so
+pre-MEM-087 request keys stay byte-identical.

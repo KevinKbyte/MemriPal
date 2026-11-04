@@ -12,6 +12,7 @@ from memripal.place import valid_coords
 from memripal.split import MAX_POINTS
 
 ASSOCIATE_KEYS = {"image", "item", "locus"}
+ASSOCIATE_OPTIONAL_KEYS = {"place", "station"}
 PLACE_KEYS = {"lat", "lon"}
 SCENES_KEYS = {"image", "box", "record", "sig"}
 BOX_KEYS = ("x1", "y1", "x2", "y2")
@@ -61,12 +62,13 @@ def _split_body(raw: bytes) -> dict | None:
 
 
 def _associate_body(raw: bytes) -> dict | None:
-    """The parsed /associate body, or None unless it is {image, item, locus} strings plus optional place."""
+    """The parsed /associate body, or None unless it is {image, item, locus} strings plus optional place
+    and station (their shapes are checked by associate.check_place / check_station)."""
     try:
         body = json.loads(raw)
     except ValueError:
         return None
-    if not isinstance(body, dict) or set(body) - {"place"} != ASSOCIATE_KEYS:
+    if not isinstance(body, dict) or set(body) - ASSOCIATE_OPTIONAL_KEYS != ASSOCIATE_KEYS:
         return None
     if not all(isinstance(body[k], str) for k in ASSOCIATE_KEYS):
         return None

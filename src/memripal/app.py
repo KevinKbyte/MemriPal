@@ -25,6 +25,7 @@ from memripal.associate import (
     associate,
     check_inputs,
     check_place,
+    check_station,
     record_ok,
 )
 from memripal.backend import BackendCallFailed, FixtureMissing, ModelBackend, select_backend
@@ -399,11 +400,14 @@ def create_app(
         if body is None:
             return _error(400, "bad_request")
         item, locus, image, place = body["item"], body["locus"], body["image"], body.get("place")
+        station = body.get("station")
         try:
             # Caps first: bad input is refused before the photo is decoded or any model call.
             check_inputs(item, locus)
             if "place" in body:
                 check_place(place)
+            if "station" in body:
+                check_station(station)
             if not image.startswith(JPEG_DATA_URL):
                 return _error(400, "bad_data_url")
             try:
@@ -412,7 +416,7 @@ def create_app(
                 return _error(400, "bad_base64")
             # Never re-encoded: the bytes key the fixture/cache entries.
             processed = await run_in_threadpool(validate_processed, photo)
-            result = await run_in_threadpool(associate, backend, processed, item, locus, place)
+            result = await run_in_threadpool(associate, backend, processed, item, locus, place, station)
         except AssociateRejected as exc:
             return _error(400, str(exc))
         except ImageRejected as exc:
