@@ -392,3 +392,30 @@ Decided-by: ADR-0065
   breakdown prompt (R13 full), Learn nav (item 7), app-wide `route_order` non-crossing guarantee.
 
 Tests: static/stickers.test.mjs, static/tour.test.mjs
+
+## MEM-109 Sticker step polish: keyboard reach, restartable roll, fresh rolls on replay
+
+Amends MEM-117 and MEM-112. Source: slice brief 2026-11-04 (step 3 sticker polish gaps).
+Root problem: on step 3 the focus trap cycles only the card's buttons, so Tab never reaches a `g.tour-sticker` and a
+keyboard user cannot re-roll one locus; a second tap mid-roll repaints but the spin does not restart, so the tap
+looks ignored; Settings replay shows the previous run's rolls.
+Actors: `static/tour.js`.
+NFR: none.
+Decided-by: ADR-0066
+- Focus trap (MEM-095, MEM-117) cycles the card's visible buttons plus the drawn `g.tour-sticker` badges in document
+  order: Skip, the 5 stickers in walk order, Roll all, Back, Next. Tab from Next wraps to Skip; Shift+Tab from Skip
+  wraps to Next. Enter/Space on a focused sticker re-rolls that locus only and focus stays on that sticker.
+- A click or Enter/Space on a sticker still carrying `is-rolling` restarts its roll: `tour.js` removes `is-rolling`,
+  reads the sticker's `getBoundingClientRect()` to flush style, then re-adds it; `is-rolling` lasts a full 300 ms
+  from the latest roll. Under prefers-reduced-motion the CSS keeps `animation: none`, but the sticker and its fig
+  icon still re-roll.
+- `#tour-replay` drops the held rolls: the replayed tour's step 3 is rolled fresh at its first show, then kept for
+  Next/Back as in MEM-117.
+- Accept: on step 3, Tab from Next visits Skip, Doormat, Water bowl, Chew-toy throne, Scratching post, Window,
+  Roll all, Back, then Next again; Shift+Tab from Skip -> Next; Enter on a Tab-focused sticker re-rolls only it and
+  keeps focus; a second click 200 ms into a roll removes then re-adds `is-rolling` with a layout read between, and the
+  class stays until 300 ms after that click; a second click still re-rolls the parts; replay after a closed tour with
+  a different `Math.random` shows different stickers, and Next/Back within the replay keeps them.
+- Out of scope: new sticker pool, sticker persistence across page loads.
+
+Tests: static/tour_sticker_polish.test.mjs
