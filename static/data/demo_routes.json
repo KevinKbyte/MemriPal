@@ -1,0 +1,283 @@
+[
+  {
+    "id": "demo-route-commute",
+    "name": "Morning commute to the T",
+    "kind": "daily",
+    "stations": [
+      {
+        "id": "demo-route-commute-s1",
+        "n": 1,
+        "name": "Meta office",
+        "coords": {
+          "lat": 42.36554,
+          "lon": -71.0809
+        },
+        "emoji": "🏢",
+        "address": "100 Binney St"
+      },
+      {
+        "id": "demo-route-commute-s2",
+        "n": 2,
+        "name": "Sumiao Hunan Kitchen",
+        "coords": {
+          "lat": 42.36587,
+          "lon": -71.08211
+        },
+        "emoji": "🍴",
+        "address": "270 Third Street"
+      },
+      {
+        "id": "demo-route-commute-s3",
+        "n": 3,
+        "name": "Tatte Bakery & Cafe",
+        "coords": {
+          "lat": 42.36494,
+          "lon": -71.08269
+        },
+        "emoji": "☕",
+        "address": "318 Third Street"
+      },
+      {
+        "id": "demo-route-commute-s4",
+        "n": 4,
+        "name": "B. Good",
+        "coords": {
+          "lat": 42.36423,
+          "lon": -71.08342
+        },
+        "emoji": "📍",
+        "address": "301 Third Street"
+      },
+      {
+        "id": "demo-route-commute-s5",
+        "n": 5,
+        "name": "Bodyscapes Fitness",
+        "coords": {
+          "lat": 42.36364,
+          "lon": -71.08335
+        },
+        "emoji": "📍",
+        "address": "356 Third Street"
+      },
+      {
+        "id": "demo-route-commute-s6",
+        "n": 6,
+        "name": "Meta",
+        "coords": {
+          "lat": 42.36263,
+          "lon": -71.08366
+        },
+        "emoji": "📍",
+        "address": "1 Broadway"
+      },
+      {
+        "id": "demo-route-commute-s7",
+        "n": 7,
+        "name": "Chipotle",
+        "coords": {
+          "lat": 42.36254,
+          "lon": -71.0856
+        },
+        "emoji": "📍",
+        "address": "255 Main Street"
+      },
+      {
+        "id": "demo-route-commute-s8",
+        "n": 8,
+        "name": "Kendall/MIT T",
+        "coords": {
+          "lat": 42.36242,
+          "lon": -71.08572
+        },
+        "emoji": "📍",
+        "address": "300 Main Street"
+      }
+    ]
+  },
+  {
+    "id": "demo-route-coffee",
+    "name": "Coffee run",
+    "kind": "daily",
+    "stations": [
+      {
+        "id": "demo-route-coffee-s1",
+        "n": 1,
+        "name": "Meta office",
+        "coords": {
+          "lat": 42.36554,
+          "lon": -71.0809
+        },
+        "emoji": "🏢",
+        "address": "100 Binney St"
+      },
+      {
+        "id": "demo-route-coffee-s2",
+        "n": 2,
+        "name": "Sumiao Hunan Kitchen",
+        "coords": {
+          "lat": 42.36587,
+          "lon": -71.08211
+        },
+        "emoji": "🍴",
+        "address": "270 Third Street"
+      },
+      {
+        "id": "demo-route-coffee-s3",
+        "n": 3,
+        "name": "Tatte Bakery & Cafe",
+        "coords": {
+          "lat": 42.36494,
+          "lon": -71.08269
+        },
+        "emoji": "☕",
+        "address": "318 Third Street"
+      },
+      {
+        "id": "demo-route-coffee-s4",
+        "n": 4,
+        "name": "Bodyscapes Fitness",
+        "coords": {
+          "lat": 42.36364,
+          "lon": -71.08335
+        },
+        "emoji": "📍",
+        "address": "356 Third Street"
+      },
+      {
+        "id": "demo-route-coffee-s5",
+        "n": 5,
+        "name": "Meta",
+        "coords": {
+          "lat": 42.36263,
+          "lon": -71.08366
+        },
+        "emoji": "📍",
+        "address": "1 Broadway"
+      },
+      {
+        "id": "demo-route-coffee-s6",
+        "n": 6,
+        "name": "MIT Museum",
+        "coords": {
+          "lat": 42.36198,
+          "lon": -71.08642
+        },
+        "emoji": "🏛️",
+        "address": "314 Main Street"
+      },
+      {
+        "id": "demo-route-coffee-s7",
+        "n": 7,
+        "name": "Legal Sea Foods",
+        "coords": {
+          "lat": 42.36271,
+          "lon": -71.08784
+        },
+        "emoji": "📍",
+        "address": "355 Main Street"
+      },
+      {
+        "id": "demo-route-coffee-s8",
+        "n": 8,
+        "name": "Forbes Family Cafe",
+        "coords": {
+          "lat": 42.36173,
+          "lon": -71.09001
+        },
+        "emoji": "☕",
+        "address": "32 Vassar Street"
+      }
+    ]
+  },
+  {
+    "id": "demo-route-landmarks",
+    "name": "Landmark loop",
+    "kind": "daily",
+    "stations": [
+      {
+        "id": "demo-route-landmarks-s1",
+        "n": 1,
+        "name": "MIT.nano",
+        "coords": {
+          "lat": 42.36035,
+          "lon": -71.09189
+        },
+        "emoji": "📍",
+        "address": "60 Vassar Street"
+      },
+      {
+        "id": "demo-route-landmarks-s2",
+        "n": 2,
+        "name": "Barker Library",
+        "coords": {
+          "lat": 42.35976,
+          "lon": -71.09206
+        },
+        "emoji": "📚",
+        "address": "222 Memorial Drive"
+      },
+      {
+        "id": "demo-route-landmarks-s3",
+        "n": 3,
+        "name": "Hayden Memorial Library",
+        "coords": {
+          "lat": 42.35904,
+          "lon": -71.08949
+        },
+        "emoji": "📚"
+      },
+      {
+        "id": "demo-route-landmarks-s4",
+        "n": 4,
+        "name": "The Big Sail",
+        "coords": {
+          "lat": 42.35972,
+          "lon": -71.08895
+        },
+        "emoji": "📍"
+      },
+      {
+        "id": "demo-route-landmarks-s5",
+        "n": 5,
+        "name": "Radome",
+        "coords": {
+          "lat": 42.36023,
+          "lon": -71.08945
+        },
+        "emoji": "📍",
+        "address": "21 Ames Street"
+      },
+      {
+        "id": "demo-route-landmarks-s6",
+        "n": 6,
+        "name": "Transparent Horizon",
+        "coords": {
+          "lat": 42.36072,
+          "lon": -71.08867
+        },
+        "emoji": "📍"
+      },
+      {
+        "id": "demo-route-landmarks-s7",
+        "n": 7,
+        "name": "List Visual Arts Center",
+        "coords": {
+          "lat": 42.36102,
+          "lon": -71.08774
+        },
+        "emoji": "📍",
+        "address": "20 Ames Street"
+      },
+      {
+        "id": "demo-route-landmarks-s8",
+        "n": 8,
+        "name": "Picower Institute for Learning and Memory (MIT)",
+        "coords": {
+          "lat": 42.36231,
+          "lon": -71.09129
+        },
+        "emoji": "🎓"
+      }
+    ]
+  }
+]

@@ -8,6 +8,7 @@ import { lookupDemoPlace, showHealth, showPal } from "./app.js";
 import { createPageRouteActor } from "./chat_route.js";
 import { setActor } from "./copilot_bridge.js";
 import { DEMO_ROUTE } from "./demo_route.js";
+import { seedDemoRoutes } from "./demo_routes.js";
 import { errorCode, runDemoPalace } from "./encode.js";
 import { createHistory } from "./history.js";
 import { createIdbAdapter } from "./idb_adapter.js";
@@ -344,7 +345,9 @@ export function wireApp(deps) {
     setRunOpen(false);
     // MEM-077: also seed the Kendall demo route (local only, idempotent); a failed write never blocks the room demo.
     // MEM-072: then open it on the Routes tab map (openRoute shows the tab, chip and landmarks).
-    deps.routes?.seedRoute(DEMO_ROUTE).then(() => routeView?.renderHome()).then(() => routeView?.openRoute(DEMO_ROUTE.id)).catch(() => {});
+    // MEM-133: plus the curated planner-made routes; a fetch failure seeds DEMO_ROUTE alone.
+    const routes = deps.routes;
+    routes?.seedRoute(DEMO_ROUTE).then(() => seedDemoRoutes(deps.fetch, routes)).then(() => routeView?.renderHome()).then(() => routeView?.openRoute(DEMO_ROUTE.id)).catch(() => {});
     lookupDemoPlace({ doc, fetch: fetchFn, place: deps.place });
     const auto = Boolean(/** @type {HTMLInputElement | null} */ (byId("auto"))?.checked);
     // Disabled while a load runs, so a second click cannot build the palace twice; runDemoPalace never
