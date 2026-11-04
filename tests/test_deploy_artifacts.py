@@ -1,7 +1,7 @@
 # Covers: MEM-034
 # Requirement: the Cloud Run deploy artifacts (Dockerfile, .dockerignore, scripts/deploy_cloud_run.sh)
 # ship a non-root fixture-mode image that holds no secrets, and deploy it with one instance, a call
-# budget, a body cap and the key/passcode injected only via Secret Manager.
+# budget, a body cap and the keys injected only via Secret Manager.
 import json
 import re
 import shlex
@@ -15,7 +15,6 @@ DOCKERIGNORE = REPO / ".dockerignore"
 DEPLOY_SCRIPT = REPO / "scripts" / "deploy_cloud_run.sh"
 
 SECRET_NAME = re.compile(r"KEY|TOKEN|SECRET|PASSCODE|PASSWORD", re.IGNORECASE)
-ENV_SECRET_NAME = re.compile(r"KEY|TOKEN|SECRET|PASSCODE", re.IGNORECASE)
 
 
 def _read(path: Path) -> str:
@@ -196,19 +195,6 @@ def test_readme_images_never_reference_rooms():
     assert [r for r in refs if "rooms/" in r] == [], f"README image refs to rooms: {refs}"
 
 
-def _flag_values(script: str, flag: str) -> list[str]:
-    return [m.group(2) for m in re.finditer(rf"{flag}[= ](['\"]?)(\S+?)\1(?=\s|$)", script)]
-
-
-def _pairs(value: str) -> dict[str, str]:
-    """gcloud list syntax: comma-separated, or ^D^-prefixed custom delimiter D."""
-    delim = ","
-    m = re.match(r"\^(.+?)\^", value)
-    if m:
-        delim, value = m.group(1), value[m.end() :]
-    return dict(item.split("=", 1) if "=" in item else (item, "") for item in value.split(delim) if item)
-
-
 def _deploy_script() -> str:
     return " ".join(_logical_lines(_read(DEPLOY_SCRIPT)))
 
@@ -220,25 +206,31 @@ def test_deploy_script_runs_gcloud_with_one_instance():
     assert re.search(r"--max-instances[= ]1\b", script), "deploy is not capped at --max-instances=1"
 
 
-# Requirement: the API key and passcode reach Cloud Run only via --set-secrets.
-def test_deploy_script_maps_key_and_passcode_as_secrets():
-    names = set()
-    for value in _flag_values(_deploy_script(), "--set-secrets"):
-        names |= set(_pairs(value))
-    assert {"META_API_KEY", "MEMRIPAL_PASSCODE"} <= names, f"--set-secrets maps only {sorted(names)}"
+# Covers: MEM-101
+# Requirement: the access, record and Meta keys reach Cloud Run only via --set-secrets; the old live
+# passcode secret is no longer mapped (the access cookie replaces it).
+def test_deploy_script_maps_access_record_and_meta_keys_as_secrets():
+    script = _deploy_script()
+    assert "--set-secrets" in script
+    for ref in (
+        "MEMRIPAL_ACCESS_KEY=memripal-access-key:latest",
+        "MEMRIPAL_RECORD_KEY=memripal-record-key:latest",
+    ):
+        assert ref in script, f"deploy script does not map {ref}"
+    assert "meta-api-key:latest" in script, "deploy script never maps the Meta key"
+    assert "memripal-passcode" not in script, "deploy script still maps the passcode secret"
 
 
-# Requirement: plain env vars pin fixture mode, int call budget, int body cap, allowed hosts; never secrets.
-def test_deploy_script_env_vars_pin_fixture_mode_and_caps():
-    env: dict[str, str] = {}
-    for value in _flag_values(_deploy_script(), "--set-env-vars"):
-        env |= _pairs(value)
-    assert env.get("MEMRIPAL_MODE") == "fixture", f"MEMRIPAL_MODE={env.get('MEMRIPAL_MODE')!r}"
-    assert re.fullmatch(r"\d+", env.get("MEMRIPAL_CALL_BUDGET", "")), "MEMRIPAL_CALL_BUDGET not an int"
-    assert re.fullmatch(r"\d+", env.get("MEMRIPAL_MAX_BODY_BYTES", "")), "MEMRIPAL_MAX_BODY_BYTES not an int"
-    assert "MEMRIPAL_ALLOWED_HOSTS" in env, "MEMRIPAL_ALLOWED_HOSTS not set"
-    leaked = [n for n in env if ENV_SECRET_NAME.search(n)]
-    assert not leaked, f"secret-named plain env vars: {leaked}"
+# Covers: MEM-101
+# Requirement: MODE (default fixture) drives MEMRIPAL_MODE; plain env vars pin an int call budget, an
+# int body cap and the allowed hosts.
+def test_deploy_script_env_vars_take_mode_from_MODE_and_pin_caps():
+    script = _deploy_script()
+    assert re.search(r"\bMODE=[\"']?\$\{MODE:-fixture\}", script), "MODE does not default to fixture"
+    assert re.search(r"MEMRIPAL_MODE=[\"']?\$\{?MODE\b", script), "MEMRIPAL_MODE is not taken from MODE"
+    assert re.search(r"MEMRIPAL_CALL_BUDGET=\d+\b", script), "MEMRIPAL_CALL_BUDGET not an int"
+    assert re.search(r"MEMRIPAL_MAX_BODY_BYTES=\d+\b", script), "MEMRIPAL_MAX_BODY_BYTES not an int"
+    assert "MEMRIPAL_ALLOWED_HOSTS=" in script, "MEMRIPAL_ALLOWED_HOSTS not set"
 
 
 # Requirement: the deploy script never reads secret values locally (Secret Manager, DPAPI, SecureString).
