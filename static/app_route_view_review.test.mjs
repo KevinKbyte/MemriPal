@@ -63,6 +63,13 @@ async function openCommute(b) {
   await settle(20);
 }
 
+/** r1 as stored just before the delete (MEM-134: first view auto-saves station emojis). */
+async function routeAtDelete(real) {
+  const r1 = await real.getRoute("r1");
+  assert.equal(r1?.id, "r1", "r1 stored just before delete");
+  return r1;
+}
+
 async function confirmDelete(b) {
   click(b, "route-view-delete");
   await settle(20);
@@ -106,13 +113,14 @@ describe("S5 route delete: store rejection (B6 review)", () => {
     };
     const { b, real } = await start({ rehAdapter });
     await openCommute(b);
+    const atDelete = await routeAtDelete(real);
     assert.doesNotMatch(visibleText(el(b, "route-view")), ERROR_LINE, "no error line before delete");
     await confirmDelete(b);
     assert.equal(el(b, "route-view-undo").hidden, false, "Undo still offered after a failed delete");
     assert.match(visibleText(el(b, "route-view")), ERROR_LINE, "an error line explains the delete failed");
     click(b, "route-view-undo");
     await settle(60);
-    assert.deepEqual(await real.getRoute("r1"), R1, "Undo restores the deleted route");
+    assert.deepEqual(await real.getRoute("r1"), atDelete, "Undo restores the deleted route");
     assert.deepEqual(rejections, []);
   });
 
@@ -146,6 +154,7 @@ describe("S5 route Undo: restore rejection and absent stash (B6 review)", () => 
       }),
     });
     await openCommute(b);
+    const atDelete = await routeAtDelete(real);
     await confirmDelete(b);
     assert.equal(el(b, "route-view-undo").hidden, false, "Undo offered after delete");
     failNext = true;
@@ -155,7 +164,7 @@ describe("S5 route Undo: restore rejection and absent stash (B6 review)", () => 
     assert.match(visibleText(el(b, "route-view")), ERROR_LINE, "an error line explains the Undo failed");
     click(b, "route-view-undo");
     await until(() => cards(b).length === 1, "Commute card back after the retry", TURNS);
-    assert.deepEqual(await real.getRoute("r1"), R1, "the retried Undo restores r1");
+    assert.deepEqual(await real.getRoute("r1"), atDelete, "the retried Undo restores r1");
     assert.deepEqual(rejections, []);
   });
 
@@ -201,12 +210,13 @@ describe("S5 route delete: real store, storage delete fails after the route left
       return realDelete(key);
     };
     await openCommute(b);
+    const atDelete = await routeAtDelete(real);
     await confirmDelete(b);
     assert.equal(el(b, "route-view-undo").hidden, false, "Undo offered after a delete whose persist failed");
     assert.match(visibleText(el(b, "route-view")), ERROR_LINE, "an error line explains the delete failed");
     click(b, "route-view-undo");
     await settle(60);
-    assert.deepEqual(await real.getRoute("r1"), R1, "Undo puts r1 back in the store");
+    assert.deepEqual(await real.getRoute("r1"), atDelete, "Undo puts r1 back in the store");
     await until(() => cards(b).length === 1, "Commute card back on S1 after Undo", TURNS);
     await until(() => openable(b), "Commute reopened in #route-view after Undo", TURNS);
     assert.deepEqual(rejections, []);
@@ -223,6 +233,7 @@ describe("S5 route Undo: real store, restore persist fails (B6 residual review)"
     const rejections = watchRejections(t);
     const { b, real, routeAdapter, rehAdapter } = await start();
     await openCommute(b);
+    const atDelete = await routeAtDelete(real);
     await confirmDelete(b);
     assert.equal(await real.getRoute("r1"), null, "delete landed");
     assert.equal(routeRehearsals(rehAdapter), 0, "delete removed the route rehearsal");
@@ -238,7 +249,7 @@ describe("S5 route Undo: real store, restore persist fails (B6 residual review)"
     await until(() => cards(b).length === 1, "Commute card back on S1 after the retried Undo", TURNS);
     await until(() => openable(b), "Commute reopened in #route-view after the retried Undo", TURNS);
     assert.equal(el(b, "route-view-undo").hidden, true, "Undo hidden once the restore landed");
-    assert.deepEqual(await createRouteStore(routeAdapter).getRoute("r1"), R1, "r1 survives a reload");
+    assert.deepEqual(await createRouteStore(routeAdapter).getRoute("r1"), atDelete, "r1 survives a reload");
     assert.equal(routeRehearsals(rehAdapter), 1, "the route rehearsal is restored once");
     assert.deepEqual(rejections, []);
   });
@@ -263,12 +274,13 @@ describe("S5 route delete: rehearsal delete fails mid-loop (B6 residual review N
     };
     const { b, real } = await start({ rehAdapter });
     await openCommute(b);
+    const atDelete = await routeAtDelete(real);
     await confirmDelete(b);
     assert.equal(routeRehearsals(rehAdapter), 1, "one rehearsal deleted before the failure");
     assert.equal(el(b, "route-view-undo").hidden, false, "Undo offered after the partial delete");
     click(b, "route-view-undo");
     await until(() => cards(b).length === 1, "Commute card back on S1 after Undo", TURNS);
-    assert.deepEqual(await real.getRoute("r1"), R1, "Undo restores r1");
+    assert.deepEqual(await real.getRoute("r1"), atDelete, "Undo restores r1");
     const ids = [...rehAdapter.map.values()].filter((v) => typeof v === "string").map((v) => JSON.parse(v))
       .filter((r) => r.mode === "route").map((r) => r.id).sort();
     assert.deepEqual(ids, ["reh-r1-a", "reh-r1-b"], "both stashed rehearsals back, each exactly once");

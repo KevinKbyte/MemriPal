@@ -131,8 +131,9 @@ describe("S5 Route view opens from a route card", () => {
   });
 });
 
-// Covers: MEM-051
-// Requirement: deleting a route needs arm + confirm, cancel restores, and Undo restores it deep-equal.
+// Covers: MEM-051, MEM-134
+// Requirement: deleting a route needs arm + confirm, cancel restores, and Undo restores it deep-equal to
+// the route as stored at delete time (including station emojis auto-saved on first view, MEM-134).
 describe("S5 route delete: arm, cancel, confirm, Undo (criterion 10)", () => {
   test("arm shows confirm + cancel; cancel hides them and changes nothing", async (t) => {
     const rejections = watchRejections(t);
@@ -161,6 +162,8 @@ describe("S5 route delete: arm, cancel, confirm, Undo (criterion 10)", () => {
     const { b, routes, routeAdapter, rehAdapter } = await start();
     await openRoute(b, "Commute");
     const before = { routes: snapshot(routeAdapter.map), rehearsals: snapshot(rehAdapter.map) };
+    const atDelete = await routes.getRoute("r1");
+    assert.equal(atDelete?.id, "r1", "r1 stored just before delete");
     click(b, "route-view-delete");
     await settle(20);
     click(b, "route-view-delete-confirm");
@@ -175,7 +178,12 @@ describe("S5 route delete: arm, cancel, confirm, Undo (criterion 10)", () => {
     await settle(20);
     assert.deepEqual(snapshot(routeAdapter.map), before.routes, "route store deep-equal after Undo (stations, lists, photos)");
     assert.deepEqual(snapshot(rehAdapter.map), before.rehearsals, "rehearsals deep-equal after Undo");
-    assert.deepEqual(await routes.getRoute("r1"), ROUTES[0], "r1 restored deep-equal");
+    const restored = await routes.getRoute("r1");
+    assert.deepEqual(restored, atDelete, "r1 restored deep-equal to its delete-time state");
+    const tags = (r) => r.stations.map((s) => ({ id: s.id, emojis: s.emojis, emojisEdited: s.emojisEdited }));
+    assert.ok(atDelete.stations.some((s) => Array.isArray(s.emojis) && s.emojis.length > 0),
+      "first view auto-saved emoji tags before the delete (MEM-134)");
+    assert.deepEqual(tags(restored), tags(atDelete), "Undo restores each station's emojis + emojisEdited");
     assert.ok(cardOf(b, "Commute"), "Commute card back on S1");
     assert.deepEqual(rejections, []);
   });
