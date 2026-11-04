@@ -56,5 +56,6 @@ so the renderer does not change.
 - `static/route_store.js` `Station` typedef gains `emoji?: string`.
 - Overlay tests assert one `lm-emoji` per station at `cy - 30`, U+1F4CD when the field is missing, and none left
   after `detachOverlay`.
-- Not decided: carrying `emoji` in backup v2 (`STATION_KEYS` omits it, so an imported station shows U+1F4CD); who
-  sets the field before (C) lands.
+- Not decided: carrying `emoji` in backup v2 (`STATION_KEYS` omits it, so an imported station shows U+1F4CD). Who
+  sets the field before (C) lands: [0057](0057-emoji-for-keyword-table-fills-station-emoji.md) (demo stations
+  hand-picked; `emojiFor` at station creation).

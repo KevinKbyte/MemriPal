@@ -455,7 +455,7 @@ Tests: static/real_map_resize.test.mjs
 
 ## MEM-100 Landmark emoji on the live map
 
-Decided-by: ADR-0055
+Decided-by: ADR-0055, ADR-0057
 Root problem: the live Routes map draws stations as bare circles; ADR 0038 rule 1 planned emoji landmark markers,
 built only in the design previews.
 Actors: the user; `static/real_map_overlay.js` (`attachOverlay` / `detachOverlay`); the `Station` typedef in
@@ -464,8 +464,12 @@ NFR: CSP-safe (presentation attributes only, no `style`); glyph set via `textCon
 - Optional `Station.emoji`; missing -> U+1F4CD.
 - Each station gets a `text.lm-emoji` sibling at (cx, cy-30), moved with the circle on map move/resize; removed by
   `detachOverlay`.
+- `static/landmark_emoji.js` `emojiFor({ name, category?, tags? })` -> deterministic keyword/category table,
+  default U+1F4CD.
+- New captures call `emojiFor` once at station creation and store the result in `Station.emoji`.
+- Demo stations carry hand-picked emoji, kept by `seedRoute`.
 - Accept: one `lm-emoji` per station at cy-30; a station without `emoji` shows U+1F4CD; none remain after detach;
-  no `style` attribute on any added node.
+  no `style` attribute on any added node; every demo station shows its own non-default emoji.
 
 Tests: static/real_map_overlay_emoji.test.mjs
 ## MEM-101 Spec MEM ids defined once

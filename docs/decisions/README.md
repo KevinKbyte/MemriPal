@@ -153,3 +153,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0056](0056-judges-only-access-gate-alb-cloud-armor.md) Judges-only live deploy: app key gate (no-JS `/access`
   form, HMAC cookie, fail-closed on Cloud Run) behind a global HTTPS ALB + Cloud Armor (rate ban, sqli/xss WAF),
   LB-only ingress; amends 0004, 0025, 0028 (over IAP, HTTP Basic, key-in-URL, an Armor header rule, or the gate alone).
+- [0057](0057-emoji-for-keyword-table-fills-station-emoji.md) `emojiFor({ name, category?, tags? })` keyword/category
+  table fills `Station.emoji` once at station creation; demo stations hand-picked, kept by `seedRoute` (over
+  render-time derivation or OSM tags).
