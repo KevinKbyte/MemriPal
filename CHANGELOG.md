@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.44] - 2026-11-03
+
+### Added
+
+- Live Routes map: each station shows a landmark emoji just above its circle (optional Station.emoji, default U+1F4CD round pushpin), following the station on pan/zoom/resize; aria-hidden, set via textContent, presentation attributes only (static/real_map_overlay.js, MEM-100, ADR 0055).
+
 ## [0.20.43] - 2026-11-03
 
 ### Added
