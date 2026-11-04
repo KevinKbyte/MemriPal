@@ -509,3 +509,27 @@ estimate error).
   provider; after a restart the total and the refusal hold.
 
 Tests: tests/test_meta_spend_guard.py
+
+## MEM-121 Spend-guard gaps and degrade on cap
+
+Amends MEM-094. Decided-by: ADR-0061
+Root problem: MEM-094 charged one estimate per logical call, not per sent request (retries were free), left the
+live scripts uncounted, and past the cap only chat kept working: every other model route failed. Kev, 2026-11-04,
+scope "Both": "when credit runs out the app keeps working on saved results and the backup chat provider for
+everyone, and BYOK still lets people who have a Meta key keep going live." (BYOK is MEM-095 part C, stacked later.)
+Actors: judges and the user (live mode); the server's Meta call sites; Kev's live scripts.
+- Every Meta call kind charges the guard: chat, segment, asr, image_edit, image_generate, including the ASR client
+  create_app builds and `scripts/probe_live.py`, `scripts/gen_room_fixtures.py` (env guard, MEM-094 state dir).
+- Each sent attempt charges: a retried request costs one estimate per attempt; a retry the cap would refuse raises
+  the typed refusal and sends nothing more.
+- Degrade: a capped call replays the same request key from saved results (the untracked live cache, then the
+  committed fixture replay); chat first uses the Baseten/Fireworks backup (MEM-094); a miss keeps the typed refusal.
+- Every live model route under the cap returns the saved/backup answer or the landed 503 `meta_spend_cap_reached`
+  (/scenes: tier 3 with reason `meta_spend_cap_reached`), never a generic 502.
+- Header `X-Memripal-Spend-Cap`: `saved`, `backup` or `capped` (most severe noted in the request wins); the page
+  shows a dismissible toast naming the cap ("Free demo credit is used up (Meta spend cap reached): showing saved
+  results." and the backup/paused variants); unknown values are never rendered.
+- Accept: per-kind charge tests; a 500 with 2 retries costs 3x; each capped route returns saved/backup or the cap
+  code; the toast names the cap; MEM-094 tests unchanged.
+
+Tests: tests/test_spend_guard_degrade.py, static/byok.test.mjs
