@@ -35,12 +35,13 @@ PNG_ICONS = [
 ]
 THEME = STATIC / "theme-painterly.css"
 THEME_SRC = "/static/theme-painterly.css"
-# The <link> tags of index.html: the 3 MEM-040 links (the asset wiring added none), then the MEM-044 P1
-# painterly theme as the 4th link and the LAST rel=stylesheet, so it cascades over style.css.
+# The <link> tags of index.html: the 3 MEM-040 links (the asset wiring added none), the MEM-095 tour
+# stylesheet, then the MEM-044 P1 painterly theme as the LAST rel=stylesheet, so it cascades over both.
 LINKS = [
     {"rel": "stylesheet", "href": "/static/style.css"},
     {"rel": "manifest", "href": "/static/manifest.webmanifest"},
     {"rel": "icon", "href": "/static/icon.svg", "type": "image/svg+xml"},
+    {"rel": "stylesheet", "href": "/static/tour.css"},
     {"rel": "stylesheet", "href": THEME_SRC},
 ]
 

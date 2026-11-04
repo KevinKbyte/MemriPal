@@ -517,7 +517,7 @@ Amends MEM-094. Decided-by: ADR-0061
 Root problem: MEM-094 charged one estimate per logical call, not per sent request (retries were free), left the
 live scripts uncounted, and past the cap only chat kept working: every other model route failed. Kev, 2026-11-04,
 scope "Both": "when credit runs out the app keeps working on saved results and the backup chat provider for
-everyone, and BYOK still lets people who have a Meta key keep going live." (BYOK is MEM-095 part C, stacked later.)
+everyone, and BYOK still lets people who have a Meta key keep going live." (BYOK is MEM-122, stacked later.)
 Actors: judges and the user (live mode); the server's Meta call sites; Kev's live scripts.
 - Every Meta call kind charges the guard: chat, segment, asr, image_edit, image_generate, including the ASR client
   create_app builds and `scripts/probe_live.py`, `scripts/gen_room_fixtures.py` (env guard, MEM-094 state dir).
@@ -537,7 +537,7 @@ Tests: tests/test_spend_guard_degrade.py, static/byok.test.mjs
 
 ## MEM-122 Bring your own Meta key, shown only on spend cap
 
-Amends MEM-121 (MEM-095 part C). Decided-by: ADR-0061
+Amends MEM-121. Decided-by: ADR-0061
 Root problem: past the Meta spend cap, a visitor who has their own Meta key cannot keep going live. Kev, 2026-11-04:
 "it should tell user yes they can add their own key if they need to have it keep running, but should have a hard
 limit on it and to not reuse it afterwards (delete key after done)"; "only for when they're byokking"; "which would

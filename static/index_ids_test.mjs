@@ -68,3 +68,14 @@ export const MEM088_IDS = [
 // MEM-088: the builder opens only from "Map a new route", the error shows only on a miss and the result only after a
 // found walk. #map-empty starts visible (a fresh origin has no route) and app.js hides it once a route is drawn.
 export const MEM088_MAY_START_HIDDEN = ["route-new", "route-new-error", "route-new-result"];
+
+// MEM-095 (Pal's first-run tour) + MEM-112 (replay from Settings): the #tour dialog's ids, the skip toast and
+// the Settings replay button.
+export const MEM095_IDS = [
+  "tour", "tour-n", "tour-total", "tour-skip", "tour-title", "tour-body", "tour-house", "tour-fig", "tour-after",
+  "tour-back", "tour-next", "tour-toast", "tour-replay",
+];
+
+// MEM-095: tour.js opens #tour only for a first-time visitor; the figures (dog house, locus list) and closer show
+// only on steps that have them; the toast only after a skip.
+export const MEM095_MAY_START_HIDDEN = ["tour", "tour-house", "tour-fig", "tour-after", "tour-toast"];

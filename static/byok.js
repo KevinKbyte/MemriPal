@@ -1,7 +1,7 @@
 // @ts-check
 // Spend cap notice (MEM-121): when the server's Meta spend cap is reached it says how it is coping in
 // X-Memripal-Spend-Cap; the page names the cap in a dismissible top toast.
-// Bring your own key (MEM-122, MEM-095 part C): only when that toast says "capped", it offers a key field. The
+// Bring your own key (MEM-122): only when that toast says "capped", it offers a key field. The
 // key lives in this module's memory only (no web storage, IndexedDB or cookie), rides only in X-Memripal-Meta-Key
 // on the 5 model routes, and is dropped on reload, on "Forget key", at its limit and when Meta refuses it.
 

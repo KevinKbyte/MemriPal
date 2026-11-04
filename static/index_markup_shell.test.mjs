@@ -264,5 +264,60 @@ describe("route builder markup (MEM-088)", () => {
     const wrap = kids(byId("tab-routes")).find((e) => classes(e).includes("map-wrap"));
     assert.ok(within(empty, wrap), `#map-empty inside .map-wrap, parent is ${desc(empty.parent)}`);
     assert.equal(empty.attrs.hidden, undefined, "#map-empty visible at load");
+    });
+});
+
+// Covers: MEM-095, MEM-112
+// Requirement: index.html links tour.css and carries Pal's tour: div#tour (role=dialog, aria-modal=true,
+// aria-labelledby=tour-title, hidden at load) holding .tour-spot and .tour-card with #tour-n, #tour-total,
+// ol.tour-dots, #tour-skip, h2#tour-title, #tour-body, div#tour-house (hidden; step 3's dog-house figure),
+// ol#tour-fig (hidden), #tour-after (hidden), #tour-back and
+// #tour-next; p#tour-toast (role=status, hidden) outside #tour; and a "Replay Pal's tour" button#tour-replay
+// inside #tab-settings.
+describe("Pal's tour markup (MEM-095, MEM-112)", () => {
+  test("head links /static/tour.css as a stylesheet", () => {
+    const link = ELS.find((e) => e.tag === "link" && e.attrs.rel === "stylesheet" && /tour\.css$/.test(e.attrs.href ?? ""));
+    assert.ok(link, "no <link rel=stylesheet href=.../tour.css>");
+    assert.equal(link.attrs.href, "/static/tour.css");
+  });
+
+  test("#tour is a hidden modal dialog labelled by #tour-title", () => {
+    const tour = byId("tour");
+    assert.ok(tour, "#tour exists");
+    assert.equal(tour.attrs.role, "dialog");
+    assert.equal(tour.attrs["aria-modal"], "true");
+    assert.equal(tour.attrs["aria-labelledby"], "tour-title");
+    assert.equal(tour.attrs.hidden, "", "#tour hidden at load (tour.js opens it)");
+  });
+
+  test("#tour holds .tour-spot, .tour-card, ol.tour-dots and every tour control id", () => {
+    for (const cls of ["tour-spot", "tour-card", "tour-dots"]) {
+      assert.ok(ELS.some((e) => classes(e).includes(cls) && inside(e, "tour")), `.${cls} inside #tour`);
+    }
+    for (const id of ["tour-n", "tour-total", "tour-skip", "tour-title", "tour-body", "tour-house", "tour-fig",
+      "tour-after", "tour-back", "tour-next"]) {
+      assert.ok(inside(byId(id), "tour"), `#${id} inside #tour`);
+    }
+    assert.equal(byId("tour-title").tag, "h2");
+    assert.equal(byId("tour-fig").tag, "ol");
+    for (const id of ["tour-house", "tour-fig", "tour-after"]) {
+      assert.equal(byId(id).attrs.hidden, "", `#${id} hidden at load`);
+    }
+  });
+
+  test("#tour-toast is a hidden role=status with the skip text, outside #tour", () => {
+    const toast = byId("tour-toast");
+    assert.ok(toast, "#tour-toast exists");
+    assert.equal(toast.attrs.role, "status");
+    assert.equal(toast.attrs.hidden, "");
+    assert.equal(inside(toast, "tour"), false);
+    assert.equal(norm(text(toast)), "Tour skipped. Replay it any time in Settings.");
+  });
+
+  test("#tour-replay is a 'Replay Pal's tour' button inside #tab-settings", () => {
+    const btn = byId("tour-replay");
+    assert.equal(btn?.tag, "button");
+    assert.ok(inside(btn, "tab-settings"), "#tour-replay inside #tab-settings");
+    assert.equal(norm(text(btn)), "Replay Pal's tour");
   });
 });

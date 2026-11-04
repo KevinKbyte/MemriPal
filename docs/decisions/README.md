@@ -177,7 +177,7 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
   amends 0042 (over an importable backup file or committed photos).
 - [0061](0061-spend-cap-degrade-and-byok.md) Past the Meta spend cap: replay saved results (live cache, then fixture
   replay), chat on the backup provider, else the 503 cap code; `X-Memripal-Spend-Cap` toast; each retry charged;
-  BYOK offered only at the cap (MEM-095 part C); amends 0059 (over BYOK only or degrade only).
+  BYOK offered only at the cap (MEM-122); amends 0059 (over BYOK only or degrade only).
 - [0062](0062-reserved-adr-numbers.md) ADR numbering gaps pass only when every missing number is on the README
   `Reserved:` line; a reserved number that exists as a file fails as stale; amends MEM-018 contiguity (over committing
   only in land order or dropping the contiguity check).

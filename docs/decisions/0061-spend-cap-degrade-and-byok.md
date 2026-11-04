@@ -2,7 +2,7 @@
 
 Status: Accepted
 Amends: [0059](0059-meta-spend-guard.md) (each sent attempt is charged; capped routes degrade instead of failing).
-Relates: [0058](0058-spark-chat-meta-fallback.md) (header + ContextVar pattern), MEM-094, MEM-121, MEM-095 part C.
+Relates: [0058](0058-spark-chat-meta-fallback.md) (header + ContextVar pattern), MEM-094, MEM-121, MEM-122.
 Date: 2026-11-04
 Source: Kev, 2026-11-04, timing "Build now"; scope "Both (Recommended)" = "when credit runs out the app keeps
 working on saved results and the backup chat provider for everyone, and BYOK still lets people who have a Meta key
@@ -28,7 +28,7 @@ keep going live."
   Cons: a new photo past the cap gets no live answer; saved answers only match the exact same request.
 - (C) Both: degrade for everyone (B), and BYOK (A) offered only once the cap is hit (chosen; Kev).
   Pros: judges always see a working app; someone with a key can still go live.
-  Cons: two paths to build and test; BYOK is stacked as a separate change (MEM-095 part C).
+  Cons: two paths to build and test; BYOK is stacked as a separate change (MEM-122).
 
 ## Decision
 
@@ -42,7 +42,7 @@ Option (C), built in two changes. This one (MEM-121) is the degrade half plus th
 - Header `X-Memripal-Spend-Cap: saved | backup | capped` (ContextVar + ASGI middleware, as 0058) drives a toast in
   `static/byok.js`: "Free demo credit is used up (Meta spend cap reached): showing saved results." (and variants).
 
-BYOK (MEM-095 part C) follows on this branch: a per-request MetaBackend + MetaClient + its own guard, shown only
+BYOK (MEM-122) follows on this branch: a per-request MetaBackend + MetaClient + its own guard, shown only
 after this toast.
 
 ## Why this over the others

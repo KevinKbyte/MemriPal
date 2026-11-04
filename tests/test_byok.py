@@ -1,5 +1,5 @@
 # Covers: MEM-122
-# Requirement: bring your own key (BYOK), offered only once the Meta spend cap is hit (MEM-095 part C).
+# Requirement: bring your own key (BYOK), offered only once the Meta spend cap is hit (MEM-122).
 # Kev, 2026-11-04: "it should tell user yes they can add their own key if they need to have it keep running,
 # but should have a hard limit on it and to not reuse it afterwards (delete key after done)".
 # - The key rides only in header X-Memripal-Meta-Key, only on the 5 model routes (/loci, /split, /associate,

@@ -1,4 +1,4 @@
-// Covers: MEM-044
+// Covers: MEM-044, MEM-095, MEM-112
 // Requirement: static/index.html carries the v6 shell and control markup (MEM-044 A2, F13): topbar brand,
 // .panel, .field, .btn, .btn-primary, .eyebrow and .notice around the live elements; every id of 748a5e1
 // is kept with its hidden attribute unchanged (MEM-048/MEM-050/MEM-051/MEM-072/MEM-081: the only ids added are MEM-048's 14,
@@ -12,14 +12,16 @@
 // keep min-height >= 44px; no wrapper between main and #scene-overlay sets an A1-forbidden property.
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { MEM048_IDS, MEM048_MAY_START_HIDDEN, MEM050_IDS, MEM050_MAY_START_HIDDEN, MEM051_IDS,
   MEM051_MAY_START_HIDDEN, MEM072_IDS, MEM072_MAY_START_HIDDEN, MEM081_IDS, MEM081_MAY_START_HIDDEN,
-  MEM088_IDS, MEM088_MAY_START_HIDDEN }
+  MEM088_IDS, MEM088_MAY_START_HIDDEN, MEM095_IDS, MEM095_MAY_START_HIDDEN }
   from "./index_ids_test.mjs";
 
 const read = (f) => readFileSync(new URL(f, import.meta.url), "utf8");
 const HTML = read("./index.html");
+// MEM-095: tour classes live in tour.css, so the orphan-class check reads it beside style.css.
+const TOUR_CSS = existsSync(new URL("./tour.css", import.meta.url)) ? read("./tour.css") : "";
 const CSS = read("./style.css").replace(/\/\*[\s\S]*?\*\//g, "");
 
 // index.html at 748a5e1 (before MEM-044): its ids, and the ids carrying the hidden attribute.
@@ -184,7 +186,7 @@ const MEM108_MAY_START_HIDDEN = ["chat-fallback"];
 const MEM110_IDS = ["station-tap-summary"];
 const MEM110_MAY_START_HIDDEN = ["station-tap-summary"];
 
-// Covers: MEM-044
+// Covers: MEM-044, MEM-095, MEM-112
 // Requirement: MEM-044 A2 v6 shell + control markup in static/index.html (see the file header).
 describe("MEM-044 A2 v6 shell + control markup (static/index.html, F13)", () => {
   // MEM-048 (plan B3) amended this test: 748a5e1's ids must survive (subset, each exactly once), and the
@@ -192,17 +194,18 @@ describe("MEM-044 A2 v6 shell + control markup (static/index.html, F13)", () => 
   // allowlist by its 15 S3 station-card ids; MEM-051 (plan B6) adds its S5/S8 ids; MEM-072 (map-first shell)
   // adds its tab panel, map chip, drawer and landmarks-list ids (older ids only move); MEM-081 its 4 route review ids;
   // MEM-088 its 12 route builder / map empty-state ids; MEM-108 its 3 chat-fallback toast ids (#chat-fallback starts hidden);
-  // MEM-110 its station tap summary id.
-  test("every 748a5e1 id kept exactly once; the only ids added are MEM-048's, MEM-050's, MEM-051's, MEM-072's, MEM-081's, MEM-088's, MEM-108's and MEM-110's", () => {
+  // MEM-110 its station tap summary id; MEM-095 its Pal tour ids.
+  test("every 748a5e1 id kept exactly once; the only ids added are MEM-048's, MEM-050's, MEM-051's, MEM-072's, MEM-081's, MEM-088's, MEM-108's, MEM-110's and MEM-095's", () => {
     const ids = ELS.map((e) => e.attrs.id).filter((id) => id !== undefined);
     const count = (id) => ids.filter((x) => x === id).length;
     const lost = BASE_IDS.filter((id) => count(id) !== 1);
     assert.deepEqual(lost, [], `748a5e1 ids missing or duplicated: ${lost.join(" ")}`);
     const allowed = new Set([...BASE_IDS, ...MEM048_IDS, ...MEM050_IDS, ...MEM051_IDS, ...MEM072_IDS, ...MEM081_IDS,
-      ...MEM088_IDS, ...MEM108_IDS, ...MEM110_IDS]);
+      ...MEM088_IDS, ...MEM108_IDS, ...MEM110_IDS,
+      ...MEM095_IDS]);
     const unexpected = ids.filter((id) => !allowed.has(id));
     assert.deepEqual(unexpected, [],
-      `ids outside 748a5e1 + MEM-048 + MEM-050 + MEM-051 + MEM-072 + MEM-081 + MEM-088 + MEM-108 + MEM-110: ${unexpected.join(" ")}`);
+      `ids outside 748a5e1 + MEM-048 + MEM-050 + MEM-051 + MEM-072 + MEM-081 + MEM-088 + MEM-108 + MEM-110 + MEM-095: ${unexpected.join(" ")}`);
     const missing = MEM072_IDS.filter((id) => count(id) !== 1);
     assert.deepEqual(missing, [], `MEM-072 shell ids missing or duplicated: ${missing.join(" ")}`);
     const dupes = [...new Set(ids.filter((id) => count(id) > 1))];
@@ -219,7 +222,8 @@ describe("MEM-044 A2 v6 shell + control markup (static/index.html, F13)", () => 
     assert.deepEqual(lostHidden, [], `748a5e1 hidden ids no longer hidden: ${lostHidden.join(" ")}`);
     const mayHide = new Set([...STAY_HIDDEN, ...MEM048_MAY_START_HIDDEN, ...MEM050_MAY_START_HIDDEN,
       ...MEM051_MAY_START_HIDDEN, ...MEM072_MAY_START_HIDDEN, ...MEM081_MAY_START_HIDDEN,
-      ...MEM088_MAY_START_HIDDEN, ...MEM108_MAY_START_HIDDEN, ...MEM110_MAY_START_HIDDEN]);
+      ...MEM088_MAY_START_HIDDEN, ...MEM108_MAY_START_HIDDEN, ...MEM110_MAY_START_HIDDEN,
+      ...MEM095_MAY_START_HIDDEN]);
     const extra = hidden.filter((id) => !mayHide.has(id));
     assert.deepEqual(extra, [], `hidden but not allowed to start hidden: ${extra.join(" ")}`);
   });
@@ -231,7 +235,8 @@ describe("MEM-044 A2 v6 shell + control markup (static/index.html, F13)", () => 
   });
 
   test("0 orphan classes: every index.html class has a style.css rule", () => {
-    const styled = new Set(RULES.flatMap((r) => r.parts.flatMap(selectorClasses)));
+    const styled = new Set([...RULES, ...parseRules(TOUR_CSS.replace(/\/\*[\s\S]*?\*\//g, ""))]
+      .flatMap((r) => r.parts.flatMap(selectorClasses)));
     const orphans = [...new Set(ELS.flatMap(classes))].filter((c) => !styled.has(c));
     assert.deepEqual(orphans, [], `classes with no style.css rule: ${orphans.join(" ")}`);
   });
