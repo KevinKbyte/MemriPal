@@ -2,11 +2,17 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [0.20.53] - 2026-11-04
+## [0.20.54] - 2026-11-04
 
 ### Changed
 
 - Merged origin/main (overnight cloud run, PRs #14 land-all and #15) into local main. Both sides had landed Pal's tour and the Memri copilot groundwork; origin's numbering wins: Memri copilot ADR 0061 -> 0064, tour replay MEM-097 -> MEM-112 (MEM-097 stays the copilot tool dispatcher). Local-only MEM-111 (push_secret_gcp) keeps its id.
+
+## [0.20.53] - 2026-11-04
+
+### Added
+
+- `scripts/create_secrets.sh` (MEM-104, ADR 0005): one-step creation of the Cloud Run Secret Manager secrets (memripal-access-key, memripal-record-key, meta-api-key); keeps existing secrets. Meta key source: META_API_KEY env, else the DPAPI file at MEMRIPAL_META_KEY_FILE (default ~/.secrets/meta-api-key.dpapi) decrypted via powershell, else a hidden prompt; never echoes the key. Tests in `tests/test_create_secrets.py`. Runbook `docs/runbooks/deploy-gcp.md` updated (one-step `sh scripts/create_secrets.sh`, billingbudgets + winget prereqs, PowerShell `$env:MODE` form).
 
 ## [0.20.52] - 2026-11-04
 
