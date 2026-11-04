@@ -42,6 +42,7 @@ from memripal.bodies import (
     _scenes_body,
     _split_body,
 )
+from memripal.chat_fallback import ChatFallbackHeader
 from memripal.demo_room import room_photo
 from memripal.imaging import MAX_UPLOAD_BYTES, ImageRejected, process_upload, sniff, validate_processed
 from memripal.loci import find_loci, locus_json
@@ -99,6 +100,14 @@ def _env_int(name: str, minimum: int) -> int | None:
     if not (raw.isascii() and raw.isdigit()) or int(raw) < minimum:
         raise ValueError(f"{name} must be an integer >= {minimum}")
     return int(raw)
+
+
+def _ensure_log_handler() -> None:
+    """Bare uvicorn configures no "memripal" logging: make the Spark served-by/fallback lines visible."""
+    lg = logging.getLogger("memripal")
+    if not lg.handlers:
+        lg.addHandler(logging.StreamHandler())
+        lg.setLevel(logging.INFO)
 
 
 class _BudgetedBackend:
@@ -165,6 +174,8 @@ def create_app(
     # Outermost (MEM-042 C1), so host refusals and 404s carry the headers too.
     # /docs and /redoc stop rendering.
     app.add_middleware(SecurityHeaders)
+    app.add_middleware(ChatFallbackHeader)
+    _ensure_log_handler()
 
     def _passcode_error(request: Request) -> JSONResponse | None:
         """401 for a live model route without the passcode; checked before the body is read."""

@@ -3,6 +3,8 @@
 import os
 from dataclasses import dataclass
 
+import httpx
+
 from memripal.backend import MissingApiKey
 from memripal.meta_client import MetaClient
 
@@ -17,6 +19,9 @@ _KEYED = {
     ),
 }
 LOCAL_DEFAULT_URL = "http://localhost:11434/v1"
+# A dead provider fails fast, so the Meta fallback (MEM-106) answers within the request's patience.
+PROVIDER_TIMEOUT = httpx.Timeout(30.0, connect=5.0)
+PROVIDER_RETRIES = 0
 
 
 def select_chat_provider() -> str:
@@ -43,9 +48,13 @@ def chat_provider_from_env(provider: str) -> ChatProvider:
             raise ValueError("local chat provider requires MEMRIPAL_LOCAL_CHAT_MODEL")
         url = os.environ.get("MEMRIPAL_LOCAL_CHAT_URL") or LOCAL_DEFAULT_URL
         # None: a local Ollama-style server takes no Authorization header.
-        return ChatProvider(provider, MetaClient(None, base_url=url), model)
+        return ChatProvider(provider, _client(None, url), model)
     base_url, model, key_env = _KEYED[provider]
     key = os.environ.get(key_env, "")
     if not key:
         raise MissingApiKey(f"{provider} chat provider requires {key_env} in the environment")
-    return ChatProvider(provider, MetaClient(key, base_url=base_url), model)
+    return ChatProvider(provider, _client(key, base_url), model)
+
+
+def _client(key: str | None, base_url: str) -> MetaClient:
+    return MetaClient(key, base_url=base_url, timeout=PROVIDER_TIMEOUT, max_retries=PROVIDER_RETRIES)

@@ -8,9 +8,14 @@ import logging
 import os
 import re
 import tempfile
+import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Any, Protocol
+
+from memripal.chat_fallback import note_chat_fallback
+from memripal.prompt_templates import prompt_for
 
 # Bump when any prompt changes so stale recorded responses stop matching.
 PROMPT_VERSION = "v1"
@@ -301,33 +306,8 @@ SEND_IMAGE = "send_image"
 NO_PHOTO_CACHE = "no_photo_cache"
 # Per-request read bound for a scene edit (ADR 0007); kept out of gen_params, as it never shapes the answer.
 IMAGE_EDIT_TIMEOUT_S = 30
-
-
-def _prompt_for(template_id: str, args: dict) -> str:
-    from memripal.associate import association_prompt
-    from memripal.probe import PHRASE_PROMPT, _reask_prompt
-    from memripal.split import split_prompt
-
-    if template_id == "association":
-        return association_prompt(
-            args["item"], args["locus"], args.get("reason"), args.get("place"), args.get("station")
-        )
-    if template_id == "phrase":
-        return PHRASE_PROMPT
-    if template_id == "phrase-reask":
-        return _reask_prompt(list(args["exclude"]))
-    if template_id == "split":
-        return split_prompt(args["notes"], args["max_points"])
-    if template_id == "scene":
-        from memripal.scenes import scene_prompt
-
-        return scene_prompt(args["record"])
-    if template_id == "station":
-        from memripal.station import station_prompt
-
-        # Absent == no used names, matching parse_used_names' absent-header rule.
-        return station_prompt(args.get("used_names", []))
-    raise ValueError(f"unknown prompt template: {template_id!r}")
+# After a provider failure Spark goes straight to Meta this long: one timeout per dead window (MEM-106).
+CHAT_SKIP_S = 120
 
 
 class MetaBackend:
@@ -343,6 +323,7 @@ class MetaBackend:
         client: Any = None,
         seg_client: Any = None,
         chat: Any = None,
+        clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self._api_key = api_key
         self.cache = ResponseCache(cache_root) if cache_root is not None else None
@@ -356,12 +337,36 @@ class MetaBackend:
         self._seg_client = seg_client
         # None keeps Spark chat on Meta; a chat_provider.ChatProvider takes it over (MEM-026).
         self._chat = chat
+        self._clock = clock
+        self._chat_skip_until = float("-inf")  # clock time before which Spark skips the provider
 
     # Explicit so the key can never surface through a default dataclass/object repr.
     def __repr__(self) -> str:
         return "MetaBackend()"
 
     def call(self, req: ModelRequest) -> Any:
+        if req.method != "spark_json":
+            return self._call_once(req, None)
+        chat = self._chat
+        if chat is not None and self._clock() >= self._chat_skip_until:
+            try:
+                value = self._call_once(req, chat)
+            except BackendCallFailed as exc:
+                failed = type(exc).__name__  # class only: the message or body may echo a key (MEM-106)
+                _log.warning("spark chat: %s failed (%s), falling back to meta", chat.name, failed)
+                self._chat_skip_until = self._clock() + CHAT_SKIP_S
+            else:
+                _log.info("spark chat served by %s", chat.name)
+                return value
+        value = self._call_once(req, None)
+        if chat is not None:
+            # Only after Meta answered: a request whose fallback also failed carries no header (MEM-107).
+            note_chat_fallback(chat.name)
+        _log.info("spark chat served by meta")
+        return value
+
+    def _call_once(self, req: ModelRequest, chat: Any) -> Any:
+        """One upstream call; `chat` (a ChatProvider, or None for Meta) routes spark_json only."""
         if req.method == "segment" and self._seg_client is not None:
             text = self._seg_client.segment(req.image_jpeg, req.subject)
             # Provider-distinct key: Modal answers never overwrite or replay as Meta SAM entries (ADR 0018).
@@ -389,10 +394,9 @@ class MetaBackend:
             gen_params = dict(req.gen_params)
             prompt_args = gen_params.pop(PROMPT_ARGS, {})
             send_image = gen_params.pop(SEND_IMAGE, True)
-            chat = self._chat
             client, model = (self._client, req.model) if chat is None else (chat.client, chat.model)
             result = client.chat_json(
-                prompt=_prompt_for(req.prompt_template_id, prompt_args),
+                prompt=prompt_for(req.prompt_template_id, prompt_args),
                 schema=req.schema,
                 schema_name=req.subject,
                 image_data_url=image_url if send_image else None,
@@ -412,7 +416,7 @@ class MetaBackend:
             prompt_args = gen_params.pop(PROMPT_ARGS, {})
             result = self._client.image_edit(
                 image_data_url=image_url,
-                prompt=_prompt_for(req.prompt_template_id, prompt_args),
+                prompt=prompt_for(req.prompt_template_id, prompt_args),
                 model=req.model,
                 timeout=IMAGE_EDIT_TIMEOUT_S,
                 **gen_params,

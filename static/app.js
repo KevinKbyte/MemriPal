@@ -3,6 +3,7 @@
 // Served as a raw ES module (no build step). Model-derived text is only ever set via textContent.
 
 import { withApiBase } from "./api_base.js";
+import { showChatFallback, wireChatFallback, withChatFallbackNotice } from "./chat_fallback.js";
 import { selectStore, wireApp } from "./flow.js";
 import { associationKey, createPalaceStore } from "./palace_store.js";
 import { createPlaceState, lookupPlace, wirePlace } from "./place.js";
@@ -390,7 +391,7 @@ function wireUpload() {
   const deps = {
     doc: document,
     loadImage,
-    fetch: withApiBase(fetch.bind(globalThis)),
+    fetch: withChatFallbackNotice(withApiBase(fetch.bind(globalThis)), (p) => showChatFallback(document, p)),
     place,
   };
   return deps;
@@ -399,6 +400,7 @@ function wireUpload() {
 // Guard keeps the module importable under node --test.
 if (typeof document !== "undefined") {
   initTabbar(document);
+  wireChatFallback(document);
   const media = navigator.mediaDevices;
   // Distinct databases: createIdbAdapter only creates its object store on a database's first open.
   const palace = { dbName: "memripal-palace", storeName: "palace", prefix: "memripal.palace:" };
