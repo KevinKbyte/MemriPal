@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from memripal.backend import PROMPT_ARGS, BackendCallFailed, FixtureMissing, ModelBackend, ModelRequest
+from memripal.byok import LIMIT_CODE as BYOK_LIMIT_CODE
+from memripal.byok import ByokLimitReached
 from memripal.imaging import (
     ImageRejected,
     Processed,
@@ -103,6 +105,9 @@ def render_scene(backend: ModelBackend, processed: Processed, box: dict, record:
             _SLOTS.release()
     except FixtureMissing:
         return _fallback("fixture_missing")
+    # Ahead of MetaSpendCapReached (it is one): the visitor's own key hit its limit, not the shared cap.
+    except ByokLimitReached:
+        return _fallback(BYOK_LIMIT_CODE)
     # Ahead of BackendCallFailed (it is one): names the cap, not a generic upstream failure (MEM-121).
     except MetaSpendCapReached:
         return _fallback(CAP_ERROR_CODE)
