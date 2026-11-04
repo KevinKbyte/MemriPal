@@ -89,10 +89,18 @@ export function createRouteView({ doc, routes, rehearsals, onPractice, realMap, 
     }
     const id = node && node !== routeMap ? node.getAttribute("data-station-id") : null;
     if (!id) return;
+    // The marker itself shows the selection too (style.css .route-node.selected).
+    for (const n of /** @type {Element[]} */ ([...routeMap.children])) {
+      if (n.classList?.contains("route-node")) n.classList.toggle("selected", n.getAttribute("data-station-id") === id);
+    }
     for (const list of ["route-view-stations", "landmarks-list"]) {
       for (const li of /** @type {HTMLElement[]} */ ([...(byId(list)?.children ?? [])])) {
-        if (li.dataset.stationId === id) li.setAttribute("aria-current", "true");
-        else li.removeAttribute("aria-current");
+        if (li.dataset.stationId !== id) li.removeAttribute("aria-current");
+        else {
+          li.setAttribute("aria-current", "true");
+          // The drawer list can outgrow the drawer; Landmarks is another tab, so only the visible list scrolls.
+          if (list === "route-view-stations") li.scrollIntoView?.({ block: "nearest" });
+        }
       }
     }
   });

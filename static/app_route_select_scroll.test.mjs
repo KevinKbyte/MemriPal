@@ -39,5 +39,8 @@ describe("route view: marker click scrolls the selected station into view (MEM-0
     b.p.fire(node, "click");
     await settle(10);
     assert.deepEqual(calls, [[1, { block: "nearest" }]]);
+    // The clicked marker carries .selected; every other marker does not.
+    const nodes = findAll(map, (n) => n !== map && n.classList?.contains("route-node"));
+    assert.deepEqual(nodes.map((n) => n.classList.contains("selected")), [false, true, false]);
   });
 });
