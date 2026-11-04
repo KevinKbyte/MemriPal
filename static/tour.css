@@ -321,11 +321,22 @@
   font: 700 11px/1 var(--mono);
 }
 
-/* Stickers (MEM-117): one merged-emoji badge per locus at its box's top-right; tap or Enter/Space re-rolls it. */
+/* Stickers (MEM-117, MEM-130): one merged-emoji badge per locus at its box's top-right; tap or Enter/Space selects
+   it, a drag moves it to another spot. touch-action: none keeps a touch drag from scrolling the page. */
 .tour-sticker {
-  cursor: pointer;
+  cursor: grab;
+  touch-action: none;
   transform-box: fill-box;
   transform-origin: center;
+}
+
+.tour-sticker.is-dragging {
+  cursor: grabbing;
+}
+
+.tour-sticker.is-selected circle {
+  stroke: var(--focus);
+  stroke-width: 3;
 }
 
 .tour-sticker circle {
