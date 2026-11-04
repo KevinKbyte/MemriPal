@@ -59,8 +59,11 @@ export function showSpendCap(doc, state) {
     toast.id = "spend-cap";
     toast.classList.add("notice", "toast");
     toast.setAttribute("role", "status");
+    // It can stay up for the whole session, so it never blocks the controls under it; only Dismiss is live.
+    toast.style.pointerEvents = "none";
     const text = doc.createElement("span");
     const button = doc.createElement("button");
+    button.style.pointerEvents = "auto";
     button.classList.add("btn");
     button.type = "button";
     button.textContent = "Dismiss";

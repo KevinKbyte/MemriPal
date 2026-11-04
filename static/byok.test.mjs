@@ -68,6 +68,8 @@ describe("spend cap notice", () => {
     assert.equal(toast.hidden, false);
     assert.ok(toast.classList.contains("toast"));
     assert.match(textOf(toast), /paused/);
+    // Never blocks the controls under it (screenshot run: it intercepted a click); Dismiss stays clickable.
+    assert.equal(toast.style.pointerEvents, "none");
 
     const dismiss = toast.children.find((c) => c.tagName === "BUTTON");
     fire(dismiss, "click");
