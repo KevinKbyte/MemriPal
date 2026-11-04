@@ -167,3 +167,39 @@ NFR: pure, deterministic; exact integer meeting tests; under 1 s on 4000 random 
   same input -> same order.
 
 Tests: tests/test_route_uncrossed.py (ADR 0070)
+- Out of scope: search picker (follow-up MEM, merge 2); the image-generation caller (MEM-052); cross-device sync.
+
+## MEM-052 Generated sticker from the memorized item on its locus
+
+Kev ask: when a palace is memorized, generate a sticker from each memorized item, stick it on that item's locus of the
+landmark photo, and auto-save it to the sticker pool (MEM-045) so it is searchable by the item text.
+Root problem: Kev ask: when a palace is memorized, generate a sticker from each memorized item, stick it on that item's
+locus of the landmark photo, and auto-save it to the sticker pool (MEM-045) so it is searchable by the item text.
+Actors: `static/sticker_gen.js` (new); `static/sticker_board.js`; `static/sticker_pool.js`; `static/encode.js`
+`runEncode`/`runDemoPalace`; `static/scenes.js` (`runScenes` results, `isSafeImageSrc`); `BASE_STICKERS`/`search`
+(`static/stickers.js`).
+NFR: no server change and no extra /scenes call (reuses the scene runScenes already produced); offline/fixture mode
+works; never throws into the demo; no new error UI; textContent only; existing pop-in animation already off under
+prefers-reduced-motion; ASCII.
+Decided-by: ADR-0071
+- `sticker_pool` gains `search(text)`: entries of `list()` whose desc contains the trimmed text, case-insensitive;
+  empty/blank/non-string text -> [].
+- `sticker_gen.js`: `stickMemorized(pool, placeKey, steps, scenes, { crop })` -> placed `[{ n, stickerId, kind }]`,
+  never rejects. Per step i (`{item, locus: {n, label, box}}`): skip when item is blank or a placement already exists
+  at (placeKey, n) (a user's own sticker is never replaced); desc = item trimmed, cut to MAX_DESC (60). A generated
+  entry with the same desc is reused (re-running the demo does not duplicate the pool); else when `scenes[i]` is tier 1
+  with a safe image and the locus has a box, `crop(image, box, width, height)` -> data URL -> `pool.add({kind:
+  "generated", desc, image})` -> `pool.place`. Any failure there (scene tier 3 / null, offline, crop or add rejects)
+  falls back to the first `stickers.js` `search(item)` emoji (`emoji:<name>`); no emoji match -> skip silently.
+- `cropScene(src, box, width, height)` (browser default `crop`): square around the locus box centre, drawn to a
+  128x128 canvas, JPEG data URL; rejects without a DOM (then the emoji fallback applies).
+- `createStickerBoard` gains `crop` dep and `stickMemorized(steps, scenes)`: no-op `[]` before `show`; else delegates
+  to sticker_gen for the shown placeKey, re-renders, returns the placed list. Generated stickers render as img with alt
+  = desc; their placed-list text ends with " (AI-generated)" (MEM-046 labelling).
+- Wiring: `runEncode` returns `{ steps, scenes }`; `runDemoPalace` then awaits
+  `deps.stickers?.stickMemorized?.(steps, scenes)`, swallowing any failure; the walk view is already shown.
+- Accept: after the demo encode a tier-1 scene yields a generated sticker placed on its locus and visible on the photo;
+  `pool.search(item)` finds it; tier-3/offline yields the emoji fallback or nothing, with no rejection; existing
+  placement kept; re-run adds no duplicate; failing board never breaks the demo. Covered by
+  static/sticker_gen.test.mjs.
+- Out of scope: a dedicated sticker-generation prompt/endpoint; a pool search picker UI; non-demo palaces.

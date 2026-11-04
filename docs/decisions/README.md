@@ -206,3 +206,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0070](0070-uncrossed-route-order.md) Uncrossed route numbering: MEM-013 reading order seeds a 2-opt that reverses
   meeting legs on strict length decrease, with a (cy, cx) y-monotone fallback, so the 1..n path never meets itself
   (over reading order, snake rows, nearest-neighbour + 2-opt, or a pure y-monotone sort).
+- [0071](0071-generated-sticker-from-scene-crop.md) Generated stickers are cropped client-side from the tier-1 scene
+  `runScenes` already produced, with an emoji search fallback, over a new server sticker-generation call or storing
+  the whole scene image.
