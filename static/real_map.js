@@ -222,6 +222,15 @@ export function createRealMapLoader({ fetch, loadLibs, doc = globalThis.document
       };
       mq.addEventListener("change", onScheme);
       map.once("remove", () => mq.removeEventListener("change", onScheme));
+      // MEM-096, ADR 0054: a box mounted at 0x0 (route view not laid out yet) keeps a stub canvas, since
+      // MapLibre 5 skips its own observer's first callback; resize once the box reports a real size.
+      if (win.ResizeObserver) {
+        const ro = new win.ResizeObserver((/** @type {any[]} */ entries) => {
+          if (entries.some((e) => e.contentRect.width > 0 && e.contentRect.height > 0)) map.resize();
+        });
+        ro.observe(map.getContainer());
+        map.once("remove", () => ro.disconnect());
+      }
       map.once("idle", () => {
         box.classList.remove("real-map-pending");
         attachOverlay(map, svg, stations, doc);

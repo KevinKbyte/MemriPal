@@ -144,3 +144,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
   aliases, then OSM addr tags, else "near <street>"); public-place coords at 5 dp, own GPS stays 4 dp; plain "Open
   in Maps" link; backups unchanged; amends 0031, 0042 (over 5 dp everywhere, coords in backups, `geo:` URIs, or a
   nearest-way label).
+- [0054](0054-real-map-resize-observer.md) The real map loader observes the map box with `ResizeObserver` and calls
+  `map.resize()` on a non-zero box, disconnecting on remove (over a tab-show hook in `tabbar.js` or MapLibre's
+  `trackResize`).

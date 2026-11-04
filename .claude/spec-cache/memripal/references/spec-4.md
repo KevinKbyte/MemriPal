@@ -438,6 +438,7 @@ Decision: ADR [0049](../../../../docs/decisions/0049-recall-schedule-and-push-re
 
 Tests: (filled at land)
 ## MEM-096 Real map resizes when its box gains size (PLANNED)
+## MEM-096 Real map resizes when its box gains size
 
 - A map mounted into a 0x0 box (hidden route view) grows when the box later gains size: `static/real_map.js` observes
   the map box with `win.ResizeObserver` and calls `map.resize()` on a non-zero box; a 0x0 box never resizes.
