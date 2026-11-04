@@ -402,7 +402,7 @@ ADR [0053](../../../../docs/decisions/0053-station-street-address-and-poi-precis
 
 Tests: (filled at land)
 
-## MEM-085 Auto-loci candidates and swap (PLANNED)
+## MEM-085 Auto-loci candidates and swap
 
 Decision: ADR [0047](../../../../docs/decisions/0047-derived-auto-loci-and-swap.md), ADR
 [0053](../../../../docs/decisions/0053-station-street-address-and-poi-precision.md). Plan S3.
@@ -414,8 +414,9 @@ Decision: ADR [0047](../../../../docs/decisions/0047-derived-auto-loci-and-swap.
 - Accept: the Kendall route gives >= 6 candidates in route order; swap round-trips `photo_ref`; undo restores; backup
   v2 export unchanged; every candidate has an address or a "near <street>" label; no candidate within 15 m of an
   existing station; seeded stations keep 5 dp, GPS-captured stay 4 dp.
+- Even spacing: consecutive candidates at least 40 m apart along the route.
 
-Tests: (filled at land)
+Tests: static/auto_loci.test.mjs, static/route_store_swap.test.mjs, static/route_store.test.mjs
 
 ## MEM-087 Memorize: notes split, keyword edit, route recommendation (PLANNED)
 
