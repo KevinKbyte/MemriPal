@@ -1,7 +1,7 @@
 // Covers: MEM-050
 // Requirement: S3 Station card (plan B5). After a station is named by POST /station the card shows its
-// name in #station-name, its Visual / Spatial / Conceptual profile in #station-profile, and five tap groups
-// (#tap-sound #tap-smell #tap-feel #tap-mood #tap-turn) of toggle buttons with aria-pressed; a tap is stored
+// name in #station-name, its Visual / Spatial / Conceptual profile in #station-profile, and four tap groups
+// (#tap-sound #tap-smell #tap-feel #tap-mood; the Next turn group was removed, MEM-135) of toggle buttons with aria-pressed; a tap is stored
 // on the station (one value per group, tapping the pressed button clears it) and survives a reload. A name
 // edit is checked against the station-name shape rule (non-empty, <= 3 words, no digits) and the client
 // uniqueness rule (normalized exact name, or a shared last word, with ANOTHER station of the route): a bad
@@ -14,7 +14,7 @@
 //   createStationCard({ doc, store, routeId, fetch }) -> { show(stationId) -> Promise<void> }
 //   doc is the page document (getElementById); store is route_store.js createRouteStore; the card renders
 //   the tap buttons into each #tap-<group> element; taps persist as station.taps = { sound?, smell?, feel?,
-//   mood?, turn? } holding the tapped label.
+//   mood? } holding the tapped label.
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 
@@ -24,7 +24,7 @@ import { memoryAdapter, ENCODED, rawFile, fakeEncode, stationOk, fetchSpy } from
 
 const CARD_IDS = [
   "station-card", "station-name", "station-name-error", "station-profile", "station-taps",
-  "tap-sound", "tap-smell", "tap-feel", "tap-mood", "tap-turn",
+  "tap-sound", "tap-smell", "tap-feel", "tap-mood",
   "station-save", "station-drop", "station-drop-confirm", "station-drop-cancel", "station-undo",
 ];
 const START_HIDDEN = ["station-name-error", "station-drop-confirm", "station-drop-cancel", "station-undo"];
@@ -35,7 +35,6 @@ const TAPS = {
   smell: ["Food", "Coffee", "Flowers", "Fumes", "Rain", "None"],
   feel: ["Warm", "Cold", "Windy", "Uphill", "Stairs", "Shade"],
   mood: ["Calm", "Busy", "Bright", "Cosy", "Grand", "Odd"],
-  turn: ["Straight", "Left", "Right", "Arrive"],
 };
 
 const PROFILE = { visual: "a red door with brass studs", spatial: "left of the path", conceptual: "an entry" };
@@ -91,9 +90,9 @@ describe("station card: name + profile", () => {
 });
 
 // Covers: MEM-050
-// Requirement: each of the 5 tap groups toggles aria-pressed and persists the tap on the station
+// Requirement: each of the 4 tap groups toggles aria-pressed and persists the tap on the station
 // (criterion 1).
-describe("station card: quick-taps toggle aria-pressed and persist (5 groups)", () => {
+describe("station card: quick-taps toggle aria-pressed and persist (4 groups)", () => {
   for (const [group, labels] of Object.entries(TAPS)) {
     test(`#tap-${group}: buttons ${labels.join("/")} toggle and persist`, async () => {
       const ctx = await setup();
@@ -120,13 +119,13 @@ describe("station card: quick-taps toggle aria-pressed and persist (5 groups)", 
   test("a stored tap is shown pressed after a reload", async () => {
     const ctx = await setup();
     await ctx.card.show(ctx.self.id);
-    await click(ctx, button(ctx, "turn", "Left"));
+    await click(ctx, button(ctx, "mood", "Calm"));
     await click(ctx, button(ctx, "smell", "Coffee"));
     const fresh = { ...ctx, store: rs.createRouteStore(ctx.kv), p: fakePage(CARD_IDS, { hidden: START_HIDDEN }) };
     fresh.p.els["station-name"].value = "";
     fresh.card = (await loadCard())({ doc: fresh.p.doc, store: fresh.store, routeId: ctx.route.id, fetch: ctx.spy.fn });
     await fresh.card.show(ctx.self.id);
-    assert.equal(pressed(button(fresh, "turn", "Left")), "true");
+    assert.equal(pressed(button(fresh, "mood", "Calm")), "true");
     assert.equal(pressed(button(fresh, "smell", "Coffee")), "true");
     assert.equal(pressed(button(fresh, "sound", "Birds")), "false");
   });
@@ -249,7 +248,7 @@ describe("station card: drop arm / cancel / confirm / Undo (criterion 4)", () =>
   test("first click arms, cancel restores, confirm removes, Undo restores the identical station", async () => {
     const ctx = await setup();
     await ctx.card.show(ctx.self.id);
-    await click(ctx, button(ctx, "turn", "Right"));
+    await click(ctx, button(ctx, "mood", "Busy"));
     const before = await reloaded(ctx);
     const e = ctx.p.els;
     assert.ok(e["station-drop-confirm"].hidden && e["station-drop-cancel"].hidden && e["station-undo"].hidden, "start unarmed");

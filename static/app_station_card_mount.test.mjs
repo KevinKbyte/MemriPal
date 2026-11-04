@@ -4,7 +4,7 @@
 // selected station: #station-card is shown for the first station on open (no li is marked aria-current until
 // the user selects one: MEM-088 pins an unselected list on open), #station-name holds its name, #station-profile its profile, and #station-tap-summary
 // lists one li per tap group the station has a value for, in TAP_GROUPS order, reading "<Group>: <label>"
-// (Sound, Smell, Feel, Mood, Next turn). The editor buttons in #tap-<group> mark the seeded label
+// (Sound, Smell, Feel, Mood; no Next turn group, MEM-135). The editor buttons in #tap-<group> mark the seeded label
 // aria-pressed="true". Clicking a station li (or a map marker, MEM-088) selects that station and the card
 // follows, so every demo station shows its seeded taps. A station without taps renders no group in
 // #station-tap-summary (no children, hidden); a station with some taps lists only those groups. The S5 list
@@ -19,8 +19,8 @@ import { createRouteStore } from "./route_store.js";
 import { DEMO_ROUTE } from "./demo_route.js";
 
 const FIXTURE = { status: "ok", mode: "fixture" };
-const GROUP_LABEL = { sound: "Sound", smell: "Smell", feel: "Feel", mood: "Mood", turn: "Next turn" };
-const ORDER = ["sound", "smell", "feel", "mood", "turn"];
+const GROUP_LABEL = { sound: "Sound", smell: "Smell", feel: "Feel", mood: "Mood" };
+const ORDER = ["sound", "smell", "feel", "mood"];
 const want = (taps) => ORDER.filter((g) => taps?.[g]).map((g) => `${GROUP_LABEL[g]}: ${taps[g]}`);
 
 const lis = (b, id) => findAll(el(b, id), (n) => n.tagName === "LI");

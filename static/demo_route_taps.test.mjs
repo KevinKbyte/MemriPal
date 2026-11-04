@@ -1,6 +1,6 @@
 // Covers: MEM-110
 // Requirement: the seeded Kendall demo route shows Kev's photo-derived multisensory data with no import step.
-// Each of the 6 DEMO_ROUTE stations carries `taps` (exactly sound, smell, feel, mood (no turn: route_view renders taps.turn into the S5 station list, MEM-077); each value one of the
+// Each of the 6 DEMO_ROUTE stations carries `taps` (exactly sound, smell, feel, mood (no turn: the Next turn tap group was removed, MEM-135); each value one of the
 // station card's TAP_GROUPS labels) and a `profile` (exactly visual, spatial, conceptual; each a trimmed,
 // non-empty, printable-ASCII line of at most 200 chars, the backup LINE_MAX / MAX_STATION_LINE). "Load demo"
 // (route_store seedRoute) persists both, so getRoute and a reloaded store return them equal to the demo data,

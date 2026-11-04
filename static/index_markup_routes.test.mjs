@@ -164,8 +164,8 @@ describe("index.html: #finish-kind is two radios Daily / Occasional", () => {
 // Covers: MEM-050
 // Requirement: S3 Station card markup (plan B5, Part A S3): every S3 id exists exactly once next to the 44
 // live ids and the MEM-048 ids; #station-card is a section holding #station-name (text input, maxlength
-// 40) with #station-name-error, #station-profile (dl), the #station-taps fieldset with its five tap groups
-// #tap-sound #tap-smell #tap-feel #tap-mood #tap-turn, and the footer buttons #station-save,
+// 40) with #station-name-error, #station-profile (dl), the #station-taps fieldset with its four tap groups
+// #tap-sound #tap-smell #tap-feel #tap-mood (no #tap-turn, MEM-135), and the footer buttons #station-save,
 // #station-drop, #station-drop-confirm, #station-drop-cancel and #station-undo. The name error, the
 // confirm/cancel pair and Undo start hidden (progressive-disclosure delete). #scene-wrap, #scene and #loci
 // stay, each exactly once.
@@ -196,9 +196,9 @@ describe("index.html: S3 station card ids and structure (MEM-050)", () => {
     assert.equal(byId("station-profile")?.tag, "dl");
   });
 
-  test("#station-taps is a fieldset holding the five tap groups", () => {
+  test("#station-taps is a fieldset holding the four tap groups", () => {
     assert.equal(byId("station-taps")?.tag, "fieldset");
-    for (const g of ["sound", "smell", "feel", "mood", "turn"]) {
+    for (const g of ["sound", "smell", "feel", "mood"]) {
       assert.ok(inside(byId(`tap-${g}`), "station-taps"), `#tap-${g} inside #station-taps`);
     }
   });

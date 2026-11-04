@@ -14,11 +14,11 @@ export const MEM048_IDS = [
 // the first walk only (Part A S2). Every other new id starts visible.
 export const MEM048_MAY_START_HIDDEN = ["capture-session", "capture-safety"];
 
-// MEM-050 (plan B5, Part A S3 Station card): the 15 ids the station card adds. The S3 baseline ids
+// MEM-050 (plan B5, Part A S3 Station card): the 14 ids the station card adds (no #tap-turn: the Next turn group was removed, MEM-135). The S3 baseline ids
 // (#station-baseline*) land with B8, not here.
 export const MEM050_IDS = [
   "station-card", "station-name", "station-name-error", "station-profile", "station-taps",
-  "tap-sound", "tap-smell", "tap-feel", "tap-mood", "tap-turn",
+  "tap-sound", "tap-smell", "tap-feel", "tap-mood",
   "station-save", "station-drop", "station-drop-confirm", "station-drop-cancel", "station-undo",
 ];
 
