@@ -7,6 +7,7 @@ import { countInOrder } from "./recall_match.js";
 import { routeHitRates } from "./rehearsals.js";
 import { learnedCount, renderRouteMap } from "./route_map.js";
 import { createRouteNew } from "./route_new.js";
+import { createEmptyMap } from "./routes_empty_map.js";
 import { createStationCard } from "./station_card.js";
 import { showTab } from "./tabbar.js";
 
@@ -79,6 +80,7 @@ export function createRouteView({ doc, routes, rehearsals, onPractice, realMap, 
     li.dataset.stationId = s.id;
     return li;
   };
+  const emptyMap = createEmptyMap({ doc, realMap });
 
   /** @type {Route | null} */
   let current = null;
@@ -175,7 +177,11 @@ export function createRouteView({ doc, routes, rehearsals, onPractice, realMap, 
       const list = await routes.listRoutes();
       byId("routes-list")?.replaceChildren(...(await Promise.all(list.map(card))));
       // MEM-082: Pal is the start screen's empty state, so any route (stored or Load demo's) hides it for good.
-      if (list.length) setHidden("empty-state", true);
+      // MEM-114: no routes -> the basemap at a default spot with Load demo / Map a new route over it.
+      if (list.length) {
+        for (const id of ["empty-state", "empty-slogan"]) setHidden(id, true);
+        emptyMap.hide();
+      } else emptyMap.show();
       say(homeError);
     } catch {
       byId("routes-list")?.replaceChildren();

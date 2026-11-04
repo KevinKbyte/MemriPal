@@ -93,6 +93,13 @@ canvas {
   margin: 0 auto;
 }
 
+/* MEM-114: the slogan under Pal while there is no route yet. */
+.empty-slogan {
+  margin: 0.5rem 0 0;
+  text-align: center;
+  font: 700 1.125rem/1.25 var(--display);
+}
+
 button,
 input,
 select,
@@ -860,6 +867,34 @@ li.said-missed {
   box-shadow: var(--shadow);
   text-align: center;
   line-height: 1.4;
+}
+
+/* MEM-114: zero-route call to action over the basemap (static/routes_empty_map.js); it stands in for #map-empty. */
+.empty-map-cta {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  z-index: 1;
+  width: min(22rem, calc(100% - 3rem));
+  transform: translate(-50%, -50%);
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.empty-map-slogan {
+  margin: 0;
+  font: 700 1.125rem/1.25 var(--display);
+}
+
+.empty-map-cta .btn-row {
+  justify-content: center;
 }
 
 /* Selected route name, pinned over the map's lower-left corner. */

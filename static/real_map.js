@@ -178,64 +178,91 @@ export function createRealMapLoader({ fetch, loadLibs, doc = globalThis.document
     prev.box.remove();
   }
 
+  /**
+   * One MapLibre map over the svg's place; with stations the svg becomes their overlay on the first idle.
+   * @param {any} svg
+   * @param {Station[]} stations [] for the bare basemap
+   * @param {Record<string, unknown>} view bounds + fitBoundsOptions, or center + zoom
+   * @returns {Promise<{ map: any } | null>}
+   */
+  async function place(svg, stations, view) {
+    release(svg);
+    const entry = { map: null, box: null, viewBox: svg.getAttribute("viewBox") };
+    mounted.set(svg, entry);
+    const maplibregl = await prepare();
+    // A newer mount of the same svg started while this one waited: it owns the svg now.
+    if (!maplibregl || mounted.get(svg) !== entry) return null;
+    const box = doc.createElement("div");
+    // Pending: laid over the sketch and invisible until the first idle (static/style.css .real-map).
+    box.classList.add("real-map", "real-map-pending");
+    svg.after(box);
+    let map;
+    try {
+      map = new maplibregl.Map({
+        container: box,
+        ...view,
+        maxBounds: [[REAL_MAP_BBOX.west, REAL_MAP_BBOX.south], [REAL_MAP_BBOX.east, REAL_MAP_BBOX.north]],
+        minZoom: 12,
+        // Tiles stop at z14; MapLibre overzooms them for display up to 16.
+        maxZoom: 16,
+        attributionControl: { compact: false },
+      });
+    } catch {
+      // No WebGL: the constructor throws and the sketch stays.
+      box.remove();
+      return null;
+    }
+    Object.assign(entry, { map, box });
+    // The station list is the accessible path; the canvas is decoration to a screen reader.
+    map.getCanvasContainer().setAttribute("aria-hidden", "true");
+    const mq = win.matchMedia(DARK_QUERY);
+    const theme = () => explicitTheme() ?? (mq.matches ? "dark" : "light");
+    map.setStyle(styleHref(theme()), styleOptions);
+    // An explicit app theme pins the style; only the OS preference is followed live.
+    const onScheme = () => {
+      if (!explicitTheme()) map.setStyle(styleHref(theme()), styleOptions);
+    };
+    mq.addEventListener("change", onScheme);
+    map.once("remove", () => mq.removeEventListener("change", onScheme));
+    // MEM-096, ADR 0054: a box mounted at 0x0 (route view not laid out yet) keeps a stub canvas, since
+    // MapLibre 5 skips its own observer's first callback; resize once the box reports a real size.
+    if (win.ResizeObserver) {
+      const ro = new win.ResizeObserver((/** @type {any[]} */ entries) => {
+        if (entries.some((e) => e.contentRect.width > 0 && e.contentRect.height > 0)) map.resize();
+      });
+      ro.observe(map.getContainer());
+      map.once("remove", () => ro.disconnect());
+    }
+    map.once("idle", () => {
+      box.classList.remove("real-map-pending");
+      if (stations.length) attachOverlay(map, svg, stations, doc);
+    });
+    return { map };
+  }
+
   return {
     async mount(svg, stations) {
-      release(svg);
-      if (!inRealMapBbox(stations)) return null;
-      const entry = { map: null, box: null, viewBox: svg.getAttribute("viewBox") };
-      mounted.set(svg, entry);
-      const maplibregl = await prepare();
-      // A newer mount of the same svg started while this one waited: it owns the svg now.
-      if (!maplibregl || mounted.get(svg) !== entry) return null;
-      const box = doc.createElement("div");
-      // Pending: laid over the sketch and invisible until the first idle (static/style.css .real-map).
-      box.classList.add("real-map", "real-map-pending");
-      svg.after(box);
-      let map;
-      try {
-        const lons = stations.map((s) => Number(s.coords?.lon));
-        const lats = stations.map((s) => Number(s.coords?.lat));
-        map = new maplibregl.Map({
-          container: box,
-          bounds: [[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]],
-          fitBoundsOptions: { padding: 40, maxZoom: 16 },
-          maxBounds: [[REAL_MAP_BBOX.west, REAL_MAP_BBOX.south], [REAL_MAP_BBOX.east, REAL_MAP_BBOX.north]],
-          minZoom: 12,
-          // Tiles stop at z14; MapLibre overzooms them for display up to 16.
-          maxZoom: 16,
-          attributionControl: { compact: false },
-        });
-      } catch {
-        // No WebGL: the constructor throws and the sketch stays.
-        box.remove();
+      if (!inRealMapBbox(stations)) {
+        release(svg);
         return null;
       }
-      Object.assign(entry, { map, box });
-      // The station list is the accessible path; the canvas is decoration to a screen reader.
-      map.getCanvasContainer().setAttribute("aria-hidden", "true");
-      const mq = win.matchMedia(DARK_QUERY);
-      const theme = () => explicitTheme() ?? (mq.matches ? "dark" : "light");
-      map.setStyle(styleHref(theme()), styleOptions);
-      // An explicit app theme pins the style; only the OS preference is followed live.
-      const onScheme = () => {
-        if (!explicitTheme()) map.setStyle(styleHref(theme()), styleOptions);
-      };
-      mq.addEventListener("change", onScheme);
-      map.once("remove", () => mq.removeEventListener("change", onScheme));
-      // MEM-096, ADR 0054: a box mounted at 0x0 (route view not laid out yet) keeps a stub canvas, since
-      // MapLibre 5 skips its own observer's first callback; resize once the box reports a real size.
-      if (win.ResizeObserver) {
-        const ro = new win.ResizeObserver((/** @type {any[]} */ entries) => {
-          if (entries.some((e) => e.contentRect.width > 0 && e.contentRect.height > 0)) map.resize();
-        });
-        ro.observe(map.getContainer());
-        map.once("remove", () => ro.disconnect());
-      }
-      map.once("idle", () => {
-        box.classList.remove("real-map-pending");
-        attachOverlay(map, svg, stations, doc);
+      const lons = stations.map((s) => Number(s.coords?.lon));
+      const lats = stations.map((s) => Number(s.coords?.lat));
+      return place(svg, stations, {
+        bounds: [[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]],
+        fitBoundsOptions: { padding: 40, maxZoom: 16 },
       });
-      return { map };
+    },
+    /**
+     * MEM-114: the bare basemap centered on a point (the zero-route Routes tab); outside the extract -> null.
+     * @param {any} svg @param {{ lat: number, lon: number }} center @param {number} zoom
+     */
+    async mountAt(svg, center, zoom) {
+      if (!inRealMapBbox([{ coords: center }])) {
+        release(svg);
+        return null;
+      }
+      return place(svg, [], { center: [center.lon, center.lat], zoom });
     },
   };
 }
