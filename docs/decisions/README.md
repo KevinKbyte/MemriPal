@@ -209,6 +209,8 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0071](0071-generated-sticker-from-scene-crop.md) Generated stickers are cropped client-side from the tier-1 scene
   `runScenes` already produced, with an emoji search fallback, over a new server sticker-generation call or storing
   the whole scene image.
+- [0072](0072-tour-bubble-body-data-attribute.md) `tour.js` sets body `data-tour-target` to the current step's
+  selector; the Pal bubble goes inert unless it is the target (over tour CustomEvents, or a module import).
 - [0077](0077-spark-reasoning-headroom.md) Spark reasoning headroom: `MetaBackend.call` adds
   `REASONING_HEADROOM_TOKENS` (8192) to `max_completion_tokens` at send time for every `spark_json` call, so cache keys
   and fixtures stay unchanged; `BackendCallFailed` is logged with a body excerpt masking every configured key (Meta and

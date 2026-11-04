@@ -229,3 +229,23 @@ Decided-by: ADR-0071
   placement kept; re-run adds no duplicate; failing board never breaks the demo. Covered by
   static/sticker_gen.test.mjs.
 - Out of scope: a dedicated sticker-generation prompt/endpoint; a pool search picker UI; non-demo palaces.
+
+## MEM-055 Pal bubble shows Pal's face; inert during the tour
+
+Kev ask 2026-11-04: "the pal ai bubble should be pal's face rather than "pal" the word. Also user shouldnt be able to
+click on it during the tutorial unless if it's part of the tutorial". ADR [0072](../../../../docs/decisions/0072-tour-bubble-body-data-attribute.md).
+Decided-by: ADR-0072
+Root problem: the bubble labelled "Pal" in text is not the mascot, and a live bubble during the tour lets the user
+leave the guided flow; the two self-mounting modules (`pal_bubble.js`, `tour.js`) need a shared signal.
+Actors: the user; `static/pal_bubble.js` + `static/pal_bubble.css`; `static/tour.js`; `static/assets/pal-still.svg`.
+NFR: no import coupling between the two modules; ASCII only; keyboard, touch and mouse all inert together; light and
+dark legible.
+- B1: the bubble button renders a head crop of `static/assets/pal-still.svg` (IMG `data-pal="face"`, alt "") and no
+  "Pal" text; its aria-label "Open Pal chats" names Pal; legible in light and dark.
+- B2: while the tour is open, `tour.js` sets body `data-tour-target` to the current step's target selector ("" for
+  target-less steps) and removes it on Skip, Escape or finish; Replay sets it again.
+- B3: while `data-tour-target` is present and is not `.pal-bubble`, the bubble ignores click, Enter, arrow-key moves
+  and drags (handler guard plus CSS `pointer-events: none`) and carries `aria-disabled="true"`; a step targeting
+  `.pal-bubble` leaves it live. After the tour ends the bubble works again.
+
+Tests: static/pal_bubble_face_tour.test.mjs, static/tour_bubble_signal.test.mjs
