@@ -386,7 +386,7 @@ Plan: `docs/plans/2026-11-03-demo-flow.md` S1. Actors: `src/memripal/routes_stat
 
 Tests: (filled at land)
 
-## MEM-084 Offline walking-graph routing and geocode (PLANNED)
+## MEM-084 Offline walking-graph routing and geocode
 
 Decision: ADR [0046](../../../../docs/decisions/0046-offline-walking-graph-routing-and-geocode.md), address fields
 ADR [0053](../../../../docs/decisions/0053-station-street-address-and-poi-precision.md). Plan S2.
@@ -400,7 +400,7 @@ ADR [0053](../../../../docs/decisions/0053-station-street-address-and-poi-precis
   phrase resolves; a miss returns >= 1 suggestion; the fallback result is flagged; 100 Binney resolves with address
   "100 Binney St"; POI JSON + graph < 1 MB.
 
-Tests: (filled at land)
+Tests: tests/test_build_walk_graph.py, static/walk_route.test.mjs
 
 ## MEM-085 Auto-loci candidates and swap
 
