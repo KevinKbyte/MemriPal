@@ -143,7 +143,10 @@ function buildPrompt(doc) {
   form.id = "byok";
   form.hidden = true;
   form.setAttribute("novalidate", "");
-  Object.assign(form.style, { pointerEvents: "auto", flexBasis: "100%", display: "grid", gap: "0.5rem" });
+  // A readable measure on desktop; [hidden] in style.css still wins over this display.
+  Object.assign(form.style, {
+    pointerEvents: "auto", flexBasis: "100%", maxWidth: "34rem", display: "grid", gap: "0.5rem",
+  });
   const copy = el(doc, "p", BYOK_COPY.prompt);
   copy.style.margin = "0";
   const field = el(doc, "div");
@@ -191,9 +194,20 @@ function buildPrompt(doc) {
 }
 
 /**
+ * Asking for a key: the toast's own line hides and its Dismiss, under the form, reads "Not now".
+ * @param {any} parts
+ * @param {boolean} asking
+ */
+function setAsking(parts, asking) {
+  parts.text.hidden = asking;
+  parts.prompt.form.hidden = !asking;
+  parts.dismiss.textContent = asking ? "Not now" : "Dismiss";
+}
+
+/**
  * Shows (creating on first use) the spend cap toast; a dismissed toast stays hidden for the page session.
  * Built here rather than in index.html so the notice needs no markup change. For "capped" with no key held,
- * the toast becomes the key prompt (MEM-122); its Dismiss is the "not now".
+ * the toast becomes the key prompt (MEM-122); its Dismiss becomes "Not now".
  * @param {any} doc
  * @param {unknown} state
  */
@@ -203,8 +217,7 @@ export function showSpendCap(doc, state) {
   const parts = toastParts(doc);
   parts.text.textContent = message;
   const asking = state === "capped" && heldKey(doc) === null;
-  parts.text.hidden = asking;
-  parts.prompt.form.hidden = !asking;
+  setAsking(parts, asking);
   if (asking) parts.prompt.error.hidden = true;
   parts.toast.hidden = false;
 }
@@ -220,8 +233,7 @@ function showKeyPrompt(doc, error) {
   dismissed.delete(doc);
   const parts = toastParts(doc);
   parts.text.textContent = SPEND_CAP_MESSAGES.capped;
-  parts.text.hidden = true;
-  parts.prompt.form.hidden = false;
+  setAsking(parts, true);
   parts.prompt.error.textContent = error;
   parts.prompt.error.hidden = false;
   parts.toast.hidden = false;
@@ -248,9 +260,10 @@ function toastParts(doc) {
     toast.hidden = true;
   });
   const prompt = buildPrompt(doc);
-  toast.append(text, button, prompt.form);
+  // After the form, so while asking it sits under Continue; beside the text otherwise.
+  toast.append(text, prompt.form, button);
   doc.body.prepend(toast);
-  built = { toast, text, prompt };
+  built = { toast, text, prompt, dismiss: button };
   toasts.set(doc, built);
   return built;
 }
@@ -269,9 +282,10 @@ function showChip(doc, text, withForget) {
     root.classList.add("notice");
     root.setAttribute("role", "status");
     Object.assign(root.style, {
-      position: "fixed", right: "16px", bottom: "calc(16px + env(safe-area-inset-bottom, 0px) + 4rem)",
-      zIndex: "20", display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.375rem 0.5rem 0.375rem 0.875rem",
-      maxWidth: "calc(100vw - 32px)", pointerEvents: "none",
+      // Top, where the toast was: the bottom of the page holds the route's action buttons and the tab bar.
+      position: "fixed", top: "calc(8px + env(safe-area-inset-top, 0px))", right: "16px", zIndex: "20",
+      display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.25rem 0.375rem 0.25rem 0.75rem",
+      maxWidth: "calc(100vw - 32px)", pointerEvents: "none", fontSize: "0.875rem",
     });
     const label = el(doc, "span");
     const forget = el(doc, "button", BYOK_COPY.forget);

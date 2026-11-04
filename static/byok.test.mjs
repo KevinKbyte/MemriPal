@@ -266,13 +266,16 @@ describe("bring your own key", () => {
     assert.ok(!textOf(p.doc.body).includes("<img"));
   });
 
-  test("the prompt replaces the toast's own line, and its Dismiss is the not-now for the page session", () => {
+  test("the prompt replaces the toast's own line, and its Dismiss, as Not now, hides it for the page session", () => {
     const p = page();
     byok.showSpendCap(p.doc, "capped");
     const toast = p.doc.body.children[0];
     assert.equal(visibleText(toast).includes("live AI steps are paused"), false, "one message, not two");
     assert.match(visibleText(toast), /paste your own Meta API key/);
-    p.fire(button(toast, "Dismiss"), "click");
+    assert.equal(button(toast, "Dismiss"), null);
+    const notNow = button(toast, "Not now");
+    assert.ok(notNow, "the toast's Dismiss reads Not now while asking");
+    p.fire(notNow, "click");
     assert.equal(toast.hidden, true);
     byok.showSpendCap(p.doc, "capped");
     assert.equal(toast.hidden, true);
