@@ -419,11 +419,11 @@ export function createRouteStore(adapter, { now = Date.now, newId = () => crypto
 
     /**
      * Demo seed (MEM-077): writes a fixed route as saved, keeping each station's coords at 5 dp and its
-     * address (unlike a backup import, ADR 0033 / 0053). Demo stations have no photo: photo_ref is a fresh
-     * id with nothing stored under it. An id already stored wins: nothing is written, null returned, so
-     * repeat seeds keep one route.
-     * @param {{ id: string, name: string, kind: string,
-     *   stations: ReadonlyArray<{ id: string, n: number, name: string, coords?: unknown, address?: string }> }} input
+     * address (unlike a backup import, ADR 0033 / 0053) and emoji (ADR 0057). Demo stations have no photo:
+     * photo_ref is a fresh id with nothing stored under it. An id already stored wins: nothing is written,
+     * null returned, so repeat seeds keep one route.
+     * @param {{ id: string, name: string, kind: string, stations: ReadonlyArray<{ id: string, n: number,
+     *   name: string, coords?: unknown, address?: string, emoji?: string }> }} input
      * @returns {Promise<Route | null>}
      */
     seedRoute: ({ id, name, kind, stations }) => serial(async () => {
@@ -438,6 +438,7 @@ export function createRouteStore(adapter, { now = Date.now, newId = () => crypto
           const c = coordsOf(s.coords, 5);
           if (c) st.coords = c;
           if (s.address) st.address = s.address;
+          if (s.emoji) st.emoji = s.emoji;
           return st;
         }),
       };
