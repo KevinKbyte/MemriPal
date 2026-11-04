@@ -249,6 +249,7 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0089](0089-gcp-app-pause-resume.md) GCP app pause/resume: `scripts/gcp_app.sh` sets ingress internal and deletes
   only the forwarding rule, keeping IP, cert and the rest of the edge (over ingress-only, or deleting the whole edge)
   (MEM-147).
-- [0080](0080-spark-recall-grading-keyword-fallback.md) Spark grades spoken recall (strict json_schema, non-Meta
-  chat provider then fallback, 8 s timeout); got = union with the unchanged keyword matcher, which stays the whole
-  fallback (over keyword-only or Spark replacing the matcher).
+- [0080](0080-spark-recall-grading-keyword-fallback.md) Opt-in Spark grading of spoken recall (Settings toggle,
+  default off; BYOK Meta key first, then non-Meta chat providers, 8 s timeout); got = union with the unchanged keyword
+  matcher, which stays the whole fallback, with a downgrade notice on failure (over keyword-only or Spark replacing
+  the matcher).
