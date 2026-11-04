@@ -189,6 +189,51 @@ def s_delete(ctx, page):
     )
 
 
+# The route store is IndexedDB memripal-routes/routes (static/app.js), values { type: "route", route }.
+ROUTES_IDB_JS = """async () => {
+  const req = (r) => new Promise((ok, fail) => {
+    r.onsuccess = () => ok(r.result);
+    r.onerror = () => fail(r.error);
+  });
+  const db = await req(indexedDB.open("memripal-routes", 1));
+  try {
+    const all = await req(db.transaction("routes").objectStore("routes").getAll());
+    return all.filter((v) => v && v.type === "route").map((v) => v.route);
+  } finally {
+    db.close();
+  }
+}"""
+
+
+@step("12b Pal chat creates a walking route")
+def s_chat_route(ctx, page):
+    # MEM-132: "route from X to Y" typed in the Pal composer saves a planned route and lists its card.
+    open_drawer(page)
+    cards = page.locator("#routes-list li")
+    before_cards = cards.count()
+    before_ids = {r["id"] for r in page.evaluate(ROUTES_IDB_JS)}
+    page.click("[data-pal=bubble]")
+    composer = page.locator("[data-pal=composer-input]")
+    composer.fill("route from Kendall T to Meta office")
+    composer.press("Enter")
+    # Lazy import: this module must load where playwright is absent.
+    from playwright.sync_api import expect
+
+    expect(cards).to_have_count(before_cards + 1, timeout=30000)
+    show_tab(page, "routes")
+    ctx.shot(page, "15b_chat_route_card")
+    new = [r for r in page.evaluate(ROUTES_IDB_JS) if r["id"] not in before_ids]
+    if len(new) == 1:
+        (ctx.out / "chat_route.json").write_text(json.dumps(new[0], indent=2), encoding="utf-8")
+    ok = len(new) == 1 and len(new[0].get("stations") or []) >= 2
+    ctx.rec(
+        "12b Pal chat creates a walking route",
+        ok,
+        f"cards_before={before_cards} cards_after={cards.count()} new_routes={len(new)} "
+        f"stations={len(new[0].get('stations') or []) if len(new) == 1 else None}",
+    )
+
+
 @step("13 360px no horizontal scroll")
 def s_narrow(ctx, browser):
     bctx = browser.new_context(viewport={"width": 360, "height": 780})
@@ -272,6 +317,7 @@ def run_all(ctx, browser):
         s_empty(ctx, browser)
         s_reload(ctx, page, rows)
         s_delete(ctx, page)
+        s_chat_route(ctx, page)
     finally:
         bctx.close()
     s_narrow(ctx, browser)

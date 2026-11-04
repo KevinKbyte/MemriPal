@@ -29,7 +29,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 HOST = "127.0.0.1"
 # Step 14 needs a non-localhost Host the app still accepts; Chrome maps it to 127.0.0.1.
 PUBLIC_HOST = "memripal-e2e.test"
-EXPECTED_STEPS = 22
+EXPECTED_STEPS = 23
 READY_TIMEOUT_S = 30.0
 # Every e2e request shares loopback, so the app's default per-IP limit would 429 mid-run.
 E2E_RATE_PER_MIN = 100000
