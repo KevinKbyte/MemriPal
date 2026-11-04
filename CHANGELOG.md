@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.43] - 2026-11-03
+
+### Added
+
+- POST /station (station photo -> pixelated photo, name, profile, box) is now mounted on the app, behind the same passcode guard as /loci (MEM-083).
+
 ## [0.20.42] - 2026-11-03
 
 ### Added
