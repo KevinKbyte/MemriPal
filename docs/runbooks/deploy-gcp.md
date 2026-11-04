@@ -101,15 +101,40 @@ deploy; the script always passes the full list. SUPERSEDED: "going live = edit t
 
 ## 5. Edge: load balancer + Cloud Armor
 
-1. Create the edge (idempotent; safe to re-run). Same `GCP_PROJECT` / `REGION` / `SERVICE` env as step 4:
+1. Create the edge (idempotent: each resource is described first and created only if missing, so re-running is safe
+   and heals a half-finished run). It exits 1 if the Cloud Run service does not exist yet (step 4 first):
 
 ```bash
 sh scripts/deploy_edge_gcp.sh
 ```
 
    It reserves a global static IP, derives host `<ip-with-dashes>.sslip.io`, and creates the serverless NEG, backend
-   service with the Cloud Armor policy (rate-based IP ban, sqli + xss WAF at sensitivity 1, default allow), URL map,
-   Google-managed cert, HTTPS proxy and `:443` forwarding rule. It prints the host and the cert status command.
+   service with the Cloud Armor policy, URL map, Google-managed cert, HTTPS proxy and `:443` forwarding rule. It
+   prints the host and the cert status command. Env read (all optional):
+
+| Env var | Default | Meaning |
+|---|---|---|
+| `GCP_PROJECT` | gcloud config project | project to build in |
+| `REGION` | `us-central1` | region of the Cloud Run service and the serverless NEG |
+| `SERVICE` | `memripal` | Cloud Run service; also the prefix of every resource name (`<service>-edge-ip`, `-neg`, `-backend`, `-armor`, `-url-map`, `-cert`, `-https-proxy`, `-https-rule`) |
+| `RATE_LIMIT_COUNT` | `120` | requests per interval per client IP before the ban rule trips |
+| `RATE_LIMIT_INTERVAL_SEC` | `60` | the rate-limit window |
+| `BAN_DURATION_SEC` | `600` | how long a tripped IP is banned (429s) |
+
+   Cloud Armor policy `<service>-armor`: lower priority number is evaluated first, first match wins.
+
+| Priority | Rule | Action |
+|---|---|---|
+| 1000 | preconfigured WAF `sqli-v33-stable`, sensitivity 1 | deny-403 |
+| 1001 | preconfigured WAF `xss-v33-stable`, sensitivity 1 | deny-403 |
+| 2000 | all IPs, per-IP rate limit (`RATE_LIMIT_*`) | under limit allow; over limit rate-based-ban, deny-429 |
+| default | (implicit) | allow |
+
+   Order matters: the WAF denies sit ahead of rule 2000 because its conform action is `allow`, which would end
+   evaluation before any later rule ran. Sensitivity 1 keeps false positives on free-text notes low. The rate-limit env
+   is applied only when rule 2000 is first created; changing it later means deleting that rule, then re-running.
+   The managed cert is named `<service>-cert` (`memripal-cert` by default). Re-runs reuse it and never recreate it;
+   it takes time to become `ACTIVE` (step 3 below).
 2. Redeploy behind the edge (one deploy sets LB-only ingress, adds the host to the host guard, sets proxy hops 2):
 
 ```bash
@@ -150,7 +175,10 @@ curl -s https://<host>/
 curl -s https://<host>/healthz
 ```
 2. Wrong key at `/access` -> 401 and the form re-shown with an error; past `MEMRIPAL_ACCESS_MAX_FAILS` (default 20)
-   wrong keys from one IP -> 429 `too_many_attempts` for `MEMRIPAL_LOCKOUT_S`.
+   wrong keys from one IP -> 429 `too_many_attempts` for `MEMRIPAL_LOCKOUT_S`. The in-process passcode lockout
+   (`MEMRIPAL_PASSCODE_MAX_FAILS`) is not a control here: it runs only off Cloud Run (`K_SERVICE` unset, local live
+   runs) and the deploy no longer maps `MEMRIPAL_PASSCODE`. On Cloud Run the controls are the access gate (its own
+   per-IP `/access` lockout) and Cloud Armor.
 3. Right key -> redirected to the app; no passcode box; "Load demo" and a live model route work.
 4. The `run.app` URL is refused: expect HTTP 404 (Cloud Run ingress denial, not the app):
 
