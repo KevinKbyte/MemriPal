@@ -136,7 +136,35 @@ def _home_with(tmp_path: Path, keys: dict, trailing_blank_lines: int = 0) -> Pat
     return home
 
 
-def _push(home: Path, args: list, gcloud: FakeGcloud, via_env: bool = True) -> subprocess.CompletedProcess:
+class DpZeroGcloud(FakeGcloud):
+    """A gcloud.cmd that, like the real one (`%~dp0..\\lib\\gcloud.py`), finds its helper and
+    state via %~dp0, so it records calls only when %~dp0 is its own install dir."""
+
+    def __init__(self, root: Path, key: str, describe_exit: int = 0):
+        self.bin_dir = root / "gcloud-bin"
+        self.bin_dir.mkdir(parents=True)
+        self.state = self.bin_dir
+        (self.bin_dir / "recorder.py").write_text(RECORDER, encoding="utf-8")
+        (self.bin_dir / "expect_key.txt").write_text(key, encoding="utf-8")
+        (self.bin_dir / "exits.json").write_text(
+            json.dumps({"describe": describe_exit, "versions": 0, "create": 0}), encoding="utf-8"
+        )
+        self.shim = self.bin_dir / "gcloud.cmd"
+        # "%~dp0." not "%~dp0": a trailing backslash before the closing quote escapes it.
+        self.shim.write_text(
+            f'@echo off\r\n"{sys.executable}" "%~dp0recorder.py" "%~dp0." %*\r\nexit /b %ERRORLEVEL%\r\n',
+            encoding="ascii",
+        )
+
+
+def _push(
+    home: Path,
+    args: list,
+    gcloud: FakeGcloud,
+    via_env: bool = True,
+    cwd: Path = None,
+    gcloud_env: str = None,
+) -> subprocess.CompletedProcess:
     env = _ps_env()
     env["USERPROFILE"] = str(home)
     env["HOME"] = str(home)
@@ -144,6 +172,8 @@ def _push(home: Path, args: list, gcloud: FakeGcloud, via_env: bool = True) -> s
         env["MEMRIPAL_GCLOUD"] = str(gcloud.shim)
     else:
         env["PATH"] = str(gcloud.bin_dir) + os.pathsep + env.get("PATH", "")
+        if gcloud_env is not None:
+            env["MEMRIPAL_GCLOUD"] = gcloud_env
     return subprocess.run(
         [
             POWERSHELL,
@@ -156,6 +186,7 @@ def _push(home: Path, args: list, gcloud: FakeGcloud, via_env: bool = True) -> s
             *args,
         ],
         env=env,
+        cwd=str(cwd) if cwd is not None else None,
         stdin=subprocess.DEVNULL,
         capture_output=True,
         timeout=120,
@@ -232,6 +263,34 @@ class TestPushSecretGcpRouting:
             ["secrets", "describe", name],
             ["secrets", "versions", "add"],
         ]
+        _assert_no_leak(proc, gcloud, key)
+
+
+class TestPushSecretGcpBareGcloudOnPath:
+    # Covers: MEM-111
+    # Requirement: with $env:MEMRIPAL_GCLOUD unset or a bare name (gcloud.cmd), the push still
+    # works from any working directory: the real gcloud.cmd locates its Python entry point via
+    # %~dp0, so it must be launched by its resolved full path on PATH, never by bare name
+    # (which makes %~dp0 the caller's cwd: "can't open file ...\lib\gcloud.py", exit 2).
+
+    @pytest.mark.parametrize("gcloud_env", [None, "gcloud.cmd"], ids=["unset", "bare-name"])
+    def test_bare_gcloud_cmd_runs_from_its_own_dir_not_cwd(self, tmp_path, gcloud_env):
+        name = "meta-api-key"
+        key = KEYS[name]
+        home = _home_with(tmp_path, {name: key})
+        gcloud = DpZeroGcloud(tmp_path, key, describe_exit=0)
+        elsewhere = tmp_path / "elsewhere-cwd"
+        elsewhere.mkdir()
+
+        proc = _push(home, [name], gcloud, via_env=False, cwd=elsewhere, gcloud_env=gcloud_env)
+
+        assert proc.returncode == 0, _out(proc)
+        assert [c["argv"] for c in gcloud.calls()] == [
+            _describe_argv(name),
+            ["secrets", "versions", "add", name, "--data-file=-"],
+        ]
+        assert gcloud.stdin_of(1) == key.encode("utf-8")
+        assert f"pushed {name}" in _out(proc)
         _assert_no_leak(proc, gcloud, key)
 
 
