@@ -42,6 +42,7 @@ LINKS = [
     {"rel": "manifest", "href": "/static/manifest.webmanifest"},
     {"rel": "icon", "href": "/static/icon.svg", "type": "image/svg+xml"},
     {"rel": "stylesheet", "href": "/static/tour.css"},
+    {"rel": "stylesheet", "href": "/static/landmark_gallery.css"},
     {"rel": "stylesheet", "href": THEME_SRC},
 ]
 
@@ -200,9 +201,9 @@ def test_empty_state_then_slogan_then_scene_wrap():
     assert slogan and slogan.group(1).strip(), "#empty-slogan has no text"
 
 
-# Covers: MEM-040, MEM-044
-# Requirement: index.html's <link> tags are the 3 MEM-040 links then the MEM-044 P1 painterly theme,
-# which is the last rel=stylesheet link.
+# Covers: MEM-040, MEM-044, MEM-127
+# Requirement: index.html's <link> tags are the 3 MEM-040 links, the tour and MEM-127 landmark gallery
+# stylesheets, then the MEM-044 P1 painterly theme, which is the last rel=stylesheet link.
 def test_index_links_end_with_painterly_theme():
     links = [a for kind, tag, a in _events() if kind == "start" and tag == "link"]
     assert links == LINKS
