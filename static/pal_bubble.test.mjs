@@ -337,3 +337,21 @@ describe("MEM-099 Pal bubble stylesheet", () => {
     assert.match(css, /touch-action\s*:\s*none/);
   });
 });
+
+// Covers: MEM-099
+// Requirement: the bubble opens the database through the page-wide shared open (static/db/client.js
+// sharedOpenDb), so other modules on the page (MEM-088) reuse its lock and worker instead of opening again.
+describe("pal_bubble self-mount uses the shared database open", () => {
+  const src = readFileSync(new URL("./pal_bubble.js", import.meta.url), "utf8");
+  const selfMount = src.slice(src.indexOf("async function selfMount"));
+
+  test("selfMount calls sharedOpenDb from ./db/client.js", () => {
+    assert.ok(src.includes("async function selfMount"), "pal_bubble.js must define selfMount");
+    assert.match(selfMount, /\{\s*sharedOpenDb\s*\}\s*=\s*await import\("\.\/db\/client\.js"\)/);
+    assert.match(selfMount, /sharedOpenDb\(\{/);
+  });
+
+  test("selfMount does not call openDb directly", () => {
+    assert.doesNotMatch(selfMount, /(^|[^A-Za-z])openDb\(/);
+  });
+});
