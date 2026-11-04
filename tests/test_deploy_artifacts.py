@@ -116,7 +116,7 @@ def _env_values(args: str) -> dict[str, str]:
 
 
 # Requirement: the non-root runtime user has no home dir, so the image pins the Meta spend-guard
-# state dir (MEMRIPAL_META_SPEND_DIR) to a writable absolute path under /tmp/ (ADR 0068).
+# state dir (MEMRIPAL_META_SPEND_DIR) to a writable absolute path under /tmp/ (ADR 0069).
 def test_dockerfile_sets_writable_meta_spend_dir():
     values = [
         v
