@@ -263,7 +263,7 @@ Actors: the user; `static/sticker_drag.js` (new, shared drag + snap); `static/to
 (`#tour-roll`, `#tour-roll-undo`); `static/sticker_board.js` photo board.
 NFR: pointer events only (touch, mouse, pen), never `click`; keyboard parity; every change undoable; textContent only,
 no innerHTML; ASCII only.
-Decided-by: ADR-0077
+Decided-by: ADR-0078
 - `sticker_drag.js`: `DRAG_SLOP_PX = 6`; `boxDistance(point, box)` -> 0 inside, else distance to the nearest edge;
   `nearestBox(point, boxes)` -> index of the smallest box containing the point, else the nearest edge; ties go to the
   lower index; malformed boxes skipped; no usable box -> -1.

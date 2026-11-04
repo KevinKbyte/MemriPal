@@ -218,5 +218,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
   reasoning effort).
 - [0074](0074-sticker-drag-snap-explicit-regen.md) Tap selects a sticker, drag moves it and snaps to the nearest
 - [0077](0077-sticker-drag-snap-explicit-regen.md) Tap selects a sticker, drag moves it and snaps to the nearest
+- [0078](0078-sticker-drag-snap-explicit-regen.md) Tap selects a sticker, drag moves it and snaps to the nearest
   segmented locus box, an explicit New sticker button regenerates, every change undoable (over tap-regen plus
   long-press drag, or a drag handle per sticker).

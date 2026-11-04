@@ -1,5 +1,5 @@
 // @ts-check
-// Step 3 of Pal's tour: the dog-house figure (MEM-109) and its emoji stickers (MEM-117). Since MEM-131 (ADR 0077)
+// Step 3 of Pal's tour: the dog-house figure (MEM-109) and its emoji stickers (MEM-117). Since MEM-131 (ADR 0078)
 // a tap, Enter or Space only selects a sticker; a drag or an arrow key swaps it with another spot, "New sticker"
 // (#tour-roll) re-rolls the selection (all when none) and "Undo" (#tour-roll-undo) reverts the latest change.
 import { rollAll, rollOne } from "./stickers.js";

@@ -1,4 +1,4 @@
-# 0077: Stickers drag and snap; regeneration is an explicit button
+# 0078: Stickers drag and snap; regeneration is an explicit button
 
 Status: Accepted
 Date: 2026-11-04
