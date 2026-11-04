@@ -1,7 +1,8 @@
 // @ts-check
 // Route + station store (MEM-048, plan B3): a walked route and its 0-8 stations persist on the phone
 // through the injected KV adapter (idb_adapter.js shape). Stations keep capture order; Finish walk's
-// Save enforces 3-8 named stations. Coordinates are rounded to 4 dp (about 11 m) at write.
+// Save enforces 3-8 named stations. Coordinates are rounded at write: the user's own GPS to 4 dp (about
+// 11 m), public places (seeded stations, map candidates) to 5 dp (about 1 m, ADR 0053).
 
 export { createCaptureSession } from "./route_capture.js";
 
@@ -17,7 +18,10 @@ export { createCaptureSession } from "./route_capture.js";
  * @typedef {{
  *   id: string, n: number, name: string, photo_ref: string, status: "pending" | "named" | "error",
  *   box?: Box, profile?: Record<string, string>, taps?: Record<string, string>, coords?: Coords,
+ *   address?: string, osm_id?: string,
  * }} Station
+ * @typedef {{ key: string, osm_id?: string, name?: string, lat?: number, lng?: number,
+ *   address?: string | null }} Candidate auto_loci.js candidates() entry, or a bare { key } of a stored one
  * @typedef {{ id: string, name: string, status: "active" | "retired" }} RouteList
  * @typedef {{
  *   id: string, name: string, kind: "daily" | "occasional", status: "draft" | "saved", created_at: string,
@@ -50,14 +54,30 @@ function kindOf(kind) {
   return /** @type {"daily" | "occasional"} */ (kind);
 }
 
-const round4 = (/** @type {number} */ v) => Math.round(v * 1e4) / 1e4;
+const round4 = (/** @type {number} */ v, dp = 4) => Math.round(v * 10 ** dp) / 10 ** dp;
 
-/** @param {any} c @returns {Coords | null} null for anything that is not a finite lat/lon pair */
-function coordsOf(c) {
+/**
+ * @param {any} c @param {number} [dp] 4 for the user's own GPS, 5 for public places (ADR 0053)
+ * @returns {Coords | null} null for anything that is not a finite lat/lon pair
+ */
+function coordsOf(c, dp = 4) {
   const lat = c?.lat, lon = c?.lon;
   const ok = Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
-  return ok ? { lat: round4(lat), lon: round4(lon) } : null;
+  return ok ? { lat: round4(lat, dp), lon: round4(lon, dp) } : null;
 }
+
+const CANDIDATE_OSM = "candidate:osm:";
+const CANDIDATE_ST = "candidate:st:";
+
+/** @param {unknown} key */
+function candidateKeyOf(key) {
+  const ok = typeof key === "string" && (key.startsWith(CANDIDATE_OSM) || key.startsWith(CANDIDATE_ST));
+  if (!ok) throw new TypeError(`not a candidate key: ${key}`);
+  return key;
+}
+
+/** Where a station waits once swapped out (ADR 0047): its OSM id if map-derived, else its own id. */
+const outgoingKey = (/** @type {Station} */ s) => (s.osm_id ? `${CANDIDATE_OSM}${s.osm_id}` : `${CANDIDATE_ST}${s.id}`);
 
 /**
  * Finish walk's Save rule.
@@ -86,6 +106,9 @@ export function createRouteStore(adapter, { now = Date.now, newId = () => crypto
   let lastDeleted = null;
   /** @type {Map<string, { station: Station, index: number, photo: any }>} */
   const lastDrop = new Map();
+  /** Per route, the last swap: the incoming station's id, the outgoing station, candidate KV entries before it. */
+  /** @type {Map<string, { inId: string, out: Station, prior: Map<string, any> }>} */
+  const lastSwap = new Map();
   /** @type {Promise<void>} */
   let tail = Promise.resolve();
 
@@ -142,6 +165,20 @@ export function createRouteStore(adapter, { now = Date.now, newId = () => crypto
   };
 
   const clone = /** @type {<T>(v: T) => T} */ ((v) => structuredClone(v));
+
+  const nextN = (/** @type {Route} */ r) => r.stations.reduce((max, s) => Math.max(max, s.n), 0) + 1;
+
+  /** A fresh named station from a map candidate; it has no photo yet (photo_ref names nothing stored). */
+  const fromCandidate = (/** @type {Candidate} */ c, /** @type {number} */ n) => {
+    const coords = coordsOf({ lat: c.lat, lon: c.lng }, 5);
+    if (typeof c.name !== "string" || !c.name.trim() || !coords) throw new TypeError(`${c.key}: no candidate stored or given`);
+    /** @type {Station} */
+    const st = { id: newId(), n, name: c.name.trim(), photo_ref: newId(), status: "named", coords };
+    // The address is the POI's own; a "near <street>" label is never stored as one (ADR 0053).
+    if (c.address) st.address = c.address;
+    if (c.osm_id) st.osm_id = c.osm_id;
+    return st;
+  };
 
   /** @param {string} ref */
   const getPhoto = async (ref) => {
@@ -213,9 +250,8 @@ export function createRouteStore(adapter, { now = Date.now, newId = () => crypto
     addStation: (routeId, { photo, coords }) => serial(async () => {
       const r = await mustGet(routeId);
       if (r.stations.length >= MAX_STATIONS) throw new RangeError(`a route holds at most ${MAX_STATIONS} stations`);
-      const n = r.stations.reduce((max, s) => Math.max(max, s.n), 0) + 1;
       /** @type {Station} */
-      const st = { id: newId(), n, name: "", photo_ref: newId(), status: "pending" };
+      const st = { id: newId(), n: nextN(r), name: "", photo_ref: newId(), status: "pending" };
       const c = coordsOf(coords);
       if (c) st.coords = c;
       r.stations.push(st);
@@ -299,6 +335,59 @@ export function createRouteStore(adapter, { now = Date.now, newId = () => crypto
       }),
 
     /**
+     * Swap (ADR 0047): the candidate takes the station's slot and n in one putRoute; the outgoing station
+     * is moved, never dropped, to KV under its candidate key (photo_ref included, photo kept). A stored
+     * entry under candidate.key wins over the candidate's fields and leaves the pool as it comes in.
+     * @param {string} routeId @param {string} stationId @param {Candidate} candidate
+     * @returns {Promise<{ station: Station, outgoing: { key: string, station: Station } }>}
+     */
+    swapStation: (routeId, stationId, candidate) => serial(async () => {
+      const key = candidateKeyOf(candidate?.key);
+      const r = await mustGet(routeId);
+      const i = indexOf(r, stationId);
+      const out = r.stations[i];
+      const outKey = outgoingKey(out);
+      const stored = await adapter.get(key);
+      const incoming = stored ? { ...stored, n: out.n } : fromCandidate(candidate, out.n);
+      const prior = new Map([[key, stored], [outKey, outKey === key ? stored : await adapter.get(outKey)]]);
+      lastSwap.set(routeId, { inId: incoming.id, out, prior });
+      r.stations[i] = incoming;
+      const writes = stored ? [() => adapter.delete(key)] : [];
+      writes.push(() => adapter.put(outKey, out), putRoute(r));
+      return persist({ station: clone(incoming), outgoing: { key: outKey, station: clone(out) } }, writes);
+    }),
+
+    /**
+     * Undoes the last swap on the route (single level, like undoDrop): the outgoing station back in its
+     * slot and the candidate entries as they were. null when there is nothing to undo.
+     * @param {string} routeId @returns {Promise<Route | null>}
+     */
+    undoSwap: (routeId) => serial(async () => {
+      const held = lastSwap.get(routeId);
+      if (!held) return null;
+      lastSwap.delete(routeId);
+      const r = await mustGet(routeId);
+      const i = r.stations.findIndex((s) => s.id === held.inId);
+      // The incoming station was dropped since: nothing left to swap back.
+      if (i < 0) return null;
+      r.stations[i] = held.out;
+      const writes = [...held.prior].map(([k, v]) => () => (v == null ? adapter.delete(k) : adapter.put(k, v)));
+      return persist(clone(r), [...writes, putRoute(r)]);
+    }),
+
+    /**
+     * Appends a map candidate as a named station; the 9th station is refused.
+     * @param {string} routeId @param {Candidate} candidate @returns {Promise<Station>}
+     */
+    addCandidate: (routeId, candidate) => serial(async () => {
+      const r = await mustGet(routeId);
+      if (r.stations.length >= MAX_STATIONS) throw new RangeError(`a route holds at most ${MAX_STATIONS} stations`);
+      const st = fromCandidate(candidate, nextN(r));
+      r.stations.push(st);
+      return persist(clone(st), [putRoute(r)]);
+    }),
+
+    /**
      * Backup v2 import (MEM-054): writes an already-validated route as saved, each station's photo
      * under a fresh photo_ref. An id already stored wins (D11): nothing is written, null returned.
      * @param {{ id: string, name: string, kind: string, created_at: string, lists: RouteList[],
@@ -329,11 +418,12 @@ export function createRouteStore(adapter, { now = Date.now, newId = () => crypto
     }),
 
     /**
-     * Demo seed (MEM-077): writes a fixed route as saved, keeping each station's coords (unlike a backup
-     * import, ADR 0033). Demo stations have no photo: photo_ref is a fresh id with nothing stored under it.
-     * An id already stored wins: nothing is written, null returned, so repeat seeds keep one route.
+     * Demo seed (MEM-077): writes a fixed route as saved, keeping each station's coords at 5 dp and its
+     * address (unlike a backup import, ADR 0033 / 0053). Demo stations have no photo: photo_ref is a fresh
+     * id with nothing stored under it. An id already stored wins: nothing is written, null returned, so
+     * repeat seeds keep one route.
      * @param {{ id: string, name: string, kind: string,
-     *   stations: ReadonlyArray<{ id: string, n: number, name: string, coords?: unknown }> }} input
+     *   stations: ReadonlyArray<{ id: string, n: number, name: string, coords?: unknown, address?: string }> }} input
      * @returns {Promise<Route | null>}
      */
     seedRoute: ({ id, name, kind, stations }) => serial(async () => {
@@ -345,8 +435,9 @@ export function createRouteStore(adapter, { now = Date.now, newId = () => crypto
         stations: stations.map((s) => {
           /** @type {Station} */
           const st = { id: s.id, n: s.n, name: s.name, photo_ref: newId(), status: "named" };
-          const c = coordsOf(s.coords);
+          const c = coordsOf(s.coords, 5);
           if (c) st.coords = c;
+          if (s.address) st.address = s.address;
           return st;
         }),
       };
