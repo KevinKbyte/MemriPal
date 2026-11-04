@@ -188,3 +188,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
   into CC BY-SA 4.0 memory scenes with per-scene credit; C-style pure modules (tool policy, undo stack, `/baseline`),
   Messenger-style Pal chat bubble with on-device chats, fixture-mode demo; amends map-to-palace D1 (over a
   display-only copilot or S11 add-ons only).
+- [0065](0065-emoji-composite-stickers.md) Merged tour stickers are layered emoji glyphs composed client-side in inline
+  SVG, a sticker layer on MEM-095's house figure (offline, deterministic) over canvas raster, image generation, or
+  canned art.

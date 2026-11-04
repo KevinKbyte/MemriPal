@@ -316,3 +316,52 @@ Source: Kev 2026-11-04, "why do we have to promptt o type the key when we alread
   script stdout, and any written file; script exit equals the child's; stdout carries `pushed <name>`.
 
 Tests: tests/test_push_secret_gcp.py
+## MEM-117 Pal's dog-house sticker step (emoji-composite stickers)
+
+Amends MEM-095. Kev ask 2026-11-04: users stick a picture on each locus of the step-3 dog house; emoji are base
+stickers, merged into one memorable image; roll all or one; the tour shows the keyword breakdown.
+Root problem: step 3's house figure shows where each item goes but not the method's memorable image per locus; the
+visitor needs to see and re-roll it.
+Actors: `static/stickers.js` (new, pure, no DOM), `static/tour.js` (`houseFig` gains a sticker layer; roll wiring),
+`static/tour.css`, `static/index.html` (`#tour-roll`).
+NFR: no new dependency; no innerHTML; ASCII-only source (glyphs via `\u`/`String.fromCodePoint`); no network, no
+server storage; `stickers.js` pure and deterministic for a given `rng`.
+Decided-by: ADR-0065
+- `BASE_STICKERS`: frozen, >= 30 `{ emoji, name, words }`; emoji unique; `name` non-empty `[a-z ]`; `words` lower-case
+  `[a-z ]` (may be empty); matches every tour keyword (sizzling, bacon, squeaking, tennis, ball, dripping, peanut,
+  butter, belly, voucher, paper, crown). `FALLBACK_EMOJI` = U+2728 (sparkles), written as a unicode escape in source.
+- `keywords(text)`: lower-case, split on non-letters, drop words < 3 chars and a small explicit STOP set (at least
+  the, and, for, with, in, of, or), dedupe keeping first, max 3. `"sizzling bacon"` -> `["sizzling","bacon"]`;
+  `""` -> `[]`.
+- `search(query, pool = BASE_STICKERS)`: whole-word match of any keyword against name words or `words`, plural "s"
+  tolerated; ranked by hit count desc then pool order; no keyword -> `[]`.
+- `compose(text, rng = Math.random, pool)` -> `{ text, keywords, parts, desc }`: per keyword pick
+  `matches[floor(rng()*len)].emoji` unless already in `parts`; 1..3 parts; none matched -> `[FALLBACK_EMOJI]`;
+  `desc` = keywords joined by space, or `text` when none.
+- `rollAll(items, rng, pool)` -> compose per string. `rollOne(stickers, i, rng, pool)` -> NEW array, index `i`
+  recomposed from `stickers[i].text`, others same object reference; out-of-range `i` -> unchanged copy.
+- House geometry, labels, pins and route stay MEM-095's (`house` boxes, `.o-label`, `.pin`, `.route-line`). Sticker
+  items come from `STEPS[2].fig[i].item`.
+- Render: `houseFig` appends 5 `g.tour-sticker` after the pins, one per box, anchored at the box's top-right corner
+  clamped inside the 320x200 viewBox; role=button, tabindex 0, aria-label "Re-roll <spot>"; `text` children are the
+  composite parts (first larger, rest smaller and offset to overlap).
+- Step-3 fig rows: the icon shows the row's composite parts; a `.tour-kw` caption = keywords joined by " + " (row 1
+  "sizzling + bacon").
+- `#tour-roll` ("Roll all"), hidden by default, visible only on a house step; click re-rolls every locus. Click or
+  Enter/Space on a `g.tour-sticker` re-rolls that locus only. Rolls held in memory while the tour is open. CSS
+  `is-rolling` for 300 ms, off under prefers-reduced-motion.
+- Breakdown (R14): `after` = "I break each item into keywords and mash their emoji into one sticker. Tap a sticker
+  to re-roll it."
+- Step count stays 10; Skip/Escape/Back/Next and the focus trap unchanged, `#tour-roll` joins the trapped buttons.
+  New colours use existing tokens (--lamp, --lamp-soft, --line, --surface, --ink); `static/theme_painterly.test.mjs`
+  and `static/index_markup.test.mjs` orphan-class tests pass; the MEM-095 id allowlist and may-start-hidden list gain
+  `#tour-roll`.
+- Accept: `BASE_STICKERS` >= 30 with unique emoji and every tour keyword matched; `keywords` examples above;
+  `compose` with a fixed rng is repeatable and yields 1..3 parts; `rollOne` keeps other entries' references; step 3
+  renders 5 `.pin` and 5 `g.tour-sticker` inside the viewBox; fig row 1 caption "sizzling + bacon"; Roll all
+  changes every sticker for a varied rng, a sticker click changes only that one; no innerHTML.
+- Out of scope: image generation, upload, sticker pool persistence and search UI (R1, R2), app-wide placement on
+  landmark photos (R3), manual numbering override (R6), source choice and Advanced options (R9, R12), editable
+  breakdown prompt (R13 full), Learn nav (item 7), app-wide `route_order` non-crossing guarantee.
+
+Tests: static/stickers.test.mjs, static/tour.test.mjs
