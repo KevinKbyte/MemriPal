@@ -235,9 +235,10 @@ async function selfMount() {
   /** @type {any} */
   let chats = null;
   try {
-    const { openDb } = await import("./db/client.js");
+    // The page-wide shared open: other modules on the page reuse this lock and worker.
+    const { sharedOpenDb } = await import("./db/client.js");
     const { createChatStore } = await import("./chat_store.js");
-    const opened = await openDb({
+    const opened = await sharedOpenDb({
       locks: navigator.locks,
       createWorker: () => new Worker(new URL("./db/worker.js", import.meta.url), { type: "module" }),
     });

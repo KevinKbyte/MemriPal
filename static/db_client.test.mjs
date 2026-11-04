@@ -352,3 +352,98 @@ describe("openDb: worker messageerror", () => {
     assert.deepEqual(await within(after), { resolved: [{ n: 4 }] });
   });
 });
+
+// Covers: MEM-099
+// Requirement: every MemriPal module on a page (the Pal bubble now, MEM-088 later) shares one database
+// open, so a page never asks for the "memripal-db" lock or starts a worker twice. A failed open is not
+// remembered, so a later caller retries.
+// Contract (RED; GREEN implements in static/db/client.js):
+//   createSharedOpen(open) -> sharedOpen(deps); open has openDb's shape and is injected so calls can be counted.
+//     The first call runs open(deps) and returns its promise; later calls return that same promise and do not
+//     call open again (their deps are ignored), including calls made while the first is still pending.
+//     A rejected open is dropped: the next call runs open(deps) again.
+//     A resolved non-"ready" status ("locked": another tab owns the db) is also dropped once it settles, so a
+//     later caller retries (the other tab may have closed); a "ready" result stays cached for the page lifetime.
+//   sharedOpenDb = createSharedOpen(openDb): the page-wide instance.
+function createSharedOpen() {
+  assert.equal(typeof mod.createSharedOpen, "function", `static/db/client.js must export createSharedOpen (${mod.__missing ?? "not exported"})`);
+  return mod.createSharedOpen;
+}
+
+function countingOpen(results) {
+  const calls = [];
+  const open = (deps) => {
+    calls.push(deps);
+    const next = results[Math.min(calls.length - 1, results.length - 1)];
+    return typeof next === "function" ? next() : next;
+  };
+  return { calls, open };
+}
+
+describe("createSharedOpen: one open per page", () => {
+  test("two calls return the same promise and invoke open once", async () => {
+    const { calls, open } = countingOpen([Promise.resolve({ status: "ready", db: {} })]);
+    const shared = createSharedOpen()(open);
+    const a = shared({ locks: "L1" });
+    const b = shared({ locks: "L2" });
+    assert.equal(a, b);
+    assert.equal(calls.length, 1);
+    assert.deepEqual(calls[0], { locks: "L1" });
+    assert.equal((await a).status, "ready");
+  });
+
+  test("a ready result stays cached after it settles", async () => {
+    const { calls, open } = countingOpen([Promise.resolve({ status: "ready", db: {} })]);
+    const shared = createSharedOpen()(open);
+    const a = shared({});
+    await a;
+    await settle();
+    assert.equal(shared({}), a);
+    assert.equal(calls.length, 1);
+  });
+
+  test("calls made while the open is pending share it", async () => {
+    const gate = deferred();
+    const { calls, open } = countingOpen([gate.promise]);
+    const shared = createSharedOpen()(open);
+    const a = shared({});
+    const b = shared({});
+    gate.resolve({ status: "ready", db: {} });
+    assert.equal(a, b);
+    assert.equal(calls.length, 1);
+    await a;
+  });
+
+  test("a rejected open is not cached: the next call retries", async () => {
+    const { calls, open } = countingOpen([() => Promise.reject(new Error("no OPFS")), () => Promise.resolve({ status: "ready", db: {} })]);
+    const shared = createSharedOpen()(open);
+    const first = shared({});
+    await assert.rejects(first, /no OPFS/);
+    await settle();
+    const second = shared({});
+    assert.notEqual(second, first);
+    assert.equal(calls.length, 2);
+    assert.equal((await second).status, "ready");
+  });
+
+  test("a locked result is not cached: the next call retries", async () => {
+    const { calls, open } = countingOpen([() => Promise.resolve({ status: "locked" }), () => Promise.resolve({ status: "ready", db: {} })]);
+    const shared = createSharedOpen()(open);
+    assert.equal((await shared({})).status, "locked");
+    await settle();
+    assert.equal((await shared({})).status, "ready");
+    assert.equal(calls.length, 2);
+  });
+
+  test("sharedOpenDb wraps openDb: two calls take the lock and start the worker once", async () => {
+    assert.equal(typeof mod.sharedOpenDb, "function", "static/db/client.js must export sharedOpenDb");
+    const locks = fakeLocks(true);
+    const { created, createWorker } = workerFactory();
+    const a = mod.sharedOpenDb({ locks, createWorker });
+    const b = mod.sharedOpenDb({ locks, createWorker });
+    assert.equal(a, b);
+    assert.equal((await a).status, "ready");
+    assert.equal(locks.requests.length, 1);
+    assert.equal(created.length, 1);
+  });
+});
