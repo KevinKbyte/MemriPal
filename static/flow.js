@@ -345,7 +345,7 @@ export function wireApp(deps) {
     setRunOpen(false);
     // MEM-077: also seed the Kendall demo route (local only, idempotent); a failed write never blocks the room demo.
     // MEM-072: then open it on the Routes tab map (openRoute shows the tab, chip and landmarks).
-    // MEM-133: plus the curated planner-made routes; a fetch failure seeds DEMO_ROUTE alone.
+    // MEM-133: plus the six-principles route and the curated planner-made routes (seedDemoRoutes).
     const routes = deps.routes;
     routes?.seedRoute(DEMO_ROUTE).then(() => seedDemoRoutes(deps.fetch, routes)).then(() => routeView?.renderHome()).then(() => routeView?.openRoute(DEMO_ROUTE.id)).catch(() => {});
     lookupDemoPlace({ doc, fetch: fetchFn, place: deps.place });

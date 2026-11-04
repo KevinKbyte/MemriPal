@@ -111,3 +111,31 @@ export const DEMO_ROUTE = Object.freeze({
     },
   ],
 });
+
+/**
+ * @param {number} n
+ * @param {string} name
+ * @param {number} lat
+ * @param {number} lon
+ * @param {string} conceptual
+ */
+const principleStation = (n, name, lat, lon, conceptual) => ({
+  id: `demo-route-principles-s${n}`, n, name, coords: { lat, lon }, profile: { conceptual },
+});
+
+// MEM-133: the default route a new user starts from; each station's learning point (profile.conceptual) teaches
+// one of the six principles of engaging speaking, in walking order. Code, not demo_routes.json, so a failed
+// fetch still seeds it. It walks DEMO_ROUTE's Kendall/MIT -> Binney St streets.
+export const PRINCIPLES_ROUTE = Object.freeze({
+  id: "demo-route-principles",
+  name: "Six principles of engaging speaking",
+  kind: /** @type {const} */ ("daily"),
+  stations: [
+    principleStation(1, "Kendall/MIT station exit on Main St", 42.36238, -71.0856, "Relevance: tie every point to what the audience cares about."),
+    principleStation(2, "One Broadway tower", 42.36265, -71.08441, "Curiosity: open a question before you answer it."),
+    principleStation(3, "Third St at Kendall St", 42.36385, -71.08347, "Clarity: one idea per sentence, plain words."),
+    principleStation(4, "Third St at Munroe St", 42.36509, -71.08277, "Concreteness: show a specific example, story, or number."),
+    principleStation(5, "Third St at Binney St", 42.36573, -71.08237, "Progression: each point builds on the last toward a destination."),
+    principleStation(6, "100 Binney St", 42.36554, -71.0809, "Payoff: land the takeaway the audience can act on."),
+  ],
+});
