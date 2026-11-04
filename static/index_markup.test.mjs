@@ -185,6 +185,8 @@ const MEM108_MAY_START_HIDDEN = ["chat-fallback"];
 // MEM-110: the station card's read-only tap summary (one li per tap group with a value; hidden when none).
 const MEM110_IDS = ["station-tap-summary"];
 const MEM110_MAY_START_HIDDEN = ["station-tap-summary"];
+// MEM-125: the Recall flashcards panel inside #tab-recall.
+const MEM125_IDS = ["flashcards", "flashcards-title", "flashcards-status", "flashcards-card"];
 
 // Covers: MEM-044, MEM-095, MEM-112, MEM-045
 // Requirement: MEM-044 A2 v6 shell + control markup in static/index.html (see the file header).
@@ -194,18 +196,19 @@ describe("MEM-044 A2 v6 shell + control markup (static/index.html, F13)", () => 
   // allowlist by its 15 S3 station-card ids; MEM-051 (plan B6) adds its S5/S8 ids; MEM-072 (map-first shell)
   // adds its tab panel, map chip, drawer and landmarks-list ids (older ids only move); MEM-081 its 4 route review ids;
   // MEM-088 its 12 route builder / map empty-state ids; MEM-108 its 3 chat-fallback toast ids (#chat-fallback starts hidden);
-  // MEM-110 its station tap summary id; MEM-095 its Pal tour ids; MEM-045 its sticker panel ids.
-  test("every 748a5e1 id kept exactly once; the only ids added are MEM-048's, MEM-050's, MEM-051's, MEM-072's, MEM-081's, MEM-088's, MEM-108's, MEM-110's, MEM-095's and MEM-045's", () => {
+  // MEM-110 its station tap summary id; MEM-095 its Pal tour ids; MEM-045 its sticker panel ids; MEM-125 its
+  // flashcards panel ids.
+  test("every 748a5e1 id kept exactly once; the only ids added are MEM-048's, MEM-050's, MEM-051's, MEM-072's, MEM-081's, MEM-088's, MEM-108's, MEM-110's, MEM-095's, MEM-045's and MEM-125's", () => {
     const ids = ELS.map((e) => e.attrs.id).filter((id) => id !== undefined);
     const count = (id) => ids.filter((x) => x === id).length;
     const lost = BASE_IDS.filter((id) => count(id) !== 1);
     assert.deepEqual(lost, [], `748a5e1 ids missing or duplicated: ${lost.join(" ")}`);
     const allowed = new Set([...BASE_IDS, ...MEM048_IDS, ...MEM050_IDS, ...MEM051_IDS, ...MEM072_IDS, ...MEM081_IDS,
       ...MEM088_IDS, ...MEM108_IDS, ...MEM110_IDS,
-      ...MEM095_IDS, ...MEM045_IDS]);
+      ...MEM095_IDS, ...MEM045_IDS, ...MEM125_IDS]);
     const unexpected = ids.filter((id) => !allowed.has(id));
     assert.deepEqual(unexpected, [],
-      `ids outside 748a5e1 + MEM-048 + MEM-050 + MEM-051 + MEM-072 + MEM-081 + MEM-088 + MEM-108 + MEM-110 + MEM-095: ${unexpected.join(" ")}`);
+      `ids outside 748a5e1 + MEM-048 + MEM-050 + MEM-051 + MEM-072 + MEM-081 + MEM-088 + MEM-108 + MEM-110 + MEM-095 + MEM-045 + MEM-125:${unexpected.join(" ")}`);
     const missing = MEM072_IDS.filter((id) => count(id) !== 1);
     assert.deepEqual(missing, [], `MEM-072 shell ids missing or duplicated: ${missing.join(" ")}`);
     const dupes = [...new Set(ids.filter((id) => count(id) > 1))];
