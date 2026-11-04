@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paper Crown preview</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../../../static/style.css">
+<link rel="stylesheet" href="../../../static/theme-painterly.css">
+<link rel="stylesheet" href="paper-crown.css?v=5">
+<link rel="stylesheet" href="preview.css?v=5">
+</head>
+<body>
+<template id="pc-map">
+  <rect class="pc-block" x="0" y="0" width="320" height="200"></rect>
+  <rect class="pc-park" x="196" y="18" width="92" height="58" rx="10"></rect>
+  <path class="pc-street" d="M0 52H320M0 132H320M74 0V200M164 0V200M250 0V200M0 188L320 96"></path>
+  <polyline class="route-line" points="40,160 74,132 120,132 164,92 210,52 250,40"></polyline>
+</template>
+
+<!-- S1: map home, drawer closed -->
+<div class="pc-frame map-shell" data-s="1">
+  <span class="pc-label">S1 map home</span>
+  <header class="topbar"><h1 class="brand">MemriPal</h1></header>
+  <main>
+    <section class="tab-panel">
+      <div class="map-wrap">
+        <svg class="route-map pc-map" viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Route map">
+          <circle class="route-node" cx="40" cy="160" r="6"></circle>
+          <circle class="route-node" cx="120" cy="132" r="6"></circle>
+          <circle class="route-node" cx="164" cy="92" r="6"></circle>
+          <circle class="route-node" cx="210" cy="52" r="6"></circle>
+          <circle class="route-node" cx="250" cy="40" r="6"></circle>
+        </svg>
+      </div>
+      <p class="map-chip">Morning walk: 5 stations</p>
+      <details class="drawer">
+        <summary class="drawer-handle"><span class="when-closed">Route settings</span><span class="when-open">Close</span></summary>
+        <div class="drawer-body"></div>
+      </details>
+    </section>
+  </main>
+  <nav class="tabbar" aria-label="Main"><ul>
+    <li><a class="tab" href="#routes" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19c3-6 11-2 14-12"></path><circle cx="5" cy="19" r="2"></circle><circle cx="19" cy="7" r="2"></circle></svg>Routes</a></li>
+    <li><a class="tab" href="#landmarks"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6-6.5-6-11a6 6 0 0 1 12 0c0 4.5-6 11-6 11z"></path><circle cx="12" cy="10" r="2"></circle></svg>Landmarks</a></li>
+    <li><a class="tab" href="#recall"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"></path><path d="M9 10.5l2 2 4-4"></path></svg>Recall</a></li>
+    <li><a class="tab" href="#settings"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"></path></svg>Settings</a></li>
+  </ul></nav>
+</div>
+
+<!-- S2: drawer open -->
+<div class="pc-frame map-shell" data-s="2">
+  <span class="pc-label">S2 drawer</span>
+  <header class="topbar"><h1 class="brand">MemriPal</h1></header>
+  <main>
+    <section class="tab-panel">
+      <div class="map-wrap"><svg class="route-map pc-map" viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Route map"></svg></div>
+      <details class="drawer" open>
+        <summary class="drawer-handle"><span class="when-closed">Route settings</span><span class="when-open">Close</span></summary>
+        <div class="drawer-body">
+          <p class="notice">Live needs the passcode. Try Load demo.</p>
+          <p id="status">Backend ready.</p>
+          <section class="panel">
+            <h2>Morning walk</h2>
+            <ol><li>Front door</li><li>Bakery corner</li><li>Bus stop</li><li>Park gate</li><li>Fountain</li></ol>
+            <div class="btn-row"><button class="btn btn-primary" type="button">Practice this route</button><button class="btn" type="button">Delete route</button></div>
+          </section>
+          <section class="panel">
+            <h2>Office loop</h2>
+            <p class="muted">Walk / 7 stations / Learned Nov 2</p>
+          </section>
+        </div>
+      </details>
+    </section>
+  </main>
+  <nav class="tabbar pc-tabbar" aria-label="Main"></nav>
+</div>
+
+<!-- S3: recall live, 2 of 5 recalled -->
+<div class="pc-frame map-shell" data-s="3">
+  <span class="pc-label">S3 recall live</span>
+  <header class="topbar"><h1 class="brand">MemriPal</h1></header>
+  <main>
+    <section class="tab-panel pc-page">
+      <section class="panel">
+        <h2>Recall: Morning walk</h2>
+        <svg class="route-map pc-map pc-inline-map" viewBox="0 0 320 200" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Route map">
+          <circle class="route-node lit" cx="40" cy="160" r="7"></circle>
+          <circle class="route-node lit" cx="120" cy="132" r="7"></circle>
+          <circle class="route-node" cx="164" cy="92" r="6"></circle>
+          <circle class="route-node" cx="210" cy="52" r="6"></circle>
+          <circle class="route-node" cx="250" cy="40" r="6"></circle>
+        </svg>
+        <div>
+          <p class="live-badge">LIVE</p>
+          <ol class="live-board">
+            <li class="lit" data-state="got">Front door</li>
+            <li class="lit" data-state="got">Bakery corner</li>
+            <li>Bus stop</li><li>Park gate</li><li>Fountain</li>
+          </ol>
+        </div>
+      </section>
+    </section>
+  </main>
+  <nav class="tabbar pc-tabbar" aria-label="Main"></nav>
+</div>
+
+<!-- S4: end screen -->
+<div class="pc-frame map-shell" data-s="4">
+  <span class="pc-label">S4 end screen</span>
+  <header class="topbar"><h1 class="brand">MemriPal</h1></header>
+  <main>
+    <section class="tab-panel pc-page">
+      <section class="panel">
+        <h2>3 of 5 recalled</h2>
+        <ul class="said-vs-palace">
+          <li class="said-got"><span class="said-label">Front door</span><span class="said-text">You said: a red door with a lion knocker</span><span class="said-quote">In your palace: red door, brass lion</span></li>
+          <li class="said-got"><span class="said-label">Bakery corner</span><span class="said-text">You said: croissants in the window</span><span class="said-quote">In your palace: croissant tower</span></li>
+          <li class="said-missed"><span class="said-label">Bus stop</span><span class="said-text">You said: nothing</span><span class="said-quote">In your palace: a juggling bus driver</span><button type="button" data-action="mark-got" class="btn">Mark got it</button></li>
+        </ul>
+      </section>
+      <section class="panel pc-empty">
+        <img src="../../../static/assets/pal-idle.svg" alt="" width="96" height="96">
+        <p class="muted">No other rehearsals yet. Pal is ready when you are.</p>
+      </section>
+      <div class="route-toast" role="status"><span class="route-toast-text">Route deleted.</span><button class="btn route-undo" type="button">Undo</button></div>
+    </section>
+  </main>
+  <nav class="tabbar pc-tabbar" aria-label="Main"></nav>
+</div>
+
+<a id="theme-flip" class="btn" href="#">Flip theme</a>
+<script>
+  // Clone the shared map art and tabbar into every frame.
+  var art = document.getElementById("pc-map").innerHTML;
+  document.querySelectorAll(".pc-map").forEach(function (svg) { svg.insertAdjacentHTML("afterbegin", art); });
+  var bar = document.querySelector(".tabbar").innerHTML;
+  document.querySelectorAll(".pc-tabbar").forEach(function (nav) { nav.innerHTML = bar; });
+</script>
+<script src="../route/preview.js"></script>
+</body>
+</html>
