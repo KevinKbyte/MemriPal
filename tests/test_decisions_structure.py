@@ -95,6 +95,10 @@ def naming_errors(root):
     ]
 
 
+def reserved_numbers(root):
+    return set()
+
+
 def numbering_errors(root):
     numbers = [int(ADR_NAME.match(p.name).group(1)) for p in _adr_files(root)]
     if len(numbers) != len(set(numbers)):
@@ -249,3 +253,57 @@ def test_misnamed_adr_fails(adr_dir, name):
 def test_readme_and_well_named_adrs_pass_naming(adr_dir):
     (adr_dir / "notes.txt").write_text("not markdown", encoding="utf-8")
     assert naming_errors(adr_dir) == []
+
+
+# Reserved ADR numbers (ADR 0061): a branch may land ADR 0036 while 0034/0035 sit on
+# unmerged branches, provided README.md lists them on a `Reserved:` line.
+# Covers: MEM-018
+
+
+def _reserved_fixture(root, reserved_line, present=(36,)):
+    for n in [*range(2, 34), *present]:
+        shutil.copy(root / "0001-example.md", root / f"{n:04d}-adr.md")
+    readme = root / "README.md"
+    readme.write_text(readme.read_text(encoding="utf-8") + f"\n{reserved_line}\n", encoding="utf-8")
+
+
+def test_gap_listed_as_reserved_passes(adr_dir):
+    _reserved_fixture(adr_dir, "Reserved: 0034, 0035")
+    assert numbering_errors(adr_dir) == []
+
+
+def test_gap_partly_reserved_fails(adr_dir):
+    _reserved_fixture(adr_dir, "Reserved: 0034")
+    errors = numbering_errors(adr_dir)
+    assert any("0035" in e and "not reserved" in e for e in errors)
+    assert not any("0034" in e for e in errors)
+
+
+def test_unlisted_gap_fails_with_empty_reserved_list(adr_dir):
+    _reserved_fixture(adr_dir, "Reserved: none")
+    assert any("not reserved" in e for e in numbering_errors(adr_dir))
+
+
+def test_reserved_number_present_as_file_fails(adr_dir):
+    _reserved_fixture(adr_dir, "Reserved: 0034, 0035", present=(34, 36))
+    assert any("stale reservation" in e and "0034" in e for e in numbering_errors(adr_dir))
+
+
+def test_duplicate_number_fails_despite_reservation(adr_dir):
+    _reserved_fixture(adr_dir, "Reserved: 0034, 0035")
+    shutil.copy(adr_dir / "0001-example.md", adr_dir / "0036-dup.md")
+    assert any("duplicate" in e for e in numbering_errors(adr_dir))
+
+
+def test_reserved_numbers_parse(adr_dir):
+    _reserved_fixture(adr_dir, "Reserved: 0034, 0035 (two unmerged branches)")
+    assert reserved_numbers(adr_dir) == {34, 35}
+
+
+def test_no_reserved_line_means_nothing_reserved(adr_dir):
+    assert reserved_numbers(adr_dir) == set()
+
+
+def test_real_readme_has_reserved_line():
+    text = (DECISIONS / "README.md").read_text(encoding="utf-8")
+    assert any(line.startswith("Reserved:") for line in text.splitlines())
