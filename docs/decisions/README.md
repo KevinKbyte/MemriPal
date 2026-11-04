@@ -150,6 +150,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0055](0055-landmark-emoji-on-live-map.md) Optional `Station.emoji`, U+1F4CD when missing, drawn as a
   `text.lm-emoji` sibling at (cx, cy-30) on the live map overlay, removed on detach (over name-keyword
   heuristics or OSM tag capture, the later upgrade path).
-- [0054](0054-judges-only-access-gate-alb-cloud-armor.md) Judges-only live deploy: app key gate (no-JS `/access`
+- [0055](0055-judges-only-access-gate-alb-cloud-armor.md) Judges-only live deploy: app key gate (no-JS `/access`
   form, HMAC cookie, fail-closed on Cloud Run) behind a global HTTPS ALB + Cloud Armor (rate ban, sqli/xss WAF),
   LB-only ingress; amends 0004, 0025, 0028 (over IAP, HTTP Basic, key-in-URL, an Armor header rule, or the gate alone).

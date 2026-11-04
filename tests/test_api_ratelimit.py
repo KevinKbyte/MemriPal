@@ -107,7 +107,7 @@ def _app(clock, backend=None, place=None, monkeypatch=None, rate=None):
 
 
 def _client(app) -> TestClient:
-    # The judge cookie is inert off Cloud Run and gets K_SERVICE tests past the MEM-100 access gate.
+    # The judge cookie is inert off Cloud Run and gets K_SERVICE tests past the MEM-103 access gate.
     return TestClient(app, base_url=LOOPBACK_URL, cookies={COOKIE: cookie_value(ACCESS_KEY)})
 
 

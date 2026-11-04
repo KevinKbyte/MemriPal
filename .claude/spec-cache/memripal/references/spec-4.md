@@ -485,10 +485,11 @@ because nothing checked MEM uniqueness (ADR numbers are already checked by tests
 
 Tests: tests/test_spec_ids.py
 ## MEM-100 Judges-only access gate (PLANNED)
+## MEM-103 Judges-only access gate (PLANNED)
 
 PLANNED, not built, unverified. Amends MEM-034 passcode gate (spec-2.md, ADR 0025): a valid access cookie
 satisfies `_passcode_error`, checked before its passcode-unset branch. <!-- claim-exempt: planned -->
-Decided-by: ADR-0054
+Decided-by: ADR-0055
 Root problem: the live (paid) deploy must admit only judges, who share one key delivered out of band; the passcode
 header is per-session UI friction and fails open on a client-controlled loopback Host.
 Actors: judges (browser); `src/memripal/app.py` (`AccessGate`, `_passcode_error`), `src/memripal/ratelimit.py`,
@@ -519,10 +520,10 @@ NFR: no new dependency (no python-multipart); key never logged or read from the 
   `/accessX` gated; cross-site POST 403; `K_SERVICE` set + no key -> 503; live mode + cookie + no
   `MEMRIPAL_PASSCODE` -> allowed; `/access` CSP has `form-action 'self'`; real-browser login screenshot.
 
-## MEM-101 Deploy script: live mode, secret mapping, edge-aware ingress (PLANNED)
+## MEM-104 Deploy script: live mode, secret mapping, edge-aware ingress (PLANNED)
 
 PLANNED, not built, unverified. Amends MEM-034 (`scripts/deploy_cloud_run.sh`).
-Decided-by: ADR-0054
+Decided-by: ADR-0055
 Root problem: mode and secrets were hardcoded (fixture, passcode), the runtime service account was never granted
 optional secrets, and the edge switch (ingress, host, proxy hops) must happen in one deploy or the app is briefly
 open or mis-keyed.
@@ -542,10 +543,10 @@ NFR: POSIX sh; never reads a secret value; keeps the `META_API_KEY=""` precommit
   `MEMRIPAL_PASSCODE` in the secret list; an absent optional secret is unmapped; one accessor grant per mapped secret;
   `EDGE_HOST` adds ingress, host and hops to one deploy command.
 
-## MEM-102 Edge: global HTTPS ALB + Cloud Armor, trusted proxy hops (PLANNED)
+## MEM-105 Edge: global HTTPS ALB + Cloud Armor, trusted proxy hops (PLANNED)
 
 PLANNED, not built, unverified. New `scripts/deploy_edge_gcp.sh`. <!-- claim-exempt: planned -->
-Decided-by: ADR-0054
+Decided-by: ADR-0055
 Root problem: with `--max-instances=1`, L7 floods reaching Cloud Run starve judges; abusive IPs must be dropped at
 the edge, the `run.app` URL closed, and the app must still rate-limit the real client, not the LB.
 Actors: Kev (runs it); `scripts/deploy_edge_gcp.sh`, `src/memripal/ratelimit.py` (`client_ip`), gcloud

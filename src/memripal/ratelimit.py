@@ -94,7 +94,7 @@ def client_key(addr: str) -> str:
 
 
 def trusted_proxy_hops() -> int:
-    """MEMRIPAL_TRUSTED_PROXY_HOPS (MEM-102); invalid or < 1 falls back to 1 rather than failing startup."""
+    """MEMRIPAL_TRUSTED_PROXY_HOPS (MEM-105); invalid or < 1 falls back to 1 rather than failing startup."""
     try:
         hops = int(os.environ.get("MEMRIPAL_TRUSTED_PROXY_HOPS", "1"))
     except ValueError:

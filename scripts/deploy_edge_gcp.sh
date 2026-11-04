@@ -1,5 +1,5 @@
 #!/bin/sh
-# Build the judges-only edge in front of Cloud Run (MEM-102; ADR 0054; docs/runbooks/deploy-gcp.md):
+# Build the judges-only edge in front of Cloud Run (MEM-105; ADR 0055; docs/runbooks/deploy-gcp.md):
 # global static IP -> HTTPS forwarding rule :443 -> target proxy (managed cert for <ip>.sslip.io)
 # -> URL map -> backend service (Cloud Armor policy) -> serverless NEG -> the Cloud Run service.
 # Idempotent: every resource is described first and created only when missing. Never reads secrets.

@@ -1,4 +1,4 @@
-# 0054: Judges-only access: app key gate (signed cookie) behind a global HTTPS ALB + Cloud Armor, live mode
+# 0055: Judges-only access: app key gate (signed cookie) behind a global HTTPS ALB + Cloud Armor, live mode
 
 Status: Accepted
 Amends: [0004](0004-public-deploy-spend-guard.md) (the judged deploy runs live; the gate, not fixture mode, keeps
@@ -6,7 +6,7 @@ strangers off paid routes), [0025](0025-passcode-gate-and-host-allowlist.md) (a 
 passcode check; the deploy stops mapping `MEMRIPAL_PASSCODE`; fail-open keys on `K_SERVICE`, not the Host header),
 [0028](0028-palace-backup-export-import.md) (CSP `form-action 'none'` -> `'self'`). Relates:
 [0010](0010-cloud-run-hosting.md) (hosting), [0027](0027-signed-association-records.md) (`MEMRIPAL_RECORD_KEY`),
-[0032](0032-capacitor-android-shell.md) (shell out of scope), MEM-100 / MEM-101 / MEM-102, runbook
+[0032](0032-capacitor-android-shell.md) (shell out of scope), MEM-103 / MEM-104 / MEM-105, runbook
 [deploy-gcp](../runbooks/deploy-gcp.md).
 Date: 2026-11-03
 Source: Kev, 2026-11-03: deploy mode = Meta LIVE; edge = global external HTTPS ALB + Cloud Armor Standard as a
@@ -64,17 +64,17 @@ Judges must reach the live (paid Meta) app for two weeks; nobody else should. Co
 
 Option (f), live mode (`MODE=meta`).
 
-- App gate (MEM-100): pure-ASGI `AccessGate`, key from `MEMRIPAL_ACCESS_KEY` (stripped). Cookie `memripal_access` =
+- App gate (MEM-103): pure-ASGI `AccessGate`, key from `MEMRIPAL_ACCESS_KEY` (stripped). Cookie `memripal_access` =
   hex HMAC-SHA256(key, "memripal-access-v1"), constant-time compared, `HttpOnly; Secure; SameSite=Lax`, 14 days.
   No-JS form at `/access` parsed in the gate (no `Form()`), per-IP lockout of its own; the key is never read from
   the query string. Exact-path exemptions only (`/healthz`, `/access`, the manifest, icons and stylesheet that page
   needs). A Cloud Run instance (`K_SERVICE` set) without a key refuses everything (503); fail-open only off Cloud Run.
   A valid cookie satisfies the passcode check. Cross-site POSTs (`Sec-Fetch-Site` present and not `same-origin`) get
   403. CSP becomes `form-action 'self'`.
-- Deploy (MEM-101): `MODE` drives `MEMRIPAL_MODE` and the secret list; `MEMRIPAL_PASSCODE` is no longer mapped;
+- Deploy (MEM-104): `MODE` drives `MEMRIPAL_MODE` and the secret list; `MEMRIPAL_PASSCODE` is no longer mapped;
   `secretAccessor` granted per mapped secret; with `EDGE_HOST` set, one deploy sets LB-only ingress, adds the host
   to `MEMRIPAL_ALLOWED_HOSTS` and sets `MEMRIPAL_TRUSTED_PROXY_HOPS=2`.
-- Edge (MEM-102): static IP, `<ip-dashed>.sslip.io` host, serverless NEG, backend service with the Armor policy
+- Edge (MEM-105): static IP, `<ip-dashed>.sslip.io` host, serverless NEG, backend service with the Armor policy
   (rate-based IP ban, preconfigured sqli + xss WAF at sensitivity 1, default allow), URL map, managed cert, HTTPS
   proxy, `:443` forwarding rule. Rate-limit client IP = Nth-from-right XFF entry per `MEMRIPAL_TRUSTED_PROXY_HOPS`.
 

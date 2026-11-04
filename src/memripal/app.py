@@ -155,7 +155,7 @@ def create_app(
         app.add_middleware(_BodyCap, cap=max_body)
     # Runs after the host check and before the body cap, passcode, body read and model.
     app.add_middleware(rl.ApiGuard, limiter=rate, concurrency=concurrency, trust_xff=trust_xff)
-    # Outside the guard and body cap: an unauthenticated flood spends no rate event or slot (MEM-100).
+    # Outside the guard and body cap: an unauthenticated flood spends no rate event or slot (MEM-103).
     app.add_middleware(
         access.AccessGate, key=access_key, limiter=rate, lockout=access_lockout, trust_xff=trust_xff,
         page=STATIC_DIR / "access.html",

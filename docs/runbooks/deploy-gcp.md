@@ -3,7 +3,7 @@
 Kev runs every step by hand; Claude never reads, decrypts, or prints a key. Plan refs: `docs/plans/2026-10-26-memripal.md`
 D1, D11, S7. Run from the repo root.
 
-Judged deploy (ADR [0054](../decisions/0054-judges-only-access-gate-alb-cloud-armor.md), MEM-100..102): live mode,
+Judged deploy (ADR [0055](../decisions/0055-judges-only-access-gate-alb-cloud-armor.md), MEM-103..105): live mode,
 judges sign in once with a shared access key (cookie), traffic enters only through a global HTTPS load balancer with
 Cloud Armor. Order: 1, 2, 3, 4 (`MODE=meta`), 5 (edge, then redeploy with `EDGE_HOST`), 6 (verify), 7 (key to
 judges). Steps 8-9 are rotation and the kill switch.
@@ -34,7 +34,7 @@ gcloud billing budgets create --billing-account=<billing-account-id> --display-n
 ```
 
 A budget alerts; it does not stop spend. Spend caps are D1: fixture default, passcode, `--max-instances=1`.
-SUPERSEDED for the judged deploy (ADR 0054): it runs live and the access key replaces the passcode. The in-process
+SUPERSEDED for the judged deploy (ADR 0055): it runs live and the access key replaces the passcode. The in-process
 call budget resets on every restart and the persistent cap (MEM-094) has not landed, so also:
 
 - Meta spend alert: in the Meta developer console, set a spend alert (and a hard cap if one is offered) on the
@@ -49,10 +49,10 @@ unusable on GCP). On GCP it lives in Secret Manager. The app reads env vars only
 | Env var | Secret | Needed when |
 |---|---|---|
 | `META_API_KEY` | `meta-api-key` | live mode (`src/memripal/backend.py`); mapped only when `MODE=meta` |
-| `MEMRIPAL_ACCESS_KEY` | `memripal-access-key` | always; the judges' shared key for `/access` (MEM-100) |
+| `MEMRIPAL_ACCESS_KEY` | `memripal-access-key` | always; the judges' shared key for `/access` (MEM-103) |
 | `MEMRIPAL_RECORD_KEY` | `memripal-record-key` | always; signs association records ([ADR 0027](../decisions/0027-signed-association-records.md)) |
 | `BASETEN_API_KEY`, `FIREWORKS_API_KEY`, `MODAL_SEG_TOKEN`, `MEMRIPAL_MAPILLARY_TOKEN` | named in `scripts/deploy_cloud_run.sh` | optional; mapped only if the secret exists |
-| `MEMRIPAL_PASSCODE` | `memripal-passcode` | SUPERSEDED (ADR 0054): no longer mapped; the access cookie satisfies the passcode check ([ADR 0025](../decisions/0025-passcode-gate-and-host-allowlist.md)) |
+| `MEMRIPAL_PASSCODE` | `memripal-passcode` | SUPERSEDED (ADR 0055): no longer mapped; the access cookie satisfies the passcode check ([ADR 0025](../decisions/0025-passcode-gate-and-host-allowlist.md)) |
 
 1. Generate the access key and the record key (one run each; >= 128 bits). Copy the access key for step 7:
 
@@ -67,7 +67,7 @@ python -c "import secrets;print(secrets.token_urlsafe(24))"
    newline is stored with the value; the app strips it. SUPERSEDED: `memripal-passcode` is no longer needed.
 3. Rotate: step 8.
 4. Read access: the deploy script grants the runtime service account `roles/secretmanager.secretAccessor` on every
-   secret it maps (MEM-101). SUPERSEDED manual grant, only to repair a failed one (default runtime SA:
+   secret it maps (MEM-104). SUPERSEDED manual grant, only to repair a failed one (default runtime SA:
    `<project-number>-compute@developer.gserviceaccount.com`):
    `gcloud secrets add-iam-policy-binding <name> --member=serviceAccount:<runtime-sa> --role=roles/secretmanager.secretAccessor`
 
@@ -89,7 +89,7 @@ Optional env: `MODE` (`fixture` default, or `meta`; anything else is refused), `
 | Env var | Value | Why |
 |---|---|---|
 | `MEMRIPAL_MODE` | `MODE` (`fixture` default) | public default is zero spend; `meta` for the judged deploy |
-| `MEMRIPAL_TRUSTED_PROXY_HOPS` | `2` when `EDGE_HOST` is set, else unset (1) | rate limits key on the real client, not the load balancer (MEM-102) |
+| `MEMRIPAL_TRUSTED_PROXY_HOPS` | `2` when `EDGE_HOST` is set, else unset (1) | rate limits key on the real client, not the load balancer (MEM-105) |
 | `MEMRIPAL_CALL_BUDGET` | `300` | per-instance live call cap; with `--max-instances=1` it is the whole-service cap (D1) |
 | `MEMRIPAL_MAX_BODY_BYTES` | `21233664` | app-wide body cap = the largest route cap (`POST /split`) |
 | `MEMRIPAL_ALLOWED_HOSTS` | `<service>-<project-number>.<region>.run.app` plus `EXTRA_HOSTS` plus `EDGE_HOST` | host guard; the script derives Cloud Run's deterministic URL before the first deploy |
@@ -158,7 +158,7 @@ curl -s https://<host>/healthz
 curl -s -o /dev/null -w "%{http_code}\n" https://<service>-<project-number>.<region>.run.app/healthz
 ```
 
-5. Proxy hops (MEM-102): from network A (e.g. a phone hotspot) send 21 wrong keys until A gets 429; then from
+5. Proxy hops (MEM-105): from network A (e.g. a phone hotspot) send 21 wrong keys until A gets 429; then from
    network B sign in with the right key. B must succeed. If B is locked out too, every client shares one bucket;
    fix the hop count, then re-check:
 
@@ -166,7 +166,7 @@ curl -s -o /dev/null -w "%{http_code}\n" https://<service>-<project-number>.<reg
 gcloud run services update <service> --region <region> --update-env-vars MEMRIPAL_TRUSTED_PROXY_HOPS=<n>
 ```
 
-SUPERSEDED (pre-ADR 0054, fixture deploy without the edge): open the `run.app` URL; banner reads "live needs passcode
+SUPERSEDED (pre-ADR 0055, fixture deploy without the edge): open the `run.app` URL; banner reads "live needs passcode
 / try Load demo" (D13); "Load demo" runs the full loop in fixture mode; a live model request without the passcode
 returns 401 `passcode_required`.
 
@@ -204,4 +204,4 @@ gcloud run services update <service> --region <region> --update-env-vars MEMRIPA
 Do not delete the service: the deployed URL is a submission input. Scaled to zero it has no idle cost. Check spend in
 the console under Billing > Reports (filter: Cloud Run, Secret Manager, Cloud Build, Networking, Cloud Armor); budget
 alerts from step 2 email the billing admins. The edge (step 5) bills while it exists, idle or not: about $12-13 for
-two weeks (ADR 0054 option (f)).
+two weeks (ADR 0055 option (f)).

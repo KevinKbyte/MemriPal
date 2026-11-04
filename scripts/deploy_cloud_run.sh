@@ -1,5 +1,5 @@
 #!/bin/sh
-# Deploy MemriPal to Cloud Run (MEM-034, MEM-101; ADR 0004, 0010, 0054; docs/runbooks/deploy-gcp.md).
+# Deploy MemriPal to Cloud Run (MEM-034, MEM-104; ADR 0004, 0010, 0055; docs/runbooks/deploy-gcp.md).
 # Builds the repo Dockerfile via --source. Keys come only from Secret Manager; this script never
 # reads a secret value.
 #
@@ -55,7 +55,7 @@ for ref in $(printf '%s' "$SECRETS" | tr ',' ' '); do
 done
 
 # Behind the edge (scripts/deploy_edge_gcp.sh) only the load balancer may reach the service, and the
-# client IP is the second-from-right X-Forwarded-For entry (MEM-102). Without EDGE_HOST,
+# client IP is the second-from-right X-Forwarded-For entry (MEM-105). Without EDGE_HOST,
 # --ingress=all is passed explicitly so a redeploy undoes an earlier lock.
 if [ -n "$EDGE_HOST" ]; then
   INGRESS=internal-and-cloud-load-balancing
@@ -69,7 +69,7 @@ fi
 # --concurrency and --timeout bound parallel and hanging requests per instance (MEM-034).
 # The body cap equals the largest route cap (POST /split), so no legitimate request is refused.
 # ^;^ switches the gcloud list delimiter so the comma-separated host list stays one value.
-# --allow-unauthenticated stays: the app access gate and Cloud Armor do auth (ADR 0054).
+# --allow-unauthenticated stays: the app access gate and Cloud Armor do auth (ADR 0055).
 gcloud run deploy "$SERVICE" \
   --project "$PROJECT" \
   --region "$REGION" \

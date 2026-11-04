@@ -1,4 +1,4 @@
-# Covers: MEM-100
+# Covers: MEM-103
 # Requirement: the judged Cloud Run deploy is closed to everyone without the shared access key: a no-JS
 # /access form trades the key (MEMRIPAL_ACCESS_KEY, stripped) for an HttpOnly cookie; every other path
 # without it redirects HTML GETs to /access and answers 401 access_required otherwise; on Cloud Run with

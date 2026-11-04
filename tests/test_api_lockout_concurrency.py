@@ -158,7 +158,7 @@ def _assert_locked(resp) -> int:
 
 # Requirement: repeated wrong passcodes from one IP lock that IP out (429 too_many_attempts, even with the
 # right passcode) for a sliding window, so the shared passcode cannot be brute-forced; other IPs keep working.
-# Applies off Cloud Run (no access key); on Cloud Run the /access gate lockout applies (MEM-100).
+# Applies off Cloud Run (no access key); on Cloud Run the /access gate lockout applies (MEM-103).
 class TestPasscodeLockout:
     def _live(self, monkeypatch, clock, fails="3", window="300"):
         monkeypatch.setenv("MEMRIPAL_PASSCODE", PASSCODE)
@@ -254,7 +254,7 @@ class TestPasscodeLockout:
 
 # Requirement: a correct passcode clears that IP's failure count, so a user who mistypes a few times and then
 # gets in is not locked out by a later handful of typos; other IPs' successes never clear it.
-# Applies off Cloud Run (no access key); on Cloud Run the /access gate lockout applies (MEM-100).
+# Applies off Cloud Run (no access key); on Cloud Run the /access gate lockout applies (MEM-103).
 class TestLockoutResetOnSuccess:
     def _live(self, monkeypatch, fails="5"):
         monkeypatch.setenv("MEMRIPAL_PASSCODE", PASSCODE)
@@ -287,7 +287,7 @@ class TestLockoutResetOnSuccess:
 
 # Requirement: the passcode lockout keys an IPv6 client by its /64 prefix, so rotating the low 64 bits cannot
 # buy fresh guesses; another /64 is unaffected. Applies off Cloud Run (no access key); on Cloud Run the
-# /access gate lockout applies (MEM-100).
+# /access gate lockout applies (MEM-103).
 class TestLockoutIpv6Prefix:
     def test_same_ipv6_64_shares_one_lockout(self, monkeypatch):
         stub = LiveStub()

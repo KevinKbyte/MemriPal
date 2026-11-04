@@ -1,4 +1,4 @@
-"""Judges-only access gate (MEM-100, ADR 0066): a shared key traded at /access for an HttpOnly cookie.
+"""Judges-only access gate (MEM-103, ADR 0055): a shared key traded at /access for an HttpOnly cookie.
 
 Pure ASGI so it can sit inside SecurityHeaders/TrustedHost and outside ApiGuard and the body cap:
 an unauthenticated request is refused before it spends a rate-limit event or a concurrency slot."""

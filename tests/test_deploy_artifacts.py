@@ -206,7 +206,7 @@ def test_deploy_script_runs_gcloud_with_one_instance():
     assert re.search(r"--max-instances[= ]1\b", script), "deploy is not capped at --max-instances=1"
 
 
-# Covers: MEM-101
+# Covers: MEM-104
 # Requirement: the access, record and Meta keys reach Cloud Run only via --set-secrets; the old live
 # passcode secret is no longer mapped (the access cookie replaces it).
 def test_deploy_script_maps_access_record_and_meta_keys_as_secrets():
@@ -221,7 +221,7 @@ def test_deploy_script_maps_access_record_and_meta_keys_as_secrets():
     assert "memripal-passcode" not in script, "deploy script still maps the passcode secret"
 
 
-# Covers: MEM-101
+# Covers: MEM-104
 # Requirement: MODE (default fixture) drives MEMRIPAL_MODE; plain env vars pin an int call budget, an
 # int body cap and the allowed hosts.
 def test_deploy_script_env_vars_take_mode_from_MODE_and_pin_caps():

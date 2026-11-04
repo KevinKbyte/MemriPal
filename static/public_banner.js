@@ -22,7 +22,7 @@ export function showPublicBanner(doc, hostname) {
   if (banner && isPublicHost(hostname)) banner.hidden = false;
 }
 
-// Behind the judges-only access gate (MEM-100) the access cookie authorizes live mode, so no passcode.
+// Behind the judges-only access gate (MEM-103) the access cookie authorizes live mode, so no passcode.
 export const GATED_BANNER_TEXT = "judges' access: live mode is on, no passcode needed / Load demo works too";
 
 /**

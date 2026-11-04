@@ -1,4 +1,4 @@
-# Covers: MEM-102
+# Covers: MEM-105
 # Requirement: behind the external HTTPS load balancer Cloud Run sees X-Forwarded-For as
 # "<client-supplied...>, <real client>, <LB>", so MEMRIPAL_TRUSTED_PROXY_HOPS (int >= 1, default 1) picks the
 # Nth-from-right entry when X-Forwarded-For is trusted (entries[-hops], or entries[0] when there are fewer

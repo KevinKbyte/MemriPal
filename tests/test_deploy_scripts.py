@@ -1,4 +1,4 @@
-# Covers: MEM-101, MEM-102
+# Covers: MEM-104, MEM-105
 # Requirement: the GCP deploy scripts are safe to run as checked in: deploy_cloud_run.sh takes MODE
 # (fixture|meta, default fixture, anything else refused before any change), maps the access and record
 # keys always and the Meta key only in meta mode via Secret Manager (never the old passcode, optional
@@ -314,3 +314,13 @@ def test_edge_never_touches_secrets(tmp_path, existing):
     proc, calls = _run(EDGE, tmp_path, existing=existing)
     _ok(proc)
     assert not [c for c in calls if "secrets" in c], "edge script called gcloud secrets"
+
+
+# Covers: MEM-104, MEM-105
+# Requirement: deploy scripts cite the judges-only access ADR (0055), never the unrelated real-map ADR 0054.
+@pytest.mark.parametrize("script", [DEPLOY, EDGE], ids=["deploy_cloud_run", "deploy_edge_gcp"])
+def test_scripts_cite_judges_only_adr_0055_not_0054(script):
+    text = script.read_text(encoding="utf-8")
+    stale = [ln for ln in text.splitlines() if re.search(r"ADR[^\n]*\b0054\b", ln)]
+    assert "0055" in text, f"{script.name} never cites ADR 0055"
+    assert not stale, f"{script.name} cites the unrelated ADR 0054: {stale}"
