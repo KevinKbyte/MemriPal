@@ -325,3 +325,31 @@ def test_scripts_cite_judges_only_adr_0056_not_0055(script):
     stale = [ln for ln in text.splitlines() if re.search(r"\b005[45]\b", ln)]
     assert re.search(r"\b0056\b", text), f"{script.name} never cites ADR 0056"
     assert not stale, f"{script.name} cites an unrelated ADR (0054/0055): {stale}"
+
+
+# Covers: MEM-106
+# Requirement: Spark chat runs on Baseten only when it can: deploy_cloud_run.sh sets the plain env var
+# MEMRIPAL_CHAT_PROVIDER=baseten in --set-env-vars only for MODE=meta with the baseten-api-key secret
+# present in Secret Manager; fixture mode, or meta mode without that secret, leaves it unset so chat
+# stays on Meta.
+def test_meta_mode_with_baseten_secret_sets_chat_provider_baseten(tmp_path):
+    proc, calls = _run(DEPLOY, tmp_path, secrets=REQUIRED_SECRETS + ",baseten-api-key", MODE="meta")
+    _ok(proc)
+    env = _env(_deploy(calls)[1])
+    assert env.get("MEMRIPAL_CHAT_PROVIDER") == "baseten", f"chat provider not baseten: {env}"
+
+
+@pytest.mark.parametrize(
+    ("mode", "secrets"),
+    [
+        ("fixture", REQUIRED_SECRETS + ",baseten-api-key"),
+        ("fixture", REQUIRED_SECRETS),
+        ("meta", REQUIRED_SECRETS),
+    ],
+    ids=["fixture-with-baseten-secret", "fixture-without-baseten-secret", "meta-without-baseten-secret"],
+)
+def test_chat_provider_unset_unless_meta_mode_with_baseten_secret(tmp_path, mode, secrets):
+    proc, calls = _run(DEPLOY, tmp_path, secrets=secrets, MODE=mode)
+    _ok(proc)
+    env = _env(_deploy(calls)[1])
+    assert "MEMRIPAL_CHAT_PROVIDER" not in env, f"{mode} set MEMRIPAL_CHAT_PROVIDER: {env}"
