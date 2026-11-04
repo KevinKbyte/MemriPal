@@ -72,6 +72,30 @@ export function createRouteView({ doc, routes, rehearsals, onPractice, realMap, 
     return b;
   };
   const kindLabel = (/** @type {string} */ kind) => (kind === "occasional" ? "Occasional" : "Daily");
+  /** @param {Route["stations"][number]} s */
+  const stationLi = (s) => {
+    const li = textEl("li", s.name);
+    li.dataset.stationId = s.id;
+    return li;
+  };
+
+  // MEM-088: a click on a map marker (or inside one) selects its station in both lists. Delegated on
+  // #route-map so it holds whichever layer (sketch or real-map overlay) draws the markers.
+  const routeMap = byId("route-map");
+  routeMap?.addEventListener("click", (event) => {
+    let node = /** @type {Element | null} */ (event.target);
+    while (node && node !== routeMap && !node.getAttribute("data-station-id")) {
+      node = /** @type {Element | null} */ (node.parentNode);
+    }
+    const id = node && node !== routeMap ? node.getAttribute("data-station-id") : null;
+    if (!id) return;
+    for (const list of ["route-view-stations", "landmarks-list"]) {
+      for (const li of /** @type {HTMLElement[]} */ ([...(byId(list)?.children ?? [])])) {
+        if (li.dataset.stationId === id) li.setAttribute("aria-current", "true");
+        else li.removeAttribute("aria-current");
+      }
+    }
+  });
 
   /** @type {Route | null} */
   let current = null;
@@ -146,7 +170,7 @@ export function createRouteView({ doc, routes, rehearsals, onPractice, realMap, 
   const renderRoute = (route) => {
     heading.textContent = `${route.name} (${kindLabel(route.kind)})`;
     byId("route-view-stations")?.replaceChildren(...route.stations.map((s) => {
-      const li = textEl("li", s.name);
+      const li = stationLi(s);
       const turn = s.taps?.turn;
       if (turn) li.append(textEl("span", ` then ${String(turn).toLowerCase()}`, "route-meta"));
       return li;
@@ -174,7 +198,7 @@ export function createRouteView({ doc, routes, rehearsals, onPractice, realMap, 
     // MEM-072: the opened route owns the Routes tab map, its chip and the Landmarks list.
     const chip = byId("map-chip");
     if (chip) chip.textContent = route.name;
-    byId("landmarks-list")?.replaceChildren(...route.stations.map((s) => textEl("li", s.name)));
+    byId("landmarks-list")?.replaceChildren(...route.stations.map(stationLi));
     showTab("routes", doc);
   };
 
