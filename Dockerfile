@@ -18,7 +18,7 @@ COPY fixtures ./fixtures
 RUN useradd --system --uid 10001 --no-create-home memripal
 USER memripal
 
-# The runtime user has no home dir, so the Meta spend-guard state lives under /tmp (ADR 0068).
+# The runtime user has no home dir, so the Meta spend-guard state lives under /tmp (ADR 0069).
 ENV PATH="/app/.venv/bin:$PATH" PYTHONPATH=/app/src PYTHONUNBUFFERED=1 MEMRIPAL_MODE=fixture MEMRIPAL_META_SPEND_DIR=/tmp/memripal/meta-spend
 
 # Shell form via sh -c so Cloud Run's $PORT expands; exec keeps uvicorn as PID 1 for SIGTERM.
