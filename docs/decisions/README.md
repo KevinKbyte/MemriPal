@@ -166,3 +166,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0060](0060-demo-route-seeded-taps-and-profile.md) Demo route seeds photo-derived `taps` `{ sound, smell, feel,
   mood }` and `profile` in `static/demo_route.js`, copied by `seedRoute`, no `turn` (S5 list, MEM-077) and no photos;
   amends 0042 (over an importable backup file or committed photos).
+- [0061](0061-route-view-mounts-one-station-card.md) The route view mounts the single MEM-050 station card, opened on
+  station 1 and following the selected station, with a tap-summary chip row of only the set groups; amends 0060
+  (over a card per station or a tap line in each S5 li).
