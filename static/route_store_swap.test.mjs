@@ -305,3 +305,33 @@ describe("coords precision and demo addresses (MEM-085, ADR 0053)", () => {
     assert.deepEqual(st.coords, { lat: 42.3624, lon: -71.0856 });
   });
 });
+
+// Covers: MEM-100
+// Requirement: "Load demo" keeps each demo station's landmark emoji, so the live map shows it instead of the
+// default pushpin after the seeded route is read back from storage; a seeded station given no emoji stores none
+// (the map then falls back to U+1F4CD). Contract (RED; GREEN: static/route_store.js seedRoute copies s.emoji
+// onto the stored station when present, like address).
+describe("seedRoute keeps each demo station's emoji (MEM-100)", () => {
+  test("seedRoute(DEMO_ROUTE) persists each station's emoji, read back through a fresh store", async () => {
+    const kv = memoryAdapter();
+    await rs.createRouteStore(kv).seedRoute(DEMO_ROUTE);
+    const back = await rs.createRouteStore(kv).getRoute(DEMO_ROUTE.id);
+    assert.equal(back.stations.length, DEMO_ROUTE.stations.length);
+    back.stations.forEach((s, i) => {
+      const want = DEMO_ROUTE.stations[i];
+      assert.ok(want.emoji, `precondition: demo station ${want.n} has an emoji, got ${want.emoji}`);
+      assert.equal(s.emoji, want.emoji, `station ${want.n} emoji`);
+    });
+  });
+
+  test("a seeded station given no emoji has no emoji key", async () => {
+    const kv = memoryAdapter();
+    await rs.createRouteStore(kv).seedRoute({
+      id: "9c3d4e5f-6a7b-4c8d-8e9f-1a2b3c4d5e6f", name: "Seed", kind: "daily",
+      stations: [{ id: "ad4e5f6a-7b8c-4d9e-9f0a-2b3c4d5e6f7a", n: 1, name: "Corner", coords: { lat: 42.36238, lon: -71.0856 } }],
+    });
+    const back = await rs.createRouteStore(kv).getRoute("9c3d4e5f-6a7b-4c8d-8e9f-1a2b3c4d5e6f");
+    assert.equal(back.stations.length, 1);
+    assert.ok(!("emoji" in back.stations[0]), `no emoji key, got ${JSON.stringify(back.stations[0])}`);
+  });
+});

@@ -16,9 +16,9 @@ import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { settle } from "./fake_dom_test.mjs";
+import { findAll, settle } from "./fake_dom_test.mjs";
 import { REAL_MAP_BBOX, inRealMapBbox } from "./real_map.js";
-import { rig, setSize, stationNodes } from "./real_map_overlay_fakes_test.mjs";
+import { hasClass, rig, setSize, stationNodes } from "./real_map_overlay_fakes_test.mjs";
 import { MAX_STATIONS, MIN_SAVE_STATIONS } from "./route_store.js";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -103,5 +103,57 @@ describe("demo route on Kendall streets (MEM-077, plan S6)", () => {
     res.map.emit("idle");
     await settle(5);
     assert.equal(stationNodes(page.svg).length, 6, "6 station markers on the overlay");
+  });
+});
+
+// Covers: MEM-100
+// Requirement: "Load demo" shows a best-fit landmark emoji on every demo station, never the default red pushpin
+// (Kev: "where are the best fit emoji, i only see red pins"). Each DEMO_ROUTE station carries a hand-picked emoji,
+// one grapheme, all six different: the Kendall/MIT subway station, the One Broadway tower, the Watermark towers,
+// Third Square Apartments, the old brick boiler works and the Meta office. The live map draws each one as is.
+// Contract (RED; GREEN adds emoji to each station in static/demo_route.js, DemoStation gains emoji: string):
+//   n 1 U+1F687, 2 U+1F3D9 U+FE0F, 3 U+1F3E2, 4 U+1F3D8 U+FE0F, 5 U+1F3ED, 6 U+1F4BB.
+describe("demo route landmark emoji (MEM-100)", () => {
+  const PUSHPIN = "\u{1F4CD}";
+  const WANT = {
+    1: "\u{1F687}",
+    2: "\u{1F3D9}\u{FE0F}",
+    3: "\u{1F3E2}",
+    4: "\u{1F3D8}\u{FE0F}",
+    5: "\u{1F3ED}",
+    6: "\u{1F4BB}",
+  };
+  const graphemes = (s) => [...new Intl.Segmenter("en", { granularity: "grapheme" }).segment(s)].length;
+
+  test("each station's emoji is the hand-picked one for its landmark", async () => {
+    const r = await demo();
+    assert.deepEqual(Object.fromEntries(r.stations.map((s) => [s.n, s.emoji])), WANT);
+  });
+
+  test("every emoji is a non-empty single grapheme, not the default pushpin, and all six differ", async () => {
+    const r = await demo();
+    for (const s of r.stations) {
+      assert.ok(typeof s.emoji === "string" && s.emoji !== "", `station ${s.n} has an emoji, got ${s.emoji}`);
+      assert.equal(graphemes(s.emoji), 1, `station ${s.n} emoji is one grapheme`);
+      assert.notEqual(s.emoji, PUSHPIN, `station ${s.n} emoji is not the default pushpin`);
+    }
+    assert.equal(new Set(r.stations.map((s) => s.emoji)).size, r.stations.length, "emoji pairwise distinct");
+  });
+
+  test("the live map overlay draws each demo station's own emoji", async () => {
+    const r = await demo();
+    const page = rig({ stations: r.stations });
+    const res = await page.loader.mount(page.svg, page.stations);
+    assert.ok(res?.map, "a real map was created for the demo route");
+    setSize(res.map.getContainer(), 375, 300);
+    res.map.emit("load");
+    res.map.emit("idle");
+    await settle(5);
+    const drawn = findAll(page.svg, (n) => n !== page.svg && hasClass(n, "lm-emoji"));
+    for (const s of r.stations) {
+      const mine = drawn.filter((n) => n.getAttribute?.("data-station-id") === s.id);
+      assert.equal(mine.length, 1, `one lm-emoji for station ${s.n}`);
+      assert.equal(mine[0].textContent, WANT[s.n], `station ${s.n} glyph on the map`);
+    }
   });
 });
