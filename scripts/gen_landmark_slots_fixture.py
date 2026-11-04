@@ -1,8 +1,11 @@
 """Regenerate static/fixtures/landmark_slots_kendall.json: the /loci reply for a landmark photo (MEM-132).
 
-Runs /loci in-process in fixture mode (no live calls) and writes the reply as the slots page's bundled sample.
+Runs /loci in-process and writes the reply as the slots page's bundled sample. Backend follows MEMRIPAL_MODE:
+fixture mode (no live calls) by default; meta mode runs a live SAM segmentation and needs META_API_KEY.
 
 Usage: uv run python scripts/gen_landmark_slots_fixture.py <photo> [--out PATH]
+Live:  MEMRIPAL_MODE=meta META_API_KEY=<key> uv run python scripts/gen_landmark_slots_fixture.py \
+         fixtures/demo/kendall_landmark.jpg
 """
 
 import argparse
@@ -31,10 +34,15 @@ def main(argv: list[str] | None = None) -> int:
     from fastapi.testclient import TestClient
 
     from memripal.app import REPLAY_DIR, create_app
-    from memripal.backend import FixtureBackend
+    from memripal.backend import MissingApiKey, select_backend
 
+    try:
+        backend = select_backend(None, REPLAY_DIR)
+    except MissingApiKey as exc:
+        print(f"gen_landmark_slots_fixture: {exc}", file=sys.stderr)
+        return 1
     media = {".png": "image/png", ".webp": "image/webp"}.get(args.photo.suffix.lower(), "image/jpeg")
-    client = TestClient(create_app(backend=FixtureBackend(REPLAY_DIR)), base_url="http://127.0.0.1")
+    client = TestClient(create_app(backend=backend), base_url="http://127.0.0.1")
     resp = client.post("/loci", content=data, headers={"Content-Type": media})
     if resp.status_code != 200:
         print(f"gen_landmark_slots_fixture: /loci returned {resp.status_code}", file=sys.stderr)

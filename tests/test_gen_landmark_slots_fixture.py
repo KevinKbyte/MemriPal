@@ -2,7 +2,8 @@
 # Requirement: scripts/gen_landmark_slots_fixture.py <photo> [--out PATH] runs /loci in-process (fixture mode,
 # no live calls) and writes the bundled landmark-slots fixture, a /loci reply: {image (data URL), width,
 # height, photo_sha, reask_used, loci}, with at least SLOT_COUNT (3) loci; a missing photo exits nonzero
-# and writes nothing.
+# and writes nothing. MEMRIPAL_MODE=meta with META_API_KEY unset exits 1 with a
+# "gen_landmark_slots_fixture:" stderr naming META_API_KEY and writes nothing.
 import importlib.util
 import json
 from pathlib import Path
@@ -37,4 +38,15 @@ class TestGenLandmarkSlotsFixture:
         out = tmp_path / "x.json"
         code = _main(str(tmp_path / "nope.jpg"), "--out", str(out))
         assert code not in (0, None)
+        assert not out.exists()
+
+    def test_meta_mode_without_api_key_exits_1_and_writes_nothing(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("MEMRIPAL_MODE", "meta")
+        monkeypatch.delenv("META_API_KEY", raising=False)
+        out = tmp_path / "x.json"
+        code = _main(str(PHOTO), "--out", str(out))
+        err = capsys.readouterr().err
+        assert code == 1
+        assert err.startswith("gen_landmark_slots_fixture:")
+        assert "META_API_KEY" in err
         assert not out.exists()
