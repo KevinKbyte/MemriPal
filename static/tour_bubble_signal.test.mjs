@@ -32,7 +32,7 @@ describe("tour publishes body data-tour-target (MEM-055)", () => {
 
   test("Next to a targeted step: equals that step's target selector", () => {
     const dom = wire();
-    next(dom);
+    next(dom, 6);
     assert.equal(target(dom), '.tab[href="#routes"]');
     next(dom);
     assert.equal(target(dom), ".drawer-handle");
