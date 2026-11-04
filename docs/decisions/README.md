@@ -14,7 +14,7 @@ numbers on the `Reserved:` line (`Reserved: 0034, 0035`, or `Reserved: none`); M
 missing number is listed, and fails a listed number that also exists as a file (stale reservation: drop it when that
 ADR lands). ADR [0062](0062-reserved-adr-numbers.md).
 
-Reserved: 0072, 0073, 0074, 0075, 0076
+Reserved: 0073, 0074, 0075, 0076
 
 ## ADRs
 
