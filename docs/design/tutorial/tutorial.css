@@ -1,0 +1,171 @@
+/* Pal's first-run tour: spotlight + coach card over the app shell. Tokens only. */
+.tour {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+}
+
+.tour[hidden] {
+  display: none;
+}
+
+/* One box punches the hole; its giant shadow is the scrim. */
+.tour-spot {
+  position: fixed;
+  border-radius: 14px;
+  outline: 3px solid var(--lamp);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 200vmax color-mix(in srgb, color-mix(in srgb, var(--ink) 25%, black) 62%, transparent);
+  pointer-events: none;
+  transition: top 0.25s ease, left 0.25s ease, width 0.25s ease, height 0.25s ease;
+}
+
+/* Welcome step: no target, so the spot collapses to a point and only the scrim shows. */
+.tour-spot.is-empty {
+  outline: 0;
+}
+
+.tour-card {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--tabbar-h) + 1rem);
+  transform: translateX(-50%);
+  width: calc(100vw - 2rem);
+  max-width: 24rem;
+  display: grid;
+  gap: 0.5rem;
+  padding: 2.75rem 1rem 1rem;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+}
+
+.tour-card h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 1.25rem;
+  line-height: 1.25;
+}
+
+.tour-card p {
+  margin: 0;
+}
+
+/* Pal peeks over the card's top-left corner. */
+.tour-pal {
+  position: absolute;
+  top: -3.25rem;
+  left: 0.5rem;
+  width: 5.5rem;
+  height: auto;
+  pointer-events: none;
+}
+
+.tour-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-left: 5.5rem;
+  margin-top: -2.25rem;
+}
+
+.tour-count {
+  margin: 0;
+  font: 600 0.75rem/1.3 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.tour-dots {
+  display: flex;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tour-dots li {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+.tour-dots li.is-current {
+  width: 1.1rem;
+  background: var(--lamp);
+}
+
+/* Skip is on every step: a text button with a full 44px target. */
+.tour-skip,
+.tour-skip:hover {
+  margin-left: auto;
+  min-width: 2.75rem;
+  padding: 0 0.25rem;
+  border: 0;
+  background: none;
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  white-space: nowrap;
+}
+
+.tour-actions {
+  justify-content: flex-end;
+  margin-top: 0.25rem;
+}
+
+/* Welcome: card centered on screen, Pal large and centered above the text. */
+.tour.is-welcome .tour-card {
+  top: 50%;
+  bottom: auto;
+  transform: translate(-50%, -40%);
+  padding-top: 6rem;
+  text-align: center;
+}
+
+.tour.is-welcome .tour-pal {
+  top: -4.5rem;
+  left: 50%;
+  width: 9rem;
+  transform: translateX(-50%);
+}
+
+.tour.is-welcome .tour-head {
+  padding-left: 0;
+  margin-top: -1rem;
+}
+
+.tour.is-welcome .tour-actions {
+  justify-content: center;
+}
+
+.tour-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--tabbar-h) + 1rem);
+  transform: translateX(-50%);
+  z-index: 50;
+  width: max-content;
+  max-width: calc(100vw - 2rem);
+  margin: 0;
+  padding: 0.75rem 1rem;
+  background: var(--ink);
+  color: var(--surface);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+}
+
+.tour-toast[hidden] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-spot {
+    transition: none;
+  }
+}
