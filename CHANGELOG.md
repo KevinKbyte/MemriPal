@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [0.20.47] - 2026-11-03
 
+### Added
+
+- Best-fit landmark emoji: emojiFor({ name, category?, tags? }) keyword/category table (static/landmark_emoji.js); the Kendall demo stations carry hand-picked emoji, kept by seedRoute, so the live map shows them instead of U+1F4CD (MEM-100, ADR 0057).
+
 ### Changed
 
 - Deploy runbook and ADR 0056: judges get the URL and access key from the submission's Project Description (the form has no private notes field); cost exposure bounded by the Meta spend limit and MEMRIPAL_CALL_BUDGET.
