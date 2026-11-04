@@ -227,6 +227,49 @@ describe("associateKeywords: one /associate per (keyword, station)", () => {
     assert.equal(placements[DEMO_ROUTE.stations[2].id], undefined);
     assert.equal(Object.keys(placements).length, 5);
   });
+
+  // Requirement: every /associate carries the station's context (ADR 0048 "Station context in the
+  // prompt") as exactly {name, profile, taps}; a missing profile or taps is sent as {}, and no other
+  // station key (id, n, photo, coords, address) leaves the phone.
+  test("a station without profile or taps sends station {name, profile: {}, taps: {}}", async () => {
+    const { fetch, calls } = countingFetch();
+    await associateKeywords(KEYWORDS, DEMO_ROUTE.stations, { fetch });
+    assert.equal(calls.length, 6);
+    calls.forEach((c, i) => {
+      assert.deepEqual(c.body.station, { name: DEMO_ROUTE.stations[i].name, profile: {}, taps: {} });
+      assert.equal(c.body.item, KEYWORDS[i].label);
+      assert.equal(c.body.locus, DEMO_ROUTE.stations[i].name);
+      assert.ok(c.body.image.startsWith("data:image/jpeg;base64,"), "image is not a JPEG data URL");
+    });
+  });
+
+  test("null profile/taps are sent as {}", async () => {
+    const { fetch, calls } = countingFetch();
+    const stations = DEMO_ROUTE.stations.map((s) => ({ ...s, profile: null, taps: null }));
+    await associateKeywords(KEYWORDS, stations, { fetch });
+    calls.forEach((c, i) => {
+      assert.deepEqual(c.body.station, { name: stations[i].name, profile: {}, taps: {} });
+    });
+  });
+
+  test("a station's profile and taps pass through unchanged as station {name, profile, taps} only", async () => {
+    const { fetch, calls } = countingFetch();
+    const stations = DEMO_ROUTE.stations.map((s, i) => ({
+      ...s,
+      id: s.id, n: i + 1, photo: `/9j/photo${i}`, photo_ref: `p${i}`, coords: { lat: 1, lng: 2 }, address: `${i} Main St`,
+      profile: { visual: `red door ${i}`, spatial: `left of the stairs ${i}`, conceptual: `entry ${i}` },
+      taps: { sound: `bell ${i}`, smell: `coffee ${i}`, feel: `cold brass ${i}`, mood: `calm ${i}` },
+    }));
+    const snapshot = JSON.parse(JSON.stringify(stations));
+    await associateKeywords(KEYWORDS, stations, { fetch });
+    assert.equal(calls.length, 6);
+    calls.forEach((c, i) => {
+      assert.deepEqual(c.body.station, { name: snapshot[i].name, profile: snapshot[i].profile, taps: snapshot[i].taps });
+      assert.deepEqual(Object.keys(c.body.station).sort(), ["name", "profile", "taps"]);
+      assert.equal(c.body.locus, snapshot[i].name);
+    });
+    assert.deepEqual(stations, snapshot, "associateKeywords mutated the stations");
+  });
 });
 
 describe("mnemonics: built on the phone (0 calls)", () => {
