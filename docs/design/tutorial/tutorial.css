@@ -171,11 +171,14 @@
   }
 }
 
-/* Story steps: centered card above the tab bar, normal-size Pal, no spotlight. */
+/* Story steps: card centred between Pal's headroom and the tab bar, normal-size Pal, no spotlight. A tall card
+   (the dog-house step on a phone) grows down from the headroom line, so Pal's crown never leaves the screen. */
 .tour.is-story .tour-card {
-  top: calc(50% - var(--tabbar-h) / 2);
-  bottom: auto;
-  transform: translate(-50%, -50%);
+  top: 3.5rem;
+  bottom: calc(var(--tabbar-h) + 1rem);
+  height: fit-content;
+  margin-block: auto;
+  transform: translateX(-50%);
 }
 
 /* Locus figure: one row per spot (spot | picture | item); sub-lists are a palace inside a spot. */
@@ -248,4 +251,65 @@
   .tour-dots {
     display: none;
   }
+}
+
+/* Dog-house figure (step 3): Pal's house segmented like a station photo, in the v6 loci-overlay language
+   (docs/design/v6/styles.css .ov): outline boxes over a halo, a dotted route through the box centres,
+   numbered pins at each box's top-left. Fills/strokes only, so no text sits on a background rule. */
+.tour-house[hidden] {
+  display: none;
+}
+
+.tour-house svg {
+  display: block;
+  width: 100%;
+  max-width: 22rem;
+  height: auto;
+  margin: 0 auto;
+  overflow: visible;
+}
+
+.tour-house .h-shape {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.tour-house .route-line {
+  fill: none;
+  stroke: var(--lamp);
+  stroke-width: 2.5;
+  stroke-dasharray: 2 7;
+  stroke-linecap: round;
+}
+
+.tour-house .o-under {
+  fill: none;
+  stroke: var(--surface);
+  stroke-width: 6;
+}
+
+.tour-house .o-line {
+  fill: color-mix(in srgb, var(--lamp) 14%, var(--surface));
+  stroke: var(--lamp);
+  stroke-width: 2;
+}
+
+.tour-house .o-label {
+  fill: var(--ink);
+  font: 600 10px/1 var(--mono);
+  letter-spacing: 0.02em;
+}
+
+.tour-house .pin circle {
+  fill: var(--surface);
+  stroke: var(--lamp);
+  stroke-width: 2.5;
+}
+
+.tour-house .pin text {
+  fill: var(--ink);
+  font: 700 11px/1 var(--mono);
 }

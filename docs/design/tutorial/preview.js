@@ -8,6 +8,8 @@
   function E(cp) { return String.fromCodePoint(cp); }
 
   // story: centered card with an optional locus figure (fig rows: spot, icon, item; sub = nested spots).
+  // house: Pal's dog house segmented like a station photo (MEM-095): one box [x, y, w, h] per spot in a
+  // 320x200 viewBox, numbered in walk order; the route through the box centres never crosses itself.
   var STEPS = [
     { target: null, title: "Hi! I'm King Memri.",
       body: "But call me Pal. My dog house is the Memri Palace. Let me show you how it works, then help you build a palace of your own.",
@@ -18,6 +20,13 @@
       next: "Next" },
     { story: true, title: "My Royal Shopping List",
       body: "One item per spot, in the order I walk my dog house:",
+      house: [
+        { spot: "Doormat", box: [128, 184, 64, 15] },
+        { spot: "Water bowl", box: [40, 140, 70, 28] },
+        { spot: "Chew-toy throne", box: [40, 82, 76, 36] },
+        { spot: "Scratching post", box: [222, 86, 62, 80] },
+        { spot: "Window", box: [134, 36, 52, 30] }
+      ],
       fig: [
         { spot: "Doormat", icon: E(0x1F953), item: "sizzling bacon" },
         { spot: "Water bowl", icon: E(0x1F3BE), item: "squeaking tennis ball" },
@@ -83,6 +92,7 @@
   var card = tour.querySelector(".tour-card");
   var dotList = tour.querySelector(".tour-dots");
   var fig = $("tour-fig");
+  var house = $("tour-house");
   var back = $("tour-back");
   var next = $("tour-next");
   var toast = $("tour-toast");
@@ -112,6 +122,55 @@
       li.appendChild(ol);
     }
     return li;
+  }
+
+  // Dog-house figure, drawn like the v6 loci overlay (outline boxes, numbered pins, route through the centres).
+  var SVG_NS = "http://www.w3.org/2000/svg";
+  var HOUSE_W = 320, HOUSE_H = 200, PIN_R = 9;
+
+  function svgEl(tag, attrs, cls) {
+    var e = document.createElementNS(SVG_NS, tag);
+    for (var k in attrs) e.setAttribute(k, String(attrs[k]));
+    if (cls) e.setAttribute("class", cls);
+    return e;
+  }
+
+  function houseFig(spots) {
+    var svg = svgEl("svg", { viewBox: "0 0 " + HOUSE_W + " " + HOUSE_H, role: "img",
+      "aria-label": "Pal's dog house split into " + spots.length + " numbered spots: " +
+        spots.map(function (s, i) { return (i + 1) + " " + s.spot; }).join(", ") });
+    // The house itself: roof, walls, door, ground.
+    svg.appendChild(svgEl("path", { d: "M16 80 L160 10 L304 80 M32 80 V180 H288 V80 M140 180 V150 A20 20 0 0 1 180 150 V180 M8 180 H312" }, "h-shape"));
+    svg.appendChild(svgEl("polyline", { points: spots.map(function (s) {
+      return (s.box[0] + s.box[2] / 2) + "," + (s.box[1] + s.box[3] / 2);
+    }).join(" ") }, "route-line"));
+    // All outlines first, then labels, then pins, so a later box never paints over an earlier pin.
+    spots.forEach(function (s) {
+      var b = s.box, r = { x: b[0], y: b[1], width: b[2], height: b[3], rx: 6 };
+      svg.appendChild(svgEl("rect", r, "o-under"));
+      svg.appendChild(svgEl("rect", r, "o-line"));
+    });
+    spots.forEach(function (s) {
+      var b = s.box, words = s.spot.length > 10 ? s.spot.split(" ") : [s.spot];
+      var t = svgEl("text", { x: b[0] + b[2] / 2, y: b[1] + b[3] / 2 - (words.length - 1) * 5.5 + 3.5,
+        "text-anchor": "middle" }, "o-label");
+      words.forEach(function (w, n) {
+        var ts = svgEl("tspan", { x: b[0] + b[2] / 2, dy: n ? 11 : 0 });
+        ts.textContent = w;
+        t.appendChild(ts);
+      });
+      svg.appendChild(t);
+    });
+    spots.forEach(function (s, i) {
+      var cx = Math.max(PIN_R + 1, s.box[0]), cy = Math.max(PIN_R + 1, s.box[1]);
+      var g = svgEl("g", {}, "pin");
+      g.appendChild(svgEl("circle", { cx: cx, cy: cy, r: PIN_R }));
+      var n = svgEl("text", { x: cx, y: cy + 3.8, "text-anchor": "middle" });
+      n.textContent = String(i + 1);
+      g.appendChild(n);
+      svg.appendChild(g);
+    });
+    return svg;
   }
 
   function placeSpot() {
@@ -145,6 +204,9 @@
     for (var d = 0; d < dots.length; d++) dots[d].classList.toggle("is-current", d === i);
     $("tour-title").textContent = s.title;
     $("tour-body").textContent = s.body;
+    house.textContent = "";
+    if (s.house) house.appendChild(houseFig(s.house));
+    house.hidden = !s.house;
     fig.textContent = "";
     (s.fig || []).forEach(function (r) { fig.appendChild(figRow(r)); });
     fig.hidden = !s.fig;
