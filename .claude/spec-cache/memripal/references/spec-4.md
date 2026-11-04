@@ -508,4 +508,4 @@ estimate error).
 - Accept: at total >= cap no Meta request is sent and SAM/ASR return the typed refusal; chat answers via the fallback
   provider; after a restart the total and the refusal hold.
 
-Tests: (filled at land)
+Tests: tests/test_meta_spend_guard.py
