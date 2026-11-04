@@ -28,6 +28,7 @@ from memripal.loci import (
     sanitize_box,
     select_loci,
 )
+from memripal.meta_spend_guard import MetaSpendCapReached
 from memripal.probe_metrics import _TOKEN, Box, _parse_token
 
 BLUR_PHRASES = ("person", "license plate")
@@ -163,6 +164,8 @@ def _blur_segment(backend: ModelBackend, processed: Processed, phrase: str) -> l
     )
     try:
         text = backend.call(req)
+    except MetaSpendCapReached:
+        raise  # names the cap to the user rather than a generic blur failure
     except BackendCallFailed as exc:
         raise BlurFailed("blur call failed") from exc
     return strict_boxes(text, processed.width, processed.height)

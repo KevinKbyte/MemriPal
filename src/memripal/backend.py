@@ -324,6 +324,8 @@ class MetaBackend:
         seg_client: Any = None,
         chat: Any = None,
         clock: Callable[[], float] = time.monotonic,
+        chat_fallback: Any = None,
+        spend_guard: Any = None,
     ) -> None:
         self._api_key = api_key
         self.cache = ResponseCache(cache_root) if cache_root is not None else None
@@ -331,7 +333,7 @@ class MetaBackend:
             # Lazy: meta_client imports MissingApiKey from this module.
             from memripal.meta_client import MetaClient
 
-            client = MetaClient(api_key)
+            client = MetaClient(api_key, spend_guard=spend_guard)
         self._client = client
         # None keeps segment calls on Meta SAM; a ModalSegClient takes them over (MEM-016).
         self._seg_client = seg_client
@@ -339,6 +341,7 @@ class MetaBackend:
         self._chat = chat
         self._clock = clock
         self._chat_skip_until = float("-inf")  # clock time before which Spark skips the provider
+        self._chat_fallback = chat_fallback  # ChatProvider for Spark chat past the Meta spend cap (MEM-094)
 
     # Explicit so the key can never surface through a default dataclass/object repr.
     def __repr__(self) -> str:
@@ -379,6 +382,7 @@ class MetaBackend:
             responses_text,
             to_data_url,
         )
+        from memripal.meta_spend_guard import MetaSpendCapReached
 
         image_url = to_data_url(req.image_jpeg)
         store_req = req
@@ -394,16 +398,17 @@ class MetaBackend:
             gen_params = dict(req.gen_params)
             prompt_args = gen_params.pop(PROMPT_ARGS, {})
             send_image = gen_params.pop(SEND_IMAGE, True)
-            client, model = (self._client, req.model) if chat is None else (chat.client, chat.model)
-            result = client.chat_json(
-                prompt=prompt_for(req.prompt_template_id, prompt_args),
-                schema=req.schema,
-                schema_name=req.subject,
-                image_data_url=image_url if send_image else None,
-                model=model,
-                **gen_params,
-            )
+            prompt = prompt_for(req.prompt_template_id, prompt_args)
+            ask = dict(prompt=prompt, schema=req.schema, schema_name=req.subject, **gen_params)
+            ask["image_data_url"] = image_url if send_image else None
+            if chat is None:
+                try:
+                    result = self._client.chat_json(model=req.model, **ask)
+                except MetaSpendCapReached:
+                    if (chat := self._chat_fallback) is None:
+                        raise
             if chat is not None:
+                result = chat.client.chat_json(model=chat.model, **ask)
                 # Provider-distinct key, as for Modal SAM: never replays as a Meta Spark entry (ADR 0018);
                 # the provider's own model id, so two local models never share an entry.
                 store_req = replace(req, model=chat.name + "/" + chat.model)
@@ -489,12 +494,13 @@ def select_backend(
         if not api_key:
             raise MissingApiKey("meta mode requires META_API_KEY in the environment")
         # Lazy: seg_provider imports meta_client, which imports this module (cycle at module top).
-        from memripal.chat_provider import chat_provider_from_env, select_chat_provider
+        from memripal.chat_provider import chat_provider_from_env, meta_guard_from_env, select_chat_provider
         from memripal.seg_provider import modal_seg_client_from_env, select_seg_provider
 
         # Meta branch only, like META_API_KEY: fixture mode never reads the provider settings.
         seg_client = modal_seg_client_from_env() if select_seg_provider() == "modal" else None
         chat_name = select_chat_provider()
         chat = chat_provider_from_env(chat_name) if chat_name != "meta" else None
-        return MetaBackend(api_key, cache_root=live_cache_root, seg_client=seg_client, chat=chat)
+        kwargs = dict(cache_root=live_cache_root, seg_client=seg_client, chat=chat, **meta_guard_from_env())
+        return MetaBackend(api_key, **kwargs)
     raise ValueError(f"unknown MEMRIPAL_MODE {mode!r}; expected 'fixture' or 'meta'")

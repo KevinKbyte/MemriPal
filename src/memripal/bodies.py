@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from starlette.datastructures import Headers
 
 from memripal.imaging import MAX_UPLOAD_BYTES
+from memripal.meta_spend_guard import CAP_ERROR_CODE, MetaSpendCapReached
 from memripal.place import valid_coords
 from memripal.split import MAX_POINTS
 
@@ -63,6 +64,15 @@ class _BodyCap:
         except _BodyTooLarge:
             # Routes read the whole body before responding, so no response has started yet.
             await _error(413, "too_large")(scope, receive, send)
+
+
+def _call_failed(exc: Exception) -> JSONResponse:
+    """A refused or failed model call: the two spend limits name themselves, anything else is "upstream"."""
+    if isinstance(exc, MetaSpendCapReached):
+        return _error(503, CAP_ERROR_CODE)
+    if isinstance(exc, BudgetExhausted):
+        return _error(429, "budget_exhausted")
+    return _error(502, "upstream")
 
 
 async def _read_capped(request: Request, cap: int = MAX_UPLOAD_BYTES) -> bytes | None:

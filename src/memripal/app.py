@@ -35,6 +35,7 @@ from memripal.bodies import (
     _associate_body,
     _BodyCap,
     _box_ok,
+    _call_failed,
     _error,
     _length_error,
     _place_body,
@@ -46,7 +47,7 @@ from memripal.chat_fallback import ChatFallbackHeader
 from memripal.demo_room import room_photo
 from memripal.imaging import MAX_UPLOAD_BYTES, ImageRejected, process_upload, sniff, validate_processed
 from memripal.loci import find_loci, locus_json
-from memripal.meta_client import MetaClient
+from memripal.meta_spend_guard import meta_asr_client_from_env
 from memripal.place import FixturePlaceProvider, PlaceProvider
 from memripal.recall_relay import (
     MAX_CHUNK_BYTES,
@@ -143,8 +144,7 @@ def create_app(
         # Fixture mode stays offline end to end, so the demo place replays like every other answer.
         place_provider = FixturePlaceProvider(REPLAY_DIR) if backend.mode == "fixture" else PlaceProvider()
     if asr_client is None and backend.mode != "fixture":
-        api_key = os.environ.get("META_API_KEY", "")
-        asr_client = MetaClient(api_key) if api_key else None
+        asr_client = meta_asr_client_from_env()
 
     # Deploy guards (MEM-034), read once here. Strip: Secret Manager values carry a trailing newline.
     extra_hosts = [h.strip() for h in os.environ.get("MEMRIPAL_ALLOWED_HOSTS", "").split(",") if h.strip()]
@@ -261,12 +261,12 @@ def create_app(
             return _error(400, "bad_audio")
         if asr_client is None:
             return _error(503, "asr_unavailable")
-        if isinstance(backend, _BudgetedBackend):
-            try:
+        try:
+            if isinstance(backend, _BudgetedBackend):
                 backend.spend()
-            except BudgetExhausted:
-                return _error(429, "budget_exhausted")
-        result = await run_in_threadpool(asr_client.transcribe, audio, keywords=keywords)
+            result = await run_in_threadpool(asr_client.transcribe, audio, keywords=keywords)
+        except (BudgetExhausted, BackendCallFailed) as exc:
+            return _call_failed(exc)
         text = transcript_or_none(result.body) if result.ok else None
         if text is None:
             return _error(502, "upstream")
@@ -309,8 +309,8 @@ def create_app(
             return _error(exc.status, str(exc))
         except FixtureMissing:
             return _error(404, "fixture_missing")
-        except BackendCallFailed:
-            return _error(502, "upstream")
+        except BackendCallFailed as exc:
+            return _call_failed(exc)
         except BudgetExhausted:
             return _error(429, "budget_exhausted")
         except Exception:
@@ -361,8 +361,8 @@ def create_app(
             return _error(exc.status, str(exc))
         except FixtureMissing:
             return _error(404, "fixture_missing")
-        except BackendCallFailed:
-            return _error(502, "upstream")
+        except BackendCallFailed as exc:
+            return _call_failed(exc)
         except BudgetExhausted:
             return _error(429, "budget_exhausted")
         return JSONResponse({"points": points})
@@ -406,8 +406,8 @@ def create_app(
             return _error(exc.status, str(exc))
         except FixtureMissing:
             return _error(404, "fixture_missing")
-        except BackendCallFailed:
-            return _error(502, "upstream")
+        except BackendCallFailed as exc:
+            return _call_failed(exc)
         except BudgetExhausted:
             return _error(429, "budget_exhausted")
         except Exception:

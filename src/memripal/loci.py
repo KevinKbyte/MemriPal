@@ -10,6 +10,7 @@ from typing import Any
 
 from memripal.backend import PROMPT_ARGS, BackendCallFailed, ModelBackend, ModelRequest
 from memripal.imaging import Processed
+from memripal.meta_spend_guard import MetaSpendCapReached
 from memripal.probe import PHRASE_SCHEMA
 from memripal.probe_metrics import Box, _is_valid, iou, largest, parse_boxes, scaled_to
 
@@ -204,6 +205,9 @@ def _segment(backend: ModelBackend, processed: Processed, phrase: str) -> list[B
     )
     try:
         text = backend.call(req)
+    except MetaSpendCapReached:
+        # Every later SAM call would be refused too: surface the cap, never a silently empty result.
+        raise
     except BackendCallFailed:
         return []
     if not isinstance(text, str) or len(text.encode("utf-8")) > MAX_SAM_TEXT_BYTES:

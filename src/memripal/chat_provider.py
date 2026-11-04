@@ -7,6 +7,7 @@ import httpx
 
 from memripal.backend import MissingApiKey
 from memripal.meta_client import MetaClient
+from memripal.meta_spend_guard import guard_from_env
 
 CHAT_PROVIDERS = ("meta", "baseten", "fireworks", "local")
 # provider -> (base URL, model id, key env var). Only Spark chat moves; SAM stays on Meta.
@@ -58,3 +59,16 @@ def chat_provider_from_env(provider: str) -> ChatProvider:
 
 def _client(key: str | None, base_url: str) -> MetaClient:
     return MetaClient(key, base_url=base_url, timeout=PROVIDER_TIMEOUT, max_retries=PROVIDER_RETRIES)
+
+
+def chat_fallback_from_env() -> ChatProvider | None:
+    """Spark chat once the Meta spend cap refuses it (MEM-094): Baseten, else Fireworks, by key set."""
+    for provider in ("baseten", "fireworks"):
+        if os.environ.get(_KEYED[provider][2]):
+            return chat_provider_from_env(provider)
+    return None
+
+
+def meta_guard_from_env() -> dict:
+    """Meta mode's MetaBackend kwargs (MEM-094): the persisted spend guard, chat's fallback past its cap."""
+    return {"spend_guard": guard_from_env(), "chat_fallback": chat_fallback_from_env()}
