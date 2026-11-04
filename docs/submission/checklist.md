@@ -12,6 +12,9 @@ Deadline: official hard deadline **Wed Nov 4, 9:00 PM ET** (`hackathon.md:191`, 
   Image Analyzers" anti-projects (`hackathon.md:100`).
 - [x] Meta models used through the Meta Model API: Muse Spark, SAM 3.1, Muse Image, Muse Voice Transcribe
   (`src/memripal/meta_client.py`; README "Meta models").
+- [x] Open-weight model: Spark chat runs on Muse Spark Open (`meta-models/muse-spark-open-1026`) served through
+  Baseten partner inference; Meta's hosted Muse Spark is the automatic fallback, with a dismissible notice (ADR 0058,
+  MEM-106..108).
 - [x] New work only: first commit `f59adc0` at 2026-10-26 12:57 ET, after hacking started 12:24 PM ET; README
   "Built during the hackathon" says so.
 - [ ] Kev: keep the Discord "hacking has officially started" screenshot (12:24 PM ET) as evidence.
@@ -39,6 +42,9 @@ Deadline: official hard deadline **Wed Nov 4, 9:00 PM ET** (`hackathon.md:191`, 
 - [ ] Kev: make the GitHub repo public; open it logged-out and confirm README, code and LICENSE load.
 - [ ] Kev: deploy to Cloud Run (`sh scripts/deploy_cloud_run.sh`, `docs/runbooks/deploy-gcp.md`); open the URL
   logged-out: banner "live needs passcode / try Load demo" shows and Load demo runs the loop.
+- [ ] Judge deploy serves Spark from Baseten: secrets `meta-api-key` + `baseten-api-key` exist,
+  `MODE=meta sh scripts/deploy_cloud_run.sh`, and the logs show `spark chat served by baseten`
+  (docs/runbooks/deploy-gcp.md).
 - [ ] Kev: replace the README `TODO(Kev)` video and deployed-URL placeholders.
 
 ## Submission form
@@ -46,6 +52,7 @@ Deadline: official hard deadline **Wed Nov 4, 9:00 PM ET** (`hackathon.md:191`, 
 - [ ] Required per rules: 3-min demo video link, public repo link, every contributor's name (`rules.md:22`,
   `rules.md:101`). TODO(Kev): confirm the live form's actual fields (may differ from or exceed these three).
 - [ ] Kev: contributor list complete (solo: Kev).
+- [ ] Submission text names Muse Spark Open on Baseten (Best Build on Meta Open Weight Models).
 - [ ] Kev: deployed GCP URL in the submission (judges assess the live product, `hackathon.md:199`).
 - [ ] Kev: live-mode passcode shared only in the submission notes (plan D1), never in the repo.
 - [ ] Kev: submitted before Nov 3 8:00 PM ET (hard stop Nov 4 9:00 PM ET); confirmation email received.
