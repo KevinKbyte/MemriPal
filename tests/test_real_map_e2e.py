@@ -20,7 +20,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 import pytest
-from shooter_support import require_chrome
+from shooter_support import TOUR_SEED_JS, require_chrome
 
 from memripal.security_headers import SECURITY_HEADERS
 
@@ -220,7 +220,7 @@ def _run(tmp_path_factory, variant):
             browser = p.chromium.launch(channel="chrome")
             try:
                 context = browser.new_context(viewport={"width": 1280, "height": 900})
-                context.add_init_script(INIT_JS)
+                context.add_init_script(TOUR_SEED_JS + INIT_JS)
                 context.on("request", lambda r: data["requests"].append(r.url))
                 failed, http_errors = data["failed"], data["http_errors"]
                 context.on("requestfailed", lambda r: failed.append(f"{r.method} {r.url} {r.failure}"))
@@ -441,6 +441,7 @@ def shell_run(tmp_path_factory):
                     for scheme in ("light", "dark"):
                         shot = {"base": base, "vw": w, "vh": h, "tabs": [], "error": None}
                         context = browser.new_context(viewport={"width": w, "height": h}, color_scheme=scheme)
+                        context.add_init_script(TOUR_SEED_JS)
                         try:
                             _shell_drive(context.new_page(), shot)
                         except Exception as exc:  # each criterion test reports the error

@@ -28,6 +28,9 @@ REDUCE_BG = "#00ff00"
 MOTION_BG = "#ff0000"
 # Playwright's accepted values; anything else raises, as in a real browser.
 REDUCED_MOTION_VALUES = ("reduce", "no-preference", "null", None)
+# MEM-095: an empty store opens Pal's modal tour, which intercepts every click; any value stored under
+# static/tour.js TOUR_KEY keeps it hidden. For add_init_script on real-browser app-shell contexts.
+TOUR_SEED_JS = '(() => { try { localStorage.setItem("memripal.tour.done", "1"); } catch (e) {} })();\n'
 # GPU raster noise: each GPU-on screenshot takes the next token, so no two are byte-identical.
 _RASTER_TOKENS = itertools.count()
 
