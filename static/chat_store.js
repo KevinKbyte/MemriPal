@@ -3,6 +3,7 @@
 // chat_messages from schema.js V2. Never sent to the server. Soft delete only (deleted_at); Undo is
 // reviveChat. Every input is validated before the first write, and multi-row writes share one
 // transaction, so a refused call writes nothing.
+import { newId as randomId } from "./uuid.js";
 
 export const ROLES = ["user", "assistant"];
 export const MAX_TITLE_CHARS = 100;
@@ -75,7 +76,7 @@ const MESSAGE_COLS = "id, chat_id, role, text, created_at";
  * @param {AsyncDb} db async client over a db migrated with schema.js MIGRATIONS
  * @param {{now?: () => string, newId?: () => string}} [opts]
  */
-export function createChatStore(db, { now = () => new Date().toISOString(), newId = () => crypto.randomUUID() } = {}) {
+export function createChatStore(db, { now = () => new Date().toISOString(), newId = () => randomId() } = {}) {
   /** @param {unknown} id @returns {Promise<Chat | null>} */
   async function getChat(id) {
     if (typeof id !== "string") return null;
