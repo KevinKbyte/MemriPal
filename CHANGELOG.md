@@ -6,7 +6,7 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ### Added
 
-- Paper Crown theme: a storybook look for the painterly theme with self-hosted Fraunces (display) and Nunito (body) fonts plus their OFL licences (CSP `font-src 'self'`), a crown edge on the top bar, and gold lantern stations marking recalled state (`--lamp`, `--on-lamp`, `--glow`); forced-colors, prefers-contrast and print drop the crown edge and glow; all 15 contrast pairs AA in light and dark; design preview at docs/design/paper-crown/ (MEM-102, ADR 0065).
+- Paper Crown theme: a storybook look for the painterly theme with self-hosted Fraunces (display) and Nunito (body) fonts plus their OFL licences (CSP `font-src 'self'`), a crown edge on the top bar, and gold lantern stations marking recalled state (`--lamp`, `--on-lamp`, `--glow`); forced-colors, prefers-contrast and print drop the crown edge and glow; all 15 contrast pairs AA in light and dark; design preview at docs/design/paper-crown/ (MEM-102, ADR 0066).
 - Header tagline "Find a home for every memory" under the MemriPal wordmark (MEM-102).
 
 ## [0.20.57] - 2026-11-04

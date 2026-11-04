@@ -191,6 +191,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0065](0065-emoji-composite-stickers.md) Merged tour stickers are layered emoji glyphs composed client-side in inline
   SVG, a sticker layer on MEM-095's house figure (offline, deterministic) over canvas raster, image generation, or
   canned art.
-- [0065](0065-paper-crown-theme.md) Paper Crown theme: self-hosted Fraunces/Nunito, crown-edge topbar, gold
+- [0066](0066-paper-crown-theme.md) Paper Crown theme: self-hosted Fraunces/Nunito, crown-edge topbar, gold
   (`--lamp`, `--on-lamp`, `--glow`) reserved for lit recall items as lanterns, dark mode on Lantern Walk roles
   (over Field Atlas, whole-app Lantern Walk, or Pop Palace).
