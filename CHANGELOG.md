@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.49] - 2026-11-03
+
+### Added
+
+- Meta spend guard: a persisted per-call estimate of Meta spend (Spark chat, SAM, ASR, image calls) with a configurable cap (MEMRIPAL_META_SPEND_CAP_USD, default $135, under the $150 credit; state in MEMRIPAL_META_SPEND_DIR). Past the cap the server sends no Meta request and returns 503 meta_spend_cap_reached; Spark chat falls back to Baseten, else Fireworks. ADR 0059 (MEM-094).
+
 ## [0.20.48] - 2026-11-03
 
 ### Added
