@@ -1,7 +1,8 @@
 // Covers: MEM-050
 // Requirement: S3 Station card (plan B5). After a station is named by POST /station the card shows its
-// name in #station-name, its Visual / Spatial / Conceptual profile in #station-profile, and four tap groups
-// (#tap-sound #tap-smell #tap-feel #tap-mood; the Next turn group was removed, MEM-135) of toggle buttons with aria-pressed; a tap is stored
+// name in #station-name, its Visual / Spatial / Conceptual profile in #station-profile, and no tap button groups
+// (the sound/smell/feel/mood groups are Superseded by MEM-134: they show as emoji tags,
+// static/station_card_emoji.test.mjs; the Next turn group was removed, MEM-135); a tap is stored
 // on the station (one value per group, tapping the pressed button clears it) and survives a reload. A name
 // edit is checked against the station-name shape rule (non-empty, <= 3 words, no digits) and the client
 // uniqueness rule (normalized exact name, or a shared last word, with ANOTHER station of the route): a bad
@@ -13,7 +14,7 @@
 // Contract (RED; GREEN implements in static/station_card.js, wired from app.js):
 //   createStationCard({ doc, store, routeId, fetch }) -> { show(stationId) -> Promise<void> }
 //   doc is the page document (getElementById); store is route_store.js createRouteStore; the card renders
-//   the tap buttons into each #tap-<group> element; taps persist as station.taps = { sound?, smell?, feel?,
+//   no tap buttons; legacy taps stay stored as station.taps = { sound?, smell?, feel?,
 //   mood? } holding the tapped label.
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
@@ -22,12 +23,20 @@ import * as rs from "./route_store.js";
 import { fakePage, findAll, settle, visibleText } from "./fake_dom_test.mjs";
 import { memoryAdapter, ENCODED, rawFile, fakeEncode, stationOk, fetchSpy } from "./route_store_fakes_test.mjs";
 
+// MEM-050 sense tap groups (#tap-sound #tap-smell #tap-feel #tap-mood): Superseded by MEM-134 (emoji ids instead).
 const CARD_IDS = [
   "station-card", "station-name", "station-name-error", "station-profile", "station-taps",
-  "tap-sound", "tap-smell", "tap-feel", "tap-mood",
+  "station-emojis", "emoji-add", "emoji-remove", "emoji-undo", "emoji-picker", "emoji-search", "emoji-results",
   "station-save", "station-drop", "station-drop-confirm", "station-drop-cancel", "station-undo",
 ];
-const START_HIDDEN = ["station-name-error", "station-drop-confirm", "station-drop-cancel", "station-undo"];
+const START_HIDDEN = ["station-name-error", "station-drop-confirm", "station-drop-cancel", "station-undo",
+  "emoji-remove", "emoji-undo", "emoji-picker"];
+const newPage = () => {
+  const p = fakePage(CARD_IDS, { hidden: START_HIDDEN });
+  p.els["station-name"].value = "";
+  p.els["emoji-search"].value = "";
+  return p;
+};
 
 // Part A S3 (plan lines 248-251).
 const TAPS = {
@@ -51,8 +60,7 @@ async function setup({ names = ["brick wall", "oak tree", "red door"], fetch } =
     const st = await store.addStation(route.id, { photo: ENCODED.slice() });
     stations.push(await store.nameStation(route.id, st.id, { name, profile: PROFILE }));
   }
-  const p = fakePage(CARD_IDS, { hidden: START_HIDDEN });
-  p.els["station-name"].value = "";
+  const p = newPage();
   const spy = fetchSpy([]);
   const createStationCard = await loadCard();
   const card = createStationCard({ doc: p.doc, store, routeId: route.id, fetch: fetch ?? spy.fn });
@@ -89,47 +97,8 @@ describe("station card: name + profile", () => {
   });
 });
 
-// Covers: MEM-050
-// Requirement: each of the 4 tap groups toggles aria-pressed and persists the tap on the station
-// (criterion 1).
-describe("station card: quick-taps toggle aria-pressed and persist (4 groups)", () => {
-  for (const [group, labels] of Object.entries(TAPS)) {
-    test(`#tap-${group}: buttons ${labels.join("/")} toggle and persist`, async () => {
-      const ctx = await setup();
-      await ctx.card.show(ctx.self.id);
-      assert.deepEqual(buttons(ctx, group).map((b) => b.textContent.trim()), labels, `#tap-${group} labels`);
-      for (const b of buttons(ctx, group)) assert.equal(pressed(b), "false", `${b.textContent} starts unpressed`);
-
-      const [first, second] = [labels[1], labels[2]];
-      await click(ctx, button(ctx, group, first));
-      assert.equal(pressed(button(ctx, group, first)), "true", `${first} pressed`);
-      assert.equal(String((await storedSelf(ctx)).taps?.[group]).toLowerCase(), first.toLowerCase(), "tap persisted");
-
-      await click(ctx, button(ctx, group, second));
-      assert.equal(pressed(button(ctx, group, first)), "false", `${first} released when ${second} is tapped`);
-      assert.equal(pressed(button(ctx, group, second)), "true", `${second} pressed`);
-      assert.equal(String((await storedSelf(ctx)).taps?.[group]).toLowerCase(), second.toLowerCase(), "new tap persisted");
-
-      await click(ctx, button(ctx, group, second));
-      assert.equal(pressed(button(ctx, group, second)), "false", `tapping ${second} again releases it`);
-      assert.equal((await storedSelf(ctx)).taps?.[group], undefined, "cleared tap persisted");
-    });
-  }
-
-  test("a stored tap is shown pressed after a reload", async () => {
-    const ctx = await setup();
-    await ctx.card.show(ctx.self.id);
-    await click(ctx, button(ctx, "mood", "Calm"));
-    await click(ctx, button(ctx, "smell", "Coffee"));
-    const fresh = { ...ctx, store: rs.createRouteStore(ctx.kv), p: fakePage(CARD_IDS, { hidden: START_HIDDEN }) };
-    fresh.p.els["station-name"].value = "";
-    fresh.card = (await loadCard())({ doc: fresh.p.doc, store: fresh.store, routeId: ctx.route.id, fetch: ctx.spy.fn });
-    await fresh.card.show(ctx.self.id);
-    assert.equal(pressed(button(fresh, "mood", "Calm")), "true");
-    assert.equal(pressed(button(fresh, "smell", "Coffee")), "true");
-    assert.equal(pressed(button(fresh, "sound", "Birds")), "false");
-  });
-});
+// MEM-050 quick-tap toggle tests: Superseded by MEM-134 (senses show as emoji tags) and MEM-135 (Next turn
+// group removed); the card renders no tap buttons.
 
 // Covers: MEM-050
 // Requirement: a name edit that breaks the shape rule or clashes with another station shows
@@ -280,7 +249,7 @@ describe("station card: no 'captured' claim in rendered labels (criterion 5)", (
   test("tap labels and card copy never contain 'captured'", async () => {
     const ctx = await setup();
     await ctx.card.show(ctx.self.id);
-    assert.equal(buttons(ctx, "smell").length, TAPS.smell.length, "smell taps rendered");
+    assert.equal(buttons(ctx, "turn").length, TAPS.turn.length, "turn taps rendered");
     const texts = [];
     for (const id of CARD_IDS) texts.push(ctx.p.els[id].textContent);
     for (const n of ctx.p.madeByCode()) {

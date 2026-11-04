@@ -1,4 +1,4 @@
-// Shared index.html id lists for the markup tests (MEM-044, MEM-048, MEM-050, MEM-051, MEM-081). Not a test file itself (no
+// Shared index.html id lists for the markup tests (MEM-044, MEM-048, MEM-050, MEM-051, MEM-081, MEM-134). Not a test file itself (no
 // describe/test); index_markup.test.mjs and index_markup_routes.test.mjs import it.
 
 // MEM-048 (plan B3, Part A S1/S2/S4): the 14 ids the final markup adds to the 44 live ids.
@@ -97,3 +97,16 @@ export const MEM045_IDS = [
 // MEM-045: sticker_board.js shows the panel once the demo photo has loci; the error only on a bad upload and the
 // toast only after a peel-off.
 export const MEM045_MAY_START_HIDDEN = ["sticker-panel", "sticker-error", "sticker-toast"];
+
+// MEM-134 (ADR 0079, emoji tags replace the sense quick-taps): the station card's emoji chip row, its add / remove /
+// Undo buttons and the search picker (#emoji-search input + #emoji-results) inside #station-card.
+export const MEM134_IDS = [
+  "station-emojis", "emoji-add", "emoji-remove", "emoji-undo", "emoji-picker", "emoji-search", "emoji-results",
+];
+
+// MEM-134: Remove shows only once a chip is armed, Undo only after a remove, the picker only after #emoji-add.
+export const MEM134_MAY_START_HIDDEN = ["emoji-remove", "emoji-undo", "emoji-picker"];
+
+// MEM-134: the MEM-050 sense tap groups the emoji row replaces (Superseded by MEM-134); #station-taps keeps only
+// #tap-turn.
+export const MEM134_SUPERSEDED_IDS = ["tap-sound", "tap-smell", "tap-feel", "tap-mood"];

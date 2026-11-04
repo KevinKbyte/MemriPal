@@ -8,8 +8,8 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { MEM048_IDS, MEM050_IDS, MEM050_MAY_START_HIDDEN, MEM051_IDS, MEM081_IDS, MEM081_MAY_START_HIDDEN }
-  from "./index_ids_test.mjs";
+import { MEM048_IDS, MEM050_IDS, MEM050_MAY_START_HIDDEN, MEM051_IDS, MEM081_IDS, MEM081_MAY_START_HIDDEN,
+  MEM134_IDS, MEM134_MAY_START_HIDDEN, MEM134_SUPERSEDED_IDS } from "./index_ids_test.mjs";
 
 const HTML = readFileSync(new URL("./index.html", import.meta.url), "utf8");
 
@@ -22,6 +22,8 @@ const LIVE_IDS = [
   "history-view", "hit-rates", "backup", "backup-export", "backup-import", "backup-status", "scene-overlay",
 ];
 const NEW_IDS = MEM048_IDS;
+// MEM-050 sense tap groups: Superseded by MEM-134 (the emoji row replaces them; only #tap-turn stays).
+const MEM050_LIVE_IDS = MEM050_IDS.filter((id) => !MEM134_SUPERSEDED_IDS.includes(id));
 const VOID = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source",
   "track", "wbr"]);
 
@@ -164,26 +166,26 @@ describe("index.html: #finish-kind is two radios Daily / Occasional", () => {
 // Covers: MEM-050
 // Requirement: S3 Station card markup (plan B5, Part A S3): every S3 id exists exactly once next to the 44
 // live ids and the MEM-048 ids; #station-card is a section holding #station-name (text input, maxlength
-// 40) with #station-name-error, #station-profile (dl), the #station-taps fieldset with its four tap groups
-// #tap-sound #tap-smell #tap-feel #tap-mood (no #tap-turn, MEM-135), and the footer buttons #station-save,
+// 40) with #station-name-error, #station-profile (dl), the #station-taps fieldset holding the #station-emojis row
+// (the sound/smell/feel/mood groups are Superseded by MEM-134; no #tap-turn, MEM-135), and the footer buttons #station-save,
 // #station-drop, #station-drop-confirm, #station-drop-cancel and #station-undo. The name error, the
 // confirm/cancel pair and Undo start hidden (progressive-disclosure delete). #scene-wrap, #scene and #loci
 // stay, each exactly once.
 describe("index.html: S3 station card ids and structure (MEM-050)", () => {
-  for (const id of MEM050_IDS) {
+  for (const id of MEM050_LIVE_IDS) {
     test(`S3 id #${id} present exactly once`, () => {
       assert.equal(idCount(id), 1, `#${id} count`);
     });
   }
 
   test("the S3 ids do not reuse a live or MEM-048 id", () => {
-    const overlap = MEM050_IDS.filter((id) => LIVE_IDS.includes(id) || NEW_IDS.includes(id));
+    const overlap = MEM050_LIVE_IDS.filter((id) => LIVE_IDS.includes(id) || NEW_IDS.includes(id));
     assert.deepEqual(overlap, []);
   });
 
   test("#station-card is a section holding every other S3 id", () => {
     assert.equal(byId("station-card")?.tag, "section");
-    for (const id of MEM050_IDS.filter((x) => x !== "station-card")) {
+    for (const id of MEM050_LIVE_IDS.filter((x) => x !== "station-card")) {
       assert.ok(inside(byId(id), "station-card"), `#${id} inside #station-card`);
     }
   });
@@ -196,11 +198,9 @@ describe("index.html: S3 station card ids and structure (MEM-050)", () => {
     assert.equal(byId("station-profile")?.tag, "dl");
   });
 
-  test("#station-taps is a fieldset holding the four tap groups", () => {
+  test("#station-taps is a fieldset holding the emoji row", () => {
     assert.equal(byId("station-taps")?.tag, "fieldset");
-    for (const g of ["sound", "smell", "feel", "mood"]) {
-      assert.ok(inside(byId(`tap-${g}`), "station-taps"), `#tap-${g} inside #station-taps`);
-    }
+    assert.ok(inside(byId("station-emojis"), "station-taps"), "#station-emojis inside #station-taps");
   });
 
   test("save, drop, confirm, cancel and undo are buttons", () => {
@@ -222,6 +222,58 @@ describe("index.html: S3 station card ids and structure (MEM-050)", () => {
   test("#scene-wrap > #scene and #loci stay, each exactly once", () => {
     for (const id of ["scene-wrap", "scene", "loci"]) assert.equal(idCount(id), 1, `#${id} count`);
     assert.ok(inside(byId("scene"), "scene-wrap"), "#scene inside #scene-wrap");
+  });
+});
+
+// Covers: MEM-134
+// Requirement: the station card's sense quick-taps are replaced by emoji tags (ADR 0079): #station-card holds
+// ul#station-emojis (aria-label "Senses at this spot"), button#emoji-add ("+", aria-label "Add an emoji"),
+// button#emoji-remove and button#emoji-undo, and div#emoji-picker with input#emoji-search (type search,
+// aria-label "Search emojis") and div#emoji-results. Each new id appears exactly once; Remove, Undo and the
+// picker start hidden; the superseded #tap-sound #tap-smell #tap-feel #tap-mood appear zero times.
+describe("index.html: MEM-134 emoji tag markup in the station card", () => {
+  for (const id of MEM134_IDS) {
+    test(`MEM-134 id #${id} present exactly once`, () => {
+      assert.equal(idCount(id), 1, `#${id} count`);
+    });
+  }
+
+  for (const id of MEM134_SUPERSEDED_IDS) {
+    test(`superseded sense group #${id} is gone`, () => {
+      assert.equal(idCount(id), 0, `#${id} count`);
+    });
+  }
+
+  test("every MEM-134 id sits inside #station-card; the picker holds the search and results", () => {
+    for (const id of MEM134_IDS) assert.ok(inside(byId(id), "station-card"), `#${id} inside #station-card`);
+    assert.ok(inside(byId("emoji-search"), "emoji-picker"), "#emoji-search inside #emoji-picker");
+    assert.ok(inside(byId("emoji-results"), "emoji-picker"), "#emoji-results inside #emoji-picker");
+  });
+
+  test("element shapes: ul row, buttons, search input, div picker + results", () => {
+    assert.equal(byId("station-emojis")?.tag, "ul");
+    assert.equal(byId("station-emojis").attrs["aria-label"], "Senses at this spot");
+    for (const id of ["emoji-add", "emoji-remove", "emoji-undo"]) assert.equal(byId(id)?.tag, "button", `#${id} is a button`);
+    assert.equal(textOf(byId("emoji-add")).trim(), "+");
+    assert.equal(byId("emoji-add").attrs["aria-label"], "Add an emoji");
+    assert.equal(byId("emoji-picker")?.tag, "div");
+    assert.equal(byId("emoji-results")?.tag, "div");
+    const search = byId("emoji-search");
+    assert.equal(search?.tag, "input");
+    assert.equal(search.attrs.type, "search");
+    assert.equal(search.attrs["aria-label"], "Search emojis");
+  });
+
+  test("Remove, Undo and the picker start hidden; the row and + start visible", () => {
+    for (const id of MEM134_MAY_START_HIDDEN) assert.ok(byId(id) && "hidden" in byId(id).attrs, `#${id} starts hidden`);
+    for (const id of ["station-emojis", "emoji-add"]) {
+      assert.ok(byId(id) && !("hidden" in byId(id).attrs), `#${id} starts visible`);
+    }
+  });
+
+  test("the MEM-134 ids do not reuse a live, MEM-048 or MEM-050 id", () => {
+    const overlap = MEM134_IDS.filter((id) => LIVE_IDS.includes(id) || NEW_IDS.includes(id) || MEM050_IDS.includes(id));
+    assert.deepEqual(overlap, []);
   });
 });
 
