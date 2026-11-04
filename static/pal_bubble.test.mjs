@@ -408,3 +408,67 @@ describe("MEM-099 Pal bubble loads its own stylesheet", () => {
     assert.deepEqual(styleLinks(page.els.head), [existing], "the existing link is kept and none is added");
   });
 });
+
+/** Mounts the bubble with optional act/reply deps, opens it and returns a sender for the composer. */
+async function mountChat(extra) {
+  const page = stylePage();
+  const chats = fakeChats();
+  await mount({ doc: page.doc, win: fakeWin(), storage: memStorage(), chats, ...extra });
+  await settle();
+  const by = (pal) => find(page.els.body, (n) => n.dataset?.pal === pal);
+  page.fire(by("bubble"), "click");
+  await settle();
+  const send = async (text) => {
+    const input = by("composer-input");
+    input.value = text;
+    page.fire(input, "input");
+    page.fire(input, "keydown", { key: "Enter" });
+    await settle(60);
+  };
+  const said = () => chats.rows.filter((r) => !r.deleted).flatMap((r) => r.messages.map((m) => [m.role, m.text]));
+  return { send, said };
+}
+
+// Covers: MEM-132
+// Requirement: the Pal chat can act on a message before the normal reply (MEM-132): mountPalBubble takes an optional
+// act(text); a non-null act answer is appended as the Pal message and reply is not called; a null answer falls
+// through to reply as before. selfMount wires act to static/copilot_bridge.js getActor().
+describe("MEM-132 Pal bubble act dep", () => {
+  test("an act answer lands as the Pal message and reply is not called", async () => {
+    const replies = [];
+    const acted = [];
+    const t = await mountChat({
+      act: async (text) => { acted.push(text); return "Made your route X with 3 stops. It's on the Routes tab."; },
+      reply: async (text) => { replies.push(text); return "chat answer"; },
+    });
+    await t.send("route from Kendall T to Meta office");
+    assert.deepEqual(acted, ["route from Kendall T to Meta office"]);
+    assert.deepEqual(replies, [], "reply not called when act answered");
+    assert.deepEqual(t.said(), [
+      ["user", "route from Kendall T to Meta office"],
+      ["assistant", "Made your route X with 3 stops. It's on the Routes tab."],
+    ]);
+  });
+
+  test("act returning null falls through to reply", async () => {
+    const replies = [];
+    const t = await mountChat({ act: () => null, reply: async (text) => { replies.push(text); return "hi there"; } });
+    await t.send("hello");
+    assert.deepEqual(replies, ["hello"]);
+    assert.deepEqual(t.said(), [["user", "hello"], ["assistant", "hi there"]]);
+  });
+
+  test("act resolving null with no reply dep keeps the user message only", async () => {
+    const t = await mountChat({ act: async () => null });
+    await t.send("hello");
+    assert.deepEqual(t.said(), [["user", "hello"]]);
+  });
+
+  test("selfMount passes act through copilot_bridge.js getActor", () => {
+    const src = readFileSync(new URL("./pal_bubble.js", import.meta.url), "utf8");
+    assert.match(src, /copilot_bridge\.js/);
+    const selfMount = src.slice(src.indexOf("async function selfMount"));
+    assert.match(selfMount, /act\s*:/);
+    assert.match(selfMount, /getActor\(\)/);
+  });
+});
