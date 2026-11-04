@@ -196,7 +196,8 @@ describe("map-first shell: no inline styles", () => {
 // Covers: MEM-095, MEM-097
 // Requirement: index.html links tour.css and carries Pal's tour: div#tour (role=dialog, aria-modal=true,
 // aria-labelledby=tour-title, hidden at load) holding .tour-spot and .tour-card with #tour-n, #tour-total,
-// ol.tour-dots, #tour-skip, h2#tour-title, #tour-body, ol#tour-fig (hidden), #tour-after (hidden), #tour-back and
+// ol.tour-dots, #tour-skip, h2#tour-title, #tour-body, div#tour-house (hidden; step 3's dog-house figure),
+// ol#tour-fig (hidden), #tour-after (hidden), #tour-back and
 // #tour-next; p#tour-toast (role=status, hidden) outside #tour; and a "Replay Pal's tour" button#tour-replay
 // inside #tab-settings.
 describe("Pal's tour markup (MEM-095, MEM-097)", () => {
@@ -219,13 +220,15 @@ describe("Pal's tour markup (MEM-095, MEM-097)", () => {
     for (const cls of ["tour-spot", "tour-card", "tour-dots"]) {
       assert.ok(ELS.some((e) => classes(e).includes(cls) && inside(e, "tour")), `.${cls} inside #tour`);
     }
-    for (const id of ["tour-n", "tour-total", "tour-skip", "tour-title", "tour-body", "tour-fig", "tour-after",
-      "tour-back", "tour-next"]) {
+    for (const id of ["tour-n", "tour-total", "tour-skip", "tour-title", "tour-body", "tour-house", "tour-fig",
+      "tour-after", "tour-back", "tour-next"]) {
       assert.ok(inside(byId(id), "tour"), `#${id} inside #tour`);
     }
     assert.equal(byId("tour-title").tag, "h2");
     assert.equal(byId("tour-fig").tag, "ol");
-    for (const id of ["tour-fig", "tour-after"]) assert.equal(byId(id).attrs.hidden, "", `#${id} hidden at load`);
+    for (const id of ["tour-house", "tour-fig", "tour-after"]) {
+      assert.equal(byId(id).attrs.hidden, "", `#${id} hidden at load`);
+    }
   });
 
   test("#tour-toast is a hidden role=status with the skip text, outside #tour", () => {

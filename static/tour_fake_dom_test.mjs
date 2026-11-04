@@ -8,16 +8,17 @@
 //     div.tour-spot[aria-hidden=true]
 //     div.tour-card > img.tour-pal, div.tour-head > (p.tour-count > span.sr-only, span#tour-n, span#tour-total),
 //       ol.tour-dots (empty; tour.js builds one li per step), button#tour-skip.tour-skip;
-//       h2#tour-title, p#tour-body, ol#tour-fig.tour-fig[hidden], p#tour-after[hidden],
+//       h2#tour-title, p#tour-body, div#tour-house.tour-house[hidden], ol#tour-fig.tour-fig[hidden],
+//       p#tour-after[hidden],
 //       div.btn-row.tour-actions > button#tour-back, button#tour-next
 //   p#tour-toast.tour-toast[role=status][hidden] "Tour skipped. Replay it any time in Settings."
-// APIs supported: document.getElementById/querySelector/querySelectorAll/createElement/createTextNode/
+// APIs supported: document.getElementById/querySelector/querySelectorAll/createElement/createElementNS/createTextNode/
 //   addEventListener/activeElement/body/defaultView; element textContent, hidden, id, className, classList
 //   (add/remove/toggle/contains), get/set/remove/has/toggleAttribute, style (+setProperty), children,
 //   firstElementChild, parentNode/parentElement, appendChild/append/prepend/replaceChildren/removeChild/remove,
 //   contains, matches, closest, querySelector(All), addEventListener/removeEventListener/dispatchEvent, click,
 //   focus/blur (focus is a no-op on a hidden element or one inside a hidden ancestor, as in a browser),
-//   getBoundingClientRect. window (defaultView): addEventListener, setTimeout/clearTimeout (delegate to globalThis
+//   getBoundingClientRect, namespaceURI (createElementNS keeps the tag's case, as a browser does for SVG). window (defaultView): addEventListener, setTimeout/clearTimeout (delegate to globalThis
 //   at call time, so node:test mock timers apply), innerWidth/innerHeight.
 // Selectors: comma lists, descendant and ">" combinators, compounds of tag, #id, .class, [attr], [attr="v"].
 //   Anything else (pseudo-classes, ~, +) throws so a gap shows up as a clear error, not a silent miss.
@@ -33,10 +34,11 @@ class Text {
 }
 
 class El {
-  constructor(doc, tag) {
+  constructor(doc, tag, ns = null) {
     this.nodeType = 1;
     this.ownerDocument = doc;
-    this.tagName = tag.toUpperCase();
+    this.namespaceURI = ns ?? "http://www.w3.org/1999/xhtml";
+    this.tagName = ns ? tag : tag.toUpperCase();
     this.parentNode = null;
     this.childNodes = [];
     this.attrs = {};
@@ -137,7 +139,7 @@ function matchCompound(el, c) {
   const bare = c.replace(/\[[^\]]*\]/g, "");
   if (/[:~+]/.test(bare)) throw new Error(`tour fake DOM: unsupported selector part "${c}"`);
   const tag = bare.match(/^[a-z][\w-]*|^\*/i)?.[0];
-  if (tag && tag !== "*" && tag.toUpperCase() !== el.tagName) return false;
+  if (tag && tag !== "*" && tag.toUpperCase() !== el.tagName.toUpperCase()) return false;
   for (const [, k] of bare.matchAll(/\.([\w-]+)/g)) if (!el.classList.contains(k)) return false;
   for (const [, k] of bare.matchAll(/#([\w-]+)/g)) if (el.id !== k) return false;
   for (const [, k, dq, sq, raw] of c.matchAll(/\[\s*([\w-]+)\s*(?:=\s*(?:"([^"]*)"|'([^']*)'|([^\]\s]*)))?\s*\]/g)) {
@@ -211,6 +213,7 @@ export function makeTourDom({ drawerHandle = true, tab = "routes" } = {}) {
     location: { hash: "" },
     activeElement: null,
     createElement: (tag) => new El(doc, tag),
+    createElementNS: (ns, tag) => new El(doc, tag, String(ns)),
     createTextNode: (t) => new Text(t),
     getElementById: (id) => [doc.documentElement, ...doc.documentElement.descendants()].find((e) => e.id === id) ?? null,
     querySelectorAll: (sel) => [doc.documentElement, ...doc.documentElement.descendants()].filter((e) => e.matches(sel)),
@@ -261,6 +264,7 @@ export function makeTourDom({ drawerHandle = true, tab = "routes" } = {}) {
           h("button", { id: "tour-skip", class: "tour-skip", type: "button" }, "Skip tour")),
         h("h2", { id: "tour-title" }),
         h("p", { id: "tour-body" }),
+        h("div", { id: "tour-house", class: "tour-house", hidden: true }),
         h("ol", { id: "tour-fig", class: "tour-fig", hidden: true }),
         h("p", { id: "tour-after", hidden: true }),
         h("div", { class: "btn-row tour-actions" },
