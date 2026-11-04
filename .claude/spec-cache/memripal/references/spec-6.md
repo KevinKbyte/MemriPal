@@ -584,3 +584,39 @@ NFR: keeps the Paper Crown look (numbered badges, emoji composite); ASCII only.
 - Accept: at 375x812 every rule above holds; numbered badges and the emoji composite still render.
 
 Tests: static/tour_list_readable.test.mjs
+## MEM-127 Landmarks tab: photo gallery with name typeahead, multi-route and candidate filters
+
+Decided-by: ADR-0073
+Root problem: the Landmarks tab was a bare list of the open route's stations; the user needs to browse every
+landmark across all routes as photos, find one by name, and narrow to one or more routes or to a route's
+auto-loci candidates.
+Actors: the user; `static/landmark_gallery.js` (+ `static/landmark_gallery.css`); `static/flow.js` (mount with
+`deps.routes`); `static/index.html` `#tab-landmarks`; `static/list_filter.js` (`filterItems`, MEM-124);
+`static/auto_loci.js` (`candidates`); `/static/data/kendall_pois.json`.
+NFR: ASCII only; CSP unchanged; no new network calls beyond the one POI fetch; `ol#landmarks-list` stays in the DOM
+(hidden) for `static/route_view.js`.
+- G1 `galleryItems(routes)`: one item per landmark across all routes -> {key, name, emoji, photo_ref|null,
+  osm_id|null, candidate:false, routes:[id], routeNames:[name], station}; dedupe by osm_id, else normalized name; a
+  nameless station with no osm_id is its own "Untitled landmark"; routes union in first-seen order; photo_ref is the
+  first non-empty; emoji = station.emoji || emojiFor({name}).
+- G2 `candidateItems(routes, pois)`: for each route with >= 2 coord stations, auto_loci `candidates`; the same key
+  across routes merges routes; osm_ids that are stations on ANY route are excluded.
+- G3 `filterGallery(items, {query, routeIds})`: name query AND (routeIds empty or item on any selected route).
+- G4 `createLandmarkGallery({doc, routes, loadPois, onOpen, getPhotoUrl})` -> {refresh()}; refresh re-reads
+  `routes.listRoutes()`. Markup: `input#landmarks-search` (label[for]); `input#landmarks-route-input`
+  list=`landmarks-route-options` (label[for], inside a `.field` wrapper) + `datalist#landmarks-route-options` of
+  unselected route names; an exact case-insensitive name match adds a chip and clears the input;
+  `ul#landmarks-route-chips` li>button.lg-chip aria-label "Remove route <name>" removes it; radios
+  name=landmarks-show, ids `landmarks-show-on-routes` (checked) and `landmarks-show-candidates`, applied on change;
+  `p#landmarks-count` role=status "<n> landmark(s)" / "<n> candidate(s)"; `ul#landmarks-grid`
+  li>button.lg-tile(+.lg-candidate)>span.lg-thumb (img alt="" or emoji) + span.lg-name + span.lg-meta (route names
+  joined ", " / "Candidate - <names>"); tile click -> onOpen(item); `p#landmarks-empty.lg-empty` hidden when tiles
+  show, else "No landmarks yet. Build a route to add some." | "Pick a route to see its candidates." | "No landmarks
+  match."; index.html links `/static/landmark_gallery.css`.
+- G5 flow wiring: getPhotoUrl = routes.getPhoto(ref) -> object URL cached per ref; loadPois fetches
+  kendall_pois.json once; refresh on tab click and on hashchange to #landmarks.
+- Accept: grid shows photo + name per landmark; typing a name narrows the grid; two selected routes show the union;
+  Candidates shows the selected routes' candidates; `sh scripts/check.sh` green.
+
+Tests: static/landmark_gallery.test.mjs, static/index_markup_landmarks.test.mjs, static/index_ids_test.mjs,
+static/index_markup.test.mjs

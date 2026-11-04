@@ -1,4 +1,4 @@
-// Covers: MEM-044, MEM-095, MEM-112, MEM-045
+// Covers: MEM-044, MEM-095, MEM-112, MEM-045, MEM-127
 // Requirement: static/index.html carries the v6 shell and control markup (MEM-044 A2, F13): topbar brand,
 // .panel, .field, .btn, .btn-primary, .eyebrow and .notice around the live elements; every id of 748a5e1
 // is kept with its hidden attribute unchanged (MEM-048/MEM-050/MEM-051/MEM-072/MEM-081: the only ids added are MEM-048's 14,
@@ -16,13 +16,15 @@ import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { MEM048_IDS, MEM048_MAY_START_HIDDEN, MEM050_IDS, MEM050_MAY_START_HIDDEN, MEM051_IDS,
   MEM051_MAY_START_HIDDEN, MEM072_IDS, MEM072_MAY_START_HIDDEN, MEM081_IDS, MEM081_MAY_START_HIDDEN,
   MEM088_IDS, MEM088_MAY_START_HIDDEN, MEM095_IDS, MEM095_MAY_START_HIDDEN, MEM045_IDS, MEM045_MAY_START_HIDDEN,
-  MEM134_IDS, MEM134_MAY_START_HIDDEN, MEM134_SUPERSEDED_IDS }
+  MEM134_IDS, MEM134_MAY_START_HIDDEN, MEM134_SUPERSEDED_IDS, MEM127_IDS, MEM127_MAY_START_HIDDEN }
   from "./index_ids_test.mjs";
 
 const read = (f) => readFileSync(new URL(f, import.meta.url), "utf8");
 const HTML = read("./index.html");
 // MEM-095: tour classes live in tour.css, so the orphan-class check reads it beside style.css.
-const TOUR_CSS = existsSync(new URL("./tour.css", import.meta.url)) ? read("./tour.css") : "";
+// MEM-127: the Landmarks gallery classes (lg-*) live in landmark_gallery.css, read the same way.
+const TOUR_CSS = ["./tour.css", "./landmark_gallery.css"]
+  .map((f) => (existsSync(new URL(f, import.meta.url)) ? read(f) : "")).join("\n");
 const CSS = read("./style.css").replace(/\/\*[\s\S]*?\*\//g, "");
 
 // index.html at 748a5e1 (before MEM-044): its ids, and the ids carrying the hidden attribute.
@@ -191,7 +193,7 @@ const MEM125_IDS = ["flashcards", "flashcards-title", "flashcards-status", "flas
 // MEM-114: the zero-route empty-state slogan beside Pal; visible in the markup (never start-hidden).
 const MEM114_IDS = ["empty-slogan"];
 
-// Covers: MEM-044, MEM-095, MEM-112, MEM-045, MEM-134
+// Covers: MEM-044, MEM-095, MEM-112, MEM-045, MEM-134, MEM-127
 // Requirement: MEM-044 A2 v6 shell + control markup in static/index.html (see the file header).
 describe("MEM-044 A2 v6 shell + control markup (static/index.html, F13)", () => {
   // MEM-048 (plan B3) amended this test: 748a5e1's ids must survive (subset, each exactly once), and the
@@ -201,20 +203,20 @@ describe("MEM-044 A2 v6 shell + control markup (static/index.html, F13)", () => 
   // MEM-088 its 12 route builder / map empty-state ids; MEM-108 its 3 chat-fallback toast ids (#chat-fallback starts hidden);
   // MEM-110 its station tap summary id; MEM-095 its Pal tour ids; MEM-045 its sticker panel ids; MEM-125 its
   // flashcards panel ids; MEM-114 its #empty-slogan id; MEM-134 its emoji tag ids (and removes the superseded
-  // #tap-sound #tap-smell #tap-feel #tap-mood).
-  test("every 748a5e1 id kept exactly once; the only ids added are MEM-048's, MEM-050's, MEM-051's, MEM-072's, MEM-081's, MEM-088's, MEM-108's, MEM-110's, MEM-095's, MEM-045's, MEM-125's, MEM-114's and MEM-134's", () => {
+  // #tap-sound #tap-smell #tap-feel #tap-mood); MEM-127 its Landmarks gallery ids.
+  test("every 748a5e1 id kept exactly once; the only ids added are MEM-048's, MEM-050's, MEM-051's, MEM-072's, MEM-081's, MEM-088's, MEM-108's, MEM-110's, MEM-095's, MEM-045's, MEM-125's, MEM-114's, MEM-134's and MEM-127's", () => {
     const ids = ELS.map((e) => e.attrs.id).filter((id) => id !== undefined);
     const count = (id) => ids.filter((x) => x === id).length;
     const lost = BASE_IDS.filter((id) => count(id) !== 1);
     assert.deepEqual(lost, [], `748a5e1 ids missing or duplicated: ${lost.join(" ")}`);
     const allowed = new Set([...BASE_IDS, ...MEM048_IDS, ...MEM050_IDS, ...MEM051_IDS, ...MEM072_IDS, ...MEM081_IDS,
       ...MEM088_IDS, ...MEM108_IDS, ...MEM110_IDS,
-      ...MEM095_IDS, ...MEM045_IDS, ...MEM125_IDS, ...MEM114_IDS, ...MEM134_IDS]);
+      ...MEM095_IDS, ...MEM045_IDS, ...MEM125_IDS, ...MEM114_IDS, ...MEM134_IDS, ...MEM127_IDS]);
     // MEM-050 sense tap groups: Superseded by MEM-134 (no longer allowed in the markup).
     for (const id of MEM134_SUPERSEDED_IDS) allowed.delete(id);
     const unexpected = ids.filter((id) => !allowed.has(id));
     assert.deepEqual(unexpected, [],
-      `ids outside 748a5e1 + MEM-048 + MEM-050 + MEM-051 + MEM-072 + MEM-081 + MEM-088 + MEM-108 + MEM-110 + MEM-095 + MEM-045 + MEM-125 + MEM-114: ${unexpected.join(" ")}`);
+      `ids outside 748a5e1 + MEM-048 + MEM-050 + MEM-051 + MEM-072 + MEM-081 + MEM-088 + MEM-108 + MEM-110 + MEM-095 + MEM-045 + MEM-125 + MEM-114 + MEM-127: ${unexpected.join(" ")}`);
     const missing = MEM072_IDS.filter((id) => count(id) !== 1);
     assert.deepEqual(missing, [], `MEM-072 shell ids missing or duplicated: ${missing.join(" ")}`);
     const dupes = [...new Set(ids.filter((id) => count(id) > 1))];
@@ -224,7 +226,7 @@ describe("MEM-044 A2 v6 shell + control markup (static/index.html, F13)", () => 
   // MEM-048 (plan B3) amended this test: 748a5e1's hidden ids stay hidden and its visible ids stay visible;
   // a new element may carry hidden only if it is a MEM-048, MEM-050, MEM-051, MEM-081 or MEM-088 id that starts hidden,
   // or a MEM-072 non-home tab panel. MEM-081 amended it: #route-undo lives inside the hidden #route-toast and no
-  // longer carries hidden itself.
+  // longer carries hidden itself. MEM-127 amended it: #landmarks-list and #landmarks-empty may start hidden.
   test("748a5e1's hidden ids unchanged (bar #route-undo); only start-hidden MEM-048/050/051/072/081/088/045 ids added as hidden", () => {
     const hidden = ELS.filter((e) => "hidden" in e.attrs).map((e) => e.attrs.id ?? desc(e));
     const lostHidden = STAY_HIDDEN.filter((id) => !hidden.includes(id));
@@ -232,7 +234,7 @@ describe("MEM-044 A2 v6 shell + control markup (static/index.html, F13)", () => 
     const mayHide = new Set([...STAY_HIDDEN, ...MEM048_MAY_START_HIDDEN, ...MEM050_MAY_START_HIDDEN,
       ...MEM051_MAY_START_HIDDEN, ...MEM072_MAY_START_HIDDEN, ...MEM081_MAY_START_HIDDEN,
       ...MEM088_MAY_START_HIDDEN, ...MEM108_MAY_START_HIDDEN, ...MEM110_MAY_START_HIDDEN,
-      ...MEM095_MAY_START_HIDDEN, ...MEM045_MAY_START_HIDDEN, ...MEM134_MAY_START_HIDDEN]);
+      ...MEM095_MAY_START_HIDDEN, ...MEM045_MAY_START_HIDDEN, ...MEM134_MAY_START_HIDDEN, ...MEM127_MAY_START_HIDDEN]);
     const extra = hidden.filter((id) => !mayHide.has(id));
     assert.deepEqual(extra, [], `hidden but not allowed to start hidden: ${extra.join(" ")}`);
   });

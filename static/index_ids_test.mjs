@@ -110,3 +110,14 @@ export const MEM134_MAY_START_HIDDEN = ["emoji-remove", "emoji-undo", "emoji-pic
 // MEM-134: the MEM-050 sense tap groups the emoji row replaces (Superseded by MEM-134); #station-taps keeps only
 // #tap-turn.
 export const MEM134_SUPERSEDED_IDS = ["tap-sound", "tap-smell", "tap-feel", "tap-mood"];
+
+// MEM-127 (Landmarks gallery, ADR 0073): name search, route typeahead + datalist + chips, the On routes / Candidates
+// radios, the count line, the tile grid and its empty state.
+export const MEM127_IDS = [
+  "landmarks-search", "landmarks-route-input", "landmarks-route-options", "landmarks-route-chips",
+  "landmarks-show-on-routes", "landmarks-show-candidates", "landmarks-count", "landmarks-grid", "landmarks-empty",
+];
+
+// MEM-127: the gallery replaces the MEM-072 list on screen, so #landmarks-list stays in the DOM hidden (selection
+// sync still writes to it); #landmarks-empty may start hidden until the gallery decides the grid is empty.
+export const MEM127_MAY_START_HIDDEN = ["landmarks-list", "landmarks-empty"];
