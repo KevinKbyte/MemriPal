@@ -358,6 +358,10 @@ https://opendatacommons.org/licenses/odbl/; see https://www.openstreetmap.org/co
 basemap `static/map/kendall.pmtiles` is cut from a Protomaps planet build of that data, and the map always shows
 "(c) OpenStreetMap contributors, Protomaps".
 
+The offline walking graph `static/data/kendall_walk_graph.json` and place table `static/data/kendall_pois.json` are
+built from the same OpenStreetMap data (ODbL), fetched once via the Overpass API (https://overpass-api.de/) by
+`scripts/build_walk_graph.py`.
+
 Third-party code (versions and licenses as recorded in each `VERSION` file):
 
 - MapLibre GL JS 5.24.0, BSD-3-Clause (`static/vendor/maplibre/LICENSE.txt`): renders the map.
