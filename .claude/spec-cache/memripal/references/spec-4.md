@@ -428,7 +428,7 @@ Decision: ADR [0048](../../../../docs/decisions/0048-memorize-breakdown-and-rout
 - Accept: 6 keywords from the demo text; edited keywords re-split with 0 model calls; the recommendation picks a route
   with >= 6 free stations and shows a reason; a fixture-mode run makes 0 live calls.
 
-Tests: (filled at land)
+Tests: static/memorize.test.mjs, tests/test_split_demo_fixtures.py
 
 ## MEM-090 Recall schedule (pure module) (PLANNED)
 
