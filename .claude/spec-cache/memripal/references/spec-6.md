@@ -69,8 +69,9 @@ edit is the mount line, landed after MEM-088.
 - B5: `buildBackup` writes `chats[]` as backup `v: 3`; `importBackup` accepts v2 (no chats) and v3; chats are rebuilt
   through an allow-list with caps (chat count, messages per chat, text length, role enum, ids); an invalid chat is
   skipped with 0 partial writes; a stored id counts as present.
-- B6: chat and message ids mint through `static/uuid.js` `newId`, so creating a chat works on a plain-http,
-  non-localhost origin (no `crypto.randomUUID` there; `crypto.getRandomValues` is used instead).
+- B6: chat and message ids mint through `static/uuid.js` `newId` (`crypto.getRandomValues` fallback), so creating a chat
+  works where `crypto.randomUUID` is absent but Web Locks and OPFS exist. A plain-http non-localhost origin also lacks
+  Web Locks and OPFS, so there the bubble still mounts and shows "Chats unavailable in this tab".
 - Accept: the bubble is on every tab; outside click and Esc collapse it and reopening resumes the chat; drag clamps
   at all 4 edges, survives a reload and is keyboard-movable; V2 migrates a V1 db with routes intact; delete confirm
   plus Undo restores the chat; export then import round-trips chats; a v2 file still imports; a hostile `chats[]` is
