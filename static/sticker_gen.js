@@ -1,5 +1,5 @@
 // @ts-check
-// Generated stickers (MEM-052, ADR 0070): each memorized item's tier-1 scene, cropped to its locus, becomes a pool
+// Generated stickers (MEM-052, ADR 0071): each memorized item's tier-1 scene, cropped to its locus, becomes a pool
 // sticker placed on that locus. No extra /scenes call; offline or any failure falls back to a matching emoji, else
 // the item is skipped. Never rejects: stickers are decoration and must never break the demo.
 
