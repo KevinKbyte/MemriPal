@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.42] - 2026-11-03
+
+### Added
+
+- README credits OpenStreetMap contributors (ODbL), via the Overpass API, for the offline walking graph and place table (MEM-084).
+
 ## [0.20.41] - 2026-11-03
 
 ### Added
