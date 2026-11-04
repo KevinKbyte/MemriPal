@@ -118,6 +118,16 @@ NFR: no new dependency; no innerHTML (all step text and figures via textContent/
   hidden; Next x9 reaches step 10 with 10 dots; step 5 fig shows the cart with 5 sub rows; Next on step 10 -> hidden,
   toast hidden, store has "1"; Skip -> hidden, toast shown, store has "1"; Escape same as Skip; setItem throws ->
   still hidden; a step body containing `<b>` renders as text; real-browser screenshot of step 1 and step 5.
+- Amend 2026-11-04 (Kev: "it should show a sample of segmentation of his dog house with the numbers similar to how we
+  would do for the kendall front of station"): step 3 carries `house: [{spot, box: [x, y, w, h]}]`, 5 entries in walk
+  order (Doormat, Water bowl, Chew-toy throne, Scratching post, Window), equal to the preview's. #tour-house (a div
+  before #tour-fig, hidden on steps without `house`) holds one inline SVG built with createElementNS (no innerHTML, no
+  image), viewBox `0 0 320 200`, in the v6 loci-overlay language (ADR 0051): per spot an `.o-under` + `.o-line` rounded
+  rect at its box and an `.o-label` text naming the spot; a `.pin` (circle + number 1-5) at each box's top-left; one
+  `.route-line` polyline through the box centres in order. Every box lies inside the viewBox; no two non-adjacent
+  route segments intersect. Styles use tokens only (--lamp, --line, --surface, --ink) via fill/stroke, so the
+  painterly dark-contrast test holds. Accept: step 3 shows 5 labelled boxes, pins 1-5, a non-self-crossing route;
+  steps without `house` hide #tour-house; the figure fits a 375 px card with no horizontal overflow (screenshot).
 
 Tests: static/tour.test.mjs
 
