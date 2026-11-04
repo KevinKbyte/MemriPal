@@ -12,6 +12,10 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ### Added
 
+- POST /associate accepts an optional station block {name, profile, taps} (MEM-087, ADR 0048 amendment): checked before any model call (unknown keys, blank name or over-200-char values -> 400 bad_station), carried into the prompt via the new ASSOCIATION_STATION template, and sent with send_image False so the photo-less demo station's sentinel JPEG never reaches the model. Memorize's associateKeywords now sends each station's block ({} for a missing profile or taps).
+
+- scripts/gen_demo_photo_json.py [--in PATH] [--out PATH] regenerates static/assets/demo_photo.json byte-exact from fixtures/demo/photo.jpg (MEM-087).
+
 - Live Routes map: each station shows a landmark emoji just above its circle (optional Station.emoji, default U+1F4CD round pushpin), following the station on pan/zoom/resize; aria-hidden, set via textContent, presentation attributes only (static/real_map_overlay.js, MEM-100, ADR 0055).
 
 ## [0.20.43] - 2026-11-03
