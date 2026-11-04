@@ -11,7 +11,7 @@ import { createHistory } from "./history.js";
 import { createIdbAdapter } from "./idb_adapter.js";
 import { chunkSamples, encodeWav, postRecallAudio, recordClip, TARGET_SAMPLE_RATE } from "./mic_wav.js";
 import { wireBackup } from "./backup_ui.js";
-import { showSpendCap, withSpendCapNotice } from "./byok.js";
+import { showSpendCap, withMetaKey, withSpendCapNotice } from "./byok.js";
 import { localStorageAdapter } from "./palace_store.js";
 import { pointOf } from "./rehearsals.js";
 import { showGated, showPublicBanner } from "./public_banner.js";
@@ -153,7 +153,10 @@ function textEl(doc, tag, text) {
 export function wireApp(deps) {
   const { doc, rehearsals } = deps;
   // MEM-121: a model route answered past the Meta spend cap names it in a toast.
-  const fetchFn = withSpendCapNotice(withPasscode(deps.fetch, doc), (state) => showSpendCap(doc, state));
+  // MEM-122: past the cap a visitor may add their own Meta key, sent only on the passcode routes.
+  const fetchFn = withSpendCapNotice(withMetaKey(withPasscode(deps.fetch, doc), doc), (state) =>
+    showSpendCap(doc, state),
+  );
   /** @param {string} id */
   const byId = (id) => doc.getElementById(id);
   /** @param {string} id @param {() => unknown} fn */

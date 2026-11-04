@@ -5,12 +5,15 @@ import os
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
+from memripal.byok import HEADER as META_KEY_HEADER
+from memripal.byok import OUTCOME_HEADER as BYOK_OUTCOME_HEADER
 from memripal.chat_fallback import HEADER
 from memripal.spend_degrade import HEADER as SPEND_CAP_HEADER
 
 # Capacitor WebView origins: Android (androidScheme https) and iOS.
 DEFAULT_ORIGINS = ("https://localhost", "capacitor://localhost")
-ALLOWED_HEADERS = ("X-Memripal-Passcode", "Content-Type")
+# The visitor's own Meta key (MEM-122) rides in a header on the model routes, so the shell may send it.
+ALLOWED_HEADERS = ("X-Memripal-Passcode", "Content-Type", META_KEY_HEADER)
 
 
 def cors_origins() -> list[str]:
@@ -30,6 +33,6 @@ def add_cors(app: FastAPI) -> None:
         allow_methods=["GET", "POST"],
         allow_headers=list(ALLOWED_HEADERS),
         allow_credentials=False,
-        # The shell reads them to show the Spark fallback (MEM-107) and spend cap (MEM-121) notices.
-        expose_headers=[HEADER, SPEND_CAP_HEADER],
+        # Read by the shell for the Spark fallback (MEM-107), spend cap (MEM-121), BYOK (MEM-122) notices.
+        expose_headers=[HEADER, SPEND_CAP_HEADER, BYOK_OUTCOME_HEADER],
     )

@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from memripal.backend import PROMPT_ARGS, BackendCallFailed, ModelBackend, ModelRequest
+from memripal.byok import ByokKeyRejected
 from memripal.imaging import Processed
 from memripal.meta_spend_guard import MetaSpendCapReached
 from memripal.probe import PHRASE_SCHEMA
@@ -205,8 +206,9 @@ def _segment(backend: ModelBackend, processed: Processed, phrase: str) -> list[B
     )
     try:
         text = backend.call(req)
-    except MetaSpendCapReached:
-        # Every later SAM call would be refused too: surface the cap, never a silently empty result.
+    except (MetaSpendCapReached, ByokKeyRejected):
+        # Every later SAM call would be refused too: surface the cap or the refused BYOK key (MEM-122),
+        # never a silently empty result.
         raise
     except BackendCallFailed:
         return []

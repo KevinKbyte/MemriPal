@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import * as byok from "./byok.js";
-import { fakePage, textOf } from "./fake_dom_test.mjs";
+import { fakePage, textOf, visibleText } from "./fake_dom_test.mjs";
 
 const read = (name) => readFileSync(new URL(`./${name}`, import.meta.url), "utf8");
 
@@ -81,7 +81,8 @@ describe("spend cap notice", () => {
   test("flow.js wraps its passcode fetch with the notice", () => {
     const src = read("flow.js");
     assert.match(src, /from "\.\/byok\.js"/);
-    assert.match(src, /withSpendCapNotice\(\s*withPasscode\(deps\.fetch, doc\)/);
+    // MEM-122 slots withMetaKey between the two; the notice still wraps the passcode fetch.
+    assert.match(src, /withSpendCapNotice\(\s*(withMetaKey\()?withPasscode\(deps\.fetch, doc\)/);
   });
 });
 
@@ -150,7 +151,8 @@ describe("bring your own key", () => {
     for (const state of ["saved", "backup"]) {
       const { doc } = page();
       byok.showSpendCap(doc, state);
-      assert.equal(promptEl(doc), null);
+      const form = promptEl(doc);
+      assert.ok(form === null || form.hidden, `no key prompt for ${state}`);
     }
     const { doc } = page();
     byok.showSpendCap(doc, "capped");
@@ -264,13 +266,16 @@ describe("bring your own key", () => {
     assert.ok(!textOf(p.doc.body).includes("<img"));
   });
 
-  test("Not now hides the prompt for this page session", () => {
+  test("the prompt replaces the toast's own line, and its Dismiss is the not-now for the page session", () => {
     const p = page();
     byok.showSpendCap(p.doc, "capped");
-    p.fire(button(promptEl(p.doc), "Not now"), "click");
-    assert.equal(promptEl(p.doc).hidden, true);
+    const toast = p.doc.body.children[0];
+    assert.equal(visibleText(toast).includes("live AI steps are paused"), false, "one message, not two");
+    assert.match(visibleText(toast), /paste your own Meta API key/);
+    p.fire(button(toast, "Dismiss"), "click");
+    assert.equal(toast.hidden, true);
     byok.showSpendCap(p.doc, "capped");
-    assert.equal(promptEl(p.doc).hidden, true);
+    assert.equal(toast.hidden, true);
   });
 
   test("flow.js puts withMetaKey between the passcode and the spend cap notice", () => {

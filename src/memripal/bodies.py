@@ -8,6 +8,7 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.datastructures import Headers
 
+from memripal.byok import LIMIT_CODE, REJECTED_CODE, ByokKeyRejected, ByokLimitReached
 from memripal.imaging import MAX_UPLOAD_BYTES
 from memripal.meta_spend_guard import CAP_ERROR_CODE, MetaSpendCapReached
 from memripal.place import valid_coords
@@ -68,7 +69,12 @@ class _BodyCap:
 
 
 def _call_failed(exc: Exception) -> JSONResponse:
-    """A refused or failed model call: the two spend limits name themselves, anything else is "upstream"."""
+    """A refused or failed model call: limits and a refused BYOK key name themselves, else "upstream"."""
+    # Ahead of MetaSpendCapReached (it is one): the visitor's own limit, not the shared cap (MEM-122).
+    if isinstance(exc, ByokLimitReached):
+        return _error(503, LIMIT_CODE)
+    if isinstance(exc, ByokKeyRejected):
+        return _error(502, REJECTED_CODE)
     if isinstance(exc, MetaSpendCapReached):
         note_spend_cap(CAPPED)
         return _error(503, CAP_ERROR_CODE)

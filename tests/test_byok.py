@@ -388,7 +388,7 @@ class TestByokLimit:
 
         again = byok_guard(USER_KEY, secret=secret, spend_root=tmp_path / "spend", cap_usd=0.05)
         with pytest.raises(MetaSpendCapReached):
-            again.charge("asr")
+            again.charge("chat")
 
         other = byok_guard(OTHER_KEY, secret=secret, spend_root=tmp_path / "spend", cap_usd=0.05)
         other.charge("chat")  # a different key has its own limit

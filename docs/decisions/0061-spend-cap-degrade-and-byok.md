@@ -56,3 +56,14 @@ answers. (C) keeps the demo working for everyone and still lets keyed visitors g
 - Past the cap, a request with no saved answer still gets the cap code: the toast says live steps are paused.
 - A header, not a body field, carries the state, so route bodies and their tests stay unchanged.
 - Each retry now counts toward the cap, so the estimate is closer to (and never below) what was sent.
+- BYOK (MEM-122) landed as planned: the key rides only in header `X-Memripal-Meta-Key` on the 5 model routes; each
+  such request gets its own `MetaBackend` + `MetaClient` (Meta's base URL only) + `MetaSpendGuard` under
+  `<spend dir>/byok/<HMAC-SHA256(MEMRIPAL_RECORD_KEY, key)>`, cap `MEMRIPAL_BYOK_SPEND_CAP_USD` (default $5). The
+  shared backend, guard and ASR client are never touched and no ContextVar holds the key.
+- BYOK answers skip the saved-results replay, the backup chat provider, the MEM-034 call budget and the shared live
+  cache (a visitor's paid answers and photos are not kept for others); the passcode and rate limiter still apply.
+- The outcome reaches the page in header `X-Memripal-Byok` (`invalid`, `limit`, `rejected:<model>`), set by an ASGI
+  middleware from the request's own session object in the ASGI scope (no ContextVar), which also closes the
+  session's HTTP client.
+- With `MEMRIPAL_RECORD_KEY` unset the HMAC secret is random per process (as for record signatures), so a key's $5
+  state restarts with the server; deploys set the record key, so the limit holds across restarts there.

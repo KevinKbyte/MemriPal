@@ -119,6 +119,10 @@ class MetaClient:
 
     __str__ = __repr__
 
+    def close(self) -> None:
+        """Release the HTTP connection pool; per-request clients (BYOK, MEM-122) close after each request."""
+        self._http.close()
+
     def _redact(self, text: str) -> str:
         return text.replace(self._api_key, "***") if self._api_key else text
 
