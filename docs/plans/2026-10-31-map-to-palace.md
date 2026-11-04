@@ -80,7 +80,7 @@ Assumptions (state before code):
 - D1 Mapillary baseline (MK7): above the cut (B8). Lean option (a) backend proxy over (b) img-src widening; the ADR inside B8 records the
   choice. Mapillary images are never sent to Muse Image or SAM; amended by ADR-next-d1 (B14b, lands after the B8 ADR): they may go to Spark
   for B14b scoring/naming only, because Spark output is text, not a derivative image, so ADR 0012's CC BY-SA share-alike duty stays out of
-  generated scenes. Walked-station baselines (B8) stay display-only.
+  generated scenes. Walked-station baselines (B8) stay display-only. Amended by ADR 0064: copilot street photos may go to SAM + Muse Image.
 - D2 Scenes pass Muse Image bytes through unchanged + "AI-generated" chip; mime follows the reply format; reported width/height stay the
   photo's (zoomFor works in fractions, scenes.js:42-58, so no box scaling). If the rendered image's naturalWidth/naturalHeight aspect
   differs from the photo's by > 2%, the card uses identity zoom. ADR (amends 0024).

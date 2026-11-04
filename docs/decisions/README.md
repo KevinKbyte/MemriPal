@@ -184,3 +184,7 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0063](0063-route-view-mounts-one-station-card.md) The route view mounts the single MEM-050 station card, opened on
   station 1 and following the selected station, with a tap-summary chip row of only the set groups; amends 0060
   (over a card per station or a tap line in each S5 li).
+- [0064](0064-memri-copilot-street-photo-scenes.md) Memri copilot: Mapillary street photos go through SAM + Muse Image
+  into CC BY-SA 4.0 memory scenes with per-scene credit; C-style pure modules (tool policy, undo stack, `/baseline`),
+  Messenger-style Pal chat bubble with on-device chats, fixture-mode demo; amends map-to-palace D1 (over a
+  display-only copilot or S11 add-ons only).

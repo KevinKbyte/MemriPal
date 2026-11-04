@@ -1,0 +1,36 @@
+/* Pal chat bubble (MEM-099): fixed, draggable; pal_bubble.js sets left / top. */
+.pal-bubble {
+  position: fixed;
+  z-index: 1000;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  font: inherit;
+  font-weight: 700;
+  color: #fff;
+  background: #3b6fd8;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.pal-bubble:focus-visible { outline: 3px solid #ffbf47; outline-offset: 2px; }
+.pal-panel {
+  position: fixed;
+  z-index: 1001;
+  right: 16px;
+  bottom: 88px;
+  width: min(360px, calc(100vw - 32px));
+  max-height: 70vh;
+  overflow: auto;
+  padding: 12px;
+  border-radius: 12px;
+  background: #fff;
+  color: #222;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+.pal-panel[hidden], .pal-panel [hidden] { display: none; }
+.pal-panel ul, .pal-panel ol { list-style: none; margin: 8px 0; padding: 0; }
+.pal-panel button { min-height: 44px; margin: 2px; }
+.pal-chat-active { font-weight: 700; }
