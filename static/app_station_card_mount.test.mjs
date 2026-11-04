@@ -128,10 +128,10 @@ describe("station card tap summary renders no empty group (MEM-110)", () => {
     assert.equal(el(b, "station-tap-summary").hidden, true);
   });
 
-  test("partial taps: only the set group is listed", async () => {
+  test("legacy taps: no line is listed (senses are emoji tags, MEM-134; turn removed, MEM-135)", async () => {
     const b = await openSeeded();
     await select(b, 1);
-    assert.deepEqual(summary(b), ["Next turn: Left"]);
-    assert.equal(el(b, "station-tap-summary").hidden, false);
+    assert.deepEqual(summary(b), []);
+    assert.equal(el(b, "station-tap-summary").hidden, true);
   });
 });

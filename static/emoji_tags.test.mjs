@@ -164,7 +164,8 @@ describe("migrateTaps (MEM-134, CRITERIA 4)", () => {
     assert.deepEqual(migrate({ sound: "BIRDS" }), [BIRD]);
     assert.deepEqual(migrate({ sound: "birds" }), [BIRD]);
     assert.deepEqual(migrate({ sound: "Banjo", smell: "None", feel: 5, turn: "Left" }), []);
-    for (const turn of TAP_GROUPS.turn) assert.deepEqual(migrate({ turn }), [], `turn ${turn} skipped`);
+    // Legacy turn labels (the group left TAP_GROUPS in MEM-135) are still skipped.
+    for (const turn of ["Straight", "Left", "Right", "Arrive"]) assert.deepEqual(migrate({ turn }), [], `turn ${turn} skipped`);
   });
 
   test("every sound x smell x feel x mood combination maps in group order, deduped", () => {

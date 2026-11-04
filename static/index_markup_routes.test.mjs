@@ -22,7 +22,7 @@ const LIVE_IDS = [
   "history-view", "hit-rates", "backup", "backup-export", "backup-import", "backup-status", "scene-overlay",
 ];
 const NEW_IDS = MEM048_IDS;
-// MEM-050 sense tap groups: Superseded by MEM-134 (the emoji row replaces them; only #tap-turn stays).
+// MEM-050 sense tap groups: Superseded by MEM-134 (the emoji row replaces them; #tap-turn was removed, MEM-135).
 const MEM050_LIVE_IDS = MEM050_IDS.filter((id) => !MEM134_SUPERSEDED_IDS.includes(id));
 const VOID = new Set(["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source",
   "track", "wbr"]);

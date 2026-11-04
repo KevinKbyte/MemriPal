@@ -18,7 +18,7 @@ import { fakePage, findAll, settle } from "./fake_dom_test.mjs";
 import { memoryAdapter, ENCODED, fetchSpy } from "./route_store_fakes_test.mjs";
 
 const CARD_IDS = [
-  "station-card", "station-name", "station-name-error", "station-profile", "station-taps", "tap-turn",
+  "station-card", "station-name", "station-name-error", "station-profile", "station-taps",
   "station-emojis", "emoji-add", "emoji-remove", "emoji-undo", "emoji-picker", "emoji-search", "emoji-results",
   "station-tap-summary",
   "station-save", "station-drop", "station-drop-confirm", "station-drop-cancel", "station-undo",
@@ -141,11 +141,11 @@ describe("station card emoji tags: starting list (MEM-134)", () => {
     assert.deepEqual((await stored(ctx)).taps, TAPS);
   });
 
-  test("#station-tap-summary lists only the turn tap", async () => {
+  test("#station-tap-summary lists no tap line (senses are emoji tags; turn removed, MEM-135)", async () => {
     const ctx = await setup();
     await show(ctx);
     const lines = findAll(ctx.p.els["station-tap-summary"], (n) => n.tagName === "LI").map((n) => n.textContent);
-    assert.deepEqual(lines, ["Next turn: Left"]);
+    assert.deepEqual(lines, []);
   });
 
   test("an emojisEdited station keeps its stored list (no overwrite, no save)", async () => {

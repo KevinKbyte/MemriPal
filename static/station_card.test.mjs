@@ -249,7 +249,6 @@ describe("station card: no 'captured' claim in rendered labels (criterion 5)", (
   test("tap labels and card copy never contain 'captured'", async () => {
     const ctx = await setup();
     await ctx.card.show(ctx.self.id);
-    assert.equal(buttons(ctx, "turn").length, TAPS.turn.length, "turn taps rendered");
     const texts = [];
     for (const id of CARD_IDS) texts.push(ctx.p.els[id].textContent);
     for (const n of ctx.p.madeByCode()) {

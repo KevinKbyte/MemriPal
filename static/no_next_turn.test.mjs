@@ -37,7 +37,8 @@ describe("no next-turn group on the station card (MEM-135)", () => {
   test("TAP_GROUPS and TAP_GROUP_LABELS have no turn key; tapSummary drops a legacy turn", () => {
     assert.equal(Object.hasOwn(TAP_GROUPS, "turn"), false);
     assert.equal(Object.hasOwn(TAP_GROUP_LABELS, "turn"), false);
-    assert.deepEqual(tapSummary({ turn: "Left", mood: "Calm" }), ["Mood: Calm"]);
+    // The "Mood: Calm" sense line is Superseded by MEM-134 (senses show as emoji tags), so nothing is listed.
+    assert.deepEqual(tapSummary({ turn: "Left", mood: "Calm" }), []);
   });
 });
 
