@@ -6,6 +6,9 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ### Added
 
+- Pal's first-run tour: King Memri walks a new visitor through his Memri Palace story (10 steps, skippable, Escape closes, done state persisted in localStorage `memripal.tour.done`) and spotlights the Routes, Landmarks, Recall and Settings tabs; browser drivers seed the tour key (MEM-095).
+- Settings gains a "Pal's tour" panel to replay the tour (MEM-097).
+
 - Memri copilot groundwork: tool policy, undo stack and copilot dispatch for agent tool calls (MEM-097, ADR 0061).
 - Mapillary street photos: credit strip (Mapillary logo, contributor, original-image link, AI-modified label, CC BY-SA 4.0) and server-side baseline credit validation; street-photo scene token; `scripts/run_live.ps1` decrypts an optional Mapillary DPAPI token into the child (MEM-098, ADR 0061).
 - Pal chat bubble and chat store, with chats carried through palace export and import (MEM-099, ADR 0061). The bubble is not yet mounted in `static/index.html`.
