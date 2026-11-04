@@ -389,3 +389,26 @@ class TestPushSecretGcpExitCodes:
 
         assert proc.returncode == 2, _out(proc)
         assert gcloud.calls() == []
+
+
+class TestPushSecretGcpUnresolvableGcloud:
+    # Covers: MEM-111
+    # Requirement: when $env:MEMRIPAL_GCLOUD names a gcloud that is not on PATH, the push exits 2
+    # with "gcloud not found on PATH" on stderr, before decrypting the key: no gcloud runs and the
+    # key never appears in the script's output.
+
+    def test_unresolvable_gcloud_exits_2_without_running_or_leaking(self, tmp_path):
+        name = "meta-api-key"
+        key = KEYS[name]
+        home = _home_with(tmp_path, {name: key})
+        gcloud = FakeGcloud(tmp_path, key, describe_exit=0)
+        missing = "nonexistent-gcloud-xyz.cmd"
+        assert not (gcloud.bin_dir / missing).exists()
+
+        proc = _push(home, [name], gcloud, via_env=False, gcloud_env=missing)
+
+        assert proc.returncode == 2, _out(proc)
+        assert "gcloud not found on PATH" in proc.stderr.decode("utf-8", errors="replace")
+        assert "pushed" not in _out(proc)
+        assert gcloud.calls() == []
+        _assert_no_leak(proc, gcloud, key)
