@@ -2,6 +2,7 @@
 // Sticker board (MEM-045, ADR 0068): stick your own picture on a locus of the landmark photo. Owns #sticker-panel
 // and one .sticker-layer over #scene-wrap. Every user text goes in via textContent; image srcs are pool data URLs.
 
+import { nearestBox, wireDrag } from "./sticker_drag.js";
 import { cropScene, stickMemorized } from "./sticker_gen.js";
 import { uploadError } from "./sticker_pool.js";
 import { createUndoStack } from "./undo_stack.js";
@@ -73,7 +74,65 @@ export function createStickerBoard({ doc, pool, makeImage, undo = createUndoStac
     img.alt = entry.desc;
     img.setAttribute("alt", entry.desc);
     img.src = entry.image;
+    // The browser's native image drag would cancel the pointer drag (MEM-130).
+    img.draggable = false;
     return img;
+  }
+
+  /** @param {string} msg */
+  const showToast = (msg) => {
+    if (toastText) toastText.textContent = msg;
+    if (toast) toast.hidden = false;
+  };
+
+  /**
+   * MEM-130: move a placement to the boxed locus nearest the drop, swapping with any placement already there.
+   * @param {View} v @param {import("./sticker_pool.js").Placement} p @param {string} desc
+   * @param {number} cx @param {number} cy client coordinates of the drop
+   */
+  async function dropAt(v, p, desc, cx, cy) {
+    const r = layer.getBoundingClientRect();
+    const i = r.width > 0 && r.height > 0
+      ? nearestBox(
+        ((cx - r.left) / r.width) * v.width,
+        ((cy - r.top) / r.height) * v.height,
+        v.loci.map((l) => l.box ?? null),
+      )
+      : -1;
+    const target = i < 0 ? null : v.loci[i];
+    if (!target || target.n === p.n) return render();
+    const other = (await pool.placements(v.placeKey)).find((x) => x.n === target.n) ?? null;
+    await pool.place(v.placeKey, target.n, p.stickerId);
+    if (other) await pool.place(v.placeKey, p.n, other.stickerId);
+    else await pool.unplace(v.placeKey, p.n);
+    undo.push({
+      label: desc,
+      undo: async () => {
+        await pool.restore(p);
+        if (other) await pool.restore(other);
+        else await pool.unplace(v.placeKey, target.n);
+        await render();
+      },
+    });
+    showToast(`Moved "${desc}" to ${target.label}.`);
+    await render();
+  }
+
+  /**
+   * MEM-130: the face follows the pointer (percent of the layer) and drops onto a locus; a tap changes nothing.
+   * @param {any} s @param {View} v @param {import("./sticker_pool.js").Placement} p @param {string} desc
+   */
+  function wireFace(s, v, p, desc) {
+    wireDrag(s, {
+      onMove: (cx, cy) => {
+        const r = layer.getBoundingClientRect();
+        if (!(r.width > 0) || !(r.height > 0)) return;
+        s.style.left = pct(((cx - r.left) / r.width) * 100);
+        s.style.top = pct(((cy - r.top) / r.height) * 100);
+      },
+      onDrop: (cx, cy) => void dropAt(v, p, desc, cx, cy),
+      onCancel: () => void render(),
+    });
   }
 
   /** @param {import("./sticker_pool.js").Placement} p @param {string} label @param {string} desc */
@@ -116,6 +175,8 @@ export function createStickerBoard({ doc, pool, makeImage, undo = createUndoStac
       const s = doc.createElement("div");
       s.className = "sticker";
       s.classList.add("sticker");
+      s.dataset.n = String(p.n);
+      wireFace(s, v, p, desc);
       s.style.left = pct(((box.x1 + box.x2) / 2 / v.width) * 100);
       s.style.top = pct(((box.y1 + box.y2) / 2 / v.height) * 100);
       s.append(stickerFace(entry));
@@ -137,8 +198,7 @@ export function createStickerBoard({ doc, pool, makeImage, undo = createUndoStac
         await render();
       },
     });
-    if (toastText) toastText.textContent = `Peeled off "${desc}".`;
-    if (toast) toast.hidden = false;
+    showToast(`Peeled off "${desc}".`);
     await render();
   }
 

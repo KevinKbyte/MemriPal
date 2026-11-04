@@ -1033,6 +1033,15 @@ li.said-missed {
   background: #FFFFFF;
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
   animation: sticker-pop 240ms ease-out;
+  /* MEM-130: the face is the drag target; its layer stays pointer-events: none so the photo still gets taps. */
+  pointer-events: auto;
+  touch-action: none;
+  cursor: grab;
+}
+
+.sticker.is-dragging {
+  z-index: 1;
+  cursor: grabbing;
 }
 
 .sticker:nth-child(even) {
