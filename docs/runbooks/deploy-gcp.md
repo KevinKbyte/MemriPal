@@ -1,12 +1,13 @@
 # Runbook: deploy to GCP Cloud Run
 
-Kev runs every step by hand; Claude never reads, decrypts, or prints a key. Plan refs: `docs/plans/2026-10-26-memripal.md`
-D1, D11, S7. Run from the repo root.
+Kev runs every step by hand; only Kev's run of `scripts/create_secrets.sh` decrypts a key, and Claude never sees one.
+Plan refs: `docs/plans/2026-10-26-memripal.md` D1, D11, S7. Run from the repo root.
 
 Judged deploy (ADR [0056](../decisions/0056-judges-only-access-gate-alb-cloud-armor.md), MEM-103..105): live mode,
 judges sign in once with a shared access key (cookie), traffic enters only through a global HTTPS load balancer with
 Cloud Armor. Order: 1, 2, 3, 4 (`MODE=meta`), 5 (edge, then redeploy with `EDGE_HOST`), 6 (verify), 7 (key to
-judges). Steps 8-9 are rotation and the kill switch.
+judges). Steps 8-9 are rotation and the kill switch. PowerShell form of an env-prefixed command (`MODE=meta sh ...`):
+`$env:MODE='meta'; sh scripts/deploy_cloud_run.sh`, then `Remove-Item Env:MODE`.
 
 ## Why Cloud Run
 
@@ -16,12 +17,14 @@ GKE adds cluster management; a VM needs patching and bills while idle.
 
 ## 1. One-time project setup
 
+Prerequisite: gcloud SDK installed (`winget install Google.CloudSDK` on Windows).
+
 1. `gcloud auth login`
 2. `gcloud config set project <project>`
-3. Enable the APIs (`compute` is for the load balancer and Cloud Armor, step 5):
+3. Enable the APIs (`compute` is for the load balancer and Cloud Armor, step 5; `billingbudgets` for section 2):
 
 ```bash
-gcloud services enable run.googleapis.com secretmanager.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com compute.googleapis.com
+gcloud services enable run.googleapis.com secretmanager.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com compute.googleapis.com billingbudgets.googleapis.com
 ```
 
 ## 2. Budget alert guard
@@ -54,22 +57,16 @@ unusable on GCP). On GCP it lives in Secret Manager. The app reads env vars only
 | `BASETEN_API_KEY`, `FIREWORKS_API_KEY`, `MODAL_SEG_TOKEN`, `MEMRIPAL_MAPILLARY_TOKEN` | named in `scripts/deploy_cloud_run.sh` | optional; mapped only if the secret exists |
 | `MEMRIPAL_PASSCODE` | `memripal-passcode` | SUPERSEDED (ADR 0056): no longer mapped; the access cookie satisfies the passcode check ([ADR 0025](../decisions/0025-passcode-gate-and-host-allowlist.md)) |
 
-1. Generate the access key and the record key (one run each; >= 128 bits). Copy the access key for step 7:
-
-```bash
-python -c "import secrets;print(secrets.token_urlsafe(24))"
-```
-
-2. Create `memripal-access-key` and `memripal-record-key`, typing the value at the prompt
-   (never on the command line or in shell history):
-   `gcloud secrets create <name> --replication-policy=automatic --data-file=-`
-   End input on a blank line with Ctrl-D (bash/Cloud Shell) or Ctrl-Z then Enter (PowerShell/cmd). The trailing
-   newline is stored with the value; the app strips it. SUPERSEDED: `memripal-passcode` is no longer needed.
-3. Push the DPAPI-held API keys (never typed). In PowerShell from the repo root:
-
-   ```powershell
-   ./scripts/push_secret_gcp.ps1 meta-api-key
-   ```
+1. Create the three secrets from the repo root: `sh scripts/create_secrets.sh` (in Kev's PowerShell `sh` is Git's
+   sh.exe; plain `bash` there is WSL and cannot open C:/ paths, so use `"C:/Program Files/Git/bin/bash.exe"` if needed;
+   Cloud Shell: `bash scripts/create_secrets.sh`). `memripal-access-key` and `memripal-record-key` are generated only
+   if missing, never rotated; the access key prints once on creation (copy it for step 7), the record key never.
+   `meta-api-key` comes from `~/.secrets/meta-api-key.dpapi` (override `MEMRIPAL_META_KEY_FILE`, decrypted via
+   `powershell -NoProfile`) or `META_API_KEY` if set, else a hidden prompt on a terminal (no terminal -> non-zero
+   exit); an existing one gets a new version, never printed. Values carry no trailing newline. Project: `GCP_PROJECT`,
+   default gcloud config project; the script adds the gcloud SDK bin dir to PATH under Git Bash on Windows.
+   SUPERSEDED: the typed `gcloud secrets create <name> --data-file=-` flow and the run_live.ps1 wrapper; `memripal-passcode` is no longer needed.
+2. Push the other DPAPI-held API keys (never typed). In PowerShell from the repo root:
 
    ```powershell
    ./scripts/push_secret_gcp.ps1 baseten-api-key
@@ -78,9 +75,9 @@ python -c "import secrets;print(secrets.token_urlsafe(24))"
    The script decrypts `~/.secrets/<name>.dpapi` and pipes the key byte-exact (no trailing newline) to
    `gcloud secrets versions add` (secret exists) or `gcloud secrets create` (it doesn't), then prints `pushed <name>`.
    The app does not strip these keys, so a typed value's trailing newline would break auth (MEM-111). Names allowed:
-   `meta-api-key`, `baseten-api-key`, `fireworks-api-key`.
-4. Rotate: step 8.
-5. Read access: the deploy script grants the runtime service account `roles/secretmanager.secretAccessor` on every
+   `meta-api-key`, `baseten-api-key`, `fireworks-api-key` (step 1 already covers `meta-api-key`).
+3. Rotate: step 8.
+4. Read access: the deploy script grants the runtime service account `roles/secretmanager.secretAccessor` on every
    secret it maps (MEM-104). SUPERSEDED manual grant, only to repair a failed one (default runtime SA:
    `<project-number>-compute@developer.gserviceaccount.com`):
    `gcloud secrets add-iam-policy-binding <name> --member=serviceAccount:<runtime-sa> --role=roles/secretmanager.secretAccessor`
@@ -113,7 +110,7 @@ Secrets come from step 3 via `--set-secrets` (table above); the always-mapped on
 deploy; the script always passes the full list. SUPERSEDED: "going live = edit the script's `--set-env-vars`" is now
 `MODE=meta`; `MEMRIPAL_PASSCODE` is no longer mapped.
 
-Open-weights Spark: push secret `baseten-api-key` (step 3.3 script) and a `MODE=meta` deploy also sets
+Open-weights Spark: push secret `baseten-api-key` (step 3.2 script) and a `MODE=meta` deploy also sets
 `MEMRIPAL_CHAT_PROVIDER=baseten`, so Spark chat runs on Baseten with automatic Meta fallback (ADR 0058, MEM-106). No
 secret, or `MODE=fixture` -> Spark stays on Meta. Check which model answered:
 
@@ -235,10 +232,11 @@ in, so the cost cap is the Meta console spend limit plus `MEMRIPAL_CALL_BUDGET` 
 Rotating the access key signs every judge out at once (old cookies stop validating), so do it deliberately, then
 update the key in the Project Description.
 
-1. `gcloud secrets versions add memripal-access-key --data-file=-` (same input rule as step 3).
+1. Access key: `gcloud secrets versions add memripal-access-key --data-file=-` (manual; the script never rotates it).
+   Meta key: rerun `sh scripts/create_secrets.sh` (adds a version).
 2. Redeploy with the same env as step 5.2 so new instances read `:latest`.
 
-The same two steps rotate any other secret; for a DPAPI-held key, re-encrypt the local file and rerun its step 3.3
+The same two steps rotate any other secret; for a DPAPI-held key, re-encrypt the local file and rerun its step 3.2
 script instead of step 1.
 
 ## 9. Kill switch

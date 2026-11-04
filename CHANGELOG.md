@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.53] - 2026-11-04
+
+### Added
+
+- `scripts/create_secrets.sh` (MEM-104, ADR 0005): one-step creation of the Cloud Run Secret Manager secrets (memripal-access-key, memripal-record-key, meta-api-key); keeps existing secrets. Meta key source: META_API_KEY env, else the DPAPI file at MEMRIPAL_META_KEY_FILE (default ~/.secrets/meta-api-key.dpapi) decrypted via powershell, else a hidden prompt; never echoes the key. Tests in `tests/test_create_secrets.py`. Runbook `docs/runbooks/deploy-gcp.md` updated (one-step `sh scripts/create_secrets.sh`, billingbudgets + winget prereqs, PowerShell `$env:MODE` form).
+
 ## [0.20.52] - 2026-11-04
 
 ### Added
