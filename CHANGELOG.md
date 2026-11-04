@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.71] - 2026-11-04
+
+### Added
+
+- Tour stickers drag and snap onto spots; a tap only selects a sticker and never regenerates it; regeneration comes only from an explicit New sticker button, with Undo (MEM-131, ADR 0078).
+
 ## [0.20.70] - 2026-11-04
 
 ### Changed
