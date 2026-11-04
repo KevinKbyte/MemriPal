@@ -2,6 +2,31 @@
 
 Continuation of [spec-4.md](spec-4.md), which is over its 500-line cap.
 
+## MEM-102 Paper Crown theme
+
+`static/theme-painterly.css`, `static/fonts/`, `docs/design/paper-crown/`.
+Decided-by: ADR-0059
+Root problem: the painterly theme read as generic; the demo needs a distinct storybook look (direction A "Paper Crown"
+plus direction C's lantern stations) without breaking MEM-044's CSP, contrast and layout guarantees.
+Actors: browser (renders the theme); `static/theme-painterly.css` (last stylesheet, MEM-044 P1).
+NFR: CSP-clean (`font-src 'self'`); no remote fonts; all MEM-044 P-checks still hold except P3 as amended here.
+- Fonts: Fraunces (display) and Nunito (body) self-hosted as `/static/fonts/fraunces.woff2` and
+  `/static/fonts/nunito.woff2`, each with its OFL licence text (`OFL-fraunces.txt`, `OFL-nunito.txt`) beside it;
+  `@font-face` only in the theme, `src` url under `/static/fonts/`, `font-display: swap`.
+- Type: the theme sets `--display` (Fraunces first) and `--body` (Nunito first, not a serif); `.brand`, `h2`, `h3`,
+  `.map-chip` use `var(--display)`; theme `font-family` values are `var(--display)` or `var(--body)` only.
+- Tokens: adds `--on-lamp` and `--glow`, declared under all 3 MEM-044 A1 selectors and each read by a rule (0 dead).
+- Gold (`--lamp`) only marks recalled state: `.live-board li.lit` background `var(--lamp)` with ink `var(--on-lamp)`
+  and a `var(--glow)` box-shadow; `.route-node.lit` fills gold with a `var(--on-lamp)` stroke.
+- Crown edge: `.topbar::after` draws the crown strip; said-vs-palace cards label rows with check / cross glyphs.
+- Reset media block (`forced-colors: active`, `prefers-contrast: more`, `print`) drops the crown edge (`.topbar::after` background) and the
+  lantern glow (`.live-board li.lit` box-shadow).
+- Accept: 2 woff2 + 2 OFL files exist; every `@font-face` src under `/static/fonts/`; `--on-lamp`/`--glow` in all 3
+  token blocks and read by a rule; `li.lit` background `var(--lamp)`; reset block clears both; all 17 contrast pairs
+  AA in light and dark; theme/layout/style_v6 tests green.
+
+Tests: static/theme_painterly.test.mjs, static/layout.test.mjs
+
 ## MEM-103 Judges-only access gate
 
 Amends MEM-034 passcode gate (spec-2.md, ADR 0025): a valid access cookie

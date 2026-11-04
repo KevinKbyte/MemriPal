@@ -241,7 +241,8 @@ navigation, Review and tags stay out. `docs/design/v6/` is unchanged. The live C
      has no raw `#`, no `<style`/`style=`/`<script`/`href`/`url(`, explicit width/height <= 256; data URIs total
      <= 4096 bytes.
   3. Tokens declared under the identical 3 A1 selectors; 0 dead tokens; `color-scheme` in all 3; the theme never
-     sets `--body` (serif only via `--display`).
+     sets `--body` (serif only via `--display`). **Amended by MEM-102**: the theme may set `--body` when its first
+     family is not a serif (Nunito); theme `font-family` values are `var(--display)` or `var(--body)` only.
   4. Contrast: pairs extracted mechanically from every rule setting a background in every linked stylesheet (own
      color or inherited ink), `var()` resolved per mode, >= 4.5:1 text, >= 3:1 focus/line; ink/bg, muted/bg and
      primary/bg >= 4.5:1 against the worst-case grain composite; grain alpha <= 0.08.
