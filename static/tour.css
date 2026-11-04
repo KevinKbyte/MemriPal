@@ -1,0 +1,254 @@
+/* Pal's first-run tour (MEM-095): spotlight + coach card over the app shell. Ported from
+   docs/design/tutorial/tutorial.css; style.css tokens only. */
+.tour {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+}
+
+.tour[hidden] {
+  display: none;
+}
+
+/* One box punches the hole; its giant shadow is the scrim. */
+.tour-spot {
+  position: fixed;
+  border-radius: 14px;
+  outline: 3px solid var(--lamp);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 200vmax color-mix(in srgb, color-mix(in srgb, var(--ink) 25%, black) 62%, transparent);
+  pointer-events: none;
+  transition: top 0.25s ease, left 0.25s ease, width 0.25s ease, height 0.25s ease;
+}
+
+/* Welcome step: no target, so the spot collapses to a point and only the scrim shows. */
+.tour-spot.is-empty {
+  outline: 0;
+}
+
+.tour-card {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--tabbar-h) + 1rem);
+  transform: translateX(-50%);
+  width: calc(100vw - 2rem);
+  max-width: 24rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.5rem;
+  padding: 2.75rem 1rem 1rem;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+}
+
+.tour-card h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 1.25rem;
+  line-height: 1.25;
+}
+
+.tour-card p {
+  margin: 0;
+}
+
+/* Pal peeks over the card's top-left corner. */
+.tour-pal {
+  position: absolute;
+  top: -3.25rem;
+  left: 0.5rem;
+  width: 5.5rem;
+  height: auto;
+  pointer-events: none;
+}
+
+.tour-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-left: 5.5rem;
+  margin-top: -2.25rem;
+}
+
+.tour-count {
+  margin: 0;
+  font: 600 0.75rem/1.3 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.tour-dots {
+  display: flex;
+  gap: 0.2rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Dots are filled by their border, not background: they hold no text, and the theme contrast check reads
+   every background rule as a text backdrop. */
+.tour-dots li {
+  width: 0;
+  height: 0;
+  border: 0.2rem solid var(--line);
+  border-radius: 999px;
+}
+
+.tour-dots li.is-current {
+  width: 0.7rem;
+  border-color: var(--lamp);
+}
+
+/* Skip is on every step: a text button with a full 44px target. */
+.tour-skip,
+.tour-skip:hover {
+  margin-left: auto;
+  min-width: 2.75rem;
+  padding: 0 0.25rem;
+  border: 0;
+  background: none;
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  white-space: nowrap;
+}
+
+.tour-actions {
+  justify-content: flex-end;
+  margin-top: 0.25rem;
+}
+
+/* Welcome: card centered on screen, Pal large and centered above the text. */
+.tour.is-welcome .tour-card {
+  top: 50%;
+  bottom: auto;
+  transform: translate(-50%, -40%);
+  padding-top: 6rem;
+  text-align: center;
+}
+
+.tour.is-welcome .tour-pal {
+  top: -4.5rem;
+  left: 50%;
+  width: 9rem;
+  transform: translateX(-50%);
+}
+
+.tour.is-welcome .tour-head {
+  padding-left: 0;
+  margin-top: -1rem;
+}
+
+.tour.is-welcome .tour-actions {
+  justify-content: center;
+}
+
+.tour-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--tabbar-h) + 1rem);
+  transform: translateX(-50%);
+  z-index: 50;
+  width: max-content;
+  max-width: calc(100vw - 2rem);
+  margin: 0;
+  padding: 0.75rem 1rem;
+  background: var(--ink);
+  color: var(--surface);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+}
+
+.tour-toast[hidden] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-spot {
+    transition: none;
+  }
+}
+
+/* Story steps: centered card above the tab bar, normal-size Pal, no spotlight. */
+.tour.is-story .tour-card {
+  top: calc(50% - var(--tabbar-h) / 2);
+  bottom: auto;
+  transform: translate(-50%, -50%);
+}
+
+/* Locus figure: one row per spot (spot | picture | item); sub-lists are a palace inside a spot. */
+.tour-fig,
+.fig-sub {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tour-fig[hidden] {
+  display: none;
+}
+
+.fig-row {
+  display: grid;
+  grid-template-columns: 7.25rem 1.6rem 1fr;
+  align-items: baseline;
+  column-gap: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 10px;
+  background: var(--lamp-soft);
+  font-size: 0.9rem;
+  line-height: 1.3;
+}
+
+.fig-spot {
+  font: 600 0.72rem/1.3 var(--mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.fig-icon {
+  text-align: center;
+}
+
+.fig-row.is-done .fig-icon {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.fig-row.is-faded {
+  opacity: 0.45;
+  background: none;
+  border: 1px dashed var(--line);
+}
+
+.fig-sub {
+  grid-column: 1 / -1;
+  margin: 0.35rem 0 0 0.75rem;
+  padding-left: 0.6rem;
+  border-left: 2px solid var(--lamp);
+}
+
+.fig-sub .fig-row {
+  grid-template-columns: 6rem 1fr;
+  padding: 0.15rem 0.4rem;
+  background: none;
+}
+
+.tour-card #tour-after {
+  font-style: italic;
+}
+
+/* Ten dots do not fit beside Pal on a phone; the "N of 10" count carries the progress there. */
+@media (max-width: 26rem) {
+  .tour-dots {
+    display: none;
+  }
+}
