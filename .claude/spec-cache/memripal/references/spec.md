@@ -236,7 +236,7 @@ Tests: tests/test_imaging.py
   "<noun> 1..k" left to right. Phrase unchanged. S3 validates against the full label ("left book").
 - `route_order(items, img_h)`: sort by centroid y; new row when centroid y exceeds the row's first centroid y by
   more than 10% of img_h; rows top to bottom, left to right within a row; n = 1.. in that order. 2 rows x 3 jittered
-  boxes -> n=1..6 top-left to bottom-right.
+  boxes -> n=1..6 top-left to bottom-right. This order seeds MEM-109 uncrossing (spec-6.md), which sets final n.
 
 Tests: tests/test_loci_select.py
 

@@ -142,3 +142,28 @@ Decided-by: ADR-0068
   same kv keeps entries and placements; one `.sticker-layer` after repeated renders; box centre maths as above;
   peel needs confirm and Undo restores; no innerHTML.
 - Out of scope: search picker (follow-up MEM, merge 2); the image-generation caller (the pool already accepts kind generated); cross-device sync.
+static/palace_export_chats.test.mjs, tests/test_assets_wiring.py::test_index_loads_pal_bubble_module_once_after_app_js
+
+## MEM-109 Uncrossed route numbering
+
+ADR [0067](../../../../docs/decisions/0067-uncrossed-route-order.md). Amends MEM-013 `route_order` (spec.md): the
+reading order is now the seed, not the final numbering.
+Decided-by: ADR-0067
+Root problem: landmark numbers read as a route, and a path that crosses itself is harder to remember.
+Actors: `src/memripal/loci.py::route_order`; the user reading numbered loci.
+NFR: pure, deterministic; exact integer meeting tests; under 1 s on 4000 random layouts; ASCII only.
+- Meeting: two non-adjacent legs of the 1 -> 2 -> ... -> n centroid path meet on a proper crossing, a T-touch, or a
+  collinear overlap; tested in exact integers on doubled centroids (`x1 + x2`, `y1 + y2`); a coincident duplicate
+  endpoint (two loci at one centroid) is not a meeting.
+- 2-opt from the MEM-013 reading order: reverse the stretch between two meeting legs only on a strict decrease in
+  total walk length, so the loop terminates; a clean reading order is returned unchanged.
+- Fallback: a meeting that no reversal shortens -> sort by (cy, cx), a y-monotone walk that never meets itself.
+- Applied as the last step of `route_order`, before n is assigned. `static/auto_loci.js` (MEM-085 along-route
+  ordering) is unchanged.
+- Future work, not built: a user-set manual order overrides auto numbering; no backend surface for manual numbering
+  or sub-loci (ADR 0051) exists yet.
+- Accept: no layout's final path has a meeting (zigzag, grid3, grid4, horizontal / vertical / diagonal
+  collinear, duplicates, T-touch, X crossing, 0-3 points, 80 random seeds); each locus numbered exactly once 1..n;
+  same input -> same order.
+
+Tests: tests/test_route_uncrossed.py (ADR 0067)
