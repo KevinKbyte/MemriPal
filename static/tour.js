@@ -276,6 +276,10 @@ export function wireTour(doc, store) {
       const g = groups[i];
       paintSticker(g, stickers[i]);
       icons[i].textContent = stickers[i].parts.join("");
+      // Re-adding a class already present does not restart its CSS animation; the layout read between remove
+      // and add flushes style so a mid-roll tap spins again (ADR 0066).
+      g.classList.remove("is-rolling");
+      g.getBoundingClientRect();
       g.classList.add("is-rolling");
       win.clearTimeout(rollTimers[i]);
       rollTimers[i] = win.setTimeout(() => g.classList.remove("is-rolling"), ROLL_MS);
@@ -375,6 +379,7 @@ export function wireTour(doc, store) {
   $("tour-replay")?.addEventListener("click", () => {
     showTab("routes", doc);
     hideToast();
+    stickers = null; // a replay rolls step 3 fresh (MEM-109)
     show(0);
   });
   win.addEventListener("resize", () => { if (!tour.hidden) placeSpot(); });
@@ -383,8 +388,8 @@ export function wireTour(doc, store) {
     if (tour.hidden) return;
     if (e.key === "Escape") { close(true); return; }
     if (e.key !== "Tab" || !tour.contains(doc.activeElement)) return;
-    // Focus trap: cycle the card's visible buttons only.
-    const btns = [...card.querySelectorAll("button")].filter((b) => !b.hidden);
+    // Focus trap: cycle the card's visible buttons and the house step's stickers, in document order.
+    const btns = [...card.querySelectorAll("button, .tour-sticker")].filter((b) => !b.hidden);
     if (!btns.length) return;
     e.preventDefault();
     const at = btns.indexOf(doc.activeElement);
