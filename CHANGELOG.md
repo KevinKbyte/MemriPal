@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.51] - 2026-11-04
+
+### Added
+
+- Memri copilot groundwork: tool policy, undo stack and copilot dispatch for agent tool calls (MEM-097, ADR 0061).
+- Mapillary street photos: credit strip (Mapillary logo, contributor, original-image link, AI-modified label, CC BY-SA 4.0) and server-side baseline credit validation; street-photo scene token; `scripts/run_live.ps1` decrypts an optional Mapillary DPAPI token into the child (MEM-098, ADR 0061).
+- Pal chat bubble and chat store, with chats carried through palace export and import (MEM-099, ADR 0061). The bubble is not yet mounted in `static/index.html`.
+
 ## [0.20.50] - 2026-11-04
 
 ### Added
