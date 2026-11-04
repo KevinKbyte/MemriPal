@@ -203,6 +203,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0069](0069-container-spend-state-dir.md) The Dockerfile sets `MEMRIPAL_META_SPEND_DIR=/tmp/memripal/meta-spend`
   so the homeless non-root user can write Meta spend state; resets per instance restart (over a deploy-script env
   var, creating the home dir, or a code tempdir fallback).
-- [0067](0067-uncrossed-route-order.md) Uncrossed route numbering: MEM-013 reading order seeds a 2-opt that reverses
+- [0070](0070-uncrossed-route-order.md) Uncrossed route numbering: MEM-013 reading order seeds a 2-opt that reverses
   meeting legs on strict length decrease, with a (cy, cx) y-monotone fallback, so the 1..n path never meets itself
   (over reading order, snake rows, nearest-neighbour + 2-opt, or a pure y-monotone sort).

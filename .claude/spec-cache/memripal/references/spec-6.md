@@ -144,11 +144,11 @@ Decided-by: ADR-0068
 - Out of scope: search picker (follow-up MEM, merge 2); the image-generation caller (the pool already accepts kind generated); cross-device sync.
 static/palace_export_chats.test.mjs, tests/test_assets_wiring.py::test_index_loads_pal_bubble_module_once_after_app_js
 
-## MEM-109 Uncrossed route numbering
+## MEM-113 Uncrossed route numbering
 
-ADR [0067](../../../../docs/decisions/0067-uncrossed-route-order.md). Amends MEM-013 `route_order` (spec.md): the
+ADR [0070](../../../../docs/decisions/0070-uncrossed-route-order.md). Amends MEM-013 `route_order` (spec.md): the
 reading order is now the seed, not the final numbering.
-Decided-by: ADR-0067
+Decided-by: ADR-0070
 Root problem: landmark numbers read as a route, and a path that crosses itself is harder to remember.
 Actors: `src/memripal/loci.py::route_order`; the user reading numbered loci.
 NFR: pure, deterministic; exact integer meeting tests; under 1 s on 4000 random layouts; ASCII only.
@@ -166,4 +166,4 @@ NFR: pure, deterministic; exact integer meeting tests; under 1 s on 4000 random 
   collinear, duplicates, T-touch, X crossing, 0-3 points, 80 random seeds); each locus numbered exactly once 1..n;
   same input -> same order.
 
-Tests: tests/test_route_uncrossed.py (ADR 0067)
+Tests: tests/test_route_uncrossed.py (ADR 0070)

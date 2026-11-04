@@ -1,4 +1,4 @@
-# Covers: MEM-109
+# Covers: MEM-113
 # Requirement: route_order numbers loci (and ADR 0051 sub-loci) along a walk that never crosses its own
 # path, so the numbering is easy to remember (Kev, 2026-11-04). For every layout, no two non-adjacent legs
 # of the 1 -> 2 -> ... -> n path between box centroids intersect: no proper crossing, no T-touch, no
@@ -109,7 +109,7 @@ def reading_order_labels(items) -> list[str]:
 
 
 class TestUncrossedRoute:
-    # Covers: MEM-109
+    # Covers: MEM-113
 
     @pytest.mark.parametrize("name", sorted(LAYOUTS))
     def test_route_never_crosses_itself(self, name):

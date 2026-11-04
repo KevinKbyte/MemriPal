@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.64] - 2026-11-04
+
+### Fixed
+
+- Auto-numbered loci now follow a route that never crosses itself: `route_order` keeps the MEM-013 reading order when it is already clean, otherwise untangles it with 2-opt (exact integer meeting tests: crossings, T-touches, collinear overlaps), falling back to a top-to-bottom (y, x) sort when 2-opt cannot clear a meeting; demo replay fixtures regenerated. Manual renumbering override is not part of this change (MEM-113, ADR 0070).
+
 ## [0.20.63] - 2026-11-04
 
 ### Fixed

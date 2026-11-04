@@ -1,7 +1,7 @@
-# 0067: Uncrossed route numbering: reading-order seed, 2-opt, y-monotone fallback
+# 0070: Uncrossed route numbering: reading-order seed, 2-opt, y-monotone fallback
 
 Status: Accepted
-Relates: MEM-013 (`route_order` reading order, the seed), MEM-109 (spec),
+Relates: MEM-013 (`route_order` reading order, the seed), MEM-113 (spec),
 [0051](0051-static-part-sub-loci.md) (sub-loci; manual numbering has no backend surface yet).
 Date: 2026-11-04
 
