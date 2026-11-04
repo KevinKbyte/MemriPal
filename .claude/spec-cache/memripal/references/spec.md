@@ -257,6 +257,8 @@ a) `src/memripal/backend.py`:
   `app.LIVE_CACHE_DIR` = `refs/private/live-cache` (gitignored). On a write-through, MetaBackend also saves the
   processed photo atomically at `photos/<sha256>.jpg` (content-addressed: same image -> one file).
 - Positional MEM-003 `segment()`/`spark_json()` shims build a `ModelRequest`; MEM-003 tests stay green.
+- Reasoning headroom (ADR 0077): every `spark_json` send adds `REASONING_HEADROOM_TOKENS` (8192) to `max_completion_tokens`; cache keys unchanged.
+- Failure log: failed Meta replies log at WARNING with a `LOG_BODY_CHARS` (500) body excerpt, every configured key masked; chat bodies never logged.
 
 b) `find_loci(backend, processed, *, workers=6, deadline_s=90.0, on_progress=None) -> LociResult` (frozen: loci,
 phrases, reask_used) in `loci.py`:
@@ -271,7 +273,7 @@ phrases, reask_used) in `loci.py`:
 - `on_progress` fires once per finished phrase; None = no-op.
 - FixtureBackend replay of the synthetic demo -> identical LociResult twice.
 
-Tests: tests/test_backend.py, tests/test_loci_pipeline.py, tests/test_live_cache.py
+Tests: tests/test_backend.py, tests/test_loci_pipeline.py, tests/test_live_cache.py, tests/test_spark_reasoning_budget.py, tests/test_upstream_502_logging.py
 
 ## MEM-015 POST /loci
 
@@ -287,12 +289,12 @@ Tests: tests/test_backend.py, tests/test_loci_pipeline.py, tests/test_live_cache
 - 200 JSON: {"image": "data:image/jpeg;base64,...", "width", "height", "photo_sha", "reask_used", "loci": [{"n",
   "label", "phrase", "box": {"x1","y1","x2","y2"}, "outline": [[x,y],...]}]}; image carries no EXIF.
 - ImageRejected -> its status + {"error": code}; FixtureMissing -> 404 {"error": "fixture_missing"};
-  BackendCallFailed -> 502 {"error": "upstream"}; any other exception -> 500 {"error": "internal"}, logged
+  BackendCallFailed -> 502 {"error": "upstream"} (route, exception class and message logged at WARNING by `memripal.app`, also for /split and /associate); any other exception -> 500 {"error": "internal"}, logged
   server-side. Error bodies are only {"error": code}: no model or exception text.
 - Demo photo on fixture backend -> >= 10 loci. `scripts/run_live.ps1` binds `--host 127.0.0.1`, never 0.0.0.0
   (until the S7 passcode).
 
-Tests: tests/test_loci_api.py
+Tests: tests/test_loci_api.py, tests/test_upstream_502_logging.py
 
 ## MEM-016 Segmentation provider toggle
 

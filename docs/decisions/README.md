@@ -14,7 +14,7 @@ numbers on the `Reserved:` line (`Reserved: 0034, 0035`, or `Reserved: none`); M
 missing number is listed, and fails a listed number that also exists as a file (stale reservation: drop it when that
 ADR lands). ADR [0062](0062-reserved-adr-numbers.md).
 
-Reserved: none
+Reserved: 0072, 0073, 0074, 0075, 0076
 
 ## ADRs
 
@@ -209,3 +209,8 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0071](0071-generated-sticker-from-scene-crop.md) Generated stickers are cropped client-side from the tier-1 scene
   `runScenes` already produced, with an emoji search fallback, over a new server sticker-generation call or storing
   the whole scene image.
+- [0077](0077-spark-reasoning-headroom.md) Spark reasoning headroom: `MetaBackend.call` adds
+  `REASONING_HEADROOM_TOKENS` (8192) to `max_completion_tokens` at send time for every `spark_json` call, so cache keys
+  and fixtures stay unchanged; `BackendCallFailed` is logged with a body excerpt masking every configured key (Meta and
+  each chat provider), provider bodies never logged (over raising per-request caps in `gen_params` or lowering
+  reasoning effort).

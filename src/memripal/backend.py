@@ -310,7 +310,7 @@ IMAGE_EDIT_TIMEOUT_S = 30
 CHAT_SKIP_S = 120
 # Spark reasons before it answers and the reasoning counts against max_completion_tokens (live: 1341 reasoning
 # tokens on the 1024-token phrase call -> finish_reason "length", content null). Send-time only, like the
-# edit timeout: the request's own cap, hence its cache key and committed fixtures, stays as is (ADR 0066).
+# edit timeout: the request's own cap, hence its cache key and committed fixtures, stays as is (ADR 0077).
 REASONING_HEADROOM_TOKENS = 8192
 # Upstream body chars quoted in the server-side failure log; never in a response or exception text.
 LOG_BODY_CHARS = 500
