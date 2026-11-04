@@ -1,4 +1,4 @@
-// Covers: MEM-048, MEM-033, MEM-077
+// Covers: MEM-048, MEM-033, MEM-077, MEM-088
 // Requirement: the route store and the rehearsal store mint ids on a plain-http, non-localhost origin
 // (an insecure context: `crypto.randomUUID` is undefined there, `crypto.getRandomValues` is not), so
 // Load demo still seeds and opens the Kendall route and a run is still saved. Regression for e2e step 14
@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 import { createRouteStore } from "./route_store.js";
 import { createRehearsalStore } from "./rehearsals.js";
 import { DEMO_ROUTE } from "./demo_route.js";
+import { pickStations } from "./route_builder.js";
 import { memoryAdapter } from "./route_store_fakes_test.mjs";
 
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -61,5 +62,11 @@ describe("store ids in an insecure context (no crypto.randomUUID)", () => {
     const rec = await store.save("demo", { transcript: "x", results: [] });
     assert.match(rec.id, UUID_V4);
     assert.ok(kv.has(rec.id));
+  });
+
+  test("Map a new route (MEM-088) pickStations mints v4 station ids", () => {
+    const at = (/** @type {string} */ name, /** @type {number} */ lat) => ({ name, lat, lng: -71.08 });
+    const sts = pickStations(at("Start", 42.36), at("End", 42.37), [at("Mid", 42.365)]);
+    for (const st of sts) assert.match(st.id, UUID_V4);
   });
 });

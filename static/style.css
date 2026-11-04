@@ -636,8 +636,20 @@ li.said-missed {
 
 .route-line {
   fill: none;
-  stroke: var(--line);
-  stroke-width: 2;
+  stroke: var(--primary);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* MEM-088 R3b: the walk reads as one path over map tiles; a surface-coloured halo keeps it off busy streets. */
+.route-map-overlay .route-line {
+  filter: drop-shadow(0 0 1.5px var(--surface)) drop-shadow(0 0 1.5px var(--surface));
+}
+
+/* Emoji pins get the same halo so a glyph stays legible over tiles. */
+.lm-emoji {
+  filter: drop-shadow(0 0 1.5px var(--surface));
 }
 
 /* MEM-077: a station marker is hard to see at rest, so hover doubles it about its own centre. */
@@ -662,9 +674,12 @@ li.said-missed {
   }
 }
 
-/* The overlay svg passes drags through; its markers still take hover. */
+/* The overlay svg passes drags through; its markers still take hover. MEM-088 R3b: a click selects the
+   station, so the marker is a 24px target that says it is clickable. */
 .route-map-overlay .route-node {
   pointer-events: auto;
+  r: 12px;
+  cursor: pointer;
 }
 
 .route-node.lit {
@@ -675,6 +690,28 @@ li.said-missed {
 .route-node.missed {
   fill: var(--bad-soft);
   stroke: var(--bad);
+}
+
+/* MEM-088 R3b: the marker whose station is selected in the lists. */
+.route-node.selected {
+  fill: var(--primary);
+  stroke: var(--surface);
+  stroke-width: 3;
+}
+
+/* MEM-088 R3b: every station li carries the same padding, so the selected one's highlight never shifts text. */
+#route-view-stations li,
+#landmarks-list li {
+  padding: 0.125rem 0.5rem;
+}
+
+/* MEM-088 R3b: the station a map marker click selected, in the drawer list and the Landmarks list. */
+#route-view-stations li[aria-current="true"],
+#landmarks-list li[aria-current="true"] {
+  background: var(--lamp-soft);
+  box-shadow: inset 3px 0 0 var(--primary);
+  border-radius: 6px;
+  font-weight: 700;
 }
 
 /* S1 route card: name, then kind / station count / Learned on one muted line. */
@@ -725,6 +762,24 @@ li.said-missed {
   margin-top: 0;
 }
 
+/* MEM-088: the empty map says what to do instead of showing a blank sketch box. */
+.map-empty {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(20rem, calc(100vw - 6rem));
+  margin: 0;
+  padding: 0.875rem 1rem;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  text-align: center;
+  line-height: 1.4;
+}
+
 /* Selected route name, pinned over the map's lower-left corner. */
 .map-chip {
   position: fixed;
@@ -743,6 +798,13 @@ li.said-missed {
 
 .map-chip:empty {
   display: none;
+}
+
+/* MEM-088 R3b: on a phone the open drawer covers the map, so the chip would float over the drawer list. */
+@media (max-width: 767px) {
+  body:has(.drawer[open]) .map-chip {
+    display: none;
+  }
 }
 
 /* Right drawer: closed, it slides off-screen leaving only its handle on the right edge. */
@@ -798,7 +860,8 @@ li.said-missed {
   display: grid;
   align-content: start;
   gap: 1rem;
-  padding: 1rem;
+  /* MEM-088 R3b: the last control (Delete route) scrolls clear of the tab bar's shadow. */
+  padding: 1rem 1rem 2.5rem;
   overflow-y: auto;
   background: var(--surface);
   border-left: 1px solid var(--line);

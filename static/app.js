@@ -15,6 +15,8 @@ import { migrateLocalStorage } from "./storage_migrate.js";
 import { createThumbnail } from "./thumbnail.js";
 import { initTabbar } from "./tabbar.js";
 
+import { showGated } from "./public_banner.js";
+
 export { isPublicHost, showPublicBanner } from "./public_banner.js";
 // MEM-044 F15: canvas badge colours (v6 --bad on white, >= 4.5:1); a canvas cannot read CSS tokens.
 export const BADGE_FILL = "#A1341A", BADGE_TEXT = "#FFFFFF";
@@ -32,6 +34,32 @@ export const BADGE_FILL = "#A1341A", BADGE_TEXT = "#FFFFFF";
 export function formatHealth(health) {
   if (!health || health.status !== "ok") return "Backend unavailable";
   return `Backend ok (${health.mode} mode)`;
+}
+
+/**
+ * The health line only speaks up when something is wrong (MEM-088 UX audit): a healthy backend hides #status.
+ * @param {Document} doc
+ * @param {typeof fetch} fetchFn
+ * @returns {Promise<string | null>} the server's mode ("fixture", "meta"), or null when unknown
+ */
+export async function showHealth(doc, fetchFn) {
+  const el = doc.getElementById("status");
+  if (!el) return null;
+  /** @type {{ status?: string, mode?: string, gated?: boolean } | null} */
+  let health = null;
+  try {
+    const resp = await fetchFn("/healthz");
+    health = resp.ok ? await resp.json() : null;
+  } catch {
+    health = null;
+  }
+  el.textContent = formatHealth(health);
+  el.hidden = health?.status === "ok";
+  // The privacy notice only applies when the photo actually leaves for Meta's APIs.
+  const notice = doc.getElementById("meta-notice");
+  if (notice && health?.mode === "meta") notice.hidden = false;
+  if (health?.gated === true) showGated(doc);
+  return typeof health?.mode === "string" ? health.mode : null;
 }
 
 /**

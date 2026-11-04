@@ -4,7 +4,7 @@
 // hit rates, and the live passcode header. The one home of the page wiring app.js calls; model text
 // only via textContent.
 
-import { formatHealth, lookupDemoPlace, showPal } from "./app.js";
+import { lookupDemoPlace, showHealth, showPal } from "./app.js";
 import { DEMO_ROUTE } from "./demo_route.js";
 import { errorCode, runDemoPalace } from "./encode.js";
 import { createHistory } from "./history.js";
@@ -14,7 +14,7 @@ import { wireBackup } from "./backup_ui.js";
 import { showSpendCap, withMetaKey, withSpendCapNotice } from "./byok.js";
 import { localStorageAdapter } from "./palace_store.js";
 import { pointOf } from "./rehearsals.js";
-import { showGated, showPublicBanner } from "./public_banner.js";
+import { showPublicBanner } from "./public_banner.js";
 import { REPLAY_LABEL, replayRecording, startRecall } from "./recall.js";
 import { createMatcher } from "./recall_match.js";
 import { markPointGot, pointCounted, renderEndScreen } from "./recall_end.js";
@@ -113,29 +113,6 @@ async function fetchReplay(fetchFn) {
   if (!resp.ok) return { code: await errorCode(resp) };
   const timeline = await resp.json().catch(() => null);
   return timeline && Array.isArray(timeline.chunks) ? { timeline } : { code: "bad_response" };
-}
-
-/**
- * @param {Document} doc
- * @param {typeof fetch} fetchFn
- * @returns {Promise<string | null>} the server's mode ("fixture", "meta"), or null when unknown
- */
-async function showHealth(doc, fetchFn) {
-  const el = doc.getElementById("status");
-  if (!el) return null;
-  try {
-    const resp = await fetchFn("/healthz");
-    const health = resp.ok ? await resp.json() : null;
-    el.textContent = formatHealth(health);
-    // The privacy notice only applies when the photo actually leaves for Meta's APIs.
-    const notice = doc.getElementById("meta-notice");
-    if (notice && health && health.mode === "meta") notice.hidden = false;
-    if (health && health.gated === true) showGated(doc);
-    return health && typeof health.mode === "string" ? health.mode : null;
-  } catch {
-    el.textContent = formatHealth(null);
-    return null;
-  }
 }
 
 /**
@@ -265,7 +242,7 @@ export function wireApp(deps) {
   void renderHistory();
   wireBackup(deps, renderHistory);
   const routeView = deps.routes
-    ? createRouteView({ doc, routes: deps.routes, rehearsals, realMap: deps.realMap, onPractice: (route, map) => {
+    ? createRouteView({ doc, routes: deps.routes, rehearsals, realMap: deps.realMap, fetch: deps.fetch, onPractice: (route, map) => {
       discardSpeaking();
       session = null;
       setRunOpen(false);

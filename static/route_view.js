@@ -6,6 +6,7 @@
 import { countInOrder } from "./recall_match.js";
 import { routeHitRates } from "./rehearsals.js";
 import { learnedCount, renderRouteMap } from "./route_map.js";
+import { createRouteNew } from "./route_new.js";
 import { showTab } from "./tabbar.js";
 
 /**
@@ -34,9 +35,10 @@ export function routeRun(route, starts) {
  *   rehearsals: ReturnType<typeof import("./rehearsals.js").createRehearsalStore>,
  *   onPractice: (route: Route, map: RouteMap) => void,
  *   realMap?: RealMap,
+ *   fetch: typeof fetch,
  * }} deps
  */
-export function createRouteView({ doc, routes, rehearsals, onPractice, realMap }) {
+export function createRouteView({ doc, routes, rehearsals, onPractice, realMap, fetch }) {
   /** @param {string} id */
   const byId = (id) => doc.getElementById(id);
   /**
@@ -70,6 +72,38 @@ export function createRouteView({ doc, routes, rehearsals, onPractice, realMap }
     return b;
   };
   const kindLabel = (/** @type {string} */ kind) => (kind === "occasional" ? "Occasional" : "Daily");
+  /** @param {Route["stations"][number]} s */
+  const stationLi = (s) => {
+    const li = textEl("li", s.name);
+    li.dataset.stationId = s.id;
+    return li;
+  };
+
+  // MEM-088: a click on a map marker (or inside one) selects its station in both lists. Delegated on
+  // #route-map so it holds whichever layer (sketch or real-map overlay) draws the markers.
+  const routeMap = byId("route-map");
+  routeMap?.addEventListener("click", (event) => {
+    let node = /** @type {Element | null} */ (event.target);
+    while (node && node !== routeMap && !node.getAttribute("data-station-id")) {
+      node = /** @type {Element | null} */ (node.parentNode);
+    }
+    const id = node && node !== routeMap ? node.getAttribute("data-station-id") : null;
+    if (!id) return;
+    // The marker itself shows the selection too (style.css .route-node.selected).
+    for (const n of /** @type {Element[]} */ ([...routeMap.children])) {
+      if (n.classList?.contains("route-node")) n.classList.toggle("selected", n.getAttribute("data-station-id") === id);
+    }
+    for (const list of ["route-view-stations", "landmarks-list"]) {
+      for (const li of /** @type {HTMLElement[]} */ ([...(byId(list)?.children ?? [])])) {
+        if (li.dataset.stationId !== id) li.removeAttribute("aria-current");
+        else {
+          li.setAttribute("aria-current", "true");
+          // The drawer list can outgrow the drawer; Landmarks is another tab, so only the visible list scrolls.
+          if (list === "route-view-stations") li.scrollIntoView?.({ block: "nearest" });
+        }
+      }
+    }
+  });
 
   /** @type {Route | null} */
   let current = null;
@@ -144,7 +178,7 @@ export function createRouteView({ doc, routes, rehearsals, onPractice, realMap }
   const renderRoute = (route) => {
     heading.textContent = `${route.name} (${kindLabel(route.kind)})`;
     byId("route-view-stations")?.replaceChildren(...route.stations.map((s) => {
-      const li = textEl("li", s.name);
+      const li = stationLi(s);
       const turn = s.taps?.turn;
       if (turn) li.append(textEl("span", ` then ${String(turn).toLowerCase()}`, "route-meta"));
       return li;
@@ -166,11 +200,13 @@ export function createRouteView({ doc, routes, rehearsals, onPractice, realMap }
     renderRoute(route);
     await renderRates(route);
     setHidden("routes-home", true);
+    setHidden("route-new", true);
     setHidden("route-view", false);
+    setHidden("map-empty", true);
     // MEM-072: the opened route owns the Routes tab map, its chip and the Landmarks list.
     const chip = byId("map-chip");
     if (chip) chip.textContent = route.name;
-    byId("landmarks-list")?.replaceChildren(...route.stations.map((s) => textEl("li", s.name)));
+    byId("landmarks-list")?.replaceChildren(...route.stations.map(stationLi));
     showTab("routes", doc);
   };
 
@@ -246,10 +282,21 @@ export function createRouteView({ doc, routes, rehearsals, onPractice, realMap }
   onClick("route-view-delete-confirm", confirmDelete);
   onClick("route-view-undo", undoDelete);
   onClick("route-view-practice", practice);
-  // MEM-072: capture runs inside the route drawer, so Map a new route opens it.
+  // MEM-088: Map a new route opens the builder form in the route drawer (MEM-072).
+  const routeNew = createRouteNew({
+    doc, routes, fetch,
+    onSaved: async (/** @type {string} */ id) => {
+      await renderHome();
+      await openRoute(id);
+    },
+    onCancel: showHome,
+  });
   onClick("routes-new", () => {
+    setHidden("routes-home", true);
+    setHidden("route-view", true);
     const drawer = /** @type {HTMLDetailsElement | null} */ (byId("drawer"));
     if (drawer) drawer.open = true;
+    routeNew.open();
   });
 
   return {

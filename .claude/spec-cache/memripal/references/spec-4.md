@@ -2,6 +2,7 @@
 
 Continuation of [spec-3.md](spec-3.md), which is over its 500-line cap. Continued in [spec-5.md](spec-5.md) (MEM-103
 onward).
+Continuation of [spec-3.md](spec-3.md), which is over its 500-line cap. Continued in [spec-5.md](spec-5.md) (MEM-088 onward).
 
 ## MEM-068 merge_branch ff race: auto re-bump + retry
 

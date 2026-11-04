@@ -192,3 +192,77 @@ describe("map-first shell: no inline styles", () => {
     assert.deepEqual(styled, [], `inline style= on: ${styled.join(" ")}`);
   });
 });
+
+// Covers: MEM-088
+// Requirement: the route builder markup exists where the page script expects it (MEM-088). #route-new (start
+// hidden) sits inside #drawer .drawer-body and holds the Start / End text inputs (#route-from, #route-to), each
+// with a <label for> in a .field, the Find and Cancel buttons, a role=alert #route-new-error and the result
+// block (#route-distance, #route-new-stations, a 40-character #route-new-name, #route-new-save). #map-empty
+// (the empty-map message) sits inside .map-wrap and starts visible.
+describe("route builder markup (MEM-088)", () => {
+  const drawerBody = () => kids(byId("drawer")).find((e) => classes(e).includes("drawer-body"));
+  const within = (el, ancestor) => {
+    for (let p = el?.parent; p; p = p.parent) if (p === ancestor) return true;
+    return false;
+  };
+  const fieldOf = (el) => {
+    for (let p = el?.parent; p; p = p.parent) if (classes(p).includes("field")) return p;
+    return null;
+  };
+
+  test("#route-new is inside #drawer .drawer-body and starts hidden", () => {
+    const form = byId("route-new");
+    assert.ok(form, "#route-new exists");
+    assert.ok(within(form, drawerBody()), "#route-new inside #drawer .drawer-body");
+    assert.equal(form.attrs.hidden, "", "#route-new starts hidden");
+  });
+
+  test("#route-from, #route-to and #route-new-name are text inputs with a <label for> in the same .field", () => {
+    for (const id of ["route-from", "route-to", "route-new-name"]) {
+      const input = byId(id);
+      assert.equal(input?.tag, "input", `#${id} is an <input>`);
+      assert.equal((input.attrs.type ?? "text").toLowerCase(), "text", `#${id} is a text input`);
+      assert.ok(within(input, byId("route-new")), `#${id} inside #route-new`);
+      const label = ELS.find((e) => e.tag === "label" && e.attrs.for === id);
+      assert.ok(label, `#${id} has a <label for="${id}">`);
+      assert.ok(fieldOf(input), `#${id} is inside a .field`);
+      assert.equal(fieldOf(label), fieldOf(input), `the #${id} label shares its .field`);
+    }
+  });
+
+  test("#route-find, #route-new-cancel and #route-new-save are buttons inside #route-new", () => {
+    for (const id of ["route-find", "route-new-cancel", "route-new-save"]) {
+      const b = byId(id);
+      assert.equal(b?.tag, "button", `#${id} is a <button>`);
+      assert.ok(within(b, byId("route-new")), `#${id} inside #route-new`);
+    }
+  });
+
+  test("#route-new-name limits the route name to 40 characters", () => {
+    assert.equal(byId("route-new-name")?.attrs.maxlength, "40");
+  });
+
+  test("#route-new-error is role=alert and starts hidden", () => {
+    const err = byId("route-new-error");
+    assert.ok(err, "#route-new-error exists");
+    assert.equal(err.attrs.role, "alert");
+    assert.equal(err.attrs.hidden, "", "#route-new-error starts hidden");
+  });
+
+  test("#route-new-result starts hidden and holds the distance, station list, name and Save", () => {
+    const result = byId("route-new-result");
+    assert.ok(result, "#route-new-result exists");
+    assert.equal(result.attrs.hidden, "", "#route-new-result starts hidden");
+    for (const id of ["route-distance", "route-new-stations", "route-new-name", "route-new-save"]) {
+      assert.ok(within(byId(id), result), `#${id} inside #route-new-result`);
+    }
+  });
+
+  test("#map-empty is inside .map-wrap and not hidden at load", () => {
+    const empty = byId("map-empty");
+    assert.ok(empty, "#map-empty exists");
+    const wrap = kids(byId("tab-routes")).find((e) => classes(e).includes("map-wrap"));
+    assert.ok(within(empty, wrap), `#map-empty inside .map-wrap, parent is ${desc(empty.parent)}`);
+    assert.equal(empty.attrs.hidden, undefined, "#map-empty visible at load");
+  });
+});
