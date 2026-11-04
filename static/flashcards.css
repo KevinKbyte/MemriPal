@@ -1,0 +1,112 @@
+/* MEM-125 Recall flashcards (ADR 0076). Tokens come from style.css; no width is fixed (D13, 360 px phone). */
+.flashcard {
+  display: grid;
+  gap: 0.875rem;
+  min-width: 0;
+  padding: 1.125rem 1rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+
+.flashcard p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.flashcard-front {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.flashcard-stop {
+  font: 700 0.75rem/1.3 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--lamp-ink);
+}
+
+.flashcard-locus {
+  font: 700 1.5rem/1.2 var(--display);
+  letter-spacing: -0.01em;
+}
+
+.flashcard-prompt {
+  color: var(--muted);
+}
+
+.flashcard-show {
+  width: 100%;
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+}
+
+/* Beats button:hover so the primary keeps its fill. */
+.flashcard-show:hover {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.flashcard-back {
+  display: grid;
+  gap: 0.75rem;
+  padding-top: 0.875rem;
+  border-top: 1px dashed var(--line);
+}
+
+.flashcard-answer {
+  font: 700 1.25rem/1.3 var(--display);
+}
+
+.flashcard-source {
+  padding-left: 0.75rem;
+  border-left: 3px solid var(--lamp);
+  color: var(--muted);
+  font-style: italic;
+}
+
+.flashcard-route {
+  justify-self: start;
+  max-width: 100%;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  font: 600 0.8rem/1.4 var(--body);
+  color: var(--lamp-ink);
+  background: var(--lamp-soft);
+  overflow-wrap: anywhere;
+}
+
+.flashcard-ratings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.flashcard-rate[data-rating="again"],
+.flashcard-rate[data-rating="again"]:hover {
+  color: var(--bad);
+  background: var(--bad-soft);
+  border-color: var(--bad);
+}
+
+.flashcard-rate[data-rating="good"],
+.flashcard-rate[data-rating="good"]:hover {
+  color: var(--ok);
+  background: var(--ok-soft);
+  border-color: var(--ok);
+}
+
+.flashcard-note-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 0.5rem;
+}
+
+.flashcard-note {
+  width: 100%;
+  min-width: 0;
+  resize: vertical;
+}

@@ -4,6 +4,7 @@
 
 import { withApiBase } from "./api_base.js";
 import { showChatFallback, wireChatFallback, withChatFallbackNotice } from "./chat_fallback.js";
+import { mountFlashcards } from "./flashcard_mount.js";
 import { selectStore, wireApp } from "./flow.js";
 import { associationKey, createPalaceStore } from "./palace_store.js";
 import { createPlaceState, lookupPlace, wirePlace } from "./place.js";
@@ -433,16 +434,18 @@ if (typeof document !== "undefined") {
   initTabbar(document);
   wireChatFallback(document);
   // Lazy like wireUpload's place store: touching localStorage throws where storage is disabled (MEM-095).
-  wireTour(document, {
-    getItem: (k) => localStorage.getItem(k),
-    setItem: (k, v) => localStorage.setItem(k, v),
-  });
+  wireTour(document, { getItem: (k) => localStorage.getItem(k), setItem: (k, v) => localStorage.setItem(k, v) });
   const media = navigator.mediaDevices;
   // Distinct databases: createIdbAdapter only creates its object store on a database's first open.
   const palace = { dbName: "memripal-palace", storeName: "palace", prefix: "memripal.palace:" };
   const rehearsal = { dbName: "memripal-rehearsals", storeName: "rehearsals", prefix: "memripal.rehearsal:" };
   const palaceAdapter = selectStore(globalThis, palace);
   const rehearsalAdapter = selectStore(globalThis, rehearsal);
+  // Routes hold photo bytes, too large for the localStorage fallback: no IndexedDB, no route cards or flashcards (MEM-125).
+  const routesAdapter = globalThis.indexedDB
+    ? createIdbAdapter(globalThis.indexedDB, { dbName: "memripal-routes", storeName: "routes" })
+    : undefined;
+  if (routesAdapter) mountFlashcards(document, { adapter: routesAdapter });
   // Pre-IndexedDB records move over before wireApp renders history (MEM-039); without IndexedDB the
   // localStorage fallback keeps serving them. Lazy: touching localStorage throws where it is disabled.
   const migrated = globalThis.indexedDB
@@ -479,10 +482,7 @@ if (typeof document !== "undefined") {
       ...wireUpload(),
       store: createPalaceStore(palaceAdapter),
       rehearsals: createRehearsalStore(rehearsalAdapter),
-      // Routes hold photo bytes, too large for the localStorage fallback: no IndexedDB, no route cards.
-      routes: globalThis.indexedDB
-        ? createRouteStore(createIdbAdapter(globalThis.indexedDB, { dbName: "memripal-routes", storeName: "routes" }))
-        : undefined,
+      routes: routesAdapter ? createRouteStore(routesAdapter) : undefined,
       // Bound for the same reason as wireUpload's fetch; the extract URL is absolute, so apiUrl leaves it alone.
       realMap: createRealMapLoader({ fetch: withApiBase(fetch.bind(globalThis)) }),
       thumbnail,
