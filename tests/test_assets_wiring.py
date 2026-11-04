@@ -177,16 +177,27 @@ def test_index_has_one_decorative_empty_state_img():
     assert "hidden" not in attrs, "#empty-state must be visible on page load"
 
 
-# Covers: MEM-040
-# Requirement: the empty-state picture sits directly before #scene-wrap, as its preceding sibling.
-def test_empty_state_directly_before_scene_wrap():
+# Covers: MEM-040, MEM-114
+# Requirement: the empty-state picture is followed by the MEM-114 slogan <p id="empty-slogan"> (text only,
+# no nested tags) and then #scene-wrap, with nothing else between. MEM-114 amends MEM-040's pin that
+# #scene-wrap was the tag right after the picture.
+def test_empty_state_then_slogan_then_scene_wrap():
     events = _events()
     at = _empty_state_index(events)
-    assert at + 1 < len(events), "#empty-state is the last tag in index.html"
+    assert at + 3 < len(events), "index.html ends before #empty-state, slogan and #scene-wrap"
     kind, tag, attrs = events[at + 1]
-    assert (kind, attrs.get("id")) == ("start", "scene-wrap"), (
-        f"the tag right after #empty-state is {kind} <{tag}> id={attrs.get('id')!r}, not #scene-wrap"
+    assert (kind, tag, attrs.get("id")) == ("start", "p", "empty-slogan"), (
+        f"the tag right after #empty-state is {kind} <{tag}> id={attrs.get('id')!r}, not <p id=empty-slogan>"
     )
+    after = events[at + 2][:2]
+    assert after == ("end", "p"), f"#empty-slogan is not closed by </p> before {after}"
+    kind, tag, attrs = events[at + 3]
+    assert (kind, attrs.get("id")) == ("start", "scene-wrap"), (
+        f"the tag after #empty-slogan is {kind} <{tag}> id={attrs.get('id')!r}, not #scene-wrap"
+    )
+    html = INDEX.read_text(encoding="utf-8")
+    slogan = re.search(r'<p\b[^>]*\bid="empty-slogan"[^>]*>(.*?)</p>', html, re.S)
+    assert slogan and slogan.group(1).strip(), "#empty-slogan has no text"
 
 
 # Covers: MEM-040, MEM-044

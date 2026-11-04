@@ -217,12 +217,12 @@ navigation, Review and tags stay out. `docs/design/v6/` is unchanged. The live C
 - A2 Markup (`static/index.html`; F13): v6 shell and control markup (topbar brand, `.panel`, `.field`, `.btn`,
   `.btn-primary`, `.eyebrow`, `.notice`) around the live elements. Every existing id kept and its `hidden` attribute
   unchanged: id set and initially-hidden id set equal 748a5e1's. Link list unchanged; 0 `style=`, 0 `<style`;
-  `#empty-state` still directly before `#scene-wrap`. 0 orphan classes (each `index.html` class has a `style.css`
-  rule) and 0 orphan selectors (each `style.css` class is in `index.html` or a class literal in `static/*.js`). F13:
-  the `#auto` label sits in the same container as `#load-demo`, before it; every text/file/password input has a `<label
-  for>` inside one `.field` wrapper (display grid or block); 0 bare top-level `<label>`/`<input>` children of `main`.
-  `#auto` stays a native visible checkbox. `button` and `.btn` min-height >= 44px. No new wrapper between `main` and
-  `#scene-overlay` carries an A1-forbidden property.
+  `#empty-state` still directly before `#scene-wrap` (**Superseded in part by MEM-114**: `#empty-slogan` between). 0
+  orphan classes (each `index.html` class has a `style.css` rule) and 0 orphan selectors (each `style.css` class is in
+  `index.html` or a class literal in `static/*.js`). F13: the `#auto` label sits in the same container as `#load-demo`,
+  before it; every text/file/password input has a `<label for>` inside one `.field` wrapper (display grid or block); 0
+  bare top-level `<label>`/`<input>` children of `main`. `#auto` stays a native visible checkbox. `button` and `.btn`
+  min-height >= 44px. No new wrapper between `main` and `#scene-overlay` carries an A1-forbidden property.
 - A3 Components (`static/style.css`, `static/rehearsals.js`, `static/app.js`; F6, F12 numbering, F15 badge
   contrast): 0 classes added to the `said-vs-palace` OL/LI (exact className asserts unchanged). F6:
   `span.said-label`/`.said-text`/`.said-quote` display block; each row gains textContent labels "You said:" before
