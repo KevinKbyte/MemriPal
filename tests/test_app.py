@@ -36,13 +36,13 @@ class TestHealthAndStaticShell:
         resp = client.get("/healthz")
         assert resp.status_code == 200
         assert resp.headers["content-type"].startswith("application/json")
-        assert resp.json() == {"status": "ok", "mode": "fixture"}
+        assert resp.json() == {"status": "ok", "mode": "fixture", "gated": False}
 
     def test_healthz_reports_fixture_mode_for_injected_fixture_backend(self, tmp_path):
         client = TestClient(create_app(backend=FixtureBackend(tmp_path)), base_url=LOOPBACK_URL)
         resp = client.get("/healthz")
         assert resp.status_code == 200
-        assert resp.json() == {"status": "ok", "mode": "fixture"}
+        assert resp.json() == {"status": "ok", "mode": "fixture", "gated": False}
 
     def test_healthz_reports_meta_mode_without_leaking_key(self, monkeypatch, tmp_path):
         monkeypatch.setenv("META_API_KEY", FAKE_KEY)
@@ -50,7 +50,7 @@ class TestHealthAndStaticShell:
         client = TestClient(create_app(backend=backend), base_url=LOOPBACK_URL)
         resp = client.get("/healthz")
         assert resp.status_code == 200
-        assert resp.json() == {"status": "ok", "mode": "meta"}
+        assert resp.json() == {"status": "ok", "mode": "meta", "gated": False}
         assert FAKE_KEY not in resp.text
 
     def test_root_serves_html_shell(self):

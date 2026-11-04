@@ -14,7 +14,7 @@ LOOPBACK_URL = "http://127.0.0.1"
 PRE_MAP_CSP = (
     "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; img-src 'self' data: blob:; "
     "object-src 'none'; base-uri 'none'; "
-    "form-action 'none'; frame-ancestors 'none'"
+    "form-action 'self'; frame-ancestors 'none'"
 )
 
 

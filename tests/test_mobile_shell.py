@@ -14,7 +14,7 @@ CAP_CONFIG = REPO / "capacitor.config.json"
 WEB_CSP = (
     "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; img-src 'self' data: blob:; "
     "object-src 'none'; base-uri 'none'; "
-    "form-action 'none'; frame-ancestors 'none'"
+    "form-action 'self'; frame-ancestors 'none'"
 )
 
 

@@ -32,7 +32,7 @@ ORIGIN = "http://127.0.0.1:8765"
 PAGE = ORIGIN + "/docs/design/map/preview.html"
 APP_CSP = (
     "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; img-src 'self' data: blob:; "
-    "object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    "object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
 )
 
 
