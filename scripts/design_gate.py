@@ -237,7 +237,7 @@ def _snippet(html: str) -> str:
 
 
 def axe_problems(shot_name: str, violations: list) -> list[str]:
-    """A line per offending node of each AXE_RULES violation (MEM-112); bare rule id or no nodes: one line."""
+    """A line per offending node of each AXE_RULES violation (MEM-119); bare rule id or no nodes: one line."""
     problems = []
     for v in violations:
         # Older renders recorded bare rule ids; current ones record {"id", "nodes": [{"target", "html"}]}.

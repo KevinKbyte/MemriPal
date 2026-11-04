@@ -568,7 +568,7 @@ Actors: a visitor with a Meta API key; the 5 model routes; Meta's API.
   no-key path is unchanged.
 
 Tests: tests/test_byok.py, static/byok.test.mjs
-## MEM-112 Design gate: axe violations name the offending DOM node
+## MEM-119 Design gate: axe violations name the offending DOM node
 
 Extends MEM-070 (design gate axe check).
 Decided-by: none

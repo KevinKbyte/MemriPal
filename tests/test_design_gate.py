@@ -375,7 +375,7 @@ class TestImport:
         assert module.touches_design([CSS_PATH]) is True
 
 
-# Covers: MEM-112
+# Covers: MEM-119
 # Requirement: a gated axe violation (color-contrast, target-size) names WHICH elements fail:
 # `design_gate.axe_problems(shot_name, violations)` turns the shooter's per-shot
 # `[{"id", "nodes": [{"target": [sel, ...], "html"}]}]` into one "axe <rule>: <shot>: <target>
