@@ -14,6 +14,16 @@ import { read, strip, THEME_FILE, HTML, STYLE, themeCss, TOKENS, CONTEXTS, FORBI
   themeRules, isReset, contextDecls, modes, resolveVars, COLOR_RE, URL_RE, noUrls, parseColor, over, ratio,
   tokenColor, urls, decodeData, parseSvg, grainAlpha, linkedSheets, HTML_TAGS, HTML_IDS, HTML_CLASSES, inJs,
   usesVar, sheetRules, resolved, mayMatchRoot, setsImage, resetsImage, themeTokens } from "./theme_painterly_css_test.mjs";
+import { existsSync } from "node:fs";
+
+// Serif families a --body token must not lead with (lowercased, unquoted); generic `serif`/`ui-serif` included.
+const SERIF_FAMILIES = new Set([
+  "serif", "ui-serif", "fraunces", "georgia", "times", "times new roman", "iowan old style", "palatino",
+  "palatino linotype", "book antiqua", "garamond", "eb garamond", "baskerville", "libre baskerville", "cambria",
+  "constantia", "charter", "bitstream charter", "didot", "bodoni moda", "merriweather", "lora", "playfair display",
+  "source serif pro", "source serif 4", "noto serif", "pt serif", "crimson text", "literata", "newsreader",
+]);
+const firstFamily = (v) => (v.split(",")[0] ?? "").trim().replace(/^(["'])(.*)\1$/, "$2").trim().toLowerCase();
 
 // Covers: MEM-044
 // Requirement: MEM-044 P1 painterly theme (static/theme-painterly.css; see the file header).
@@ -70,7 +80,8 @@ describe("MEM-044 P1 painterly theme (static/theme-painterly.css)", () => {
     assert.ok(total <= 4096, `data: URIs total ${total} bytes > 4096`);
   });
 
-  test("tokens live only under the 3 A1 selectors, each with color-scheme; --body is never set", () => {
+  // MEM-044 P3, amended by MEM-102: --body may be set only with a non-serif first family; serif only via --display.
+  test("tokens live only under the 3 A1 selectors, each with color-scheme; --body only non-serif (P3 amended by MEM-102)", () => {
     const tr = themeRules();
     for (const r of tr.filter((x) => x.decls.some(([p]) => p.startsWith("--")))) {
       const ok = Object.values(CONTEXTS).some((c) => r.parts.length === 1 && r.parts[0] === c.sel
@@ -82,10 +93,18 @@ describe("MEM-044 P1 painterly theme (static/theme-painterly.css)", () => {
       assert.ok(scheme, `${label} (${ctx.sel}): theme sets no color-scheme`);
       assert.match(scheme, new RegExp(`\\b${ctx.scheme}\\b`), `${label}: color-scheme is "${scheme}"`);
     }
-    assert.ok(!themeTokens().includes("--body"), "theme sets --body (serif only via --display)");
+    for (const r of tr) {
+      const body = decl(r, "--body");
+      if (body === undefined) continue;
+      const first = firstFamily(body);
+      assert.ok(first, `${where(r)} --body has no font family`);
+      assert.ok(!SERIF_FAMILIES.has(first), `${where(r)} --body first family "${first}" is a serif (serif only via --display)`);
+    }
     for (const r of tr) {
       const ff = decl(r, "font-family");
-      if (ff !== undefined) assert.equal(ff, "var(--display)", `${where(r)} font-family is ${ff}`);
+      if (ff !== undefined) {
+        assert.ok(["var(--display)", "var(--body)"].includes(ff), `${where(r)} font-family is ${ff}, not var(--display) or var(--body)`);
+      }
     }
   });
 
@@ -289,5 +308,82 @@ describe("MEM-044 P1 painterly theme (static/theme-painterly.css)", () => {
 
   test("0 !important (so the style.css [hidden] rule still wins)", () => {
     assert.doesNotMatch(themeCss(), /!\s*important/i, "theme uses !important");
+  });
+});
+
+// Covers: MEM-102
+// Requirement: MEM-102 Paper Crown theme. Fraunces and Nunito are self-hosted (every @font-face src is a
+// /static/fonts/*.woff2 file that exists, with its OFL licence beside it; no remote fonts under font-src 'self');
+// the new --on-lamp and --glow tokens are declared in all 3 A1 token contexts and actually read by a rule; gold
+// marks only recalled stations (.live-board li.lit background var(--lamp)); said-vs-palace labels carry check /
+// cross glyphs; forced-colors, more-contrast and print drop the crown edge and the lantern glow.
+const CHECK_GLYPHS = new Set(["\u2713", "\u2714"]);
+const CROSS_GLYPHS = new Set(["\u2715", "\u2716", "\u2717", "\u2718", "\u00d7"]);
+const cssContent = (v) => (v ?? "").replace(/\\([0-9a-f]{1,6})\s?/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+  .replace(/^(["'])([\s\S]*)\1$/, "$2").trim();
+const fontFaces = () => [...themeCss().matchAll(/@font-face\s*\{([^}]*)\}/gi)].map((m) => m[1]);
+const ruleFor = (part, pred) => themeRules().filter((r) => r.parts.includes(part) && pred(r));
+
+describe("MEM-102 Paper Crown theme (static/theme-painterly.css)", () => {
+  test("Fraunces and Nunito are self-hosted: every @font-face src is an existing /static/fonts/*.woff2", () => {
+    const faces = fontFaces();
+    assert.ok(faces.length >= 2, `theme declares ${faces.length} @font-face rules, expected Fraunces and Nunito`);
+    const families = faces.map((f) => (f.match(/font-family\s*:\s*([^;]+)/i)?.[1] ?? "").trim().replace(/^(["'])(.*)\1$/, "$2"));
+    for (const fam of ["Fraunces", "Nunito"]) assert.ok(families.includes(fam), `no @font-face for ${fam}: ${families.join(", ")}`);
+    for (const f of faces) {
+      const src = f.match(/src\s*:\s*([^;]+)/i)?.[1] ?? "";
+      const us = urls(src);
+      assert.ok(us.length, `@font-face has no src url(): ${norm(f)}`);
+      for (const u of us) {
+        assert.match(u, /^\/static\/fonts\/[\w.-]+\.woff2$/, `@font-face src url(${u}) is not /static/fonts/*.woff2`);
+        assert.ok(existsSync(new URL(`.${u.slice("/static".length)}`, import.meta.url)), `font file ${u} is missing on disk`);
+      }
+      assert.match(f, /font-display\s*:\s*swap/i, `@font-face lacks font-display: swap: ${norm(f)}`);
+    }
+  });
+
+  test("each self-hosted font ships its OFL licence text beside it", () => {
+    for (const f of ["OFL-fraunces.txt", "OFL-nunito.txt"]) {
+      assert.ok(existsSync(new URL(`./fonts/${f}`, import.meta.url)), `static/fonts/${f} is missing`);
+    }
+  });
+
+  test("--on-lamp and --glow are declared in all 3 A1 token contexts and each is read by a rule", () => {
+    const tr = themeRules();
+    for (const t of ["--on-lamp", "--glow"]) {
+      for (const [label, ctx] of Object.entries(CONTEXTS)) {
+        assert.ok(contextDecls(tr, ctx)[t] !== undefined, `${label} (${ctx.sel}) does not declare ${t}`);
+      }
+      const readers = tr.filter((r) => r.decls.some(([p, v]) => !p.startsWith("--") && usesVar(v, t)));
+      assert.ok(readers.length, `no theme rule reads ${t} via var()`);
+    }
+  });
+
+  test("gold marks recalled stations: .live-board li.lit background is var(--lamp)", () => {
+    const lit = ruleFor(".live-board li.lit", (r) => !isReset(r)
+      && [decl(r, "background"), decl(r, "background-color")].includes("var(--lamp)"));
+    assert.ok(lit.length, ".live-board li.lit has no background / background-color var(--lamp)");
+  });
+
+  test("said-vs-palace labels: said-got shows a check glyph, said-missed a cross glyph", () => {
+    for (const [part, glyphs, name] of [
+      ["li.said-got > .said-label::before", CHECK_GLYPHS, "check"],
+      ["li.said-missed > .said-label::before", CROSS_GLYPHS, "cross"],
+    ]) {
+      const contents = ruleFor(part, (r) => decl(r, "content") !== undefined).map((r) => cssContent(decl(r, "content")));
+      assert.ok(contents.length, `${part} sets no content`);
+      assert.ok(glyphs.has([...contents.at(-1)][0]), `${part} content "${contents.at(-1)}" does not start with a ${name} glyph`);
+    }
+  });
+
+  test("forced-colors, more-contrast and print clear the crown edge and the lantern glow", () => {
+    const tr = themeRules();
+    for (const [name, re] of Object.entries(RESET_MEDIA)) {
+      const inMedia = (part) => tr.filter((r) => r.media.some((m) => re.test(m)) && r.parts.includes(part));
+      assert.ok(inMedia(".topbar::after").some((r) => [decl(r, "background"), decl(r, "background-image")].includes("none")),
+        `${name}: .topbar::after background is not reset to none`);
+      assert.ok(inMedia(".live-board li.lit").some((r) => decl(r, "box-shadow") === "none"),
+        `${name}: .live-board li.lit box-shadow is not reset to none`);
+    }
   });
 });
