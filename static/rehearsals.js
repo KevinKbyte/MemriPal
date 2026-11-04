@@ -2,6 +2,8 @@
 // Rehearsal history (MEM-033, plan D18): each recall run kept as a human-readable JSON record (never
 // audio), per-point hit rates across runs, a said-vs-palace view, and a confirm + Undo delete.
 
+import { newId as randomId } from "./uuid.js";
+
 /**
  * @typedef {{
  *   get: (key: string) => Promise<any>,
@@ -38,7 +40,7 @@ export function pointOf(r) {
  * @param {RehearsalAdapter} adapter
  * @param {{ now?: () => number, newId?: () => string }} [opts]
  */
-export function createRehearsalStore(adapter, { now = Date.now, newId = () => crypto.randomUUID() } = {}) {
+export function createRehearsalStore(adapter, { now = Date.now, newId = () => randomId() } = {}) {
   /** @param {Rehearsal} record */
   const put = (record) => adapter.put(record.id, JSON.stringify(record));
 

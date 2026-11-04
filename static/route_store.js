@@ -4,6 +4,8 @@
 // Save enforces 3-8 named stations. Coordinates are rounded at write: the user's own GPS to 4 dp (about
 // 11 m), public places (seeded stations, map candidates) to 5 dp (about 1 m, ADR 0053).
 
+import { newId as randomId } from "./uuid.js";
+
 export { createCaptureSession } from "./route_capture.js";
 
 /**
@@ -97,7 +99,7 @@ export function finishSaveError(route) {
  * @param {KvAdapter} adapter
  * @param {{ now?: () => number, newId?: () => string }} [opts]
  */
-export function createRouteStore(adapter, { now = Date.now, newId = () => crypto.randomUUID() } = {}) {
+export function createRouteStore(adapter, { now = Date.now, newId = () => randomId() } = {}) {
   /** @type {Promise<Map<string, Route>> | null} */
   let loaded = null;
   /** Photos written by this store instance; others are read from the adapter on demand. */
