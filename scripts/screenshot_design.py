@@ -13,6 +13,7 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 from typing import NamedTuple
+from urllib.parse import urlsplit
 
 DEFAULT_SCREENS = ["1", "2", "3", "4", "5,6", "7", "8", "9"]
 DEFAULT_WIDTHS = [("phone", (375, 812)), ("wide", (1000, 800))]
@@ -64,6 +65,13 @@ def shot_plan(base_url: str, screens: list[str], widths: list[Width], themes: li
     ]
 
 
+def is_ignored_console_error(text: str, url: str) -> bool:
+    """True only for the root /favicon.ico 404: a preview page with no icon link makes the browser
+    request it, and python http.server 404s it. Any other console error still counts."""
+    is_404 = text.startswith("Failed to load resource") and "status of 404" in text
+    return is_404 and urlsplit(url).path == "/favicon.ico"
+
+
 def run(plan: list[Shot], outdir: str) -> list[str]:
     # Lazy import: the module (parse_width, shot_plan) must load where playwright is absent.
     from playwright.sync_api import sync_playwright
@@ -73,7 +81,8 @@ def run(plan: list[Shot], outdir: str) -> list[str]:
     errors: list[str] = []
 
     def on_console(msg) -> None:
-        if msg.type == "error":
+        # Playwright's 404 text lacks the URL; the resource URL is in msg.location.
+        if msg.type == "error" and not is_ignored_console_error(msg.text, msg.location.get("url", "")):
             errors.append(msg.text)
 
     with sync_playwright() as p:
