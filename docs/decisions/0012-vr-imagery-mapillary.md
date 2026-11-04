@@ -31,3 +31,5 @@ Google's terms create a disqualification risk; Mapillary's terms allow the use w
 
 - Register an app for a client_id (external signal).
 - First cut on the D10 cut line; never blocks S0-S8.
+- Amended by [0058](0058-memri-copilot-street-photo-scenes.md): Mapillary street photos may go through SAM + Muse
+  Image into memory scenes, under 0058's licence conditions.

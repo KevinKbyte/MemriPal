@@ -156,3 +156,7 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0057](0057-emoji-for-keyword-table-fills-station-emoji.md) `emojiFor({ name, category?, tags? })` keyword/category
   table fills `Station.emoji` once at station creation; demo stations hand-picked, kept by `seedRoute` (over
   render-time derivation or OSM tags).
+- [0058](0058-memri-copilot-street-photo-scenes.md) Memri copilot: Mapillary street photos go through SAM + Muse Image
+  into CC BY-SA 4.0 memory scenes with per-scene credit; C-style pure modules (tool policy, undo stack, `/baseline`),
+  Messenger-style Pal chat bubble with on-device chats, fixture-mode demo; amends map-to-palace D1 (over a
+  display-only copilot or S11 add-ons only).
