@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.45] - 2026-11-03
+
+### Added
+
+- MEM id uniqueness check: scripts/spec_ids.py + tests/test_spec_ids.py fail check.sh on a MEM id defined twice (MEM-101); CLAUDE.md numbering rule.
+
 ## [0.20.44] - 2026-11-03
 
 ### Added
