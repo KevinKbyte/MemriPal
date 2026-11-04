@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.50] - 2026-11-04
+
+### Added
+
+- Kendall demo stations seed photo-derived multisensory taps (sound, smell, feel, mood) and a visual/spatial/conceptual profile, hand-authored from Kev's six walk photos and kept by seedRoute; no turn tap and no photos committed (MEM-110, ADR 0060).
+
 ## [0.20.49] - 2026-11-03
 
 ### Added
