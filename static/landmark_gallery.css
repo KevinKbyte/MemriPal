@@ -103,6 +103,10 @@
   margin: 0;
   padding: 0;
 }
+/* Tiles in one row share its height, so 1- and 2-line names line up. */
+.lg-grid > li {
+  display: flex;
+}
 .lg-tile {
   display: flex;
   flex-direction: column;

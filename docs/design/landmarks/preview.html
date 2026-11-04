@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Landmarks gallery preview</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="../../../static/style.css">
+<link rel="stylesheet" href="../../../static/theme-painterly.css">
+<link rel="stylesheet" href="../../../static/landmark_gallery.css">
+<script>
+  // ?theme=dark / ?theme=light pins the theme for screenshots; default follows the OS.
+  var t = new URLSearchParams(location.search).get("theme");
+  if (t) document.documentElement.setAttribute("data-theme", t);
+</script>
+<style>
+  body { margin: 0; background: var(--bg); color: var(--ink); }
+  .lgp-frame { max-width: 960px; margin: 0 auto; padding: 1rem; }
+  .lgp-frame + .lgp-frame { border-top: 2px dashed var(--line); }
+  .lgp-note { font-size: 0.75rem; color: var(--muted); margin: 0 0 0.5rem; }
+</style>
+</head>
+<body>
+<section class="lgp-frame" aria-label="On routes, two routes selected">
+  <p class="lgp-note">State A: On routes, 2 routes selected, no query</p>
+  <h2>Landmarks</h2>
+  <div class="lg-controls">
+    <label for="a-search">Search landmarks</label>
+    <input id="a-search" type="search" placeholder="Name of a landmark">
+    <label for="a-route">Routes</label>
+    <input id="a-route" list="a-route-options" placeholder="Type a route name">
+    <datalist id="a-route-options"><option value="Grocery run"></option></datalist>
+    <ul class="lg-chips" aria-label="Selected routes">
+      <li><button class="lg-chip" type="button" aria-label="Remove route Morning walk">Morning walk</button></li>
+      <li><button class="lg-chip" type="button" aria-label="Remove route Kendall loop">Kendall loop</button></li>
+    </ul>
+    <fieldset class="lg-show">
+      <legend>Show</legend>
+      <label><input type="radio" name="a-show" value="on-routes" checked><span>On routes</span></label>
+      <label><input type="radio" name="a-show" value="candidates"><span>Candidates</span></label>
+    </fieldset>
+  </div>
+  <p class="lg-count" role="status">9 landmarks</p>
+  <ul class="lg-grid">
+    <li><button class="lg-tile" type="button"><span class="lg-thumb"><img alt="" src="../../../static/assets/empty-state.webp"></span><span class="lg-name">Kendall Square T station</span><span class="lg-meta">Morning walk, Kendall loop</span></button></li>
+    <li><button class="lg-tile" type="button"><span class="lg-thumb" aria-hidden="true">&#x2615;</span><span class="lg-name">Area Four coffee</span><span class="lg-meta">Morning walk</span></button></li>
+    <li><button class="lg-tile" type="button"><span class="lg-thumb"><img alt="" src="../../../static/assets/icon-512.png"></span><span class="lg-name">MIT Stata Center</span><span class="lg-meta">Kendall loop</span></button></li>
+    <li><button class="lg-tile" type="button"><span class="lg-thumb" aria-hidden="true">&#x1F333;</span><span class="lg-name">Kendall/MIT Open Space</span><span class="lg-meta">Kendall loop</span></button></li>
+    <li><button class="lg-tile" type="button"><span class="lg-thumb" aria-hidden="true">&#x1F4DA;</span><span class="lg-name">MIT Press Bookstore</span><span class="lg-meta">Morning walk</span></button></li>
+    <li><button class="lg-tile" type="button"><span class="lg-thumb"><img alt="" src="../../../static/assets/empty-state.webp"></span><span class="lg-name">The Roof Garden at One Kendall</span><span class="lg-meta">Morning walk, Kendall loop</span></button></li>
+    <li><button class="lg-tile" type="button"><span class="lg-thumb" aria-hidden="true">&#x1F3E6;</span><span class="lg-name">Cambridge Trust bank</span><span class="lg-meta">Kendall loop</span></button></li>
+    <li><button class="lg-tile" type="button"><span class="lg-thumb" aria-hidden="true">&#x1F37D;</span><span class="lg-name">Legal Sea Foods</span><span class="lg-meta">Morning walk</span></button></li>
+    <li><button class="lg-tile" type="button"><span class="lg-thumb" aria-hidden="true">&#x26EA;</span><span class="lg-name">First Church Cambridge</span><span class="lg-meta">Kendall loop</span></button></li>
+  </ul>
+</section>
+<section class="lgp-frame" aria-label="Candidates for one route">
+  <p class="lgp-note">State B: Candidates for Kendall loop, query "mit"</p>
+  <h2>Landmarks</h2>
+  <div class="lg-controls">
+    <label for="b-search">Search landmarks</label>
+    <input id="b-search" type="search" value="mit">
+    <label for="b-route">Routes</label>
+    <input id="b-route" list="b-route-options" placeholder="Type a route name">
+    <datalist id="b-route-options"></datalist>
+    <ul class="lg-chips" aria-label="Selected routes">
+      <li><button class="lg-chip" type="button" aria-label="Remove route Kendall loop">Kendall loop</button></li>
+    </ul>
+    <fieldset class="lg-show">
+      <legend>Show</legend>
+      <label><input type="radio" name="b-show" value="on-routes"><span>On routes</span></label>
+      <label><input type="radio" name="b-show" value="candidates" checked><span>Candidates</span></label>
+    </fieldset>
+  </div>
+  <p class="lg-count" role="status">3 candidates</p>
+  <ul class="lg-grid">
+    <li><button class="lg-tile lg-candidate" type="button"><span class="lg-thumb" aria-hidden="true">&#x1F3DB;</span><span class="lg-name">MIT Museum</span><span class="lg-meta">Candidate - Kendall loop</span></button></li>
+    <li><button class="lg-tile lg-candidate" type="button"><span class="lg-thumb" aria-hidden="true">&#x1F4CD;</span><span class="lg-name">MIT Sloan School</span><span class="lg-meta">Candidate - Kendall loop</span></button></li>
+    <li><button class="lg-tile lg-candidate" type="button"><span class="lg-thumb" aria-hidden="true">&#x1F3EB;</span><span class="lg-name">MIT Media Lab</span><span class="lg-meta">Candidate - Kendall loop</span></button></li>
+  </ul>
+</section>
+<section class="lgp-frame" aria-label="Candidates with no route">
+  <p class="lgp-note">State C: Candidates, no route picked</p>
+  <p class="lg-count" role="status">0 candidates</p>
+  <ul class="lg-grid"></ul>
+  <p class="lg-empty">Pick a route to see its candidates.</p>
+</section>
+</body>
+</html>
