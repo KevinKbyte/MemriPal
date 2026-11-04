@@ -447,6 +447,41 @@ button[aria-expanded]:hover {
   cursor: zoom-in;
 }
 
+/* MEM-098 (ADR 0054): CC BY-SA 4.0 credit under a street-photo scene. The Mapillary logo is shown
+   unmodified: height only, auto width, never recoloured or cropped. Links keep a 24px target (WCAG 2.5.8);
+   focus uses the global :focus-visible ring. */
+.street-credit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+  margin-top: 0.5rem;
+  font: 0.8125rem/1.4 var(--body);
+  color: var(--muted);
+}
+
+/* A contributor username has no spaces; let it break rather than widen the page on a phone. */
+.street-credit span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.street-credit a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.5rem;
+  color: var(--primary);
+}
+
+/* The official logo PNGs are opaque 3:1 tiles with wide padding; at the 1.5rem link height the wordmark
+   stays legible, and a small radius softens the tile edge against the card in dark mode. */
+.street-credit img {
+  display: block;
+  height: 1.5rem;
+  width: auto;
+  border-radius: 0.25rem;
+}
+
 /* MEM-046: fixed light-on-dark so the label reads over any scene, in both themes. Bottom-right in the
    overlay too, clear of the top-right Close button and the (5,5) backdrop point. */
 .chip-ai {
