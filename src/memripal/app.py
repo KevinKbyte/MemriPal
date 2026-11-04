@@ -14,9 +14,9 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 from starlette.concurrency import run_in_threadpool
-from starlette.datastructures import Headers
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from memripal import access
 from memripal import ratelimit as rl
 from memripal.associate import (
     FIELDS,
@@ -33,6 +33,7 @@ from memripal.bodies import (
     UPLOAD_TYPES,
     BudgetExhausted,
     _associate_body,
+    _BodyCap,
     _box_ok,
     _error,
     _length_error,
@@ -124,42 +125,6 @@ class _BudgetedBackend:
         return self._backend.call(req)
 
 
-class _BodyTooLarge(Exception):
-    pass
-
-
-class _BodyCap:
-    """App-wide body cap ahead of every route cap: a declared or streamed body past `cap` -> 413."""
-
-    def __init__(self, app, cap: int) -> None:
-        self.app = app
-        self.cap = cap
-
-    async def __call__(self, scope, receive, send) -> None:
-        if scope["type"] != "http":
-            return await self.app(scope, receive, send)
-        length = Headers(scope=scope).get("content-length")
-        # A malformed length is left to the route's own _length_error.
-        if length is not None and length.isascii() and length.isdigit() and int(length) > self.cap:
-            return await _error(413, "too_large")(scope, receive, send)
-        total = 0
-
-        async def capped_receive():
-            nonlocal total
-            message = await receive()
-            if message["type"] == "http.request":
-                total += len(message.get("body", b""))
-                if total > self.cap:
-                    raise _BodyTooLarge
-            return message
-
-        try:
-            await self.app(scope, capped_receive, send)
-        except _BodyTooLarge:
-            # Routes read the whole body before responding, so no response has started yet.
-            await _error(413, "too_large")(scope, receive, send)
-
-
 def create_app(
     backend: ModelBackend | None = None, place_provider=None, asr_client=None, clock=None
 ) -> FastAPI:
@@ -179,6 +144,8 @@ def create_app(
     max_body = _env_int("MEMRIPAL_MAX_BODY_BYTES", 1)
     signing_key = record_key()
     rate, lockout, concurrency, trust_xff = rl.from_env(_env_int, clock)
+    access_key = access.access_key()
+    access_lockout = access.lockout_from_env(_env_int, clock)
     live = backend.mode != "fixture"
     if live and call_budget is not None:
         backend = _BudgetedBackend(backend, call_budget)
@@ -188,6 +155,11 @@ def create_app(
         app.add_middleware(_BodyCap, cap=max_body)
     # Runs after the host check and before the body cap, passcode, body read and model.
     app.add_middleware(rl.ApiGuard, limiter=rate, concurrency=concurrency, trust_xff=trust_xff)
+    # Outside the guard and body cap: an unauthenticated flood spends no rate event or slot (MEM-100).
+    app.add_middleware(
+        access.AccessGate, key=access_key, limiter=rate, lockout=access_lockout, trust_xff=trust_xff,
+        page=STATIC_DIR / "access.html",
+    )  # fmt: skip
     # Added late so it runs early: an unlisted host is refused before any other check.
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=[*ALLOWED_HOSTS, *extra_hosts])
     # Outermost (MEM-042 C1), so host refusals and 404s carry the headers too.
@@ -196,7 +168,7 @@ def create_app(
 
     def _passcode_error(request: Request) -> JSONResponse | None:
         """401 for a live model route without the passcode; checked before the body is read."""
-        if not live:
+        if not live or access.has_access(request.headers, access_key):
             return None
         if passcode is None:
             # Unconfigured: local run_live use stays open, anything public fails closed.
@@ -213,8 +185,8 @@ def create_app(
         return _error(401, "passcode_required")
 
     @app.get("/healthz")
-    def healthz() -> dict[str, str]:
-        return {"status": "ok", "mode": backend.mode}
+    def healthz() -> dict[str, str | bool]:
+        return {"status": "ok", "mode": backend.mode, "gated": access_key is not None}
 
     @app.get("/", include_in_schema=False)
     def index() -> FileResponse:

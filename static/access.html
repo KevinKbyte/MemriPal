@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MemriPal: judges' access</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="manifest" href="/static/manifest.webmanifest">
+    <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/static/theme-painterly.css">
+    <meta name="theme-color" content="#1f3a5f">
+  </head>
+  <body>
+    <header class="topbar">
+      <h1 class="brand">MemriPal</h1>
+    </header>
+    <main>
+      <section class="panel">
+        <h2>Judges' access</h2>
+        <p>This deploy is open to hackathon judges only. Enter the access key from the submission notes.</p>
+        <!--error-->
+        <form method="post" action="/access">
+          <div class="field">
+            <label for="key">Access key</label>
+            <input id="key" name="key" type="password" autocomplete="current-password" required>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" type="submit">Enter</button>
+          </div>
+        </form>
+      </section>
+    </main>
+  </body>
+</html>

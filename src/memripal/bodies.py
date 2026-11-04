@@ -1,4 +1,4 @@
-"""Request-body reader, parsers and the shared error response for the app routes (MEM-060).
+"""Request-body reader, parsers, the app-wide body cap and the shared error response (MEM-060).
 
 Split out of app.py to keep it under its line budget; app.py imports everything here."""
 
@@ -6,6 +6,7 @@ import json
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
+from starlette.datastructures import Headers
 
 from memripal.imaging import MAX_UPLOAD_BYTES
 from memripal.place import valid_coords
@@ -26,6 +27,42 @@ class BudgetExhausted(RuntimeError):
 def _error(status: int, code: str) -> JSONResponse:
     # Only a fixed short code: model/exception text never reaches the client.
     return JSONResponse({"error": code}, status_code=status)
+
+
+class _BodyTooLarge(Exception):
+    pass
+
+
+class _BodyCap:
+    """App-wide body cap ahead of every route cap: a declared or streamed body past `cap` -> 413."""
+
+    def __init__(self, app, cap: int) -> None:
+        self.app = app
+        self.cap = cap
+
+    async def __call__(self, scope, receive, send) -> None:
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        length = Headers(scope=scope).get("content-length")
+        # A malformed length is left to the route's own _length_error.
+        if length is not None and length.isascii() and length.isdigit() and int(length) > self.cap:
+            return await _error(413, "too_large")(scope, receive, send)
+        total = 0
+
+        async def capped_receive():
+            nonlocal total
+            message = await receive()
+            if message["type"] == "http.request":
+                total += len(message.get("body", b""))
+                if total > self.cap:
+                    raise _BodyTooLarge
+            return message
+
+        try:
+            await self.app(scope, capped_receive, send)
+        except _BodyTooLarge:
+            # Routes read the whole body before responding, so no response has started yet.
+            await _error(413, "too_large")(scope, receive, send)
 
 
 async def _read_capped(request: Request, cap: int = MAX_UPLOAD_BYTES) -> bytes | None:

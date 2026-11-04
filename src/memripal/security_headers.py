@@ -7,7 +7,8 @@ SECURITY_HEADERS = {
         # wasm-unsafe-eval: lets the SQLite wasm compile (item 159) without allowing JS eval.
         "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; img-src 'self' data: blob:; "
         "object-src 'none'; base-uri 'none'; "
-        "form-action 'none'; frame-ancestors 'none'"
+        # form-action 'self': the no-JS /access form (MEM-100) must be able to submit.
+        "form-action 'self'; frame-ancestors 'none'"
     ),
     "X-Content-Type-Options": "nosniff",
 }

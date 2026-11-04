@@ -31,7 +31,7 @@ IDLE_TIMEOUT_MS = 30000
 
 CSP = (
     "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; img-src 'self' data: blob:; "
-    "object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    "object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
 )
 # nosniff makes the browser enforce these, so a wrong type fails the run like it would in the app.
 MIME = {

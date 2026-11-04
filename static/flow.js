@@ -13,7 +13,7 @@ import { chunkSamples, encodeWav, postRecallAudio, recordClip, TARGET_SAMPLE_RAT
 import { wireBackup } from "./backup_ui.js";
 import { localStorageAdapter } from "./palace_store.js";
 import { pointOf } from "./rehearsals.js";
-import { showPublicBanner } from "./public_banner.js";
+import { showGated, showPublicBanner } from "./public_banner.js";
 import { REPLAY_LABEL, replayRecording, startRecall } from "./recall.js";
 import { createMatcher } from "./recall_match.js";
 import { markPointGot, pointCounted, renderEndScreen } from "./recall_end.js";
@@ -129,6 +129,7 @@ async function showHealth(doc, fetchFn) {
     // The privacy notice only applies when the photo actually leaves for Meta's APIs.
     const notice = doc.getElementById("meta-notice");
     if (notice && health && health.mode === "meta") notice.hidden = false;
+    if (health && health.gated === true) showGated(doc);
     return health && typeof health.mode === "string" ? health.mode : null;
   } catch {
     el.textContent = formatHealth(null);

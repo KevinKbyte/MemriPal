@@ -21,3 +21,18 @@ export function showPublicBanner(doc, hostname) {
   const banner = doc.getElementById("public-banner");
   if (banner && isPublicHost(hostname)) banner.hidden = false;
 }
+
+// Behind the judges-only access gate (MEM-100) the access cookie authorizes live mode, so no passcode.
+export const GATED_BANNER_TEXT = "judges' access: live mode is on, no passcode needed / Load demo works too";
+
+/**
+ * When /healthz reports `gated`, reword #public-banner and hide the passcode box's .field wrapper; the
+ * box stays (empty) in the page, so the passcode header is simply never sent.
+ * @param {Document} doc
+ */
+export function showGated(doc) {
+  const banner = doc.getElementById("public-banner");
+  if (banner) banner.textContent = GATED_BANNER_TEXT;
+  const field = doc.getElementById("passcode")?.parentElement;
+  if (field) field.hidden = true;
+}
