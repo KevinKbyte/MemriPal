@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.47] - 2026-11-03
+
+### Changed
+
+- Deploy runbook and ADR 0056: judges get the URL and access key from the submission's Project Description (the form has no private notes field); cost exposure bounded by the Meta spend limit and MEMRIPAL_CALL_BUDGET.
+
 ## [0.20.46] - 2026-11-03
 
 ### Added
