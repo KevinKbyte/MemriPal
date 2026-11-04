@@ -241,3 +241,51 @@ describe("golden: committed Kendall walk graph + POI table", () => {
     assert.ok(worst <= 40, `walk strays ${worst.toFixed(1)} m from the DEMO_ROUTE polyline`);
   });
 });
+
+// Covers: MEM-088
+// Requirement: a geocode miss never suggests noise (MEM-088). Tokens shorter than 2 characters are ignored when
+// scoring a miss, so a stray letter ("a") cannot pull a POI like "Cafe A" to the top; a miss that shares no
+// scored word with any place name, and a blank phrase, suggest only the hand-kept aliases (Meta office, then
+// Kendall/MIT T, deduped by name). A miss that does share a whole word still ranks POIs by shared words.
+describe("geocode miss suggestions (MEM-088)", () => {
+  const ALIAS_NAMES = ["Meta office", "Kendall/MIT T"];
+  const names = (g) => g.suggestions.map((s) => s.name);
+
+  test("tokens shorter than 2 chars are ignored: 'zzqx a' does not rank 'Cafe A'", () => {
+    const pois = [{ osm_id: "node/9", name: "Cafe A", lat: 42.3662, lng: -71.0811, address: null, street: "Binney Street" }];
+    const g = geocode("zzqx a", pois);
+    assert.equal(g.miss, true);
+    assert.deepEqual(names(g), ALIAS_NAMES);
+  });
+
+  test("a miss sharing no scored word with any name returns only the aliases, deduped by name", () => {
+    const g = geocode("zzqx nowhere plaza", INLINE_POIS);
+    assert.equal(g.miss, true);
+    assert.deepEqual(names(g), ALIAS_NAMES);
+    for (const s of g.suggestions) {
+      assert.equal(typeof s.lat, "number");
+      assert.equal(typeof s.lng, "number");
+    }
+  });
+
+  test("a blank or single-letter phrase suggests the aliases only", () => {
+    for (const phrase of ["", "   ", "a", "x y"]) {
+      const g = geocode(phrase, INLINE_POIS);
+      assert.equal(g.miss, true, `${JSON.stringify(phrase)} is a miss`);
+      assert.deepEqual(names(g), ALIAS_NAMES, `${JSON.stringify(phrase)} suggestions`);
+    }
+  });
+
+  test("a miss that shares a word still ranks POIs by shared words", () => {
+    const pois = [
+      { osm_id: "node/20", name: "Beta Zeta", lat: 42.3651, lng: -71.0801, address: null, street: "Main Street" },
+      { osm_id: "node/21", name: "Alpha Beta Gamma", lat: 42.3652, lng: -71.0802, address: null, street: "Main Street" },
+    ];
+    const g = geocode("gamma beta nothing", pois);
+    assert.equal(g.miss, true);
+    assert.deepEqual(names(g).slice(0, 2), ["Alpha Beta Gamma", "Beta Zeta"]);
+    const b = geocode("building zzqx", INLINE_POIS);
+    assert.equal(b.miss, true);
+    assert.equal(b.suggestions[0].name, "Kendall Building");
+  });
+});

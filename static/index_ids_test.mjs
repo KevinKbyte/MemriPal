@@ -57,3 +57,14 @@ export const MEM072_IDS = [
 
 // MEM-072: Routes (the map) is the home tab, so only the other three tab panels start hidden.
 export const MEM072_MAY_START_HIDDEN = ["tab-landmarks", "tab-recall", "tab-settings"];
+
+// MEM-088 (Map a new route): the route builder form in the drawer (#route-new with start/end/Find/Cancel, an error
+// line, the result block with distance, station list, name and Save) and the map's empty state.
+export const MEM088_IDS = [
+  "route-new", "route-from", "route-to", "route-find", "route-new-cancel", "route-new-error", "route-new-result",
+  "route-distance", "route-new-stations", "route-new-name", "route-new-save", "map-empty",
+];
+
+// MEM-088: the builder opens only from "Map a new route", the error shows only on a miss and the result only after a
+// found walk. #map-empty starts visible (a fresh origin has no route) and app.js hides it once a route is drawn.
+export const MEM088_MAY_START_HIDDEN = ["route-new", "route-new-error", "route-new-result"];
