@@ -6,6 +6,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ### Added
 
+- Recall schedule (static/recall_schedule.js, MEM-090, ADR 0049 schedule (a)): pure recallSchedule(deadline, { now }) returns review times at S+10m, S+1h, then countdown doubling T-1d, T-2d, T-4d ... down to the S+1d floor, dropping an anchor within 1d of the review before it; a deadline within 1d gets S+10m/S+1h/S+4h before T; no deadline gets 1, 3, 7, 14, 30, 60, 120 days; a passed deadline gets none.
+
 - POST /station (station photo -> pixelated photo, name, profile, box) is now mounted on the app, behind the same passcode guard as /loci (MEM-083).
 
 ## [0.20.42] - 2026-11-03
