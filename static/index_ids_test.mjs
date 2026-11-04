@@ -61,10 +61,10 @@ export const MEM072_MAY_START_HIDDEN = ["tab-landmarks", "tab-recall", "tab-sett
 // MEM-095 (Pal's first-run tour) + MEM-097 (replay from Settings): the #tour dialog's ids, the skip toast and
 // the Settings replay button.
 export const MEM095_IDS = [
-  "tour", "tour-n", "tour-total", "tour-skip", "tour-title", "tour-body", "tour-fig", "tour-after", "tour-back",
-  "tour-next", "tour-toast", "tour-replay",
+  "tour", "tour-n", "tour-total", "tour-skip", "tour-title", "tour-body", "tour-house", "tour-fig", "tour-after",
+  "tour-back", "tour-next", "tour-toast", "tour-replay",
 ];
 
-// MEM-095: tour.js opens #tour only for a first-time visitor; the figure and closer show only on steps that have
-// them; the toast only after a skip.
-export const MEM095_MAY_START_HIDDEN = ["tour", "tour-fig", "tour-after", "tour-toast"];
+// MEM-095: tour.js opens #tour only for a first-time visitor; the figures (dog house, locus list) and closer show
+// only on steps that have them; the toast only after a skip.
+export const MEM095_MAY_START_HIDDEN = ["tour", "tour-house", "tour-fig", "tour-after", "tour-toast"];

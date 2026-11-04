@@ -9,6 +9,8 @@ export const TOUR_KEY = "memripal.tour.done";
 function E(cp) { return String.fromCodePoint(cp); }
 
 // story: centered card with an optional locus figure (fig rows: spot, icon, item; sub = nested spots).
+// house: Pal's dog house segmented like a station photo: one box [x, y, w, h] per spot in a 320x200 viewBox,
+// numbered in walk order; the route through the box centres never crosses itself.
 export const STEPS = [
   { target: null, title: "Hi! I'm King Memri.",
     body: "But call me Pal. My dog house is the Memri Palace. Let me show you how it works, then help you build a palace of your own.",
@@ -19,6 +21,13 @@ export const STEPS = [
     next: "Next" },
   { story: true, title: "My Royal Shopping List",
     body: "One item per spot, in the order I walk my dog house:",
+    house: [
+      { spot: "Doormat", box: [128, 184, 64, 15] },
+      { spot: "Water bowl", box: [40, 140, 70, 28] },
+      { spot: "Chew-toy throne", box: [40, 82, 76, 36] },
+      { spot: "Scratching post", box: [222, 86, 62, 80] },
+      { spot: "Window", box: [134, 36, 52, 30] },
+    ],
     fig: [
       { spot: "Doormat", icon: E(0x1F953), item: "sizzling bacon" },
       { spot: "Water bowl", icon: E(0x1F3BE), item: "squeaking tennis ball" },
@@ -80,6 +89,12 @@ export const STEPS = [
 
 const TOAST_MS = 4000;
 const SPOT_PAD = 6;
+const SVG_NS = "http://www.w3.org/2000/svg";
+const HOUSE_W = 320;
+const HOUSE_H = 200;
+const PIN_R = 9;
+const LABEL_WRAP = 10; // labels longer than this many characters break onto one line per word
+const LABEL_LEAD = 11;
 
 /**
  * Wire the #tour dialog, #tour-toast and #tour-replay; open the tour at step 1 for a first-time visitor.
@@ -97,6 +112,7 @@ export function wireTour(doc, store) {
   const card = tour.querySelector(".tour-card");
   const dotList = tour.querySelector(".tour-dots");
   const fig = $("tour-fig");
+  const house = $("tour-house");
   const after = $("tour-after");
   const back = $("tour-back");
   const next = $("tour-next");
@@ -131,6 +147,62 @@ export function wireTour(doc, store) {
     return li;
   }
 
+  /** @param {string} tag @param {Record<string, string | number>} attrs @param {string} [cls] */
+  function svgEl(tag, attrs, cls) {
+    const e = doc.createElementNS(SVG_NS, tag);
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, String(v));
+    if (cls) e.setAttribute("class", cls);
+    return e;
+  }
+
+  /**
+   * Pal's dog house drawn like the v6 loci overlay (docs/design/v6/app.js lociOverlay): outline boxes, a dotted
+   * route through the box centres, numbered pins at each box's top-left.
+   * @param {{ spot: string, box: number[] }[]} spots
+   */
+  function houseFig(spots) {
+    const svg = svgEl("svg", {
+      viewBox: `0 0 ${HOUSE_W} ${HOUSE_H}`, role: "img",
+      "aria-label": `Pal's dog house split into ${spots.length} numbered spots: `
+        + spots.map((s, i) => `${i + 1} ${s.spot}`).join(", "),
+    });
+    // The house itself: roof, walls, door, ground.
+    svg.appendChild(svgEl("path",
+      { d: "M16 80 L160 10 L304 80 M32 80 V180 H288 V80 M140 180 V150 A20 20 0 0 1 180 150 V180 M8 180 H312" },
+      "h-shape"));
+    svg.appendChild(svgEl("polyline",
+      { points: spots.map(({ box: b }) => `${b[0] + b[2] / 2},${b[1] + b[3] / 2}`).join(" ") }, "route-line"));
+    // All outlines first, then labels, then pins, so a later box never paints over an earlier pin.
+    for (const { box: b } of spots) {
+      const r = { x: b[0], y: b[1], width: b[2], height: b[3], rx: 6 };
+      svg.appendChild(svgEl("rect", r, "o-under"));
+      svg.appendChild(svgEl("rect", r, "o-line"));
+    }
+    for (const { spot, box: b } of spots) {
+      const words = spot.length > LABEL_WRAP ? spot.split(" ") : [spot];
+      const cx = b[0] + b[2] / 2;
+      const t = svgEl("text",
+        { x: cx, y: b[1] + b[3] / 2 - ((words.length - 1) * LABEL_LEAD) / 2 + 3.5, "text-anchor": "middle" }, "o-label");
+      words.forEach((w, n) => {
+        const line = svgEl("tspan", { x: cx, dy: n ? LABEL_LEAD : 0 });
+        line.textContent = w;
+        t.appendChild(line);
+      });
+      svg.appendChild(t);
+    }
+    spots.forEach(({ box: b }, i) => {
+      const cx = Math.max(PIN_R + 1, b[0]);
+      const cy = Math.max(PIN_R + 1, b[1]);
+      const g = svgEl("g", {}, "pin");
+      g.appendChild(svgEl("circle", { cx, cy, r: PIN_R }));
+      const n = svgEl("text", { x: cx, y: cy + 3.8, "text-anchor": "middle" });
+      n.textContent = String(i + 1);
+      g.appendChild(n);
+      svg.appendChild(g);
+    });
+    return svg;
+  }
+
   function placeSpot() {
     const sel = /** @type {any} */ (STEPS[cur]).target || null;
     const target = sel ? doc.querySelector(sel) : null;
@@ -163,6 +235,11 @@ export function wireTour(doc, store) {
     [...dotList.children].forEach((d, n) => d.classList.toggle("is-current", n === i));
     $("tour-title").textContent = s.title;
     $("tour-body").textContent = s.body;
+    // #tour-house is optional markup (older shells lack it); the figure only draws where it exists.
+    if (house) {
+      house.replaceChildren(...(s.house ? [houseFig(s.house)] : []));
+      house.hidden = !s.house;
+    }
     fig.replaceChildren(...(s.fig ?? []).map(figRow));
     fig.hidden = !s.fig;
     after.textContent = s.after ?? "";
