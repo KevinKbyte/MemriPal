@@ -1,0 +1,170 @@
+/* Paper Crown theme preview (design-research theme-directions.md section A + C's lantern stations).
+   Preview only: layered after theme-painterly.css; on approval these rules fold into static/theme-painterly.css
+   with font urls rewritten to /static/fonts/. Tokens only remap names style.css already reads, plus --on-lamp. */
+@font-face {
+  font-family: "Fraunces";
+  src: url("../../../static/fonts/fraunces.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Nunito";
+  src: url("../../../static/fonts/nunito.woff2") format("woff2");
+  font-weight: 200 1000;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --bg: #F6EFE2; --surface: #FFFBF3; --surface-2: #EDE3D0; --ink: #2B2420; --muted: #5E5248; --line: #85745F;
+  --primary: #3B3F8F; --on-primary: #FFFBF3;
+  --lamp: #E3A82B; --lamp-ink: #7A4E0C; --lamp-soft: #FBE7B5; --on-lamp: #2B2420;
+  --ok: #2F6B3A; --ok-soft: #E1ECD9; --bad: #A2462A; --bad-soft: #F7E1D6; --on-bad: #FFFBF3;
+  --focus: #3B3F8F;
+  --glow: transparent;
+  --shadow: 0 1px 0 rgba(43, 36, 32, 0.08), 0 3px 0 -1px #EDE3D0, 0 4px 0 -1px rgba(133, 116, 95, 0.35),
+    0 12px 22px -10px rgba(74, 52, 30, 0.30);
+  --display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --body: "Nunito", ui-rounded, "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141826; --surface: #1E2336; --surface-2: #282E45; --ink: #EDE6D6; --muted: #A9A3B8; --line: #6E7591;
+    --primary: #9DB8F2; --on-primary: #141826;
+    --lamp: #F2B544; --lamp-ink: #F5C870; --lamp-soft: #3A2F17; --on-lamp: #141826;
+    --ok: #93D29B; --ok-soft: #1C3123; --bad: #F09A7E; --bad-soft: #3A2119; --on-bad: #141826;
+    --focus: #9DB8F2;
+    --glow: rgba(242, 181, 68, 0.45);
+    --shadow: 0 1px 0 rgba(0, 0, 0, 0.4), 0 3px 0 -1px #282E45, 0 12px 22px -10px rgba(0, 0, 0, 0.6);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #141826; --surface: #1E2336; --surface-2: #282E45; --ink: #EDE6D6; --muted: #A9A3B8; --line: #6E7591;
+  --primary: #9DB8F2; --on-primary: #141826;
+  --lamp: #F2B544; --lamp-ink: #F5C870; --lamp-soft: #3A2F17; --on-lamp: #141826;
+  --ok: #93D29B; --ok-soft: #1C3123; --bad: #F09A7E; --bad-soft: #3A2119; --on-bad: #141826;
+  --focus: #9DB8F2;
+  --glow: rgba(242, 181, 68, 0.45);
+  --shadow: 0 1px 0 rgba(0, 0, 0, 0.4), 0 3px 0 -1px #282E45, 0 12px 22px -10px rgba(0, 0, 0, 0.6);
+  color-scheme: dark;
+}
+
+body {
+  font-family: var(--body);
+}
+
+.brand,
+h2,
+h3,
+.map-chip {
+  font-family: var(--display);
+  font-variation-settings: "SOFT" 100, "WONK" 0;
+}
+
+.brand {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+/* Crown edge: the topbar's cut-paper bottom is a row of crown points. */
+.topbar {
+  position: sticky;
+}
+
+.topbar::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  height: 7px;
+  background:
+    linear-gradient(135deg, var(--surface) 5px, transparent 0) 0 0 / 14px 7px repeat-x,
+    linear-gradient(-135deg, var(--surface) 5px, transparent 0) 0 0 / 14px 7px repeat-x;
+}
+
+/* Gold is only for recalled: notices and the live badge move to ink/primary roles. */
+.notice {
+  background: var(--surface-2);
+  border-color: var(--line);
+}
+
+.live-badge {
+  display: inline-block;
+  width: fit-content;
+  padding: 0.15rem 0.6rem 0.25rem;
+  color: var(--on-primary);
+  background: var(--primary);
+  border-radius: 6px 6px 2px 2px;
+  font-family: var(--body);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.route-toast .route-undo {
+  color: var(--ink);
+  background: var(--surface);
+  border-color: var(--line);
+}
+
+/* Lantern stations: a recalled point fills gold, keeps an ink outline, and carries a check glyph. */
+.live-board li.lit {
+  background: var(--lamp);
+  color: var(--on-lamp);
+  border: 0;
+  border-radius: 6px;
+  padding: 0.1rem 0.4rem;
+  box-shadow: 0 0 18px 2px var(--glow);
+}
+
+.live-board li.lit::marker {
+  color: var(--ink);
+}
+
+.live-board li.lit::before {
+  content: "\2713  ";
+  font-weight: 900;
+}
+
+.route-node.lit {
+  fill: var(--lamp);
+  stroke: var(--on-lamp);
+  stroke-width: 2.5;
+}
+
+li.said-got > .said-label::before {
+  content: "\2713  ";
+  font-weight: 900;
+}
+
+li.said-missed > .said-label::before {
+  content: "\2715  ";
+  font-weight: 900;
+}
+
+.said-vs-palace {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.said-vs-palace li {
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+}
+
+.said-label {
+  font-weight: 800;
+}
+
+.said-vs-palace .btn {
+  margin-top: 0.5rem;
+}

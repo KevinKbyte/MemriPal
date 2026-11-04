@@ -1,36 +1,58 @@
 /* MEM-044 P1 painterly theme: watercolour paper, pigment colours, serif display face, deckled panels.
    Droppable: remove its <link> and the v6 look returns. It only remaps v6 tokens that style.css reads and
-   adds image layers; it never touches html/:root/body/main stacking (keeps #scene-overlay viewport-fixed). */
+   adds image layers; it never touches html/:root/body/main stacking (keeps #scene-overlay viewport-fixed).
+   MEM-102 Paper Crown: Fraunces/Nunito faces, crown-edged topbar, gold reserved for recalled stations. */
+@font-face {
+  font-family: "Fraunces";
+  src: url("/static/fonts/fraunces.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Nunito";
+  src: url("/static/fonts/nunito.woff2") format("woff2");
+  font-weight: 200 1000;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
-  --bg: #EFE6D6; --surface: #FBF7EE; --surface-2: #ECE2CF; --ink: #2A231E; --muted: #5C5046; --line: #9C8770;
-  --primary: #2E4877; --on-primary: #FBF7EE;
-  --lamp: #C98A2B; --lamp-ink: #7A4710; --lamp-soft: #F5E2BC;
-  --ok: #3B6636; --ok-soft: #E1EBD3; --bad: #9A3A1D; --bad-soft: #F5DFD1; --on-bad: #FFFFFF;
-  --focus: #2F5EAE;
-  --shadow: 0 1px 2px rgba(74, 52, 30, 0.10), 0 10px 26px -8px rgba(92, 64, 34, 0.28);
-  --display: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --bg: #F6EFE2; --surface: #FFFBF3; --surface-2: #EDE3D0; --ink: #2B2420; --muted: #5E5248; --line: #85745F;
+  --primary: #3B3F8F; --on-primary: #FFFBF3;
+  --lamp: #E3A82B; --lamp-ink: #7A4E0C; --lamp-soft: #FBE7B5; --on-lamp: #2B2420;
+  --ok: #2F6B3A; --ok-soft: #E1ECD9; --bad: #A2462A; --bad-soft: #F7E1D6; --on-bad: #FFFBF3;
+  --focus: #3B3F8F;
+  --glow: transparent;
+  --shadow: 0 1px 0 rgba(43, 36, 32, 0.08), 0 3px 0 -1px #EDE3D0, 0 4px 0 -1px rgba(133, 116, 95, 0.35),
+    0 12px 22px -10px rgba(74, 52, 30, 0.30);
+  --display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --body: "Nunito", ui-rounded, "Segoe UI", system-ui, sans-serif;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #171B25; --surface: #1F2431; --surface-2: #2A3041; --ink: #EEE7D9; --muted: #B8AE9D;
-    --line: #717789; --primary: #AFC5EB; --on-primary: #151B27;
-    --lamp: #E0B05A; --lamp-ink: #F0C878; --lamp-soft: #3B2F19;
-    --ok: #A0CE91; --ok-soft: #1F2F1D; --bad: #F2A588; --bad-soft: #3B2119; --on-bad: #1A0B06;
-    --focus: #9FC0F6;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 26px -8px rgba(0, 0, 0, 0.5);
+    --bg: #141826; --surface: #1E2336; --surface-2: #282E45; --ink: #EDE6D6; --muted: #A9A3B8; --line: #6E7591;
+    --primary: #9DB8F2; --on-primary: #141826;
+    --lamp: #F2B544; --lamp-ink: #F5C870; --lamp-soft: #3A2F17; --on-lamp: #141826;
+    --ok: #93D29B; --ok-soft: #1C3123; --bad: #F09A7E; --bad-soft: #3A2119; --on-bad: #141826;
+    --focus: #9DB8F2;
+    --glow: rgba(242, 181, 68, 0.45);
+    --shadow: 0 1px 0 rgba(0, 0, 0, 0.4), 0 3px 0 -1px #282E45, 0 12px 22px -10px rgba(0, 0, 0, 0.6);
     color-scheme: dark;
   }
 }
 
 :root[data-theme="dark"] {
-  --bg: #171B25; --surface: #1F2431; --surface-2: #2A3041; --ink: #EEE7D9; --muted: #B8AE9D;
-  --line: #717789; --primary: #AFC5EB; --on-primary: #151B27;
-  --lamp: #E0B05A; --lamp-ink: #F0C878; --lamp-soft: #3B2F19;
-  --ok: #A0CE91; --ok-soft: #1F2F1D; --bad: #F2A588; --bad-soft: #3B2119; --on-bad: #1A0B06;
-  --focus: #9FC0F6;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 10px 26px -8px rgba(0, 0, 0, 0.5);
+  --bg: #141826; --surface: #1E2336; --surface-2: #282E45; --ink: #EDE6D6; --muted: #A9A3B8; --line: #6E7591;
+  --primary: #9DB8F2; --on-primary: #141826;
+  --lamp: #F2B544; --lamp-ink: #F5C870; --lamp-soft: #3A2F17; --on-lamp: #141826;
+  --ok: #93D29B; --ok-soft: #1C3123; --bad: #F09A7E; --bad-soft: #3A2119; --on-bad: #141826;
+  --focus: #9DB8F2;
+  --glow: rgba(242, 181, 68, 0.45);
+  --shadow: 0 1px 0 rgba(0, 0, 0, 0.4), 0 3px 0 -1px #282E45, 0 12px 22px -10px rgba(0, 0, 0, 0.6);
   color-scheme: dark;
 }
 
@@ -48,9 +70,18 @@ body {
 
 .brand {
   font-size: 1.45rem;
-  font-style: italic;
-  font-weight: 600;
+  font-style: normal;
+  font-weight: 700;
   letter-spacing: 0.01em;
+  color: var(--primary);
+}
+
+.brand,
+h2,
+h3,
+.map-chip {
+  font-family: var(--display);
+  font-variation-settings: "SOFT" 100, "WONK" 0;
 }
 
 h2,
@@ -105,7 +136,96 @@ textarea {
 }
 
 .notice {
+  background: var(--surface-2);
+  border-color: var(--line);
   border-radius: 16px 12px 15px 11px / 12px 15px 11px 16px;
+}
+
+/* Crown edge: the topbar's cut-paper bottom is a row of crown points. */
+.topbar::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  height: 7px;
+  background:
+    linear-gradient(135deg, var(--surface) 5px, transparent 0) 0 0 / 14px 7px repeat-x,
+    linear-gradient(-135deg, var(--surface) 5px, transparent 0) 0 0 / 14px 7px repeat-x;
+}
+
+/* Gold is only for recalled: the live badge and undo move to ink/primary roles. */
+.live-badge {
+  display: inline-block;
+  width: fit-content;
+  padding: 0.15rem 0.6rem 0.25rem;
+  color: var(--on-primary);
+  background: var(--primary);
+  border-radius: 6px 6px 2px 2px;
+  font-family: var(--body);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.route-toast .route-undo {
+  color: var(--ink);
+  background: var(--surface);
+  border-color: var(--line);
+}
+
+/* Lantern stations: a recalled point fills gold, keeps an ink outline, and carries a check glyph. */
+.live-board li.lit {
+  background: var(--lamp);
+  color: var(--on-lamp);
+  border: 0;
+  border-radius: 6px;
+  padding: 0.1rem 0.4rem;
+  box-shadow: 0 0 18px 2px var(--glow);
+}
+
+.live-board li.lit::marker {
+  color: var(--ink);
+}
+
+.live-board li.lit::before {
+  content: "\2713  ";
+  font-weight: 900;
+}
+
+.route-node.lit {
+  fill: var(--lamp);
+  stroke: var(--on-lamp);
+  stroke-width: 2.5;
+}
+
+li.said-got > .said-label::before {
+  content: "\2713  ";
+  font-weight: 900;
+}
+
+li.said-missed > .said-label::before {
+  content: "\2715  ";
+  font-weight: 900;
+}
+
+.said-vs-palace {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.said-vs-palace li {
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+}
+
+.said-label {
+  font-weight: 800;
+}
+
+.said-vs-palace .btn {
+  margin-top: 0.5rem;
 }
 
 /* Forced colours, more contrast and print drop every painterly layer and restore a crisp panel edge. */
@@ -121,5 +241,13 @@ textarea {
   .panel::before {
     background-image: none;
     mask-image: none;
+  }
+
+  .topbar::after {
+    background: none;
+  }
+
+  .live-board li.lit {
+    box-shadow: none;
   }
 }
