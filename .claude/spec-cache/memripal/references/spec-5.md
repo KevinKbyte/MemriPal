@@ -178,3 +178,46 @@ Source: Kev, "I took pictures of the route, can you add multisensory info for th
   the `DEMO_ROUTE` ones.
 
 Tests: static/demo_route_taps.test.mjs
+## MEM-095 Pal's first-run tour
+
+Kev ask 2026-11-01: first-run tutorial, skippable, persisted; item-20 story (history intro, Royal Shopping List demo,
+nested mnemonics, whole cart in one locus). Approved 2026-11-03 from preview `docs/design/tutorial/` (079b762).
+Root problem: a first-time visitor (a judge) lands on the map shell with no idea what a memory palace is or where to
+start; Pal explains the method and points at the four places that matter, once, and gets out of the way.
+Actors: `static/tour.js` (new: `TOUR_KEY`, `STEPS`, `wireTour(doc, store)`), `static/index.html` (#tour dialog,
+#tour-toast), `static/tour.css` (ported from `docs/design/tutorial/tutorial.css`), `static/app.js` bootstrap.
+NFR: no new dependency; no innerHTML (all step text and figures via textContent/createElement); ASCII-only source
+(non-ASCII glyphs as `\u`/`String.fromCodePoint` escapes); no network.
+- Seam: `wireTour(doc, store)`, `store = { getItem, setItem }`; app.js passes lazy localStorage wrappers like
+  `wireUpload`'s place store (`static/app.js:385-387`). Called from the bootstrap beside `initTabbar`, not via
+  wireApp, so wireApp tests are untouched.
+- `TOUR_KEY` = `"memripal.tour.done"`. On wire: `store.getItem(TOUR_KEY)` null/undefined -> tour opens at step 1;
+  any stored value -> stays hidden. `getItem` throwing -> tour stays hidden (storage disabled must not nag every load).
+- `STEPS`: the 10 steps of `docs/design/tutorial/preview.js` STEPS, same order, titles, bodies, `after` closers, `fig`
+  rows (spot, icon, item, done, faded, sub) and button labels. Steps 1, 7-10 spotlight `target` (null welcome;
+  `.tab[href="#routes"]`, `.drawer-handle`, `.tab[href="#recall"]`, `.tab[href="#settings"]`); steps 2-6 are
+  `story` cards with the #tour-fig locus list. Missing target element -> centred card, no cut-out.
+- Count "N of 10" and one dot per step, built from `STEPS.length`. Back hidden on step 1. Next advances; on step 10
+  ("Let's go") the tour closes with no toast.
+- Close paths: Skip button and Escape close and show #tour-toast ("Tour skipped. Replay it any time in Settings.",
+  role=status, auto-hides after 4 s); finishing closes silently. Every close calls `store.setItem(TOUR_KEY, "1")`;
+  `setItem` throwing still closes.
+- Dialog: role=dialog, aria-modal=true, aria-labelledby=tour-title; Next takes focus on each step; Tab/Shift+Tab cycle
+  only the card's visible buttons while open. Spotlight re-places on resize.
+- Accept: empty store -> #tour visible, step 1 title "Hi! I'm King Memri."; stored "1" -> hidden; getItem throws ->
+  hidden; Next x9 reaches step 10 with 10 dots; step 5 fig shows the cart with 5 sub rows; Next on step 10 -> hidden,
+  toast hidden, store has "1"; Skip -> hidden, toast shown, store has "1"; Escape same as Skip; setItem throws ->
+  still hidden; a step body containing `<b>` renders as text; real-browser screenshot of step 1 and step 5.
+
+Tests: static/tour.test.mjs
+
+## MEM-097 Replay Pal's tour from Settings
+
+Amends MEM-095. Actors: `static/index.html` (#tab-settings gains a "Pal's tour" panel with button #tour-replay),
+`static/tour.js`.
+- #tour-replay click: switch to the routes tab (`showTab("routes")`, `static/tabbar.js`), hide any toast, open the
+  tour at step 1, regardless of `TOUR_KEY`. Closing it again behaves as MEM-095 (stores "1").
+- Accept: stored "1", click #tour-replay -> #tour visible at step 1, #tab-routes shown, #tab-settings hidden;
+  Skip after replay -> hidden again.
+
+Tests: static/tour.test.mjs
