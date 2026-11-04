@@ -176,6 +176,29 @@
             <canvas id="scene" width="0" height="0"></canvas>
           </div>
           <ol id="loci"></ol>
+          <section id="sticker-panel" class="sticker-panel" hidden>
+            <h3>Stickers</h3>
+            <p class="sticker-hint">Pal says: stick your own picture on a spot. It's easier to remember!</p>
+            <div class="field">
+              <label for="sticker-locus">Spot</label>
+              <select id="sticker-locus"></select>
+            </div>
+            <div class="field">
+              <label for="sticker-file">Your picture</label>
+              <input id="sticker-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
+            </div>
+            <div class="field">
+              <label for="sticker-desc">What it shows</label>
+              <input id="sticker-desc" type="text" maxlength="60" autocomplete="off">
+            </div>
+            <button id="sticker-add" class="btn btn-primary" type="button">Stick it on</button>
+            <p id="sticker-error" class="notice" role="alert" hidden></p>
+            <ul id="sticker-placed" class="sticker-placed"></ul>
+            <div id="sticker-toast" class="route-toast" role="status" hidden>
+              <span id="sticker-toast-text" class="route-toast-text"></span>
+              <button id="sticker-undo" class="btn route-undo" type="button">Undo</button>
+            </div>
+          </section>
           <p id="assoc-status" role="status"></p>
           <div id="associations"></div>
         </div>

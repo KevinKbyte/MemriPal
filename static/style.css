@@ -1008,3 +1008,94 @@ li.said-missed {
   font-weight: 700;
   box-shadow: inset 0 3px 0 var(--primary);
 }
+
+/* MEM-045: stickers sit over the landmark photo at each locus centre, die-cut (white border, shadow, tilt). */
+#scene-wrap {
+  position: relative;
+}
+
+.sticker-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.sticker {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  transform: translate(-50%, -50%) rotate(-6deg);
+  border: 4px solid #FFFFFF;
+  border-radius: 12px;
+  color: #16202C;
+  background: #FFFFFF;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+  animation: sticker-pop 240ms ease-out;
+}
+
+.sticker:nth-child(even) {
+  transform: translate(-50%, -50%) rotate(5deg);
+}
+
+.sticker img {
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.sticker-emoji {
+  font-size: 32px;
+  line-height: 1;
+}
+
+@keyframes sticker-pop {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sticker {
+    animation: none;
+  }
+}
+
+.sticker-panel {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.sticker-panel[hidden] {
+  display: none;
+}
+
+.sticker-hint {
+  margin: 0;
+  color: var(--muted);
+}
+
+.sticker-placed {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sticker-placed-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sticker-placed-text {
+  flex: 1 1 12rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

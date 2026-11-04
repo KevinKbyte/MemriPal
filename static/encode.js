@@ -140,7 +140,8 @@ export async function errorCode(resp) {
  * "Load demo" end to end: demo photo -> /loci -> demo notes -> /split -> runEncode. A failed step
  * writes #upload-status and stops; never throws.
  * @param {{auto?: boolean}} opts
- * @param {EncodeDeps & {loadImage: (src: string) => Promise<CanvasImageSource>}} deps
+ * @param {EncodeDeps & {loadImage: (src: string) => Promise<CanvasImageSource>,
+ *   stickers?: {show: (view: {placeKey: string, width: number, height: number, loci: Locus[]}) => unknown}}} deps
  * @returns {Promise<Point[] | undefined>} the /split points once the walk view shows, for recall
  */
 export async function runDemoPalace(opts, deps) {
@@ -161,6 +162,11 @@ export async function runDemoPalace(opts, deps) {
     await showUpload(send, "could not load the demo photo", /** @type {any} */ (deps));
     const found = lociResp && /** @type {Response} */ (lociResp).ok ? await /** @type {Response} */ (lociResp).json().catch(() => null) : null;
     if (!found || typeof found.image !== "string" || !Array.isArray(found.loci)) return;
+    // MEM-045: the sticker board is a side panel; its failure must never stop the demo.
+    const view = { placeKey: "demo", width: found.width, height: found.height, loci: found.loci };
+    void Promise.resolve()
+      .then(() => deps.stickers?.show(view))
+      .catch(() => {});
     say("Reading the demo notes...");
     const notes = await deps.fetch("/demo/notes.txt");
     if (!notes.ok) return say(`Demo failed: ${await errorCode(notes)}`);

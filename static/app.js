@@ -12,6 +12,8 @@ import { createIdbAdapter } from "./idb_adapter.js";
 import { createRehearsalStore } from "./rehearsals.js";
 import { createRouteStore } from "./route_store.js";
 import { migrateLocalStorage } from "./storage_migrate.js";
+import { createStickerBoard } from "./sticker_board.js";
+import { createStickerPool } from "./sticker_pool.js";
 import { createThumbnail } from "./thumbnail.js";
 import { initTabbar } from "./tabbar.js";
 import { wireTour } from "./tour.js";
@@ -449,6 +451,29 @@ if (typeof document !== "undefined") {
         migrateLocalStorage(() => localStorage, rehearsal.prefix, rehearsalAdapter),
       ])
     : Promise.resolve();
+  // Lazy lookup: a browser without createImageBitmap fails the export, not page load.
+  const thumbnail = createThumbnail({
+    createImageBitmap: (photo) => globalThis.createImageBitmap(photo),
+    createCanvas: (w, h) => Object.assign(document.createElement("canvas"), { width: w, height: h }),
+  });
+  // MEM-045 (ADR 0068): uploads are downscaled to a 256px JPEG data URL, so the pool never holds the original.
+  const stickers = createStickerBoard({
+    doc: document,
+    pool: createStickerPool(
+      selectStore(globalThis, { dbName: "memripal-stickers", storeName: "stickers", prefix: "memripal.sticker:" }),
+      // Not crypto.randomUUID: it is missing on a plain-http origin.
+      { now: () => new Date().toISOString(), newId: () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}` },
+    ),
+    makeImage: async (file) => {
+      const { bytes } = await thumbnail(file, { maxSide: 256, quality: 0.8 });
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(bytes);
+      });
+    },
+  });
   void migrated.then(() =>
     wireApp({
       ...wireUpload(),
@@ -460,11 +485,8 @@ if (typeof document !== "undefined") {
         : undefined,
       // Bound for the same reason as wireUpload's fetch; the extract URL is absolute, so apiUrl leaves it alone.
       realMap: createRealMapLoader({ fetch: withApiBase(fetch.bind(globalThis)) }),
-      // Lazy lookup: a browser without createImageBitmap fails the export, not page load.
-      thumbnail: createThumbnail({
-        createImageBitmap: (photo) => globalThis.createImageBitmap(photo),
-        createCanvas: (w, h) => Object.assign(document.createElement("canvas"), { width: w, height: h }),
-      }),
+      thumbnail,
+      stickers,
       getUserMedia: media ? media.getUserMedia.bind(media) : undefined,
       AudioContext: globalThis.AudioContext || /** @type {any} */ (globalThis).webkitAudioContext,
       location,
