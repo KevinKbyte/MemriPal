@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [0.20.71] - 2026-11-04
 
+### Removed
+
+- Next-turn direction cue removed from the station card and the S5 route list: the map already shows the turn, and a fixed left/right is wrong when the user faces another way (MEM-135).
+
 ### Added
 
 - Tour stickers drag and snap onto spots; a tap only selects a sticker and never regenerates it; regeneration comes only from an explicit New sticker button, with Undo (MEM-131, ADR 0078).
