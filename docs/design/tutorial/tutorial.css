@@ -33,6 +33,7 @@
   width: calc(100vw - 2rem);
   max-width: 24rem;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.5rem;
   padding: 2.75rem 1rem 1rem;
   background: var(--surface);
@@ -66,7 +67,7 @@
 .tour-head {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
   padding-left: 5.5rem;
   margin-top: -2.25rem;
 }
@@ -82,15 +83,15 @@
 
 .tour-dots {
   display: flex;
-  gap: 0.3rem;
+  gap: 0.2rem;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .tour-dots li {
-  width: 0.45rem;
-  height: 0.45rem;
+  width: 0.4rem;
+  height: 0.4rem;
   border-radius: 999px;
   background: var(--line);
 }
@@ -167,5 +168,84 @@
 @media (prefers-reduced-motion: reduce) {
   .tour-spot {
     transition: none;
+  }
+}
+
+/* Story steps: centered card above the tab bar, normal-size Pal, no spotlight. */
+.tour.is-story .tour-card {
+  top: calc(50% - var(--tabbar-h) / 2);
+  bottom: auto;
+  transform: translate(-50%, -50%);
+}
+
+/* Locus figure: one row per spot (spot | picture | item); sub-lists are a palace inside a spot. */
+.tour-fig,
+.fig-sub {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tour-fig[hidden] {
+  display: none;
+}
+
+.fig-row {
+  display: grid;
+  grid-template-columns: 7.25rem 1.6rem 1fr;
+  align-items: baseline;
+  column-gap: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--lamp) 10%, var(--surface));
+  font-size: 0.9rem;
+  line-height: 1.3;
+}
+
+.fig-spot {
+  font: 600 0.72rem/1.3 var(--mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.fig-icon {
+  text-align: center;
+}
+
+.fig-row.is-done .fig-icon {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.fig-row.is-faded {
+  opacity: 0.45;
+  background: none;
+  border: 1px dashed var(--line);
+}
+
+.fig-sub {
+  grid-column: 1 / -1;
+  margin: 0.35rem 0 0 0.75rem;
+  padding-left: 0.6rem;
+  border-left: 2px solid var(--lamp);
+}
+
+.fig-sub .fig-row {
+  grid-template-columns: 6rem 1fr;
+  padding: 0.15rem 0.4rem;
+  background: none;
+}
+
+.tour-card #tour-after {
+  font-style: italic;
+}
+
+/* Ten dots do not fit beside Pal on a phone; the "N of 10" count carries the progress there. */
+@media (max-width: 26rem) {
+  .tour-dots {
+    display: none;
   }
 }
