@@ -276,6 +276,14 @@ uv run python scripts/build_map_extract.py --source https://build.protomaps.com/
 node scripts/build_map_style.mjs
 ```
 
+Regenerate `static/assets/demo_photo.json` (MEM-087), the base64 JSON string of `fixtures/demo/photo.jpg` that
+Memorize sends for photo-less demo stations. It must stay byte-exact: the photo keys the `/split` replay fixture.
+`[--in PATH] [--out PATH]` default from the repo root; stdlib only.
+
+```bash
+uv run python scripts/gen_demo_photo_json.py
+```
+
 Merge a worktree branch in one command: refuses a dirty tree, rebases onto `main`, runs the worktree's
 `scripts/check.sh`, enqueues via the merge queue (`request_merge.py --wait`), then re-runs `scripts/check.sh` in the
 primary checkout. Exit 2 on bad usage; otherwise the first failing step's code. The queue is found at
