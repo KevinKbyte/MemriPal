@@ -374,8 +374,8 @@ Kev ask: "rather than throwing out the results from those E2E tests, we can use 
 with multiple routes - choosing the best routes that peopel would relate to on this map".
 Root problem: Load demo seeds one route, so the Routes tab shows little; the planner already makes good relatable
 routes that are thrown away.
-Actors: `scripts/gen_demo_routes.mjs` (new); `static/data/demo_routes.json` (generated, committed); `static/flow.js`
-Load demo.
+Actors: `scripts/gen_demo_routes.mjs` (new); `static/data/demo_routes.json` (generated, committed);
+`static/demo_route.js` `PRINCIPLES_ROUTE`; `static/flow.js` Load demo.
 NFR: generator deterministic (same data -> byte-identical JSON); fixed ids; no network; ASCII.
 Decided-by: ADR-0079
 - `scripts/gen_demo_routes.mjs` runs `planRoute` over curated pairs on the committed graph + POIs and writes
@@ -384,14 +384,17 @@ Decided-by: ADR-0079
 - Routes: "Morning commute to the T" (Meta office -> Kendall T); "Coffee run" (Meta office -> a cafe POI); "Landmark
   loop" (landmark POIs as stations sorted counter-clockwise by angle around their centroid: a simple polygon, no two
   segments cross).
-- Load demo seeds them alongside DEMO_ROUTE; seeding is idempotent by id (a second Load demo adds no duplicate); a
-  fetch failure seeds DEMO_ROUTE alone.
-- Default seeded route (DEMO_ROUTE, id `demo-route-principles`, "Six principles of engaging speaking"): 6 stations
-  in walking order carrying the six engaging-speaking principles Relevance, Curiosity, Clarity, Concreteness,
-  Progression, Payoff; seeded on first load even if `demo_routes.json` fails to load. Kev: "in the end the code can
+- Load demo seeds them alongside DEMO_ROUTE and PRINCIPLES_ROUTE; seeding is idempotent by id (a second Load demo
+  adds no duplicate); a 404 or rejected `demo_routes.json` fetch seeds DEMO_ROUTE and PRINCIPLES_ROUTE only. Load
+  demo still opens DEMO_ROUTE.
+- Default route `PRINCIPLES_ROUTE`, a separate route exported from `static/demo_route.js` beside DEMO_ROUTE (id
+  `demo-route-principles`, "Six principles of engaging speaking", kind "daily"): 6 stations, ids distinct from
+  DEMO_ROUTE's, whose `profile.conceptual` starts Relevance, Curiosity, Clarity, Concreteness, Progression, Payoff
+  in walking order. Defined in code, not only in `demo_routes.json`, so Load demo always seeds it (JSON served,
+  404 or rejected). Kev: "in the end the code can
   have the default route with the learning points that we had added - the 6 principles for engagement so that users
   can see that as a solid starting point".
 - Accept: after Load demo the Routes tab lists >= 3 routes incl. the fixed ids; no two non-adjacent station segments
   of any route cross; the landmark loop's signed area > 0 (CCW); regenerating yields identical JSON. Covered by
-  static/demo_routes_seed.test.mjs, scripts/gen_demo_routes.test.mjs.
+  static/demo_routes_seed.test.mjs, static/demo_principles_route.test.mjs, scripts/gen_demo_routes.test.mjs.
 - Out of scope: user-editable curated routes; places outside the mapped Kendall area.
