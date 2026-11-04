@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MemriPal: landmark slots</title>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="./landmark_slots.css">
+    <link rel="icon" href="./icon.svg" type="image/svg+xml">
+    <script type="module" src="./slots_page.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <h1 class="brand">MemriPal</h1>
+    </header>
+    <main class="slots-main">
+      <section class="panel">
+        <h2>Landmark slots</h2>
+        <p>Photograph the landmark. SAM 3.1 finds its regions, then drop each Payoff part into one.</p>
+        <label class="slots-upload btn btn-primary">Upload landmark photo
+          <input id="slots-photo" class="slots-file" type="file" accept="image/jpeg,image/png,image/webp">
+        </label>
+        <p id="slots-status" class="slots-status" role="status" aria-live="polite"></p>
+        <div id="slots" class="slots-board"></div>
+      </section>
+    </main>
+  </body>
+</html>

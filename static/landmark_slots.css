@@ -1,0 +1,175 @@
+/* Landmark slots page (MEM-132). Reuses style.css tokens, so light and dark follow prefers-color-scheme. */
+.slots-main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 12px;
+  overflow-x: hidden;
+}
+
+.slots-file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.slots-upload {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.slots-upload:focus-within {
+  outline: 2px solid var(--focus);
+}
+
+.slots-status {
+  color: var(--muted);
+  min-height: 1.4em;
+}
+
+.slots-board {
+  display: grid;
+  gap: 12px;
+}
+
+.slot-badge {
+  justify-self: start;
+  margin: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: var(--lamp-soft);
+  color: var(--lamp-ink);
+}
+
+.slot-badge[data-source="live"] {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.slot-photo {
+  position: relative;
+  width: 100%;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+
+.slot-img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.slot-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.slot-shape {
+  fill: rgba(240, 169, 46, 0.18);
+  stroke: var(--lamp);
+  stroke-width: 4;
+  vector-effect: non-scaling-stroke;
+  cursor: pointer;
+}
+
+.slot-shape.is-filled {
+  fill: rgba(29, 106, 67, 0.28);
+  stroke: var(--ok);
+}
+
+.slot-num {
+  fill: #fff;
+  stroke: #000;
+  stroke-width: 3;
+  paint-order: stroke;
+  font-family: var(--body);
+  font-weight: 700;
+  dominant-baseline: hanging;
+  pointer-events: none;
+}
+
+.payoff-tray {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.payoff-chip {
+  min-height: 44px;
+  padding: 8px 14px;
+  border: 2px solid var(--primary);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--primary);
+  font: 600 0.95rem var(--body);
+  touch-action: none;
+  cursor: grab;
+}
+
+.payoff-chip[aria-pressed="true"] {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.payoff-chip.is-placed {
+  border-style: dashed;
+}
+
+.payoff-chip:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.slot-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.slot-row {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) minmax(0, 1.4fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.slot-row-n {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--lamp);
+  color: #16202c;
+  font-weight: 700;
+}
+
+.slot-row-label,
+.slot-row-part {
+  overflow-wrap: anywhere;
+}
+
+.slot-row-label {
+  color: var(--muted);
+}
+
+.slot-row-part {
+  font-weight: 600;
+}
