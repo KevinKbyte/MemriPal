@@ -147,3 +147,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0054](0054-real-map-resize-observer.md) The real map loader observes the map box with `ResizeObserver` and calls
   `map.resize()` on a non-zero box, disconnecting on remove (over a tab-show hook in `tabbar.js` or MapLibre's
   `trackResize`).
+- [0055](0055-landmark-emoji-on-live-map.md) Optional `Station.emoji`, U+1F4CD when missing, drawn as a
+  `text.lm-emoji` sibling at (cx, cy-30) on the live map overlay, removed on detach (over name-keyword
+  heuristics or OSM tag capture, the later upgrade path).
