@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [0.20.41] - 2026-11-03
 
+### Fixed
+
+- Real Kendall map no longer stays blank or undersized when its box starts at 0x0 and gains size later (hidden tab, zero viewport): the loader resizes it from a ResizeObserver (MEM-096, ADR 0054).
+
 ### Added
 
 - Offline walk routing + geocode (MEM-084): scripts/build_walk_graph.py builds a compact Kendall walk graph and named-POI table from one Overpass query (committed under static/data/), and static/walk_route.js routes by A* snapped to the largest component with a flagged straight-line fallback and geocodes typed places over POIs plus aliases.
