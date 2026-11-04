@@ -7,7 +7,7 @@
 /**
  * @typedef {{
  *   name: string,
- *   run: (args: unknown) => Promise<{ result?: unknown, inverse: () => unknown } | undefined>,
+ *   run: (args: unknown) => Promise<{ result?: unknown, inverse?: () => unknown } | undefined>,
  * }} CopilotTool
  * @typedef {{ status: "ok" | "rejected" | "declined" | "error", result?: unknown }} DispatchResult
  */
@@ -33,7 +33,8 @@ export function createDispatcher({ policy, undo, tools, confirm }) {
     try {
       if (decision === "confirm" && (await confirm(name, args)) !== true) return { status: "declined" };
       const out = await tool.run(args);
-      if (typeof out?.inverse !== "function") return { status: "error" };
+      // The result rides along so a tool can explain a no-op (e.g. a route-plan miss) without an inverse.
+      if (typeof out?.inverse !== "function") return { status: "error", result: out?.result };
       undo.push({ label: name, undo: out.inverse });
       return { status: "ok", result: out.result };
     } catch (err) {

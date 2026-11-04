@@ -3,12 +3,10 @@
 // end, walks the committed Kendall graph, picks landmarks along it and previews them; Save stores the route
 // through routes.seedRoute and hands its id back. Text via textContent only (typed input is user data).
 
-import { candidates } from "./auto_loci.js";
-import { distanceLabel, missText, pickStations } from "./route_builder.js";
+import { distanceLabel } from "./route_builder.js";
+import { NAME_MAX, planRoute } from "./route_plan.js";
 import { newId } from "./uuid.js";
-import { geocode, route } from "./walk_route.js";
 
-const NAME_MAX = 40;
 const GRAPH_URL = "/static/data/kendall_walk_graph.json";
 const POIS_URL = "/static/data/kendall_pois.json";
 
@@ -55,20 +53,11 @@ export function createRouteNew({ doc, routes, fetch, onSaved, onCancel }) {
     stations = null;
     // An empty graph makes route() draw the straight line, flagged fallback, so a 404 never dead-ends.
     const [graph, pois] = await Promise.all([load(GRAPH_URL, { nodes: [], edges: [] }), load(POIS_URL, [])]);
-    /** @type {{ name: string, lat: number, lng: number, address?: string | null }[]} */
-    const places = [];
-    for (const [id, what] of [["route-from", "start"], ["route-to", "end"]]) {
-      const phrase = input(id)?.value.trim() ?? "";
-      if (!phrase) return say(`Type a ${what}, like Kendall/MIT T or Meta office.`);
-      const hit = geocode(phrase, pois);
-      if ("miss" in hit) return say(missText(phrase, hit.suggestions));
-      places.push(hit);
-    }
-    const [from, to] = places;
-    const walk = route(graph, from, to);
-    const ends = places.map((p) => ({ coords: { lat: p.lat, lon: p.lng }, address: p.address ?? undefined }));
-    stations = pickStations(from, to, candidates(walk.polyline, pois, ends));
-    defaultName = `${from.name} to ${to.name}`.slice(0, NAME_MAX);
+    const plan = planRoute(input("route-from")?.value ?? "", input("route-to")?.value ?? "", { graph, pois });
+    if (!plan.ok) return say(plan.text);
+    const { walk } = plan;
+    stations = plan.stations;
+    defaultName = plan.name;
     const distance = byId("route-distance");
     if (distance) distance.textContent = distanceLabel(walk.length_m, walk.fallback);
     byId("route-new-stations")?.replaceChildren(...stations.map((s) => {

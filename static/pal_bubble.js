@@ -2,6 +2,7 @@
 // Pal chat bubble (MEM-099, ADR 0064 amendment 2026-11-03): a draggable button on every screen that opens
 // a panel of on-device chats (chat_store.js). Self-mounts in the browser; importing it in node is inert.
 import { isTitle, MAX_TITLE_CHARS } from "./chat_store.js";
+import { getActor } from "./copilot_bridge.js";
 import { messageNodes, typingNode, createComposer } from "./pal_chat.js";
 
 const POS_KEY = "memripal.palBubble.pos";
@@ -44,8 +45,13 @@ function linkStylesheet(doc) {
   doc.head.append(link);
 }
 
-/** @param {{doc: any, win: any, storage: any, chats: any, reply?: (text: string, history: {role: string, text: string}[]) => Promise<string>}} deps */
-export async function mountPalBubble({ doc, win, storage, chats, reply }) {
+/**
+ * act(text) runs first (MEM-132): a string answer is the Pal message and reply is skipped; null falls through.
+ * @param {{doc: any, win: any, storage: any, chats: any,
+ *   reply?: (text: string, history: {role: string, text: string}[]) => Promise<string>,
+ *   act?: (text: string) => Promise<string | null> | string | null}} deps
+ */
+export async function mountPalBubble({ doc, win, storage, chats, reply, act }) {
   /** @param {string} tag @param {string} pal @param {string} [text] */
   const make = (tag, pal, text) => {
     const n = doc.createElement(tag);
@@ -243,15 +249,18 @@ export async function mountPalBubble({ doc, win, storage, chats, reply }) {
     errorNote.hidden = true;
     const chatId = activeId;
     await chats.appendMessage(chatId, { role: "user", text });
-    if (!reply) {
+    if (!reply && !act) {
       await render();
       return;
     }
     typing = true;
     await render();
     try {
-      const history = (await chats.listMessages(chatId)).map((/** @type {any} */ m) => ({ role: m.role, text: m.text }));
-      const answer = await reply(text, history);
+      let answer = act ? await act(text) : null;
+      if (answer == null && reply) {
+        const history = (await chats.listMessages(chatId)).map((/** @type {any} */ m) => ({ role: m.role, text: m.text }));
+        answer = await reply(text, history);
+      }
       if (typeof answer === "string" && answer.trim()) await chats.appendMessage(chatId, { role: "assistant", text: answer.trim() });
     } catch {
       errorNote.hidden = false;
@@ -332,7 +341,8 @@ async function selfMount() {
   } catch {
     // storage access denied; position falls back to the default corner
   }
-  await mountPalBubble({ doc: document, win: window, storage, chats });
+  // The actor is read per message: wireApp may set it after the bubble mounts.
+  await mountPalBubble({ doc: document, win: window, storage, chats, act: (t) => getActor()?.act(t) ?? null });
 }
 
 if (typeof document !== "undefined" && typeof window !== "undefined") selfMount();

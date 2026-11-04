@@ -5,6 +5,8 @@
 // only via textContent.
 
 import { lookupDemoPlace, showHealth, showPal } from "./app.js";
+import { createPageRouteActor } from "./chat_route.js";
+import { setActor } from "./copilot_bridge.js";
 import { DEMO_ROUTE } from "./demo_route.js";
 import { errorCode, runDemoPalace } from "./encode.js";
 import { createHistory } from "./history.js";
@@ -256,6 +258,14 @@ export function wireApp(deps) {
     } })
     : null;
   void routeView?.renderHome();
+  // MEM-132: the Pal chat's "route from X to Y" creates a route, then lists and opens it on the Routes tab.
+  if (deps.routes && routeView) {
+    const view = routeView;
+    setActor(createPageRouteActor({ routes: deps.routes, fetch: deps.fetch, onCreated: async (id) => {
+      await view.renderHome();
+      await view.openRoute(id);
+    } }));
+  }
 
   /**
    * @param {string} transcript
