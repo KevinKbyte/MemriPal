@@ -9,7 +9,7 @@
  */
 export const EMPTY_MAP_CENTER = Object.freeze({ lat: 42.3664, lon: -71.0832 });
 export const EMPTY_MAP_ZOOM = 15;
-export const SLOGAN = "Find a home for every memory";
+export const SLOGAN = "Make what's important unforgettable";
 
 /**
  * @param {{ doc: Document, realMap?: { mountAt?: (svg: any, center: { lat: number, lon: number }, zoom: number) => Promise<unknown> } }} deps
