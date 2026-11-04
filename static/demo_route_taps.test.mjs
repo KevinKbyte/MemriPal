@@ -1,13 +1,13 @@
 // Covers: MEM-110
 // Requirement: the seeded Kendall demo route shows Kev's photo-derived multisensory data with no import step.
-// Each of the 6 DEMO_ROUTE stations carries `taps` (exactly sound, smell, feel, mood, turn; each value one of the
+// Each of the 6 DEMO_ROUTE stations carries `taps` (exactly sound, smell, feel, mood (no turn: route_view renders taps.turn into the S5 station list, MEM-077); each value one of the
 // station card's TAP_GROUPS labels) and a `profile` (exactly visual, spatial, conceptual; each a trimmed,
 // non-empty, printable-ASCII line of at most 200 chars, the backup LINE_MAX / MAX_STATION_LINE). "Load demo"
 // (route_store seedRoute) persists both, so getRoute and a reloaded store return them equal to the demo data,
 // as copies: mutating a returned route never touches DEMO_ROUTE.
 // Contract (RED; GREEN adds taps + profile to each station in static/demo_route.js and has seedRoute keep them):
-//   n 1 Traffic/Fumes/Stairs/Busy/Straight; 2 Traffic/Coffee/Windy/Grand/Left; 3 Voices/Food/Shade/Cosy/Straight;
-//   4 Quiet/None/Cold/Calm/Straight; 5 Traffic/Rain/Windy/Odd/Right; 6 Voices/Flowers/Shade/Bright/Arrive.
+//   n 1 Traffic/Fumes/Stairs/Busy; 2 Traffic/Coffee/Windy/Grand; 3 Voices/Food/Shade/Cosy;
+//   4 Quiet/None/Cold/Calm; 5 Traffic/Rain/Windy/Odd; 6 Voices/Flowers/Shade/Bright.
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 
@@ -16,17 +16,17 @@ import { createRouteStore } from "./route_store.js";
 import { TAP_GROUPS } from "./station_card.js";
 import { memoryAdapter } from "./route_store_fakes_test.mjs";
 
-const TAP_KEYS = ["sound", "smell", "feel", "mood", "turn"];
+const TAP_KEYS = ["sound", "smell", "feel", "mood"];
 const PROFILE_KEYS = ["visual", "spatial", "conceptual"];
 const LINE_MAX = 200;
 
 const WANT_TAPS = {
-  1: { sound: "Traffic", smell: "Fumes", feel: "Stairs", mood: "Busy", turn: "Straight" },
-  2: { sound: "Traffic", smell: "Coffee", feel: "Windy", mood: "Grand", turn: "Left" },
-  3: { sound: "Voices", smell: "Food", feel: "Shade", mood: "Cosy", turn: "Straight" },
-  4: { sound: "Quiet", smell: "None", feel: "Cold", mood: "Calm", turn: "Straight" },
-  5: { sound: "Traffic", smell: "Rain", feel: "Windy", mood: "Odd", turn: "Right" },
-  6: { sound: "Voices", smell: "Flowers", feel: "Shade", mood: "Bright", turn: "Arrive" },
+  1: { sound: "Traffic", smell: "Fumes", feel: "Stairs", mood: "Busy" },
+  2: { sound: "Traffic", smell: "Coffee", feel: "Windy", mood: "Grand" },
+  3: { sound: "Voices", smell: "Food", feel: "Shade", mood: "Cosy" },
+  4: { sound: "Quiet", smell: "None", feel: "Cold", mood: "Calm" },
+  5: { sound: "Traffic", smell: "Rain", feel: "Windy", mood: "Odd" },
+  6: { sound: "Voices", smell: "Flowers", feel: "Shade", mood: "Bright" },
 };
 
 describe("demo route multisensory taps + profile (MEM-110)", () => {
@@ -34,7 +34,7 @@ describe("demo route multisensory taps + profile (MEM-110)", () => {
     assert.deepEqual(DEMO_ROUTE.stations.map((s) => s.n), [1, 2, 3, 4, 5, 6]);
   });
 
-  test("every station has taps with exactly the 5 keys, each a TAP_GROUPS label", () => {
+  test("every station has taps with exactly the 4 keys, each a TAP_GROUPS label", () => {
     for (const s of DEMO_ROUTE.stations) {
       assert.ok(s.taps && typeof s.taps === "object", `station ${s.n} has taps`);
       assert.deepEqual(Object.keys(s.taps).sort(), [...TAP_KEYS].sort(), `station ${s.n} tap keys`);

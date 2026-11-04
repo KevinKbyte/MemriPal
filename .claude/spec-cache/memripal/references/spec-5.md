@@ -156,10 +156,11 @@ NFR: non-blocking; header value never rendered; no inline style; ASCII only.
   tolerated, rejections propagate; dismiss keeps it hidden; markup and CSS present; app.js wires it.
 
 Tests: static/chat_fallback.test.mjs
+
 ## MEM-110 Photo multisensory taps on the seeded Kendall demo route
 
 Amends MEM-077 (`static/demo_route.js` seed).
-Decided-by: ADR-0042
+Decided-by: ADR-0060
 Root problem: the seeded Kendall demo stations had no multisensory taps or profile, so Load demo showed empty sensory
 cards; Kev supplied 6 walk photos (walk order, one per `DEMO_ROUTE` station; photo 6 is a nearby proxy for the Meta
 office, where security barred photos) to author them from.
@@ -168,11 +169,11 @@ Actors: Kev (author of the photos and tap choices); `static/demo_route.js`, `sta
 NFR: seeded, not an import file (default picked; an import path stays possible later); the photos are not committed
 (the station card shows no photo; strangers appear in them).
 Source: Kev, "I took pictures of the route, can you add multisensory info for them too".
-- Each of the 6 stations in `DEMO_ROUTE` carries `taps` `{ sound, smell, feel, mood, turn }`, values drawn from
-  `TAP_GROUPS`, and `profile` `{ visual, spatial, conceptual }`, printable ASCII, <= 200 chars each. Hand-authored
-  from the photos.
+- Each of the 6 stations in `DEMO_ROUTE` carries `taps` `{ sound, smell, feel, mood }` (no `turn`:
+  `static/route_view.js` renders `taps.turn` into the S5 list, MEM-077), values drawn from `TAP_GROUPS`, and
+  `profile` `{ visual, spatial, conceptual }`, printable ASCII, <= 200 chars each. Hand-authored from the photos.
 - `seedRoute` persists both `taps` and `profile` as copies, so Load demo shows them with no import step.
-- Accept: every `DEMO_ROUTE` station has all 5 tap keys with values in `TAP_GROUPS` and all 3 profile keys, ASCII and
+- Accept: every `DEMO_ROUTE` station has all 4 tap keys with values in `TAP_GROUPS` and all 3 profile keys, ASCII and
   <= 200 chars; after `seedRoute`, the stored stations carry equal `taps`/`profile` that are not the same objects as
   the `DEMO_ROUTE` ones.
 
