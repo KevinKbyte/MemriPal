@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [0.20.65] - 2026-11-04
 
+### Changed
+
+- The Pal chat panel reads like a messenger: your messages sit right and Pal's left with Pal's face, each with a time; an empty chat shows a Pal greeting; a bottom composer sends on Enter (Shift+Enter for a newline) with a typing indicator while Pal replies; the list scrolls to the newest message (MEM-116). Pal does not answer yet: no reply provider is wired.
+
 ### Added
 
 - Generated stickers from the memorized item (MEM-052, ADR 0071): after Load demo, each item's AI scene is cropped to its spot and stuck onto the landmark photo as a die-cut sticker, saved to the sticker pool and listed as "(AI-generated)" in the Stickers panel; offline or on any failure Pal falls back to a matching emoji sticker, else skips the spot.
