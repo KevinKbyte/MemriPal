@@ -316,17 +316,18 @@ Actors: `static/routes_empty_map.js` (`createEmptyMap`, `EMPTY_MAP_CENTER`, `EMP
 `static/index.html` (`#empty-slogan`); `static/style.css`.
 NFR: no network tiles beyond the bundled extract; ASCII; text via `textContent`.
 Source: Kev 2026-11-04, "why isnt the routes showing anything, shouldnt it have some sort of default location, maybe
-the main meta office or something"; "should we have the slogan somewhere - find a home for every memory".
+the main meta office or something"; "should we have the slogan somewhere - find a home for every memory"; final
+slogan (Kev ~14:50 ET 2026-11-03): "Make what's important unforgettable".
 - Zero routes: the real-map loader runs `mountAt(#route-map, EMPTY_MAP_CENTER {lat 42.3664, lon -71.0832} Kendall
   Square, zoom 15)`, which fetches the self-hosted extract (no station overlay). A center outside `REAL_MAP_BBOX`
   resolves null with no Map. A later station mount on the same svg removes it.
-- A `.empty-map-cta` card in `.map-wrap` carries the slogan "Find a home for every memory" and two buttons, Load demo
-  (`data-action` `empty-load-demo`) and Map a new route (`empty-new-route`), which click the drawer's `#load-demo` /
+- A `.empty-map-cta` card in `.map-wrap` carries the slogan "Make what's important unforgettable" and two buttons, Load
+  demo (`data-action` `empty-load-demo`) and Map a new route (`empty-new-route`), which click the drawer's `#load-demo` /
   `#routes-new` (one copy of their handlers). Visible without opening the drawer. It stands in for `#map-empty`
   (hidden on show; `#map-empty` stays in the markup as the pre-boot notice).
 - `show()` is idempotent. Once any route exists the CTA is removed and no `mountAt` runs.
 - A loader without `mountAt`, or a `mountAt` that rejects, still shows the CTA with no unhandled rejection.
-- `#empty-slogan` "Find a home for every memory" is the next sibling after Pal's `#empty-state`, visible in the
+- `#empty-slogan` "Make what's important unforgettable" is the next sibling after Pal's `#empty-state`, visible in the
   markup, hidden once a route exists.
 
 Tests: static/routes_empty_map.test.mjs, static/real_map_mount_at.test.mjs, static/app_routes_empty_map.test.mjs,
