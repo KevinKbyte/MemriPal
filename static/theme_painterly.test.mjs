@@ -316,7 +316,8 @@ describe("MEM-044 P1 painterly theme (static/theme-painterly.css)", () => {
 // /static/fonts/*.woff2 file that exists, with its OFL licence beside it; no remote fonts under font-src 'self');
 // the new --on-lamp and --glow tokens are declared in all 3 A1 token contexts and actually read by a rule; gold
 // marks only recalled stations (.live-board li.lit background var(--lamp)); said-vs-palace labels carry check /
-// cross glyphs; forced-colors, more-contrast and print drop the crown edge and the lantern glow.
+// cross glyphs; forced-colors, more-contrast and print drop the crown edge and the lantern glow; the topbar
+// carries one tagline "Find a home for every memory" right after the brand, coloured var(--muted).
 const CHECK_GLYPHS = new Set(["\u2713", "\u2714"]);
 const CROSS_GLYPHS = new Set(["\u2715", "\u2716", "\u2717", "\u2718", "\u00d7"]);
 const cssContent = (v) => (v ?? "").replace(/\\([0-9a-f]{1,6})\s?/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
@@ -384,6 +385,27 @@ describe("MEM-102 Paper Crown theme (static/theme-painterly.css)", () => {
         `${name}: .topbar::after background is not reset to none`);
       assert.ok(inMedia(".live-board li.lit").some((r) => decl(r, "box-shadow") === "none"),
         `${name}: .live-board li.lit box-shadow is not reset to none`);
+    }
+  });
+
+  // MEM-102 tagline: the topbar reads "Find a home for every memory" right under the brand, in muted theme type.
+  test("tagline: header.topbar has exactly one <p class=\"tagline\"> right after the brand h1, exact text", () => {
+    const header = HTML.match(/<header\s+class="topbar"[^>]*>([\s\S]*?)<\/header>/i)?.[1];
+    assert.ok(header !== undefined, "index.html has no <header class=\"topbar\">");
+    const taglines = [...HTML.matchAll(/<p\b[^>]*\bclass="[^"]*\btagline\b[^"]*"[^>]*>/gi)];
+    assert.equal(taglines.length, 1, `index.html has ${taglines.length} .tagline elements, expected exactly 1`);
+    assert.match(header, /<h1 class="brand">MemriPal<\/h1>\s*<p class="tagline">Find a home for every memory<\/p>/,
+      `header.topbar lacks <p class="tagline">Find a home for every memory</p> immediately after the brand h1: ${norm(header)}`);
+  });
+
+  test("tagline: theme .tagline rule sets color var(--muted) and font-family (if set) var(--display) or var(--body)", () => {
+    const rules = ruleFor(".tagline", (r) => r.media.length === 0 && !isReset(r));
+    assert.ok(rules.length, "theme has no unconditional .tagline rule");
+    const color = rules.map((r) => decl(r, "color")).filter((v) => v !== undefined).pop();
+    assert.equal(color, "var(--muted)", `.tagline color is ${color ?? "unset"}, expected var(--muted)`);
+    for (const r of rules) {
+      const ff = decl(r, "font-family");
+      if (ff !== undefined) assert.ok(["var(--display)", "var(--body)"].includes(ff), `${where(r)} font-family is ${ff}`);
     }
   });
 });

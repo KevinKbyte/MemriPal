@@ -4,7 +4,7 @@ Continuation of [spec-4.md](spec-4.md), which is over its 500-line cap.
 
 ## MEM-102 Paper Crown theme
 
-`static/theme-painterly.css`, `static/fonts/`, `docs/design/paper-crown/`.
+`static/theme-painterly.css`, `static/fonts/`, `static/index.html`, `docs/design/paper-crown/`.
 Decided-by: ADR-0062
 Root problem: the painterly theme read as generic; the demo needs a distinct storybook look (direction A "Paper Crown"
 plus direction C's lantern stations) without breaking MEM-044's CSP, contrast and layout guarantees.
@@ -19,11 +19,13 @@ NFR: CSP-clean (`font-src 'self'`); no remote fonts; all MEM-044 P-checks still 
 - Gold (`--lamp`) only marks recalled state: `.live-board li.lit` background `var(--lamp)` with ink `var(--on-lamp)`
   and a `var(--glow)` box-shadow; `.route-node.lit` fills gold with a `var(--on-lamp)` stroke.
 - Crown edge: `.topbar::after` draws the crown strip; said-vs-palace cards label rows with check / cross glyphs.
+- Tagline: `header.topbar` carries `<p class="tagline">Find a home for every memory</p>` right after `h1.brand`; the
+  theme styles `.tagline` with `var(--body)` and `var(--muted)` (muted-on-surface AA pair).
 - Reset media block (`forced-colors: active`, `prefers-contrast: more`, `print`) drops the crown edge (`.topbar::after` background) and the
   lantern glow (`.live-board li.lit` box-shadow).
 - Accept: 2 woff2 + 2 OFL files exist; every `@font-face` src under `/static/fonts/`; `--on-lamp`/`--glow` in all 3
   token blocks and read by a rule; `li.lit` background `var(--lamp)`; reset block clears both; all 15 contrast pairs
-  AA in light and dark; theme/layout/style_v6 tests green.
+  AA in light and dark; theme/layout/style_v6 tests green; tagline present under the wordmark.
 
 Tests: static/theme_painterly.test.mjs, static/layout.test.mjs
 
