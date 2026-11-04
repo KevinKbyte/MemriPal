@@ -2,6 +2,7 @@
 // Sticker board (MEM-045, ADR 0068): stick your own picture on a locus of the landmark photo. Owns #sticker-panel
 // and one .sticker-layer over #scene-wrap. Every user text goes in via textContent; image srcs are pool data URLs.
 
+import { cropScene, stickMemorized } from "./sticker_gen.js";
 import { uploadError } from "./sticker_pool.js";
 import { createUndoStack } from "./undo_stack.js";
 
@@ -19,9 +20,9 @@ const pct = (v) => `${Number(v.toFixed(2))}%`;
 
 /**
  * @param {{ doc: Document, pool: Pool, makeImage: (file: File) => Promise<string>,
- *   undo?: ReturnType<typeof createUndoStack> }} deps
+ *   undo?: ReturnType<typeof createUndoStack>, crop?: import("./sticker_gen.js").Crop }} deps
  */
-export function createStickerBoard({ doc, pool, makeImage, undo = createUndoStack() }) {
+export function createStickerBoard({ doc, pool, makeImage, undo = createUndoStack(), crop = cropScene }) {
   const $ = (/** @type {string} */ id) => /** @type {any} */ (doc.getElementById(id));
   const panel = $("sticker-panel");
   const locusSel = $("sticker-locus");
@@ -107,7 +108,9 @@ export function createStickerBoard({ doc, pool, makeImage, undo = createUndoStac
       const entry = await pool.get(p.stickerId);
       if (!entry) continue;
       const locus = byN.get(p.n);
-      items.push(placedItem(p, locus?.label ?? `Spot ${p.n}`, entry.desc));
+      // MEM-046: a generated picture is always labelled as such.
+      const desc = entry.kind === "generated" ? `${entry.desc} (AI-generated)` : entry.desc;
+      items.push(placedItem(p, locus?.label ?? `Spot ${p.n}`, desc));
       const box = locus?.box;
       if (!box || !(v.width > 0) || !(v.height > 0)) continue;
       const s = doc.createElement("div");
@@ -183,6 +186,17 @@ export function createStickerBoard({ doc, pool, makeImage, undo = createUndoStac
       );
       if (panel) panel.hidden = false;
       await render();
+    },
+
+    /**
+     * MEM-052: stick each memorized item on its locus of the shown photo; [] before show.
+     * @param {import("./sticker_gen.js").Step[]} steps @param {Array<import("./scenes.js").SceneResult | null>} scenes
+     */
+    async stickMemorized(steps, scenes) {
+      if (!view) return [];
+      const placed = await stickMemorized(pool, view.placeKey, steps, scenes, { crop });
+      await render();
+      return placed;
     },
   };
 }

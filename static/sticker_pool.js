@@ -82,14 +82,16 @@ export function createStickerPool(kv, { now, newId }) {
     return v && v.type === "sticker" ? v.value : null;
   }
 
+  /** @returns {Promise<Entry[]>} */
+  async function list() {
+    /** @type {Entry[]} */
+    const own = await stored("sticker");
+    own.sort((a, b) => (a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0));
+    return [...emojiEntries(), ...own];
+  }
+
   return {
-    /** @returns {Promise<Entry[]>} */
-    async list() {
-      /** @type {Entry[]} */
-      const own = await stored("sticker");
-      own.sort((a, b) => (a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0));
-      return [...emojiEntries(), ...own];
-    },
+    list,
 
     /** @param {{ kind?: unknown, desc?: unknown, image?: unknown }} input @returns {Promise<Entry>} */
     async add({ kind, desc, image } = {}) {
@@ -103,6 +105,13 @@ export function createStickerPool(kv, { now, newId }) {
     },
 
     get,
+
+    /** MEM-052: entries whose desc contains `text`, case-insensitive. @param {unknown} text @returns {Promise<Entry[]>} */
+    async search(text) {
+      const q = typeof text === "string" ? text.trim().toLowerCase() : "";
+      if (!q) return [];
+      return (await list()).filter((e) => e.desc.toLowerCase().includes(q));
+    },
 
     /** @param {string} placeKey @param {number} n @param {string} stickerId @returns {Promise<Placement>} */
     async place(placeKey, n, stickerId) {

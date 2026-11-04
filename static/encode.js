@@ -128,6 +128,7 @@ export async function runEncode(input, deps) {
   collapseCards(doc, "associations", "associations");
   collapseCards(doc, "scenes", "scenes");
   showWalk(steps, scenes, doc);
+  return { steps, scenes };
 }
 
 /** @param {Response} resp */
@@ -141,7 +142,8 @@ export async function errorCode(resp) {
  * writes #upload-status and stops; never throws.
  * @param {{auto?: boolean}} opts
  * @param {EncodeDeps & {loadImage: (src: string) => Promise<CanvasImageSource>,
- *   stickers?: {show: (view: {placeKey: string, width: number, height: number, loci: Locus[]}) => unknown}}} deps
+ *   stickers?: {show: (view: {placeKey: string, width: number, height: number, loci: Locus[]}) => unknown,
+ *     stickMemorized?: (steps: Step[], scenes: Array<import("./scenes.js").SceneResult | null>) => unknown}}} deps
  * @returns {Promise<Point[] | undefined>} the /split points once the walk view shows, for recall
  */
 export async function runDemoPalace(opts, deps) {
@@ -187,7 +189,11 @@ export async function runDemoPalace(opts, deps) {
     const payload = await split.json().catch(() => null);
     if (!payload || !Array.isArray(payload.points)) return say("Demo failed: bad_response");
     say(`Found ${found.loci.length} places and ${payload.points.length} notes`);
-    await runEncode({ image: found.image, loci: found.loci, points: payload.points, auto: Boolean(opts && opts.auto) }, deps);
+    const { steps, scenes } = await runEncode({ image: found.image, loci: found.loci, points: payload.points, auto: Boolean(opts && opts.auto) }, deps);
+    // MEM-052: stick each memorized item on its locus; like show, a sticker failure never breaks the demo.
+    await Promise.resolve()
+      .then(() => deps.stickers?.stickMemorized?.(steps, scenes))
+      .catch(() => {});
     return payload.points;
   } catch (err) {
     say(`Demo failed: ${err instanceof TypeError ? "network" : "unexpected error"}`);
