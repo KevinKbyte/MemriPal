@@ -665,7 +665,7 @@ provider name, latency and exception class only, never a provider body (MEM-106)
 - Returns `{"provider", "latency_ms", "items"}` or None on: exception, `ok` False, malformed JSON, index out of range,
   unknown verdict, empty transcript or empty keywords (no call made).
 - Providers: configured `MEMRIPAL_CHAT_PROVIDER` when not `meta`, then `chat_fallback_from_env()` when different;
-  Meta is never used for grading (keeps Meta spend for ASR); first success wins; per-call timeout 8 s (connect 3 s).
+  the server's own Meta key is never used for grading (keeps Meta spend for ASR); first success wins; per-call timeout 8 s (connect 3 s).
 - POST /recall/audio: `{"text"}` plus `"grade"` only when the grader returns one.
 - Client: got = union of matcher keyword hits and grade `correct` indices; `matcher.gradeGot(i)` marks got (not
   override) at the current token count so in-order counting still works; `partial` never counts as got; the board
@@ -673,8 +673,8 @@ provider name, latency and exception class only, never a provider body (MEM-106)
 - Accept: valid grade passes through and lights paraphrase hits; malformed or absent grade leaves keyword scoring
   exactly as before.
 
-Tests: tests/test_recall_grade.py, tests/test_recall_audio.py, static/recall_live.test.mjs
-- Out of scope: partial credit scoring; grading typed recall; per-visitor BYOK grading keys.
+Tests: tests/test_recall_grade.py, tests/test_recall_grade_byok.py, tests/test_recall_audio.py, static/recall_grade.test.mjs
+- Out of scope: partial credit scoring; grading typed recall.
 - Setting (Kev 2026-11-04): Settings tab checkbox `#grade-with-spark` "Grade recall with Spark", persisted in
   localStorage `memripal.gradeWithSpark` (default off); off = ASR + keyword only and the request carries no `grade`
   field, so no grading call is made.
