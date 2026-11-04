@@ -384,7 +384,7 @@ Plan: `docs/plans/2026-11-03-demo-flow.md` S1. Actors: `src/memripal/routes_stat
 - `POST /station` from `routes_station.py` is mounted on the app.
 - Accept: TestClient `POST /station` returns 200 on a valid photo; 4xx on a bad one.
 
-Tests: (filled at land)
+Tests: tests/test_station_mount.py
 
 ## MEM-084 Offline walking-graph routing and geocode
 
