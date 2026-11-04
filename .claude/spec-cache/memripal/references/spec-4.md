@@ -533,3 +533,34 @@ Actors: judges and the user (live mode); the server's Meta call sites; Kev's liv
   code; the toast names the cap; MEM-094 tests unchanged.
 
 Tests: tests/test_spend_guard_degrade.py, static/byok.test.mjs
+
+## MEM-122 Bring your own Meta key, shown only on spend cap
+
+Amends MEM-121 (MEM-095 part C). Decided-by: ADR-0061
+Root problem: past the Meta spend cap, a visitor who has their own Meta key cannot keep going live. Kev, 2026-11-04:
+"it should tell user yes they can add their own key if they need to have it keep running, but should have a hard
+limit on it and to not reuse it afterwards (delete key after done)"; "only for when they're byokking"; "which would
+only show up once we hit the limit".
+Actors: a visitor with a Meta API key; the 5 model routes; Meta's API.
+- Shown only when the spend cap toast is `capped`: "Free demo credit is used up. To keep going, paste your own Meta
+  API key. It stays in this tab only, is never saved, and stops at $5." Password field (autocomplete off),
+  [Continue], [Not now]; chip "Using your key ($5 limit)" + [Forget key]; at the limit "Your $5 limit is reached.
+  Key forgotten."; Meta refuses the key (401/403/404): "Your key can't use <model>". No model field.
+- The key lives in a page JS variable only (no web storage, IndexedDB or cookie); reload, Forget key, the limit and a
+  refusal drop it. It rides only in header `X-Memripal-Meta-Key`, only on /loci, /split, /associate, /scenes,
+  /recall/audio; never in a body or URL. The header is on the Capacitor CORS allow-list.
+- Server: a fresh per-request MetaBackend + MetaClient (Meta's base URL only) + its own MetaSpendGuard under
+  `<spend dir>/byok/<HMAC-SHA256(record key, key)>`, cap `MEMRIPAL_BYOK_SPEND_CAP_USD` (default 5); ASR uses the
+  same key. Never mutates the shared backend, guard or ASR client; no ContextVar holds the key. No Baseten/Fireworks
+  fallback, no saved-results replay, no shared live-cache writes, no MEM-034 call budget; the passcode and rate
+  limiter still apply. Fixture mode ignores the header.
+- Empty, whitespace, non-ASCII, control-char, repeated or >512-char keys: 400 `bad_meta_key` before any upstream
+  call. Header `X-Memripal-Byok`: `invalid` | `limit` (503 `byok_limit_reached`) | `rejected:<model>` (502
+  `byok_key_rejected`; /scenes stays tier 3). Unknown values are never rendered.
+- The key is never logged, cached, persisted, echoed, or sent to any host but Meta's API.
+- Accept: concurrent BYOK and shared requests each carry their own Bearer; a bad key header -> 400 with zero
+  upstream requests; an upstream 401 echoing the key leaks it to no log, response, live cache, spend state or
+  ModelRequest.gen_params; the same key under a new guard stays capped and its state holds no key substring; the
+  no-key path is unchanged.
+
+Tests: tests/test_byok.py, static/byok.test.mjs
