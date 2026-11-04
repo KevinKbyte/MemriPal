@@ -57,3 +57,14 @@ export const MEM072_IDS = [
 
 // MEM-072: Routes (the map) is the home tab, so only the other three tab panels start hidden.
 export const MEM072_MAY_START_HIDDEN = ["tab-landmarks", "tab-recall", "tab-settings"];
+
+// MEM-095 (Pal's first-run tour) + MEM-097 (replay from Settings): the #tour dialog's ids, the skip toast and
+// the Settings replay button.
+export const MEM095_IDS = [
+  "tour", "tour-n", "tour-total", "tour-skip", "tour-title", "tour-body", "tour-fig", "tour-after", "tour-back",
+  "tour-next", "tour-toast", "tour-replay",
+];
+
+// MEM-095: tour.js opens #tour only for a first-time visitor; the figure and closer show only on steps that have
+// them; the toast only after a skip.
+export const MEM095_MAY_START_HIDDEN = ["tour", "tour-fig", "tour-after", "tour-toast"];
