@@ -78,3 +78,9 @@
 | `demo/route_backup.json` | hand-built backup v2 (one 3-station route, demo/photo.jpg per station) for scripts/screenshot_ui.py, MEM-073 | MIT (own work) |
 | `demo/study_techniques.txt` | hand-written Memorize demo notes (6 study techniques, one paragraph each), MEM-087 | MIT (own work) |
 | `replay/spark_json/dbccae24e13503368b23c605e8ef3206da3611c3c72240497bc531cb62f11319.json` | live Meta Spark notes-mode split of demo/study_techniques.txt (scripts/run_live.ps1), recorded 2026-11-03, MEM-087 | test fixture only (ADR 0029) |
+| `demo/loci/1-kendall-mit-station.jpg` | real photo of the Kendall demo route (Kendall/MIT station entrance), taken by Kev 2026-11-03, EXIF-free | own work; demo/test fixture only (ADR 0029) |
+| `demo/loci/2-one-broadway.jpg` | real photo of the Kendall demo route (One Broadway), taken by Kev 2026-11-03, EXIF-free | own work; demo/test fixture only (ADR 0029) |
+| `demo/loci/3-cafe-luna-watermark.jpg` | real photo of the Kendall demo route (Cafe Luna at the Watermark), taken by Kev 2026-11-03, EXIF-free | own work; demo/test fixture only (ADR 0029) |
+| `demo/loci/4-third-square.jpg` | real photo of the Kendall demo route (Third Square), taken by Kev 2026-11-03, EXIF-free | own work; demo/test fixture only (ADR 0029) |
+| `demo/loci/5-kendall-boiler-tank.jpg` | real photo of the Kendall demo route (Kendall boiler and tank building), taken by Kev 2026-11-03, EXIF-free | own work; demo/test fixture only (ADR 0029) |
+| `demo/loci/6-pink-sculpture-one-medical.jpg` | real photo of the Kendall demo route (pink sculpture at One Medical), taken by Kev 2026-11-03, EXIF-free | own work; demo/test fixture only (ADR 0029) |
