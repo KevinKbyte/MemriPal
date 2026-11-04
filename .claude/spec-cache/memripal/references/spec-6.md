@@ -386,6 +386,11 @@ Decided-by: ADR-0079
   segments cross).
 - Load demo seeds them alongside DEMO_ROUTE; seeding is idempotent by id (a second Load demo adds no duplicate); a
   fetch failure seeds DEMO_ROUTE alone.
+- Default seeded route (DEMO_ROUTE, id `demo-route-principles`, "Six principles of engaging speaking"): 6 stations
+  in walking order carrying the six engaging-speaking principles Relevance, Curiosity, Clarity, Concreteness,
+  Progression, Payoff; seeded on first load even if `demo_routes.json` fails to load. Kev: "in the end the code can
+  have the default route with the learning points that we had added - the 6 principles for engagement so that users
+  can see that as a solid starting point".
 - Accept: after Load demo the Routes tab lists >= 3 routes incl. the fixed ids; no two non-adjacent station segments
   of any route cross; the landmark loop's signed area > 0 (CCW); regenerating yields identical JSON. Covered by
   static/demo_routes_seed.test.mjs, scripts/gen_demo_routes.test.mjs.

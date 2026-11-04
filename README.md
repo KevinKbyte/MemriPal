@@ -290,6 +290,8 @@ Memorize sends for photo-less demo stations. It must stay byte-exact: the photo 
 uv run python scripts/gen_demo_photo_json.py
 ```
 
+Regenerate `static/data/demo_routes.json` (curated demo routes, MEM-133): `node scripts/gen_demo_routes.mjs`.
+
 Merge a worktree branch in one command: refuses a dirty tree, rebases onto `main`, runs the worktree's
 `scripts/check.sh`, enqueues via the merge queue (`request_merge.py --wait`), then re-runs `scripts/check.sh` in the
 primary checkout. Exit 2 on bad usage; otherwise the first failing step's code. The queue is found at
