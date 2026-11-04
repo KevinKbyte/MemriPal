@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.70] - 2026-11-04
+
+### Added
+
+- Six real photos of the Kendall demo route in `fixtures/demo/loci/` (Kendall/MIT station, One Broadway, Cafe Luna/Watermark, Third Square, Kendall boiler and tank building, pink sculpture at One Medical), EXIF-free and listed in `fixtures/MANIFEST.md`, for demos and deploy verification.
+
 ## [0.20.69] - 2026-11-04
 
 ### Fixed
