@@ -199,6 +199,26 @@ def test_index_links_end_with_painterly_theme():
     assert sheets[-1:] == [THEME_SRC], f"last stylesheet is {sheets[-1:]}, not {THEME_SRC}"
 
 
+APP_JS_SRC = "/static/app.js"
+PAL_BUBBLE_SRC = "/static/pal_bubble.js"
+
+
+# Covers: MEM-099
+# Requirement: the Pal chat bubble is on every screen: index.html loads static/pal_bubble.js (which
+# self-mounts and links its own stylesheet) with exactly one <script type="module"> placed after the
+# /static/app.js module script; that one line is the only index.html edit MEM-099 makes.
+def test_index_loads_pal_bubble_module_once_after_app_js():
+    scripts = [a for kind, tag, a in _events() if kind == "start" and tag == "script"]
+    srcs = [a.get("src") for a in scripts]
+    bubble = [i for i, s in enumerate(srcs) if s == PAL_BUBBLE_SRC]
+    assert len(bubble) == 1, f"index.html needs exactly one <script src={PAL_BUBBLE_SRC}>, scripts: {srcs}"
+    tag = scripts[bubble[0]]
+    assert tag.get("type") == "module", f"{PAL_BUBBLE_SRC} script is {tag}, not type=module"
+    app = [i for i, s in enumerate(srcs) if s == APP_JS_SRC]
+    assert len(app) == 1, f"index.html must keep exactly one <script src={APP_JS_SRC}>, scripts are {srcs}"
+    assert bubble[0] > app[0], f"{PAL_BUBBLE_SRC} must come after {APP_JS_SRC}: {srcs}"
+
+
 # Covers: MEM-044
 # Requirement: the painterly theme stylesheet is served 200 as text/css.
 def test_painterly_theme_served_as_css(client):

@@ -4,6 +4,7 @@
 import { isTitle, MAX_TITLE_CHARS } from "./chat_store.js";
 
 const POS_KEY = "memripal.palBubble.pos";
+const STYLE_HREF = "/static/pal_bubble.css";
 const SIZE = 56; // fallback before layout; pal_bubble.css .pal-bubble
 const MARGIN = 8;
 const STEP = 16; // arrow-key move, px
@@ -21,6 +22,23 @@ function clamp(v, size, extent) {
   return Math.max(0, Math.min(Math.max(v, MARGIN), hi, extent - size));
 }
 
+/**
+ * Links pal_bubble.css once from <head>, so index.html needs only the module <script> (its <link> list is
+ * pinned). Walks head.children: the test fake DOM has no querySelector.
+ * @param {any} doc
+ */
+function linkStylesheet(doc) {
+  const linked = [...doc.head.children].some(
+    (/** @type {any} */ n) =>
+      n.tagName === "LINK" && n.getAttribute("rel") === "stylesheet" && n.getAttribute("href") === STYLE_HREF,
+  );
+  if (linked) return;
+  const link = doc.createElement("link");
+  link.setAttribute("rel", "stylesheet");
+  link.setAttribute("href", STYLE_HREF);
+  doc.head.append(link);
+}
+
 /** @param {{doc: any, win: any, storage: any, chats: any}} deps */
 export async function mountPalBubble({ doc, win, storage, chats }) {
   /** @param {string} tag @param {string} pal @param {string} [text] */
@@ -31,6 +49,7 @@ export async function mountPalBubble({ doc, win, storage, chats }) {
     if (tag === "button") n.type = "button";
     return n;
   };
+  linkStylesheet(doc);
   const root = make("div", "root");
   const bubble = make("button", "bubble", "Pal");
   bubble.className = "pal-bubble";

@@ -77,7 +77,8 @@ function fakeChats(titles = []) {
 }
 
 async function setup({ win = fakeWin(), storage = memStorage(), chats = fakeChats(["Older", "Newer"]) } = {}) {
-  const page = fakePage(["body", "main"]);
+  const page = fakePage(["head", "body", "main"]);
+  page.doc.head = page.els.head;
   page.doc.body = page.els.body;
   const px = (v) => Number.parseFloat(v) || 0;
   page.layout.rectOf = (el) => {
@@ -353,5 +354,57 @@ describe("pal_bubble self-mount uses the shared database open", () => {
 
   test("selfMount does not call openDb directly", () => {
     assert.doesNotMatch(selfMount, /(^|[^A-Za-z])openDb\(/);
+  });
+});
+
+const STYLE_HREF = "/static/pal_bubble.css";
+
+/** A fake page with doc.head and doc.body, as a browser document has. */
+function stylePage() {
+  const page = fakePage(["head", "body"]);
+  page.doc.head = page.els.head;
+  page.doc.body = page.els.body;
+  return page;
+}
+
+const attrOrProp = (n, k) => n.getAttribute?.(k) ?? n[k] ?? null;
+const isStyleLink = (n) => n.tagName === "LINK" && attrOrProp(n, "rel") === "stylesheet" && attrOrProp(n, "href") === STYLE_HREF;
+const styleLinks = (root) => findAll(root, isStyleLink);
+
+async function mountOn(page) {
+  await mount({ doc: page.doc, win: fakeWin(), storage: memStorage(), chats: fakeChats(["Only"]) });
+  await settle();
+}
+
+// Covers: MEM-099
+// Requirement: the bubble is styled on every screen without touching index.html's pinned <link> tags (the
+// only index.html edit is one module <script>): mounting pal_bubble.js puts exactly one
+// <link rel="stylesheet" href="/static/pal_bubble.css"> into <head>; a second mount, or a head that already
+// links it, never adds a duplicate.
+describe("MEM-099 Pal bubble loads its own stylesheet", () => {
+  test("mounting adds exactly one pal_bubble.css stylesheet link to head, none to body", async () => {
+    const page = stylePage();
+    await mountOn(page);
+    assert.equal(styleLinks(page.els.head).length, 1, `head has one <link rel=stylesheet href=${STYLE_HREF}>`);
+    assert.equal(findAll(page.els.body, (n) => n.tagName === "LINK").length, 0, "no <link> in body");
+  });
+
+  test("mounting twice still leaves exactly one stylesheet link", async () => {
+    const page = stylePage();
+    await mountOn(page);
+    await mountOn(page);
+    assert.equal(styleLinks(page.els.head).length, 1, "second mount adds no second link");
+  });
+
+  test("a head that already links pal_bubble.css gets no duplicate", async () => {
+    const page = stylePage();
+    const existing = page.doc.createElement("link");
+    existing.setAttribute("rel", "stylesheet");
+    existing.setAttribute("href", STYLE_HREF);
+    existing.rel = "stylesheet";
+    existing.href = STYLE_HREF;
+    page.els.head.append(existing);
+    await mountOn(page);
+    assert.deepEqual(styleLinks(page.els.head), [existing], "the existing link is kept and none is added");
   });
 });

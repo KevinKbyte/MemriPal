@@ -342,3 +342,15 @@ class TestRunLiveMapillaryToken:
         assert not re.search(r"\$env:" + MAPILLARY_VAR + r"\s*=", source, re.IGNORECASE)
         assert not re.search(r"SetEnvironmentVariable\([^)]*" + MAPILLARY_VAR, source, re.IGNORECASE)
         assert not re.search(r"(?<![\w$])\.env\b", source)
+
+    def test_help_block_cites_adr_0064_for_mapillary_token(self):
+        source = LAUNCHER.read_text(encoding="utf-8")
+        start, end = source.find("<#"), source.find("#>")
+        assert 0 <= start < end, "run_live.ps1 lost its <# ... #> help block"
+        help_block = source[start:end]
+        lines = help_block.splitlines()
+        at = [i for i, line in enumerate(lines) if "mapillary-token.dpapi" in line]
+        assert at, "the help block no longer documents mapillary-token.dpapi"
+        mapillary = " ".join(lines[at[0] :])
+        assert "ADR 0064" in mapillary, f"the Mapillary token help cites no ADR 0064: {mapillary!r}"
+        assert "ADR 0054" not in help_block, "the help block still cites ADR 0054 (real-map resize observer)"
