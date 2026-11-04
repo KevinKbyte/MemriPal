@@ -1,4 +1,4 @@
-# 0055: Judges-only access: app key gate (signed cookie) behind a global HTTPS ALB + Cloud Armor, live mode
+# 0056: Judges-only access: app key gate (signed cookie) behind a global HTTPS ALB + Cloud Armor, live mode
 
 Status: Accepted
 Amends: [0004](0004-public-deploy-spend-guard.md) (the judged deploy runs live; the gate, not fixture mode, keeps

@@ -317,10 +317,11 @@ def test_edge_never_touches_secrets(tmp_path, existing):
 
 
 # Covers: MEM-104, MEM-105
-# Requirement: deploy scripts cite the judges-only access ADR (0055), never the unrelated real-map ADR 0054.
+# Requirement: deploy scripts cite the judges-only access ADR (0056), never the unrelated
+# landmark-emoji ADR 0055 nor the unrelated real-map ADR 0054.
 @pytest.mark.parametrize("script", [DEPLOY, EDGE], ids=["deploy_cloud_run", "deploy_edge_gcp"])
-def test_scripts_cite_judges_only_adr_0055_not_0054(script):
+def test_scripts_cite_judges_only_adr_0056_not_0055(script):
     text = script.read_text(encoding="utf-8")
-    stale = [ln for ln in text.splitlines() if re.search(r"ADR[^\n]*\b0054\b", ln)]
-    assert "0055" in text, f"{script.name} never cites ADR 0055"
-    assert not stale, f"{script.name} cites the unrelated ADR 0054: {stale}"
+    stale = [ln for ln in text.splitlines() if re.search(r"\b005[45]\b", ln)]
+    assert re.search(r"\b0056\b", text), f"{script.name} never cites ADR 0056"
+    assert not stale, f"{script.name} cites an unrelated ADR (0054/0055): {stale}"

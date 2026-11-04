@@ -3,7 +3,7 @@
 Kev runs every step by hand; Claude never reads, decrypts, or prints a key. Plan refs: `docs/plans/2026-10-26-memripal.md`
 D1, D11, S7. Run from the repo root.
 
-Judged deploy (ADR [0055](../decisions/0055-judges-only-access-gate-alb-cloud-armor.md), MEM-103..105): live mode,
+Judged deploy (ADR [0056](../decisions/0056-judges-only-access-gate-alb-cloud-armor.md), MEM-103..105): live mode,
 judges sign in once with a shared access key (cookie), traffic enters only through a global HTTPS load balancer with
 Cloud Armor. Order: 1, 2, 3, 4 (`MODE=meta`), 5 (edge, then redeploy with `EDGE_HOST`), 6 (verify), 7 (key to
 judges). Steps 8-9 are rotation and the kill switch.
@@ -34,7 +34,7 @@ gcloud billing budgets create --billing-account=<billing-account-id> --display-n
 ```
 
 A budget alerts; it does not stop spend. Spend caps are D1: fixture default, passcode, `--max-instances=1`.
-SUPERSEDED for the judged deploy (ADR 0055): it runs live and the access key replaces the passcode. The in-process
+SUPERSEDED for the judged deploy (ADR 0056): it runs live and the access key replaces the passcode. The in-process
 call budget resets on every restart and the persistent cap (MEM-094) has not landed, so also:
 
 - Meta spend alert: in the Meta developer console, set a spend alert (and a hard cap if one is offered) on the
@@ -52,7 +52,7 @@ unusable on GCP). On GCP it lives in Secret Manager. The app reads env vars only
 | `MEMRIPAL_ACCESS_KEY` | `memripal-access-key` | always; the judges' shared key for `/access` (MEM-103) |
 | `MEMRIPAL_RECORD_KEY` | `memripal-record-key` | always; signs association records ([ADR 0027](../decisions/0027-signed-association-records.md)) |
 | `BASETEN_API_KEY`, `FIREWORKS_API_KEY`, `MODAL_SEG_TOKEN`, `MEMRIPAL_MAPILLARY_TOKEN` | named in `scripts/deploy_cloud_run.sh` | optional; mapped only if the secret exists |
-| `MEMRIPAL_PASSCODE` | `memripal-passcode` | SUPERSEDED (ADR 0055): no longer mapped; the access cookie satisfies the passcode check ([ADR 0025](../decisions/0025-passcode-gate-and-host-allowlist.md)) |
+| `MEMRIPAL_PASSCODE` | `memripal-passcode` | SUPERSEDED (ADR 0056): no longer mapped; the access cookie satisfies the passcode check ([ADR 0025](../decisions/0025-passcode-gate-and-host-allowlist.md)) |
 
 1. Generate the access key and the record key (one run each; >= 128 bits). Copy the access key for step 7:
 
@@ -194,7 +194,7 @@ curl -s -o /dev/null -w "%{http_code}\n" https://<service>-<project-number>.<reg
 gcloud run services update <service> --region <region> --update-env-vars MEMRIPAL_TRUSTED_PROXY_HOPS=<n>
 ```
 
-SUPERSEDED (pre-ADR 0055, fixture deploy without the edge): open the `run.app` URL; banner reads "live needs passcode
+SUPERSEDED (pre-ADR 0056, fixture deploy without the edge): open the `run.app` URL; banner reads "live needs passcode
 / try Load demo" (D13); "Load demo" runs the full loop in fixture mode; a live model request without the passcode
 returns 401 `passcode_required`.
 
@@ -232,4 +232,4 @@ gcloud run services update <service> --region <region> --update-env-vars MEMRIPA
 Do not delete the service: the deployed URL is a submission input. Scaled to zero it has no idle cost. Check spend in
 the console under Billing > Reports (filter: Cloud Run, Secret Manager, Cloud Build, Networking, Cloud Armor); budget
 alerts from step 2 email the billing admins. The edge (step 5) bills while it exists, idle or not: about $12-13 for
-two weeks (ADR 0055 option (f)).
+two weeks (ADR 0056 option (f)).

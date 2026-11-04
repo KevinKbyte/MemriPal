@@ -6,7 +6,7 @@ Continuation of [spec-4.md](spec-4.md), which is over its 500-line cap.
 
 Amends MEM-034 passcode gate (spec-2.md, ADR 0025): a valid access cookie
 satisfies `_passcode_error`, checked before its passcode-unset branch.
-Decided-by: ADR-0055
+Decided-by: ADR-0056
 Root problem: the live (paid) deploy must admit only judges, who share one key delivered out of band; the passcode
 header is per-session UI friction and fails open on a client-controlled loopback Host.
 Actors: judges (browser); `src/memripal/app.py` (`AccessGate`, `_passcode_error`), `src/memripal/ratelimit.py`,
@@ -42,7 +42,7 @@ Tests: tests/test_access_gate.py
 ## MEM-104 Deploy script: live mode, secret mapping, edge-aware ingress
 
 Amends MEM-034 (`scripts/deploy_cloud_run.sh`).
-Decided-by: ADR-0055
+Decided-by: ADR-0056
 Root problem: mode and secrets were hardcoded (fixture, passcode), the runtime service account was never granted
 optional secrets, and the edge switch (ingress, host, proxy hops) must happen in one deploy or the app is briefly
 open or mis-keyed.
@@ -67,7 +67,7 @@ Tests: tests/test_deploy_scripts.py, tests/test_deploy_artifacts.py
 ## MEM-105 Edge: global HTTPS ALB + Cloud Armor, trusted proxy hops
 
 `scripts/deploy_edge_gcp.sh`.
-Decided-by: ADR-0055
+Decided-by: ADR-0056
 Root problem: with `--max-instances=1`, L7 floods reaching Cloud Run starve judges; abusive IPs must be dropped at
 the edge, the `run.app` URL closed, and the app must still rate-limit the real client, not the LB.
 Actors: Kev (runs it); `scripts/deploy_edge_gcp.sh`, `src/memripal/ratelimit.py` (`client_ip`), gcloud

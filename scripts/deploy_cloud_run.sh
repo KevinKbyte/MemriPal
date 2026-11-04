@@ -1,5 +1,5 @@
 #!/bin/sh
-# Deploy MemriPal to Cloud Run (MEM-034, MEM-104; ADR 0004, 0010, 0055; docs/runbooks/deploy-gcp.md).
+# Deploy MemriPal to Cloud Run (MEM-034, MEM-104; ADR 0004, 0010, 0056; docs/runbooks/deploy-gcp.md).
 # Builds the repo Dockerfile via --source. Keys come only from Secret Manager; this script never
 # reads a secret value.
 #
@@ -69,7 +69,7 @@ fi
 # --concurrency and --timeout bound parallel and hanging requests per instance (MEM-034).
 # The body cap equals the largest route cap (POST /split), so no legitimate request is refused.
 # ^;^ switches the gcloud list delimiter so the comma-separated host list stays one value.
-# --allow-unauthenticated stays: the app access gate and Cloud Armor do auth (ADR 0055).
+# --allow-unauthenticated stays: the app access gate and Cloud Armor do auth (ADR 0056).
 gcloud run deploy "$SERVICE" \
   --project "$PROJECT" \
   --region "$REGION" \
