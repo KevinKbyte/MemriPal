@@ -27,7 +27,8 @@ Everything in this repo was created during the Meta Global AI Developer Hackatho
 started 2026-10-26 12:24 PM ET per the official Discord announcement, after the 12:00 PM kickoff; the first commit
 `f59adc0` is 12:57 PM ET. Nothing is pre-existing.
 
-Not ours: the Meta models (below), Wikipedia place text and Anthony Metivier's sense-channel method ([Credits](#credits)).
+Not ours: the Meta models (below), Wikipedia place text, Anthony Metivier's sense-channel method, OpenStreetMap map
+data and the vendored map libraries ([Credits](#credits)).
 `refs/public/image_8586e3ad.jpeg` is an AI-generated reference image (commit `763a15a`), used by no code or fixture;
 demo fixtures are synthetic (`fixtures/MANIFEST.md`). Scene images are generated at runtime by Muse Image.
 
@@ -351,6 +352,23 @@ of his material is copied.
 Place facts are Wikipedia article summaries, licensed CC BY-SA 4.0
 (https://creativecommons.org/licenses/by-sa/4.0/); each chip names its source article, and the text is Wikipedia
 contributors' work, not ours.
+
+Map data (c) OpenStreetMap contributors, available under the Open Database License (ODbL,
+https://opendatacommons.org/licenses/odbl/; see https://www.openstreetmap.org/copyright). The offline Kendall Square
+basemap `static/map/kendall.pmtiles` is cut from a Protomaps planet build of that data, and the map always shows
+"(c) OpenStreetMap contributors, Protomaps".
+
+Third-party code (versions and licenses as recorded in each `VERSION` file):
+
+- MapLibre GL JS 5.24.0, BSD-3-Clause (`static/vendor/maplibre/LICENSE.txt`): renders the map.
+- pmtiles 4.5.0 (JS), BSD-3-Clause (`static/vendor/pmtiles/`): reads the map archive in the browser. The map build
+  script uses the PyPI `pmtiles` 3.8.1 package (dev dependency).
+- Protomaps `@protomaps/basemaps` 5.7.2, BSD-3-Clause (`vendor-node/protomaps-basemaps/`): generates the map styles
+  at build time. Glyphs and sprites come from `protomaps/basemaps-assets`: Noto Sans fonts (SIL OFL 1.1) and sprites
+  derived from tangrams/icons (MIT) (`static/map/VERSION`).
+
+Demo video only, not part of this repo: MediaPipe drives Pal, the mascot, from Kev's face on camera. Walk photos
+shown in the video are Kev's own.
 
 ## License
 
