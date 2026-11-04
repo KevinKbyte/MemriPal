@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.57] - 2026-11-04
+
+### Fixed
+
+- `scripts/push_secret_gcp.ps1` resolves gcloud (default `gcloud.cmd` or a bare MEMRIPAL_GCLOUD name) to its full path via Get-Command before launching it; a bare-name launch made gcloud.cmd's `%~dp0` resolve to the current directory, failing with "can't open file ...\lib\gcloud.py" / "gcloud exited 2". A gcloud not on PATH exits 2 with `push_secret_gcp: gcloud not found on PATH`. Regression test added (MEM-111).
+
 ## [0.20.55] - 2026-11-04
 
 ### Added
