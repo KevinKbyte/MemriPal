@@ -211,7 +211,7 @@ PROMPT_RECORDS = {
 
 # Covers: MEM-098
 # Requirement: every Muse Image prompt the server builds tells the model not to alter or restore faces or
-# plates (Mapillary terms s5(a), ADR 0058), for every record the scene module renders, so a street-photo
+# plates (Mapillary terms s5(a), ADR 0064), for every record the scene module renders, so a street-photo
 # scene can never unblur or re-identify a person or vehicle.
 class TestSceneNoRestoreRule:
     def test_template_carries_no_restore_rule(self):

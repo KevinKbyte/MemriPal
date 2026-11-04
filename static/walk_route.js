@@ -230,9 +230,12 @@ export function geocode(phrase, pois) {
     const partial = entries.filter(([key]) => contains(key, q)).sort((x, y) => x[0].length - y[0].length)[0];
     if (partial) return partial[1];
   }
-  const words = new Set(q.split(" ").filter(Boolean));
+  // A stray letter ("Kendal T") would otherwise match "AT&T" on "t" (MEM-088 UX audit).
+  const words = new Set(q.split(" ").filter((w) => w.length >= 2));
   const score = (/** @type {string} */ key) => key.split(" ").filter((w) => words.has(w)).length;
-  const ranked = entries.map(([key, place], i) => ({ s: score(key), i, place })).sort((x, y) => y.s - x.s || x.i - y.i);
+  const all = entries.map(([key, place], i) => ({ s: score(key), i, place })).sort((x, y) => y.s - x.s || x.i - y.i);
+  // No shared word: random POIs are noise, so only the hand-kept aliases (entries' head) are suggested.
+  const ranked = all[0]?.s ? all : all.filter((r) => r.i < ALIASES.size);
   /** @type {Place[]} */
   const suggestions = [];
   for (const { place } of ranked) {

@@ -180,3 +180,76 @@ describe("auto_loci candidates: inputs and edges", () => {
     assert.deepEqual(candidates([], POIS), []);
   });
 });
+
+// Covers: MEM-088
+// Requirement: one building is one landmark (MEM-088). candidates() skips a POI whose normalized address
+// (lowercase, non-alphanumerics collapsed to one space, trimmed, "street" == "st", "avenue" == "ave") equals an
+// earlier ELIGIBLE candidate's address or an existing station's `address` (a station with or without coords).
+// POIs with a null address (labelled by street) are never address-deduped; a POI beyond 50 m of the route is not
+// eligible, so it cannot dedupe a later one.
+describe("auto_loci candidates: same-address dedupe (MEM-088)", () => {
+  const BASE = [42.36, -71.09];
+  /** [lat, lng] at `alongM` metres east of BASE and `offsetM` metres north of the line. */
+  const at = (alongM, offsetM = 0) => [
+    BASE[0] + offsetM / (RAD * R),
+    BASE[1] + alongM / (RAD * R * Math.cos(BASE[0] * RAD)),
+  ];
+  const LINE = [at(0), at(1000)];
+  let seq = 0;
+  const poi = (name, address, alongM, offsetM = 5, street = "Binney Street") => {
+    const [lat, lng] = at(alongM, offsetM);
+    seq += 1;
+    return { osm_id: `node/${9000 + seq}`, name, lat, lng, address, street };
+  };
+  const names = (list) => list.map((c) => c.name);
+
+  test("'100 Binney Street' then '100 binney st.' (>= 40 m apart) -> only the first", () => {
+    const a = poi("Lab One", "100 Binney Street", 100);
+    const b = poi("Lab Two", "100 binney st.", 300);
+    assert.deepEqual(names(candidates(LINE, [a, b])), ["Lab One"]);
+  });
+
+  test("'5 Main Ave' then '5 Main Avenue' -> only the first", () => {
+    const a = poi("Shop One", "5 Main Ave", 100);
+    const b = poi("Shop Two", "5 Main Avenue", 300);
+    assert.deepEqual(names(candidates(LINE, [a, b])), ["Shop One"]);
+  });
+
+  test("different addresses on the same street are both kept", () => {
+    const a = poi("Lab One", "100 Binney Street", 100);
+    const b = poi("Lab Two", "102 Binney Street", 300);
+    assert.deepEqual(names(candidates(LINE, [a, b])), ["Lab One", "Lab Two"]);
+  });
+
+  test("null-address POIs (street label) are never address-deduped", () => {
+    const a = poi("Bench", null, 100, 5, "Third St");
+    const b = poi("Statue", null, 300, 5, "Third St");
+    const out = candidates(LINE, [a, b]);
+    assert.deepEqual(names(out), ["Bench", "Statue"]);
+    assert.deepEqual(out.map((c) => c.label), ["near Third St", "near Third St"]);
+  });
+
+  test("a station's address dedupes a POI more than 15 m from it, with or without coords", () => {
+    const a = poi("Lab One", "100 Binney Street", 100);
+    const keep = poi("Other", "7 Elm St", 500);
+    const withCoords = { id: "st-1", n: 1, name: "S1", address: "100 binney st", coords: { lat: at(300)[0], lon: at(300)[1] } };
+    const bare = { id: "st-2", n: 2, name: "S2", address: "100 Binney St." };
+    assert.ok(metres(at(100, 5), [withCoords.coords.lat, withCoords.coords.lon]) > 15, "fixture: POI is > 15 m from the station");
+    assert.deepEqual(names(candidates(LINE, [a, keep], [withCoords])), ["Other"]);
+    assert.deepEqual(names(candidates(LINE, [a, keep], [bare])), ["Other"]);
+  });
+
+  test("a station without a matching address does not dedupe", () => {
+    const a = poi("Lab One", "100 Binney Street", 100);
+    const st = { id: "st-3", n: 3, name: "S3", address: "9 Elm St", coords: { lat: at(700)[0], lon: at(700)[1] } };
+    const none = { id: "st-4", n: 4, name: "S4" };
+    assert.deepEqual(names(candidates(LINE, [a], [st, none])), ["Lab One"]);
+  });
+
+  test("an earlier POI that is not eligible (> 50 m off the route) does not dedupe a later one", () => {
+    const far = poi("Far Lab", "9 Elm Street", 100, 80);
+    const near = poi("Near Lab", "9 elm st", 300, 5);
+    assert.ok(project(at(100, 80), LINE).dist > 50, "fixture: the earlier POI is outside 50 m");
+    assert.deepEqual(names(candidates(LINE, [far, near])), ["Near Lab"]);
+  });
+});

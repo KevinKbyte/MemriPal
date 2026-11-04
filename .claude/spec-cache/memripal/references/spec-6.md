@@ -6,8 +6,8 @@ Continuation of [spec-4.md](spec-4.md), which is at its 500-line cap. spec-5.md 
 ## MEM-097 Copilot tool dispatcher: per-tool allow/ask/off, every action undoable (PLANNED)
 
 PLANNED, not built. Item 21 "Memri copilot".
-ADR [0061](../../../../docs/decisions/0061-memri-copilot-street-photo-scenes.md).
-Decided-by: ADR-0061
+ADR [0064](../../../../docs/decisions/0064-memri-copilot-street-photo-scenes.md).
+Decided-by: ADR-0064
 Root problem: a copilot that acts on the app needs one audited path for its actions, user control over which tools
 it may use, and a way back from any action it takes.
 Actors: the user; the copilot model; the UI action dispatcher; `static/tool_policy.js`, `static/undo_stack.js` (new,
@@ -22,9 +22,9 @@ NFR: pure modules, no DOM or network; ASCII only.
 
 ## MEM-098 Copilot street-photo scene tool via POST /baseline (PLANNED)
 
-PLANNED, not built. Item 21. ADR [0061](../../../../docs/decisions/0061-memri-copilot-street-photo-scenes.md)
+PLANNED, not built. Item 21. ADR [0064](../../../../docs/decisions/0064-memri-copilot-street-photo-scenes.md)
 (amends map-to-palace D1); server core MEM-053 (spec-3.md).
-Decided-by: ADR-0061
+Decided-by: ADR-0064
 Root problem: a photo-less station needs a scene; a real Kendall street photo can supply it if licence and privacy
 conditions hold.
 Actors: the copilot; `fetch_street_photo{station_id}` tool; `src/memripal/app.py`; `baseline_router` from
@@ -44,10 +44,10 @@ NFR: 0 live calls in fixture mode; token never in `.env`, the repo, logs or chat
 
 ## MEM-099 Copilot placement: Messenger-style Pal chat bubble with on-device chats (PLANNED)
 
-PLANNED, not built. Item 21. ADR [0061](../../../../docs/decisions/0061-memri-copilot-street-photo-scenes.md)
+PLANNED, not built. Item 21. ADR [0064](../../../../docs/decisions/0064-memri-copilot-street-photo-scenes.md)
 (amendment 2026-11-03: chat bubble). Kev asked for a Messenger-style bubble, draggable, with multiple user-managed
 chats kept in the on-device SQLite db and carried by export/import.
-Decided-by: ADR-0061
+Decided-by: ADR-0064
 Root problem: the copilot must be reachable from every screen, not one tab, and its chats are user data that must
 stay on the device and travel with the palace backup.
 Actors: the user; new `static/pal_bubble.js` + `static/pal_bubble.css` (self-mounting DOM); new

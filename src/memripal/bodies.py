@@ -3,14 +3,19 @@
 Split out of app.py to keep it under its line budget; app.py imports everything here."""
 
 import json
+import threading
+from typing import Any
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.datastructures import Headers
 
+from memripal.backend import ModelBackend
+from memripal.byok import LIMIT_CODE, REJECTED_CODE, ByokKeyRejected, ByokLimitReached
 from memripal.imaging import MAX_UPLOAD_BYTES
 from memripal.meta_spend_guard import CAP_ERROR_CODE, MetaSpendCapReached
 from memripal.place import valid_coords
+from memripal.spend_degrade import CAPPED, note_spend_cap
 from memripal.split import MAX_POINTS
 
 ASSOCIATE_KEYS = {"image", "item", "locus"}
@@ -23,6 +28,30 @@ UPLOAD_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
 class BudgetExhausted(RuntimeError):
     """The per-instance live call budget is spent; the call never reached the backend."""
+
+
+class _BudgetedBackend:
+    """Counts live backend.call against a per-instance cap (MEM-034); everything else passes through."""
+
+    def __init__(self, backend: ModelBackend, cap: int) -> None:
+        self._backend = backend
+        self._left = cap
+        # Routes run in the threadpool and /loci fans SAM calls out across threads.
+        self._lock = threading.Lock()
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._backend, name)
+
+    def spend(self) -> None:
+        """Charge one live upstream call; /recall/audio charges each ASR relay here, after validation."""
+        with self._lock:
+            if self._left <= 0:
+                raise BudgetExhausted
+            self._left -= 1
+
+    def call(self, req: Any) -> Any:
+        self.spend()
+        return self._backend.call(req)
 
 
 def _error(status: int, code: str) -> JSONResponse:
@@ -67,8 +96,14 @@ class _BodyCap:
 
 
 def _call_failed(exc: Exception) -> JSONResponse:
-    """A refused or failed model call: the two spend limits name themselves, anything else is "upstream"."""
+    """A refused or failed model call: limits and a refused BYOK key name themselves, else "upstream"."""
+    # Ahead of MetaSpendCapReached (it is one): the visitor's own limit, not the shared cap (MEM-122).
+    if isinstance(exc, ByokLimitReached):
+        return _error(503, LIMIT_CODE)
+    if isinstance(exc, ByokKeyRejected):
+        return _error(502, REJECTED_CODE)
     if isinstance(exc, MetaSpendCapReached):
+        note_spend_cap(CAPPED)
         return _error(503, CAP_ERROR_CODE)
     if isinstance(exc, BudgetExhausted):
         return _error(429, "budget_exhausted")

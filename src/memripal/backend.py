@@ -407,6 +407,10 @@ class MetaBackend:
                 except MetaSpendCapReached:
                     if (chat := self._chat_fallback) is None:
                         raise
+                    # Lazy like the imports above; names the backup provider to the client (MEM-121).
+                    from memripal.spend_degrade import BACKUP, note_spend_cap
+
+                    note_spend_cap(BACKUP)
             if chat is not None:
                 result = chat.client.chat_json(model=chat.model, **ask)
                 # Provider-distinct key, as for Modal SAM: never replays as a Meta Spark entry (ADR 0018);

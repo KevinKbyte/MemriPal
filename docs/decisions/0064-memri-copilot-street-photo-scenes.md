@@ -1,4 +1,4 @@
-# 0061: Memri copilot turns Mapillary street photos into AI memory scenes, behind a Pal chat bubble
+# 0064: Memri copilot turns Mapillary street photos into AI memory scenes, behind a Pal chat bubble
 
 Status: Accepted (Kev, 2026-11-03)
 Amends: D1 of `docs/plans/2026-10-31-map-to-palace.md` (Mapillary images may now go to SAM and Muse Image).
@@ -21,7 +21,9 @@ Constraints:
 - Spend per run is about 30 calls: 6 stations x (3 SAM + 1 Spark + 1 Muse Image). Muse Image $0.01/image, Spark
   $1.25/1M input tokens, SAM price undocumented; estimate $0.10-0.30/run against $150 Meta credits. Quota is not the
   constraint.
-- The MEM-094 spend guard does not price Muse Image `/images/edits` (`src/memripal/meta_client.py:202-224`).
+- At decision time the MEM-094 spend guard did not price Muse Image `/images/edits`
+  (`src/memripal/meta_client.py::MetaClient.image_edit`); MEM-121 later charged it
+  (`src/memripal/meta_spend_guard.py::IMAGE_CALL_COST_USD`).
 - Deadline: Wednesday noon.
 
 ## Options considered

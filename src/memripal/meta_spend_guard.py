@@ -69,10 +69,15 @@ class MetaSpendGuard:
             _atomic_write(self._path, json.dumps({"spent_usd": spent + cost}).encode("ascii"))
 
 
-def guard_from_env() -> MetaSpendGuard:
-    """Meta mode's guard: state under MEMRIPAL_META_SPEND_DIR, else ~/.memripal/meta-spend."""
+def spend_dir_from_env() -> Path:
+    """MEMRIPAL_META_SPEND_DIR, else ~/.memripal/meta-spend; BYOK state sits under its byok/ (MEM-122)."""
     state_dir = os.environ.get(SPEND_DIR_ENV, "").strip()
-    return MetaSpendGuard(Path(state_dir) if state_dir else Path.home() / ".memripal" / "meta-spend")
+    return Path(state_dir) if state_dir else Path.home() / ".memripal" / "meta-spend"
+
+
+def guard_from_env() -> MetaSpendGuard:
+    """Meta mode's guard: state under spend_dir_from_env()."""
+    return MetaSpendGuard(spend_dir_from_env())
 
 
 def meta_asr_client_from_env():

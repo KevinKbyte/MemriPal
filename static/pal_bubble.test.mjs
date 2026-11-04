@@ -1,5 +1,5 @@
 // Covers: MEM-099
-// Requirement: the Pal copilot is a Messenger-style chat bubble on every screen (MEM-099 B1/B2/B4, ADR 0058
+// Requirement: the Pal copilot is a Messenger-style chat bubble on every screen (MEM-099 B1/B2/B4, ADR 0064
 // amendment 2026-11-03). Tap, click or Enter opens its panel; Esc or a click outside collapses it and
 // reopening resumes the same chat. The bubble is dragged with pointer events (touch and mouse), stays where
 // dropped, is clamped inside the viewport and re-clamped on resize, moves with the arrow keys, and keeps its
@@ -335,5 +335,23 @@ describe("MEM-099 Pal bubble stylesheet", () => {
     const css = readFileSync(new URL("./pal_bubble.css", import.meta.url), "utf8");
     assert.ok(/^[\x00-\x7f]*$/.test(css), "ASCII only");
     assert.match(css, /touch-action\s*:\s*none/);
+  });
+});
+
+// Covers: MEM-099
+// Requirement: the bubble opens the database through the page-wide shared open (static/db/client.js
+// sharedOpenDb), so other modules on the page (MEM-088) reuse its lock and worker instead of opening again.
+describe("pal_bubble self-mount uses the shared database open", () => {
+  const src = readFileSync(new URL("./pal_bubble.js", import.meta.url), "utf8");
+  const selfMount = src.slice(src.indexOf("async function selfMount"));
+
+  test("selfMount calls sharedOpenDb from ./db/client.js", () => {
+    assert.ok(src.includes("async function selfMount"), "pal_bubble.js must define selfMount");
+    assert.match(selfMount, /\{\s*sharedOpenDb\s*\}\s*=\s*await import\("\.\/db\/client\.js"\)/);
+    assert.match(selfMount, /sharedOpenDb\(\{/);
+  });
+
+  test("selfMount does not call openDb directly", () => {
+    assert.doesNotMatch(selfMount, /(^|[^A-Za-z])openDb\(/);
   });
 });

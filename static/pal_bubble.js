@@ -1,5 +1,5 @@
 // @ts-check
-// Pal chat bubble (MEM-099, ADR 0058 amendment 2026-11-03): a draggable button on every screen that opens
+// Pal chat bubble (MEM-099, ADR 0064 amendment 2026-11-03): a draggable button on every screen that opens
 // a panel of on-device chats (chat_store.js). Self-mounts in the browser; importing it in node is inert.
 import { isTitle, MAX_TITLE_CHARS } from "./chat_store.js";
 
@@ -235,9 +235,10 @@ async function selfMount() {
   /** @type {any} */
   let chats = null;
   try {
-    const { openDb } = await import("./db/client.js");
+    // The page-wide shared open: other modules on the page reuse this lock and worker.
+    const { sharedOpenDb } = await import("./db/client.js");
     const { createChatStore } = await import("./chat_store.js");
-    const opened = await openDb({
+    const opened = await sharedOpenDb({
       locks: navigator.locks,
       createWorker: () => new Worker(new URL("./db/worker.js", import.meta.url), { type: "module" }),
     });

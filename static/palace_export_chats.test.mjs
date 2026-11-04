@@ -1,5 +1,5 @@
 // Covers: MEM-099
-// Requirement: Pal chats are user data and travel with the palace backup (MEM-099 B5, ADR 0058 amendment
+// Requirement: Pal chats are user data and travel with the palace backup (MEM-099 B5, ADR 0064 amendment
 // 2026-11-03 option (i)). With a chat store wired, buildBackup writes backup v: 3 = the v2 keys plus chats[];
 // without one it still writes v: 2 (unchanged, palace_export_v2.test.mjs). importBackup accepts v2 (no chats)
 // and v3. The file is untrusted: chats are rebuilt key by key through an allow-list with caps (chat count,

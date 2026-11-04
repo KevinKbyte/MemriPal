@@ -1,6 +1,6 @@
 // Covers: MEM-098
 // Requirement: a scene derived from a Mapillary street photo always carries the full CC BY-SA 4.0 credit
-// block (ADR 0058): the official Mapillary logo linked to the image page, the contributor username, a link
+// block (ADR 0064): the official Mapillary logo linked to the image page, the contributor username, a link
 // to the original image, an "AI-modified" note, and "CC BY-SA 4.0" linked to the licence. Only a verified
 // Mapillary image page under CC BY-SA 4.0 earns a credit; anything else yields no credit and no image.
 // The credit renders through textContent only (an author string is never parsed as markup) and every link

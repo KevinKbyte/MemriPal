@@ -1,5 +1,5 @@
 // @ts-check
-// Pal chats in the on-device SQLite db (MEM-099, ADR 0058 amendment 2026-11-03): tables chats +
+// Pal chats in the on-device SQLite db (MEM-099, ADR 0064 amendment 2026-11-03): tables chats +
 // chat_messages from schema.js V2. Never sent to the server. Soft delete only (deleted_at); Undo is
 // reviveChat. Every input is validated before the first write, and multi-row writes share one
 // transaction, so a refused call writes nothing.

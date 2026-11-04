@@ -1,5 +1,5 @@
 # Covers: MEM-098
-# Requirement: every /baseline answer carries the credit data a derived scene must show (ADR 0058): a
+# Requirement: every /baseline answer carries the credit data a derived scene must show (ADR 0064): a
 # non-empty contributor `author`, `image_url` == "https://www.mapillary.com/app/?pKey=<id>", and `licence`
 # == "CC BY-SA 4.0", alongside `image`. A live hit with no contributor username is never picked (the credit
 # block could not name the creator), and fixture mode refuses a recording that does not carry a valid

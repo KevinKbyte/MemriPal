@@ -1,5 +1,5 @@
 // @ts-check
-// Street-photo scenes (MEM-098, ADR 0058): a scene derived from a Mapillary street photo must carry the
+// Street-photo scenes (MEM-098, ADR 0064): a scene derived from a Mapillary street photo must carry the
 // full CC BY-SA 4.0 credit. Only a verified Mapillary image page under that exact licence earns a credit;
 // anything else yields no credit and no image. Pure module: the DOM and fetch seams are injected.
 

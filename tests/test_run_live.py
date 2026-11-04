@@ -289,7 +289,7 @@ def _assert_no_mapillary_token_printed(proc: subprocess.CompletedProcess) -> Non
 
 # Covers: MEM-098
 # Requirement: scripts/run_live.ps1 decrypts $HOME/.secrets/mapillary-token.dpapi into
-# MEMRIPAL_MAPILLARY_TOKEN for the child process only, when that file exists (ADR 0058, ADR 0005
+# MEMRIPAL_MAPILLARY_TOKEN for the child process only, when that file exists (ADR 0064, ADR 0005
 # custody); the decrypted token replaces any parent-provided value, like META_API_KEY. When the file is
 # absent the child still launches without the variable. The token is never echoed or logged, never set
 # in the launcher's own environment, and never read from a .env file.

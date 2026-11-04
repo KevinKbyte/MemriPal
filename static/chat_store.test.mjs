@@ -1,6 +1,6 @@
 // Covers: MEM-099
 // Requirement: the Pal chat bubble keeps the user's chats on the device, in the on-device SQLite db,
-// never on the server (MEM-099 B3/B4, ADR 0058 amendment 2026-11-03). Migration V2 adds the chats and
+// never on the server (MEM-099 B3/B4, ADR 0064 amendment 2026-11-03). Migration V2 adds the chats and
 // chat_messages tables to an existing V1 db without touching its routes; chats can be created, listed,
 // switched between, renamed and given messages; delete is a soft delete (deleted_at), rows are never
 // hard-deleted, and Undo revives the same chat with its messages. Bad input is refused at the store

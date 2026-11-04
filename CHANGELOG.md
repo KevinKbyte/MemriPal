@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.53] - 2026-11-04
+
+### Changed
+
+- Merged origin/main (overnight cloud run, PRs #14 land-all and #15) into local main. Both sides had landed Pal's tour and the Memri copilot groundwork; origin's numbering wins: Memri copilot ADR 0061 -> 0064, tour replay MEM-097 -> MEM-112 (MEM-097 stays the copilot tool dispatcher). Local-only MEM-111 (push_secret_gcp) keeps its id.
+
 ## [0.20.52] - 2026-11-04
 
 ### Added
@@ -16,12 +22,29 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ### Added
 
-- Pal's first-run tour: King Memri walks a new visitor through his Memri Palace story (10 steps, skippable, Escape closes, done state persisted in localStorage `memripal.tour.done`) and spotlights the Routes, Landmarks, Recall and Settings tabs; browser drivers seed the tour key (MEM-095).
-- Settings gains a "Pal's tour" panel to replay the tour (MEM-097).
+- Map a new route: the Routes drawer's "Map a new route" finds a walk between two addresses, previews it and saves it; a geocode miss suggests aliases only, one landmark per address; the empty map says so; a map marker click selects its station in both lists; the selected station is styled in both lists and on the map, with 12px clickable overlay markers and a 4px primary route line; a failed Save shows an error and keeps the preview for a retry (MEM-088 R3a/R3b).
+- Route view mounts one station card with a tap summary, so Load demo shows the seeded Kendall taps (MEM-110, ADR 0063).
+- Pal's first-run tour: a skippable, persisted 10-step tour that explains the memory palace method and points at the four places that matter; step 3 draws Pal's dog house segmented into 5 numbered spots; Settings gains a "Pal's tour" replay button; the browser drivers seed the tour key and shoot tour steps (MEM-095, MEM-112).
+- Memri copilot groundwork (planned specs MEM-097..099, ADR 0064): pure tool-policy (allow/ask/off) and undo-stack modules with a copilot dispatcher, street-photo scenes with Mapillary credit and baseline credit fields (run_live Mapillary token), and a Messenger-style Pal chat bubble whose chats live in the on-device db and travel with the palace export.
+- POST /baseline is mounted in create_app; the fixture-or-live provider choice is routes_baseline.default_baseline_provider (MEM-098).
+- A shared page-wide openDb; the Pal bubble opens through it (MEM-099).
+- Landmark fun facts with citations and editable multisensory connections, as a pure module with no UI mount or network call (static/landmark_facts.js, MEM-120).
+- ADR gaps pass only for numbers the decisions README reserves, and a stale reservation fails (MEM-018, ADR 0062).
+- Meta spend cap degrade: every sent Meta attempt (retries included) is charged; past the cap the model routes return saved results, the backup chat provider or 503 meta_spend_cap_reached (/scenes tier 3), say which in header X-Memripal-Spend-Cap, and the page names it in a dismissible top toast that never blocks the controls under it (MEM-121, ADR 0061; KevinKbyte/MemriPal#7).
+- Bring your own Meta key past the spend cap: only when the toast says live steps are paused, a visitor may paste their own Meta key, held in page memory only and sent only in X-Memripal-Meta-Key on the 5 model routes; the server runs that request on a fresh per-request backend, client and $5 guard (MEMRIPAL_BYOK_SPEND_CAP_USD) under an HMAC-named spend dir, with no backup provider, shared cache or call budget; X-Memripal-Byok reports invalid, limit or rejected:<model> (MEM-122, ADR 0061; KevinKbyte/MemriPal#12).
 
-- Memri copilot groundwork: tool policy, undo stack and copilot dispatch for agent tool calls (MEM-097, ADR 0061).
-- Mapillary street photos: credit strip (Mapillary logo, contributor, original-image link, AI-modified label, CC BY-SA 4.0) and server-side baseline credit validation; street-photo scene token; `scripts/run_live.ps1` decrypts an optional Mapillary DPAPI token into the child (MEM-098, ADR 0061).
-- Pal chat bubble and chat store, with chats carried through palace export and import (MEM-099, ADR 0061). The bubble is not yet mounted in `static/index.html`.
+### Changed
+
+- Deploy runbook (deploy-gcp.md): PowerShell forms of each command, winget gcloud install, the billingbudgets API and --filter-projects (KevinKbyte/MemriPal#13).
+- ADR renumbering at land: reserved ADR numbers 0061 -> 0062, route view station card 0061 -> 0063, Memri copilot 0058 -> 0064; the tour replay MEM-097 -> MEM-112; leftover "MEM-095 part C" references now say MEM-122.
+- `_BudgetedBackend` moved to bodies.py next to BudgetExhausted (still importable from memripal.app), keeping app.py under its MEM-060 line budget.
+
+### Fixed
+
+- Route and rehearsal ids, the route builder's picked stations and route saves mint v4 ids without crypto.randomUUID, so they work on plain-http (insecure-context) hosts (MEM-048, MEM-088).
+- .field columns use minmax(0, 1fr) and the file input max-width 100%, so a control never widens the page at 360px; e2e step 14 passes (MEM-072).
+- screenshot_design.py ignores only the root /favicon.ico 404 console error (MEM-067).
+- BYOK security review (MEM-122): /scenes at the visitor's own limit answers tier 3 byok_limit_reached, not the shared cap's code; a key's spend dir is created only once Meta has accepted the key (its first charges count in memory under the guard lock, so the cap still holds for concurrent first calls), so random keys leave nothing on disk; the key field is a CSS-masked text input outside any form, with no name and autocomplete/autocapitalize/spellcheck off, so password managers do not offer to save it (Continue or Enter); the key and its chip are cleared on pagehide and on a back/forward-cache restore.
 
 ## [0.20.50] - 2026-11-04
 
