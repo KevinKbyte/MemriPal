@@ -12,6 +12,8 @@ never written to a file, stdout, the parent environment or a transcript. Exit co
 MEMRIPAL_CHAT_PROVIDER=baseten|fireworks (MEM-026) also decrypts $HOME/.secrets/<provider>-api-key.dpapi
 into the child's BASETEN_API_KEY / FIREWORKS_API_KEY the same way; META_API_KEY is still loaded
 (SAM stays on Meta). Unset, meta and local load no extra key. A missing key file exits 2.
+$HOME/.secrets/mapillary-token.dpapi, when present, is decrypted into the child's
+MEMRIPAL_MAPILLARY_TOKEN the same way (ADR 0054); when absent the child launches without it.
 #>
 
 # Arguments are parsed by hand instead of a param() block: PowerShell would positionally bind
@@ -83,6 +85,15 @@ if ($ProviderKeyFile) {
     $psi.EnvironmentVariables[$Provider.ToUpper() + '_API_KEY'] = $plain
     $providerSecure.Dispose()
     Remove-Variable providerSecure, plain
+}
+# Optional (ADR 0058): an absent token file just leaves street photos off; it overrides any parent value.
+$MapillaryTokenFile = Join-Path $HOME '.secrets/mapillary-token.dpapi'
+if (Test-Path -LiteralPath $MapillaryTokenFile -PathType Leaf) {
+    $mapillarySecure = ConvertTo-SecureString -String (Get-Content -LiteralPath $MapillaryTokenFile -Raw).Trim()
+    $plain = (New-Object System.Net.NetworkCredential('', $mapillarySecure)).Password
+    $psi.EnvironmentVariables['MEMRIPAL_MAPILLARY_TOKEN'] = $plain
+    $mapillarySecure.Dispose()
+    Remove-Variable mapillarySecure, plain
 }
 
 $child = [System.Diagnostics.Process]::Start($psi)
