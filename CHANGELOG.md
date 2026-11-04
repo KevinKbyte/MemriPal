@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.60] - 2026-11-04
+
+### Fixed
+
+- Pal's tour step 3 stickers (MEM-109, ADR 0067): Tab now reaches each dog-house sticker (focus trap order Skip, the 5 stickers, Roll all, Back, Next) and Enter/Space re-rolls the focused one; a tap on a sticker mid-roll restarts its spin instead of looking ignored; replaying the tour from Settings rolls fresh stickers.
+
 ## [0.20.59] - 2026-11-04
 
 ### Added
