@@ -104,14 +104,18 @@
               <dl id="station-profile"></dl>
               <fieldset id="station-taps">
                 <legend>Your notes on this spot</legend>
-                <p>Sound</p>
-                <div id="tap-sound" class="btn-row"></div>
-                <p>Smell</p>
-                <div id="tap-smell" class="btn-row"></div>
-                <p>Feel</p>
-                <div id="tap-feel" class="btn-row"></div>
-                <p>Mood</p>
-                <div id="tap-mood" class="btn-row"></div>
+                <div class="emoji-tags">
+                  <ul id="station-emojis" class="emoji-row" aria-label="Senses at this spot"></ul>
+                  <button id="emoji-add" class="btn emoji-add" type="button" aria-label="Add an emoji">+</button>
+                </div>
+                <div class="btn-row">
+                  <button id="emoji-remove" class="btn" type="button" hidden>Remove</button>
+                  <button id="emoji-undo" class="btn" type="button" hidden>Undo</button>
+                </div>
+                <div id="emoji-picker" class="emoji-picker" hidden>
+                  <input id="emoji-search" type="search" aria-label="Search emojis" autocomplete="off">
+                  <div id="emoji-results" class="emoji-results"></div>
+                </div>
               </fieldset>
               <div class="btn-row">
                 <button id="station-save" class="btn btn-primary" type="button">Save name</button>

@@ -1,7 +1,11 @@
 // @ts-check
 // S3 Station card (MEM-050, plan B5): a named station's name, its Visual / Spatial / Conceptual
-// profile, four quick-tap groups stored on the station, a validated name edit and a drop with
-// arm -> confirm -> Undo. Model-derived text is only ever set via textContent.
+// profile, its emoji tags (MEM-134, ADR 0079: they replace the sound/smell/feel/mood quick-taps; the Next
+// turn group was removed, MEM-135), a validated name edit and a drop with arm -> confirm -> Undo.
+// Model-derived text is only ever set via textContent.
+
+import { EMOJI } from "./emoji_data.js";
+import { MAX_EMOJIS, searchEmoji, startingEmojis } from "./emoji_tags.js";
 
 /** Part A S3 tap groups; the stored value is the tapped label. Smell is the user's own note. */
 export const TAP_GROUPS = {
@@ -14,14 +18,21 @@ export const TAP_GROUPS = {
 /** Display names for the tap groups, matching the card's group headings. */
 export const TAP_GROUP_LABELS = { sound: "Sound", smell: "Smell", feel: "Feel", mood: "Mood" };
 
+// MEM-134: these groups stay stored in station.taps (no data loss) but the card shows them as emoji tags.
+const SENSE_GROUPS = ["sound", "smell", "feel", "mood"];
+/** The tap groups the card still renders as buttons and summary lines. */
+const CARD_TAP_GROUPS = Object.entries(TAP_GROUPS).filter(([group]) => !SENSE_GROUPS.includes(group));
+
+const EMOJI_NAME = new Map(EMOJI.map((x) => [x.e, x.name]));
+
 /**
- * MEM-110: the station's set taps as "<Group>: <label>" lines in TAP_GROUPS order; groups without a value
- * (or with a value outside TAP_GROUPS) produce no line, so an untapped station yields [].
+ * MEM-110 / MEM-134: the station's set non-sense taps (turn) as "<Group>: <label>" lines; groups without a
+ * value (or with a value outside TAP_GROUPS) produce no line, so an untapped station yields [].
  * @param {Record<string, unknown> | undefined | null} taps
  * @returns {string[]}
  */
 export function tapSummary(taps) {
-  return Object.entries(TAP_GROUPS)
+  return CARD_TAP_GROUPS
     .filter(([group, labels]) => typeof taps?.[group] === "string" && labels.includes(/** @type {string} */ (taps[group])))
     .map(([group]) => `${TAP_GROUP_LABELS[/** @type {keyof typeof TAP_GROUP_LABELS} */ (group)]}: ${taps?.[group]}`);
 }
@@ -125,7 +136,7 @@ export function createStationCard({ doc, store, routeId }) {
 
   function renderTaps() {
     renderSummary();
-    for (const [group, labels] of Object.entries(TAP_GROUPS)) {
+    for (const [group, labels] of CARD_TAP_GROUPS) {
       const box = el(`tap-${group}`);
       const btns = labels.map((label) => {
         const b = doc.createElement("button");
@@ -151,6 +162,91 @@ export function createStationCard({ doc, store, routeId }) {
     renderSummary();
     await store.setStationTaps(routeId, stationId, taps);
   }
+
+  // MEM-134 emoji tags: chip row, search picker, and remove as arm -> confirm -> Undo.
+  const chipRow = el("station-emojis");
+  const addBtn = el("emoji-add");
+  const removeBtn = el("emoji-remove");
+  const emojiUndoBtn = el("emoji-undo");
+  const picker = el("emoji-picker");
+  const search = el("emoji-search");
+  const results = el("emoji-results");
+  /** @type {string[]} */
+  let emojis = [];
+  /** @type {string | null} the chip clicked once, awaiting the Remove confirm */
+  let armedEmoji = null;
+  /** @type {string[] | null} the list before the last remove, for Undo */
+  let beforeRemove = null;
+
+  const saveEmojis = () =>
+    stationId === null ? Promise.resolve() : store.setStationEmojis(routeId, stationId, emojis, { edited: true });
+
+  function renderChips() {
+    const items = emojis.map((e) => {
+      const b = doc.createElement("button");
+      b.setAttribute("type", "button");
+      b.className = "emoji-chip";
+      b.textContent = e;
+      b.setAttribute("aria-label", EMOJI_NAME.get(e) ?? e);
+      b.setAttribute("aria-pressed", String(armedEmoji === e));
+      b.addEventListener("click", () => {
+        armedEmoji = armedEmoji === e ? null : e;
+        renderChips();
+      });
+      const li = doc.createElement("li");
+      li.append(b);
+      return li;
+    });
+    chipRow.replaceChildren(...items);
+    removeBtn.hidden = armedEmoji === null;
+    removeBtn.textContent = armedEmoji === null ? "Remove" : `Remove ${armedEmoji}`;
+    addBtn.disabled = emojis.length >= MAX_EMOJIS;
+  }
+
+  function renderPicks() {
+    const btns = searchEmoji(search.value ?? "").map((x) => {
+      const b = doc.createElement("button");
+      b.setAttribute("type", "button");
+      b.className = "emoji-pick";
+      b.textContent = x.e;
+      b.setAttribute("aria-label", x.name);
+      b.addEventListener("click", () => void pickEmoji(x.e));
+      return b;
+    });
+    results.replaceChildren(...btns);
+  }
+
+  async function pickEmoji(/** @type {string} */ e) {
+    if (emojis.includes(e) || emojis.length >= MAX_EMOJIS) return;
+    emojis = [...emojis, e];
+    beforeRemove = null;
+    emojiUndoBtn.hidden = true;
+    renderChips();
+    await saveEmojis();
+  }
+
+  addBtn.addEventListener("click", () => {
+    picker.hidden = !picker.hidden;
+    if (!picker.hidden) renderPicks();
+  });
+  search.addEventListener("input", () => renderPicks());
+  removeBtn.addEventListener("click", async () => {
+    if (armedEmoji === null) return;
+    beforeRemove = emojis;
+    emojis = emojis.filter((e) => e !== armedEmoji);
+    armedEmoji = null;
+    renderChips();
+    emojiUndoBtn.hidden = false;
+    await saveEmojis();
+  });
+  emojiUndoBtn.addEventListener("click", async () => {
+    emojiUndoBtn.hidden = true;
+    if (beforeRemove === null) return;
+    emojis = beforeRemove;
+    beforeRemove = null;
+    renderChips();
+    await saveEmojis();
+  });
 
   nameInput.addEventListener("input", () => void checkName());
   el("station-save").addEventListener("click", async () => {
@@ -186,6 +282,17 @@ export function createStationCard({ doc, store, routeId }) {
       nameInput.value = station.name;
       renderProfile(station);
       renderTaps();
+      emojis = startingEmojis(station);
+      armedEmoji = null;
+      beforeRemove = null;
+      emojiUndoBtn.hidden = true;
+      picker.hidden = true;
+      renderChips();
+      // Tap migration + Muse auto-fill are saved once (edited false); a user-edited list is never rewritten.
+      const storedEmojis = Array.isArray(station.emojis) ? station.emojis : [];
+      if (station.emojisEdited !== true && storedEmojis.join("\n") !== emojis.join("\n")) {
+        await store.setStationEmojis(routeId, id, emojis, { edited: false });
+      }
       setArmed(false);
       undoBtn.hidden = true;
       // A Spark name that clashes on arrival is shown with the error; the user renames. A stored name that
