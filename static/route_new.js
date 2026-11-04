@@ -90,7 +90,13 @@ export function createRouteNew({ doc, routes, fetch, onSaved, onCancel }) {
     if (!stations) return;
     const name = (input("route-new-name")?.value.trim() || defaultName).slice(0, NAME_MAX);
     const id = crypto.randomUUID();
-    await routes.seedRoute({ id, name, kind: "daily", stations });
+    try {
+      await routes.seedRoute({ id, name, kind: "daily", stations });
+    } catch {
+      // The preview is kept, so pressing Save again retries the same route.
+      return say("Couldn't save the route. Try again.");
+    }
+    say();
     stations = null;
     hide();
     await onSaved(id);
