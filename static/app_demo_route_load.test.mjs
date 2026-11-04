@@ -1,12 +1,13 @@
 // Covers: MEM-077
 // Requirement: the app shows the Kendall demo route (plan 2026-11-02-real-map S6, MEM-055 B10 "Load demo
-// route"). Clicking Load demo puts static/demo_route.js DEMO_ROUTE into the route store as one saved route:
+// route"). Clicking Load demo puts static/demo_route.js DEMO_ROUTE into the route store as a saved route
+// (other demo routes, MEM-133, may seed beside it; their own tests pin them):
 // its id, name and kind "daily", its 6 stations in docs/design/map/preview.js order with the preview's
 // titles as names and the preview's coords (within 1e-4, the store's 4 dp). S1 #routes-list then shows its
-// card (Open button aria-label "Open <DEMO_ROUTE.name>", no Draft chip). Since the map-first shell (MEM-072)
+// card among S1's cards (Open button aria-label "Open <DEMO_ROUTE.name>", no Draft chip). Since the map-first shell (MEM-072)
 // Load demo also opens the route: the 6 stations list on S5 and the real map mounts on #route-map with all 6
 // in-bbox stations; nothing mounts the map before Load demo. Seeding is idempotent:
-// a second Load demo, also after a reload over the same store, keeps exactly one demo route. Seeding
+// a second Load demo, also after a reload over the same store, keeps exactly one DEMO_ROUTE and adds no route. Seeding
 // never touches the server (no /station, /baseline or coordinate-bearing request). The room demo on the same
 // click is unchanged (one /loci POST, #recall shown;
 // its existing tests pin the rest), and a route store whose writes fail never breaks it or leaks a rejection.
@@ -20,6 +21,7 @@ import { boot, el, find, findAll, kvAdapter, loadDemo, settle, TURNS, until, wat
 import { memoryAdapter } from "./route_store_fakes_test.mjs";
 import { createRouteStore } from "./route_store.js";
 import { inRealMapBbox } from "./real_map.js";
+import { DEMO_ROUTE } from "./demo_route.js";
 
 const FIXTURE = { status: "ok", mode: "fixture" };
 
@@ -53,10 +55,14 @@ function start(adapter = memoryAdapter()) {
 }
 
 const cards = (b) => findAll(el(b, "routes-list"), (n) => n.tagName === "LI", { visibleOnly: true });
+const openLabel = (li) => find(li, (n) => n.tagName === "BUTTON" && n.dataset.action === "open")?.getAttribute("aria-label");
+/** S1 cards for DEMO_ROUTE (by its Open aria-label). */
+const demoCards = (b) => cards(b).filter((li) => openLabel(li) === `Open ${DEMO_ROUTE.name}`);
+const demoStored = async (routes) => (await routes.listRoutes()).filter((r) => r.id === DEMO_ROUTE.id);
 
-async function loadDemoRoute(b, count = 1) {
+async function loadDemoRoute(b) {
   await loadDemo(b);
-  await until(() => cards(b).length === count, `${count} route card(s) on S1 after Load demo`, TURNS);
+  await until(() => demoCards(b).length === 1, "the DEMO_ROUTE card on S1 after Load demo", TURNS);
   await settle(20);
 }
 
@@ -77,8 +83,8 @@ describe("Load demo seeds the Kendall demo route (plan S6, MEM-077)", () => {
     const rejections = watchRejections(t);
     const { b, routes } = start();
     await loadDemoRoute(b);
-    const list = await routes.listRoutes();
-    assert.equal(list.length, 1, "exactly one route after Load demo");
+    const list = await demoStored(routes);
+    assert.equal(list.length, 1, "exactly one DEMO_ROUTE after Load demo");
     const [r] = list;
     assert.equal(r.status, "saved", "the demo route is saved, not a draft");
     assert.equal(r.kind, "daily");
@@ -96,7 +102,7 @@ describe("Load demo seeds the Kendall demo route (plan S6, MEM-077)", () => {
     const demo = await demoModule();
     const { b, routes } = start();
     await loadDemoRoute(b);
-    const [r] = await routes.listRoutes();
+    const [r] = await demoStored(routes);
     assert.ok(r, "a route was stored");
     assert.equal(r.id, demo.id);
     assert.equal(r.name, demo.name);
@@ -108,7 +114,7 @@ describe("Load demo seeds the Kendall demo route (plan S6, MEM-077)", () => {
     const demo = await demoModule();
     const { b } = start();
     await loadDemoRoute(b);
-    const [li] = cards(b);
+    const [li] = demoCards(b);
     const open = find(li, (n) => n.tagName === "BUTTON" && n.dataset.action === "open");
     assert.ok(open, "card has an Open button");
     assert.equal(open.getAttribute("aria-label"), `Open ${demo.name}`);
@@ -141,21 +147,27 @@ describe("demo route seeding edges (plan S6, MEM-077)", () => {
   test("Load demo twice keeps exactly one demo route", async () => {
     const { b, routes } = start();
     await loadDemoRoute(b);
+    await settle(50);
+    const before = (await routes.listRoutes()).length;
     await loadDemoRoute(b);
     await settle(50);
-    assert.equal((await routes.listRoutes()).length, 1, "still one route after a second Load demo");
-    assert.equal(cards(b).length, 1, "still one card on S1");
+    assert.equal((await demoStored(routes)).length, 1, "still one DEMO_ROUTE after a second Load demo");
+    assert.equal((await routes.listRoutes()).length, before, "no route added by a second Load demo");
+    assert.equal(demoCards(b).length, 1, "still one DEMO_ROUTE card on S1");
   });
 
   test("a reload over the same store, then Load demo: still one demo route", async () => {
     const adapter = memoryAdapter();
     const first = start(adapter);
     await loadDemoRoute(first.b);
+    await settle(50);
+    const before = (await first.routes.listRoutes()).length;
     const second = start(adapter);
-    await until(() => cards(second.b).length === 1, "the stored demo route listed after reload", TURNS);
+    await until(() => demoCards(second.b).length === 1, "the stored demo route listed after reload", TURNS);
     await loadDemoRoute(second.b);
     await settle(50);
-    assert.equal((await second.routes.listRoutes()).length, 1, "no duplicate after reload + Load demo");
+    assert.equal((await demoStored(second.routes)).length, 1, "no DEMO_ROUTE duplicate after reload + Load demo");
+    assert.equal((await second.routes.listRoutes()).length, before, "no route added after reload + Load demo");
   });
 
   test("seeding sends nothing to the server: no /station, /baseline or coordinate-bearing request", async () => {

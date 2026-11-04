@@ -184,7 +184,7 @@ describe("start-screen Pal hidden once a route exists (MEM-082)", () => {
     const p = await boot({ routes, loci: () => jsonResponse({ error: "busy" }, 503) });
     assert.equal(pal(p).hidden, false);
     p.fire(p.els["load-demo"], "click");
-    await until(() => cards(p).length === 1, "demo route card on S1 after Load demo", TURNS);
+    await until(() => cards(p).length >= 1, "demo route card on S1 after Load demo", TURNS);
     await until(() => p.els["upload-status"].textContent.includes("failed"), "room demo failure shown", TURNS);
     await settle(20);
     assert.equal(findAll(p.els.loci, (n) => n.tagName === "LI").length, 0, "the failed room demo drew no palace");

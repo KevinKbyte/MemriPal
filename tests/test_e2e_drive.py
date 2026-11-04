@@ -5,9 +5,10 @@
 # var stripped (no stray passcode, record key or live mode) plus MEMRIPAL_MODE=fixture and the public
 # test host allow-listed; map a base URL to the same port on that non-loopback public host; wait for
 # readiness without hanging when the server dies or the timeout passes; and exit 0 only when exactly
-# 22 steps ran and all passed, 1 on any failure or missing step, 2 when the server never became ready.
+# 23 steps ran and all passed, 1 on any failure or missing step, 2 when the server never became ready.
 # One step is the MEM-037 live-board check after recall replay. The module must import without playwright.
 # The E2E helpers must wait without evaluating page-side JS strings, because the app's CSP forbids eval.
+import ast
 import contextlib
 import importlib.util
 import sys
@@ -20,7 +21,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = REPO_ROOT / "scripts" / "e2e_drive.py"
 E2E_SCRIPTS = sorted((REPO_ROOT / "scripts").glob("e2e_*.py"))
 PUBLIC_HOST = "memripal-e2e.test"
-EXPECTED = 22
+EXPECTED = 23
 
 
 def _load():
@@ -376,3 +377,16 @@ class TestNoEvalWaits:
         ]
         why = "wait_for_function evaluates a JS string, which the CSP forbids:\n"
         assert hits == [], why + "\n".join(hits)
+
+
+# Covers: MEM-132
+# Requirement: the E2E run includes the MEM-132 `chat_route` step (Pal chat creates a walking route), so
+# scripts/e2e_checks.py::run_all calls a step function named for chat_route and the expected count is 23.
+class TestChatRouteStep:
+    def test_run_all_includes_the_chat_route_step(self):
+        tree = ast.parse((REPO_ROOT / "scripts" / "e2e_checks.py").read_text(encoding="utf-8"))
+        run_all = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "run_all")
+        called = [
+            c.func.id for c in ast.walk(run_all) if isinstance(c, ast.Call) and isinstance(c.func, ast.Name)
+        ]
+        assert any("chat_route" in name for name in called), f"run_all step calls: {called}"

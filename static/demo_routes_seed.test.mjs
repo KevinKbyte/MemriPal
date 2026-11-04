@@ -4,7 +4,8 @@
 // T), "Coffee run" (demo-route-coffee, Meta office -> a cafe) and "Landmark loop" (demo-route-landmarks, landmarks
 // counter-clockwise around their centroid), all kind daily with coords on every station and no self-crossing.
 // Load demo seeds them alongside DEMO_ROUTE, idempotent by id; when demo_routes.json cannot be fetched it seeds
-// DEMO_ROUTE alone. Load demo fetches it through deps.fetch at a URL ending data/demo_routes.json.
+// none of them (DEMO_ROUTE and the in-code six-principles route, demo_principles_route.test.mjs, still seed).
+// Load demo fetches it through deps.fetch at a URL ending data/demo_routes.json.
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -132,17 +133,20 @@ const ids = async (routes) => (await routes.listRoutes()).map((r) => r.id).sort(
 
 // Covers: MEM-133
 // Requirement: Load demo seeds the curated routes alongside DEMO_ROUTE, idempotent by id; a fetch failure seeds
-// DEMO_ROUTE alone and never breaks the room demo.
+// none of the curated routes (DEMO_ROUTE still seeds) and never breaks the room demo.
 describe("MEM-133 Load demo seeds the curated routes", () => {
   test("after Load demo the Routes tab lists DEMO_ROUTE plus every curated route", async (t) => {
     const rejections = watchRejections(t);
     const want = [DEMO_ROUTE.id, ...demoRoutes().map((r) => r.id)].sort();
     const { b, routes } = start();
     await loadDemo(b);
-    await untilStored(routes, (n) => n === want.length, `${want.length} routes stored`);
-    assert.deepEqual(await ids(routes), want);
+    await untilStored(routes, (n) => n >= want.length, `${want.length} routes stored`);
+    await settle(80);
+    const got = await ids(routes);
+    for (const id of want) assert.ok(got.includes(id), `${id} stored`);
+    assert.equal(new Set(got).size, got.length, "ids unique");
     for (const id of IDS) assert.ok(want.includes(id));
-    await until(() => cards(b).length === want.length, `${want.length} route cards listed`, TURNS);
+    await until(() => cards(b).length === got.length, `${got.length} route cards listed`, TURNS);
     assert.ok(cards(b).length >= 3);
     assert.deepEqual(rejections, []);
   });
@@ -151,20 +155,25 @@ describe("MEM-133 Load demo seeds the curated routes", () => {
     const want = [DEMO_ROUTE.id, ...demoRoutes().map((r) => r.id)].sort();
     const { b, routes } = start();
     await loadDemo(b);
-    await untilStored(routes, (n) => n === want.length, "first seed done");
+    await untilStored(routes, (n) => n >= want.length, "first seed done");
+    await settle(80);
+    const first = await ids(routes);
     await loadDemo(b);
     await settle(80);
-    assert.deepEqual(await ids(routes), want);
+    assert.deepEqual(await ids(routes), first);
+    for (const id of want) assert.ok(first.includes(id), `${id} stored`);
   });
 
   for (const serve of ["404", "reject"]) {
-    test(`demo_routes.json ${serve === "404" ? "answering 404" : "failing to fetch"} seeds DEMO_ROUTE alone`, async (t) => {
+    test(`demo_routes.json ${serve === "404" ? "answering 404" : "failing to fetch"} seeds DEMO_ROUTE, no curated route`, async (t) => {
       const rejections = watchRejections(t);
       const { b, routes } = start(serve);
       await loadDemo(b);
       await untilStored(routes, (n) => n >= 1, "DEMO_ROUTE stored");
       await settle(80);
-      assert.deepEqual(await ids(routes), [DEMO_ROUTE.id]);
+      const got = await ids(routes);
+      assert.ok(got.includes(DEMO_ROUTE.id), "DEMO_ROUTE stored");
+      for (const id of IDS) assert.ok(!got.includes(id), `${id} not stored without demo_routes.json`);
       assert.equal(el(b, "recall").hidden, false, "the room demo still shows #recall");
       assert.deepEqual(rejections, []);
     });

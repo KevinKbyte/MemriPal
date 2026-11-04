@@ -79,10 +79,12 @@ describe("opening a route card from #routes-list (MEM-072)", () => {
     const adapter = memoryAdapter();
     await loadDemo(start(adapter).b);
     const { b, realMap } = start(adapter);
-    await until(() => cards(b).length === 1, "the stored demo route listed after reload", TURNS);
+    const demoOpen = () => cards(b).map((li) => find(li, (n) => n.tagName === "BUTTON" && n.dataset.action === "open"))
+      .find((btn) => btn?.getAttribute("aria-label") === `Open ${DEMO_ROUTE.name}`);
+    await until(() => Boolean(demoOpen()), "the stored demo route listed after reload", TURNS);
     assert.equal(realMap.calls.length, 0, "no map mount at boot before a route is opened");
     showOnly(b, "tab-landmarks");
-    const open = find(cards(b)[0], (n) => n.tagName === "BUTTON" && n.dataset.action === "open");
+    const open = demoOpen();
     assert.ok(open, "the card has an Open button");
     b.p.fire(open, "click");
     await assertRouteOpen(b, realMap);
