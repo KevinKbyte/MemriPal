@@ -42,21 +42,24 @@ NFR: 0 live calls in fixture mode; token never in `.env`, the repo, logs or chat
 - Accept: fixture mode makes 0 live calls; passcode 401 precedes any body read; every derived scene renders the full
   credit block; every Muse Image prompt carries the no-restore rule; the spend guard counts each edit.
 
-## MEM-099 Copilot placement: Messenger-style Pal chat bubble with on-device chats (PLANNED)
+## MEM-099 Copilot placement: Messenger-style Pal chat bubble with on-device chats
 
-PLANNED, not built. Item 21. ADR [0064](../../../../docs/decisions/0064-memri-copilot-street-photo-scenes.md)
+Item 21. ADR [0064](../../../../docs/decisions/0064-memri-copilot-street-photo-scenes.md)
 (amendment 2026-11-03: chat bubble). Kev asked for a Messenger-style bubble, draggable, with multiple user-managed
 chats kept in the on-device SQLite db and carried by export/import.
 Decided-by: ADR-0064
 Root problem: the copilot must be reachable from every screen, not one tab, and its chats are user data that must
 stay on the device and travel with the palace backup.
-Actors: the user; new `static/pal_bubble.js` + `static/pal_bubble.css` (self-mounting DOM); new
+Actors: the user; `static/pal_bubble.js` + `static/pal_bubble.css` (self-mounting DOM);
 `static/chat_store.js`; `static/db/schema.js` (migration V2); `static/db/worker.js` (opfs-sahpool);
-`static/palace_export.js`; one `<script type="module">` line in `static/index.html`. <!-- claim-exempt: planned -->
+`static/palace_export.js`; one `<script type="module">` line in `static/index.html`.
 NFR: no server storage of chats; CSP unchanged; ASCII only; touch, mouse and keyboard all work; the only S6 hot-file
 edit is the mount line, landed after MEM-088.
 - B1: the bubble shows on every screen; tap, click or Enter opens the panel; an outside click or Esc collapses it;
   reopening resumes the same chat.
+- Mount: `static/index.html` loads `/static/pal_bubble.js` once, right after `/static/app.js`; `mountPalBubble` adds
+  exactly one `<link rel="stylesheet" href="/static/pal_bubble.css">` to `<head>` (idempotent on re-mount), so
+  index.html carries no bubble `<link>`.
 - B2: pointer-event drag (touch and mouse); the bubble stays where dropped, clamped to the viewport and re-clamped on
   resize; arrow keys move it; its position persists across reloads; a drag never opens it.
 - B3: `chats` and `chat_messages` tables arrive in migration V2; soft delete via `deleted_at`; rows are never
@@ -70,3 +73,6 @@ edit is the mount line, landed after MEM-088.
   at all 4 edges, survives a reload and is keyboard-movable; V2 migrates a V1 db with routes intact; delete confirm
   plus Undo restores the chat; export then import round-trips chats; a v2 file still imports; a hostile `chats[]` is
   rejected or skipped with 0 partial writes.
+
+Tests: static/pal_bubble.test.mjs (incl. "MEM-099 Pal bubble loads its own stylesheet"), static/chat_store.test.mjs,
+static/palace_export_chats.test.mjs, tests/test_assets_wiring.py::test_index_loads_pal_bubble_module_once_after_app_js
