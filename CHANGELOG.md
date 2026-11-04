@@ -6,6 +6,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ### Fixed
 
+- Cloud Run image (MEM-034, ADR 0069): the Dockerfile sets MEMRIPAL_META_SPEND_DIR=/tmp/memripal/meta-spend, so the non-root runtime user (no home dir) can write Meta spend-guard state; every Meta-routed call previously returned 500 with PermissionError on /home/memripal. Spend state resets when the instance restarts.
+
 - Auto-numbered loci now follow a route that never crosses itself: `route_order` keeps the MEM-013 reading order when it is already clean, otherwise untangles it with 2-opt (exact integer meeting tests: crossings, T-touches, collinear overlaps), falling back to a top-to-bottom (y, x) sort when 2-opt cannot clear a meeting; demo replay fixtures regenerated. Manual renumbering override is not part of this change (MEM-113, ADR 0070).
 
 ## [0.20.63] - 2026-11-04
