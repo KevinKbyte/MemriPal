@@ -114,7 +114,7 @@ describe("MEM-044 P1 painterly theme (static/theme-painterly.css)", () => {
       ["--muted", "--surface", 4.5], ["--muted", "--surface-2", 4.5], ["--on-primary", "--primary", 4.5],
       ["--primary", "--surface", 4.5], ["--lamp-ink", "--lamp-soft", 4.5], ["--ink", "--lamp-soft", 4.5],
       ["--ok", "--ok-soft", 4.5], ["--bad", "--bad-soft", 4.5], ["--on-bad", "--bad", 4.5],
-      ["--focus", "--bg", 3], ["--line", "--surface", 3],
+      ["--on-lamp", "--lamp", 4.5], ["--focus", "--bg", 3], ["--line", "--surface", 3],
     ];
     for (const [mode, tokens] of Object.entries(modes())) {
       for (const [fg, bg, min] of pairs) {

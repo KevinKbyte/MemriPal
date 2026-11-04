@@ -22,7 +22,7 @@ NFR: CSP-clean (`font-src 'self'`); no remote fonts; all MEM-044 P-checks still 
 - Reset media block (`forced-colors: active`, `prefers-contrast: more`, `print`) drops the crown edge (`.topbar::after` background) and the
   lantern glow (`.live-board li.lit` box-shadow).
 - Accept: 2 woff2 + 2 OFL files exist; every `@font-face` src under `/static/fonts/`; `--on-lamp`/`--glow` in all 3
-  token blocks and read by a rule; `li.lit` background `var(--lamp)`; reset block clears both; all 17 contrast pairs
+  token blocks and read by a rule; `li.lit` background `var(--lamp)`; reset block clears both; all 15 contrast pairs
   AA in light and dark; theme/layout/style_v6 tests green.
 
 Tests: static/theme_painterly.test.mjs, static/layout.test.mjs
