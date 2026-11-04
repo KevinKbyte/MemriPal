@@ -12,6 +12,7 @@ import { seedDemoRoutes } from "./demo_routes.js";
 import { errorCode, runDemoPalace } from "./encode.js";
 import { createHistory } from "./history.js";
 import { createIdbAdapter } from "./idb_adapter.js";
+import { mountLandmarkGallery } from "./landmark_gallery.js";
 import { chunkSamples, encodeWav, postRecallAudio, recordClip, TARGET_SAMPLE_RATE } from "./mic_wav.js";
 import { wireBackup } from "./backup_ui.js";
 import { forgetOnPageHide, showSpendCap, withMetaKey, withSpendCapNotice } from "./byok.js";
@@ -267,6 +268,7 @@ export function wireApp(deps) {
       await view.openRoute(id);
     } }));
   }
+  if (deps.routes) mountLandmarkGallery(doc, deps.routes, deps.fetch);
 
   /**
    * @param {string} transcript

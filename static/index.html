@@ -8,6 +8,7 @@
     <link rel="manifest" href="/static/manifest.webmanifest">
     <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="/static/tour.css">
+    <link rel="stylesheet" href="/static/landmark_gallery.css">
     <link rel="stylesheet" href="/static/theme-painterly.css">
     <meta name="theme-color" content="#1f3a5f">
 
@@ -130,7 +131,25 @@
       </section>
       <section id="tab-landmarks" class="tab-panel" hidden>
         <h2>Landmarks</h2>
-        <ol id="landmarks-list"></ol>
+        <div class="lg-controls">
+          <label for="landmarks-search">Search landmarks</label>
+          <input id="landmarks-search" type="search" maxlength="80" autocomplete="off" placeholder="Name of a landmark">
+          <div class="field">
+            <label for="landmarks-route-input">Routes</label>
+            <input id="landmarks-route-input" type="text" list="landmarks-route-options" maxlength="80" autocomplete="off" placeholder="Type a route name">
+            <datalist id="landmarks-route-options"></datalist>
+          </div>
+          <ul id="landmarks-route-chips" class="lg-chips" aria-label="Selected routes"></ul>
+          <fieldset class="lg-show">
+            <legend>Show</legend>
+            <label><input id="landmarks-show-on-routes" type="radio" name="landmarks-show" value="on-routes" checked><span>On routes</span></label>
+            <label><input id="landmarks-show-candidates" type="radio" name="landmarks-show" value="candidates"><span>Candidates</span></label>
+          </fieldset>
+        </div>
+        <p id="landmarks-count" class="lg-count" role="status"></p>
+        <ul id="landmarks-grid" class="lg-grid"></ul>
+        <p id="landmarks-empty" class="lg-empty" hidden></p>
+        <ol id="landmarks-list" hidden></ol>
       </section>
       <section id="tab-recall" class="tab-panel" hidden>
         <section id="flashcards" class="panel" aria-labelledby="flashcards-title">
