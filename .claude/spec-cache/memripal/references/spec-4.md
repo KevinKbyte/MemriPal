@@ -437,3 +437,11 @@ Decision: ADR [0049](../../../../docs/decisions/0049-recall-schedule-and-push-re
 - Accept: S = 11-03 18:00 with T = 11-21; no deadline; T = S+12h; T already passed.
 
 Tests: (filled at land)
+## MEM-096 Real map resizes when its box gains size (PLANNED)
+
+- A map mounted into a 0x0 box (hidden route view) grows when the box later gains size: `static/real_map.js` observes
+  the map box with `win.ResizeObserver` and calls `map.resize()` on a non-zero box; a 0x0 box never resizes.
+- The observer disconnects when the map is removed (remount of the same svg); no `win.ResizeObserver` -> mount still
+  resolves `{ map }`.
+
+Tests: static/real_map_resize.test.mjs
