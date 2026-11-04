@@ -224,3 +224,5 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0078](0078-sticker-drag-snap-explicit-regen.md) Tap selects a sticker, drag moves it and snaps to the nearest
   segmented locus box, an explicit New sticker button regenerates, every change undoable (over tap-regen plus
   long-press drag, or a drag handle per sticker).
+- [0079](0079-chat-route-intent-client-side.md) Chat route intent: client regex + `create_route` copilot tool over
+  `planRoute`; demo routes generated offline (over LLM tool-calling or a button).
