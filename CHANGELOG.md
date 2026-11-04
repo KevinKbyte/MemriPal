@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.55] - 2026-11-04
+
+### Added
+
+- Pal's tour step 3 (MEM-117, ADR 0065): emoji composite stickers on Pal's dog house. Each item is broken into keywords (`static/stickers.js`: pool, keywords, search, compose, rollAll, rollOne) and their emoji are mashed into one sticker anchored at each spot's top-right corner. Tap, Enter or Space on a sticker re-rolls it; `#tour-roll` "Roll all" (house step only) re-rolls all five. Rows show the sticker as the icon with a `.tour-kw` keywords caption ("sizzling + bacon"). Rolls survive Next/Back; reduced motion disables the roll animation. Step-3 rows show a numbered badge in place of the visually hidden spot name so the card fits a 375x812 phone.
+
 ## [0.20.54] - 2026-11-04
 
 ### Changed
