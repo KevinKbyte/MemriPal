@@ -166,3 +166,7 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0060](0060-demo-route-seeded-taps-and-profile.md) Demo route seeds photo-derived `taps` `{ sound, smell, feel,
   mood }` and `profile` in `static/demo_route.js`, copied by `seedRoute`, no `turn` (S5 list, MEM-077) and no photos;
   amends 0042 (over an importable backup file or committed photos).
+- [0061](0061-memri-copilot-street-photo-scenes.md) Memri copilot: Mapillary street photos go through SAM + Muse Image
+  into CC BY-SA 4.0 memory scenes with per-scene credit; C-style pure modules (tool policy, undo stack, `/baseline`),
+  Messenger-style Pal chat bubble with on-device chats, fixture-mode demo; amends map-to-palace D1 (over a
+  display-only copilot or S11 add-ons only).
