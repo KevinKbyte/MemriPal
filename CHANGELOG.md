@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [0.20.41] - 2026-11-03
 
+### Added
+
+- Memorize client logic (static/memorize.js): notes-mode /split client, keyword edit re-split with 0 model calls, /associate per keyword and station, client mnemonics, Jaccard + capacity route recommendation with a reason, MemorizeItem list:<id> and backup lists[]; the 6-technique demo notes (fixtures/demo/study_techniques.txt) with a live-recorded split replay fixture so fixture mode makes 0 live calls (MEM-087).
+
 ### Fixed
 
 - Real Kendall map no longer stays blank or undersized when its box starts at 0x0 and gains size later (hidden tab, zero viewport): the loader resizes it from a ResizeObserver (MEM-096, ADR 0054).
