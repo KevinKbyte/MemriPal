@@ -4,7 +4,9 @@
 // Save enforces 3-8 named stations. Coordinates are rounded at write: the user's own GPS to 4 dp (about
 // 11 m), public places (seeded stations, map candidates) to 5 dp (about 1 m, ADR 0053).
 
+import { normalizeEmojis } from "./emoji_tags.js";
 import { emojiFor } from "./landmark_emoji.js";
+import { coordsOf, copyEmojis, kindOf } from "./route_store_fields.js";
 import { newId as randomId } from "./uuid.js";
 
 export { createCaptureSession } from "./route_capture.js";
@@ -21,7 +23,7 @@ export { createCaptureSession } from "./route_capture.js";
  * @typedef {{
  *   id: string, n: number, name: string, photo_ref: string, status: "pending" | "named" | "error",
  *   box?: Box, profile?: Record<string, string>, taps?: Record<string, string>, coords?: Coords,
- *   address?: string, osm_id?: string, emoji?: string,
+ *   address?: string, osm_id?: string, emoji?: string, emojis?: string[], emojisEdited?: boolean,
  * }} Station
  * @typedef {{ key: string, osm_id?: string, name?: string, lat?: number, lng?: number,
  *   address?: string | null }} Candidate auto_loci.js candidates() entry, or a bare { key } of a stored one
@@ -34,7 +36,6 @@ export { createCaptureSession } from "./route_capture.js";
 
 export const MAX_STATIONS = 8;
 export const MIN_SAVE_STATIONS = 3;
-const KINDS = new Set(["daily", "occasional"]);
 const ROUTE_KEY = (/** @type {string} */ id) => `route:${id}`;
 const PHOTO_KEY = (/** @type {string} */ ref) => `photo:${ref}`;
 
@@ -49,24 +50,6 @@ export class StorageError extends Error {
     this.name = "StorageError";
     this.value = value;
   }
-}
-
-/** @param {unknown} kind @returns {"daily" | "occasional"} */
-function kindOf(kind) {
-  if (!KINDS.has(/** @type {string} */ (kind))) throw new TypeError("kind must be daily or occasional");
-  return /** @type {"daily" | "occasional"} */ (kind);
-}
-
-const round4 = (/** @type {number} */ v, dp = 4) => Math.round(v * 10 ** dp) / 10 ** dp;
-
-/**
- * @param {any} c @param {number} [dp] 4 for the user's own GPS, 5 for public places (ADR 0053)
- * @returns {Coords | null} null for anything that is not a finite lat/lon pair
- */
-function coordsOf(c, dp = 4) {
-  const lat = c?.lat, lon = c?.lon;
-  const ok = Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
-  return ok ? { lat: round4(lat, dp), lon: round4(lon, dp) } : null;
 }
 
 const CANDIDATE_OSM = "candidate:osm:";
@@ -297,6 +280,17 @@ export function createRouteStore(adapter, { now = Date.now, newId = () => random
         return persist(clone(st), [putRoute(r)]);
       }),
 
+    /** Emoji tags (MEM-134): an auto save (edited false) never clears an earlier user edit. */
+    setStationEmojis: (/** @type {string} */ routeId, /** @type {string} */ stationId, /** @type {unknown} */ emojis,
+      { edited = true } = {}) =>
+      serial(async () => {
+        const r = await mustGet(routeId);
+        const st = r.stations[indexOf(r, stationId)];
+        st.emojis = normalizeEmojis(emojis);
+        st.emojisEdited = edited || st.emojisEdited === true;
+        return persist(clone(st), [putRoute(r)]);
+      }),
+
     /** @param {string} routeId @param {string} stationId @param {"pending" | "error"} status */
     setStationStatus: (routeId, stationId, status) => serial(async () => {
       if (status !== "pending" && status !== "error") throw new TypeError(`bad station status ${status}`);
@@ -410,6 +404,7 @@ export function createRouteStore(adapter, { now = Date.now, newId = () => random
         if (s.box) st.box = { ...s.box };
         if (s.profile) st.profile = { ...s.profile };
         if (s.taps) st.taps = { ...s.taps };
+        copyEmojis(s, st);
         r.stations.push(st);
         // A photo-less station (ADR 0043) restores with no photo record.
         if (s.photo !== undefined) writes.push(putPhoto(st.photo_ref, s.photo));
@@ -444,6 +439,7 @@ export function createRouteStore(adapter, { now = Date.now, newId = () => random
           if (s.emoji) st.emoji = s.emoji;
           if (s.profile) st.profile = { ...s.profile };
           if (s.taps) st.taps = { ...s.taps };
+          copyEmojis(s, st);
           return st;
         }),
       };

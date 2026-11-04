@@ -3,11 +3,14 @@
 // check of a file's routes. Both sides use the same per-field allowlists, so coordinates, timestamps,
 // baselines and any field added to the store later never reach a backup or the store from one.
 
+import { MAX_EMOJIS } from "./emoji_tags.js";
 import { MAX_STATIONS, MIN_SAVE_STATIONS } from "./route_store.js";
 
 const THUMB = { maxSide: 640, quality: 0.7 };
 const ROUTE_KEYS = ["id", "name", "kind", "created_at", "stations", "lists"];
-const STATION_KEYS = ["id", "n", "name", "status", "box", "profile", "taps", "photo"];
+const STATION_KEYS = ["id", "n", "name", "status", "box", "profile", "taps", "photo", "emojis", "emojisEdited"];
+// Absent on a photo-less station (ADR 0043) or one written before emoji tags (MEM-134).
+const OPTIONAL_STATION_KEYS = ["photo", "emojis", "emojisEdited"];
 const LIST_KEYS = ["id", "name", "status"];
 const BOX_KEYS = ["x1", "y1", "x2", "y2"];
 // route_capture.js profileOf; the four sensory taps of a station.
@@ -17,6 +20,7 @@ const KINDS = ["daily", "occasional"];
 const LIST_STATUSES = ["active", "retired"];
 const NAME_MAX = 100;
 const LINE_MAX = 200; // route_capture.js MAX_LINE
+const EMOJI_MAX = 16; // emoji_tags.js normalizeEmojis entry cap, in UTF-16 units
 const JPEG_PREFIX = "data:image/jpeg;base64,";
 const JPEG_URL_RE = /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -96,6 +100,18 @@ function stringsOf(v, keys) {
 }
 
 /**
+ * A station's emojis / emojisEdited, each only when it has one (MEM-134); used on both sides.
+ * @param {Record<string, any>} st
+ */
+function emojisOf(st) {
+  /** @type {{ emojis?: string[], emojisEdited?: boolean }} */
+  const out = {};
+  if (Array.isArray(st.emojis)) out.emojis = [...st.emojis];
+  if (typeof st.emojisEdited === "boolean") out.emojisEdited = st.emojisEdited;
+  return out;
+}
+
+/**
  * Export side: one named station, its stored photo re-encoded to the thumbnail and its box scaled to it.
  * @param {RouteStore} routes @param {Thumbnail} thumbnail @param {any} st
  */
@@ -109,6 +125,7 @@ async function stationOut(routes, thumbnail, st) {
     box: null,
     profile: stringsOf(st.profile, PROFILE_KEYS),
     taps: stringsOf(st.taps, TAP_KEYS),
+    ...emojisOf(st),
   };
   // A seeded demo station has no photo (ADR 0043): no photo key, and no box since a box needs a photo.
   if (stored === null || stored === undefined) return base;
@@ -171,19 +188,26 @@ function stringMapIn(v, keys, what) {
  * @param {unknown} st @param {LoadImage} loadImage
  */
 async function stationIn(st, loadImage) {
-  // `photo` is optional (ADR 0043); every other key is required and nothing else is allowed.
-  const hasPhoto = isObject(st) && Object.hasOwn(st, "photo");
-  const keys = hasPhoto ? STATION_KEYS : STATION_KEYS.filter((k) => k !== "photo");
-  if (!isObject(st) || !exactKeys(st, keys)) throw new Error("bad station");
-  const { id, n, name, status, box, profile, taps, photo } = st;
+  // OPTIONAL_STATION_KEYS may be absent; every other key is required and nothing else is allowed.
+  if (!isObject(st)) throw new Error("bad station");
+  const hasPhoto = Object.hasOwn(st, "photo");
+  const keys = STATION_KEYS.filter((k) => !OPTIONAL_STATION_KEYS.includes(k) || Object.hasOwn(st, k));
+  if (!exactKeys(st, keys)) throw new Error("bad station");
+  const { id, n, name, status, box, profile, taps, photo, emojis, emojisEdited } = st;
   if (typeof id !== "string" || !UUID_RE.test(id) || !Number.isInteger(n) || n < 1) throw new Error("bad station");
   if (!shortText(name, NAME_MAX) || status !== "named") throw new Error("bad station");
+  // Same rules as emoji_tags.js normalizeEmojis, but a file breaking them is refused rather than repaired.
+  const emojisOk = emojis === undefined || (Array.isArray(emojis) && emojis.length <= MAX_EMOJIS
+    && emojis.every((e) => shortText(e, EMOJI_MAX)));
+  if (!emojisOk) throw new Error("bad station emojis");
+  if (emojisEdited !== undefined && typeof emojisEdited !== "boolean") throw new Error("bad station emojisEdited");
   if (!hasPhoto) {
     if (box !== null) throw new Error("station box needs a photo");
     return {
       id, n, name, box: null,
       profile: stringMapIn(profile, PROFILE_KEYS, "profile"),
       taps: stringMapIn(taps, TAP_KEYS, "taps"),
+      ...emojisOf(st),
     };
   }
   // Checked before decode, so no other scheme (javascript:, http:, png) ever reaches loadImage.
@@ -215,6 +239,7 @@ async function stationIn(st, loadImage) {
     id, n, name, box: boxOut,
     profile: stringMapIn(profile, PROFILE_KEYS, "profile"),
     taps: stringMapIn(taps, TAP_KEYS, "taps"),
+    ...emojisOf(st),
     photo: bytes,
   };
 }
