@@ -82,3 +82,14 @@ export const MEM095_IDS = [
 // only on steps that have them; the toast only after a skip.
 // MEM-117: #tour-roll shows only on the house step.
 export const MEM095_MAY_START_HIDDEN = ["tour", "tour-house", "tour-fig", "tour-after", "tour-toast", "tour-roll"];
+
+// MEM-045 (sticker pool + upload, ADR 0066): the Recall tab's sticker panel after #loci: Spot select, picture and
+// description inputs, Stick it on, error line, placed list and the peel-off Undo toast.
+export const MEM045_IDS = [
+  "sticker-panel", "sticker-locus", "sticker-file", "sticker-desc", "sticker-add", "sticker-error", "sticker-placed",
+  "sticker-toast", "sticker-toast-text", "sticker-undo",
+];
+
+// MEM-045: sticker_board.js shows the panel once the demo photo has loci; the error only on a bad upload and the
+// toast only after a peel-off.
+export const MEM045_MAY_START_HIDDEN = ["sticker-panel", "sticker-error", "sticker-toast"];
