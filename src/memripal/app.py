@@ -1,13 +1,12 @@
 """FastAPI app: health, static shell (MEM-001), POST /loci (MEM-015), demo photo (MEM-017),
 POST /split (MEM-020), POST /associate (MEM-021), demo notes (MEM-023), POST /scenes (MEM-028),
 POST /recall/audio and the demo recall replay (MEM-032), deploy guards (MEM-034), signed records (MEM-036),
-POST /station (MEM-083)."""
+POST /station (MEM-083), POST /baseline (MEM-098)."""
 
 import base64
 import hmac
 import logging
 import os
-import threading
 from pathlib import Path
 from typing import Any
 
@@ -35,6 +34,7 @@ from memripal.bodies import (
     _associate_body,
     _BodyCap,
     _box_ok,
+    _BudgetedBackend,
     _call_failed,
     _error,
     _length_error,
@@ -59,6 +59,7 @@ from memripal.recall_relay import (
     transcript_or_none,
 )
 from memripal.record_sign import record_key, sig_ok, sign_record
+from memripal.routes_baseline import baseline_router, default_baseline_provider
 from memripal.routes_station import make_station_router
 from memripal.scenes import render_scene
 from memripal.security_headers import SecurityHeaders
@@ -112,30 +113,6 @@ def _ensure_log_handler() -> None:
         lg.setLevel(logging.INFO)
 
 
-class _BudgetedBackend:
-    """Counts live backend.call against a per-instance cap (MEM-034); everything else passes through."""
-
-    def __init__(self, backend: ModelBackend, cap: int) -> None:
-        self._backend = backend
-        self._left = cap
-        # Routes run in the threadpool and /loci fans SAM calls out across threads.
-        self._lock = threading.Lock()
-
-    def __getattr__(self, name: str) -> Any:
-        return getattr(self._backend, name)
-
-    def spend(self) -> None:
-        """Charge one live upstream call; /recall/audio charges each ASR relay here, after validation."""
-        with self._lock:
-            if self._left <= 0:
-                raise BudgetExhausted
-            self._left -= 1
-
-    def call(self, req: Any) -> Any:
-        self.spend()
-        return self._backend.call(req)
-
-
 def create_app(
     backend: ModelBackend | None = None,
     place_provider=None,
@@ -143,12 +120,15 @@ def create_app(
     clock=None,
     saved_roots=None,
     byok_transport=None,
+    baseline_provider=None,
 ) -> FastAPI:
     if backend is None:
         backend = select_backend(None, fixtures_root=REPLAY_DIR, live_cache_root=LIVE_CACHE_DIR)
     if place_provider is None:
         # Fixture mode stays offline end to end, so the demo place replays like every other answer.
         place_provider = FixturePlaceProvider(REPLAY_DIR) if backend.mode == "fixture" else PlaceProvider()
+    if baseline_provider is None:
+        baseline_provider = default_baseline_provider(backend.mode, REPLAY_DIR)
     if asr_client is None and backend.mode != "fixture":
         asr_client = meta_asr_client_from_env()
 
@@ -505,6 +485,11 @@ def create_app(
 
     # Before the /static mount; shares this app's passcode guard, like /loci (MEM-083).
     app.include_router(make_station_router(backend, _passcode_error))
+    # Same passcode guard; the live Mapillary lookups share the deploy call budget and route concurrency cap.
+    budget = call_budget if live else None
+    app.include_router(
+        baseline_router(baseline_provider, _passcode_error, call_budget=budget, max_concurrent=concurrency)
+    )
     app.mount("/static", static_files(STATIC_DIR), name="static")
     return app
 

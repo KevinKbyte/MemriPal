@@ -2,7 +2,7 @@
 
 Status: Accepted
 Amends: [0059](0059-meta-spend-guard.md) (each sent attempt is charged; capped routes degrade instead of failing).
-Relates: [0058](0058-spark-chat-meta-fallback.md) (header + ContextVar pattern), MEM-094, MEM-121, MEM-095 part C.
+Relates: [0058](0058-spark-chat-meta-fallback.md) (header + ContextVar pattern), MEM-094, MEM-121, MEM-122.
 Date: 2026-11-04
 Source: Kev, 2026-11-04, timing "Build now"; scope "Both (Recommended)" = "when credit runs out the app keeps
 working on saved results and the backup chat provider for everyone, and BYOK still lets people who have a Meta key
@@ -28,7 +28,7 @@ keep going live."
   Cons: a new photo past the cap gets no live answer; saved answers only match the exact same request.
 - (C) Both: degrade for everyone (B), and BYOK (A) offered only once the cap is hit (chosen; Kev).
   Pros: judges always see a working app; someone with a key can still go live.
-  Cons: two paths to build and test; BYOK is stacked as a separate change (MEM-095 part C).
+  Cons: two paths to build and test; BYOK is stacked as a separate change (MEM-122).
 
 ## Decision
 
@@ -42,7 +42,7 @@ Option (C), built in two changes. This one (MEM-121) is the degrade half plus th
 - Header `X-Memripal-Spend-Cap: saved | backup | capped` (ContextVar + ASGI middleware, as 0058) drives a toast in
   `static/byok.js`: "Free demo credit is used up (Meta spend cap reached): showing saved results." (and variants).
 
-BYOK (MEM-095 part C) follows on this branch: a per-request MetaBackend + MetaClient + its own guard, shown only
+BYOK (MEM-122) follows on this branch: a per-request MetaBackend + MetaClient + its own guard, shown only
 after this toast.
 
 ## Why this over the others
@@ -67,3 +67,9 @@ answers. (C) keeps the demo working for everyone and still lets keyed visitors g
   session's HTTP client.
 - With `MEMRIPAL_RECORD_KEY` unset the HMAC secret is random per process (as for record signatures), so a key's $5
   state restarts with the server; deploys set the record key, so the limit holds across restarts there.
+- A key's spend dir is created only once Meta has accepted the key (security review, 2026-11-04): a request on a
+  key with no state yet holds its charges in a process-wide in-memory table under the guard lock, which still
+  counts against the cap for every concurrent request on that key, and writes them to `spent.json` once Meta
+  answers anything but 401/403 (or the call raises, as it may have been billed). A 401/403 drops them, so random
+  keys leave nothing on disk. Chosen over deferring every charge until the response (concurrent first calls
+  could then all pass the cap) and over a periodic sweep of empty dirs (the growth still happens between sweeps).

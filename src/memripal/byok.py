@@ -18,9 +18,9 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.datastructures import MutableHeaders
 
-from memripal.backend import BackendCallFailed, MetaBackend
+from memripal.backend import BackendCallFailed, MetaBackend, _atomic_write
 from memripal.meta_client import DEFAULT_BASE_URL, CallResult, MetaClient
-from memripal.meta_spend_guard import MetaSpendCapReached, MetaSpendGuard
+from memripal.meta_spend_guard import _COSTS, _LOCK, MetaSpendCapReached, MetaSpendGuard
 
 HEADER = "X-Memripal-Meta-Key"
 # What happened to the key, for the page: "invalid", "limit" or "rejected:<model>"; absent when all went well.
@@ -30,6 +30,8 @@ DEFAULT_CAP_USD = 5.0
 MAX_KEY_CHARS = 512
 # Meta answers these when the key is wrong, lacks access to the model, or the model is unknown to the key.
 REJECTED_STATUSES = frozenset({401, 403, 404})
+# Only these mean the key itself is bad; any other answer (404 included) shows Meta knows the key.
+BAD_KEY_STATUSES = frozenset({401, 403})
 LIMIT_CODE = "byok_limit_reached"
 REJECTED_CODE = "byok_key_rejected"
 BAD_KEY_CODE = "bad_meta_key"
@@ -88,23 +90,55 @@ class ByokOutcome:
         return f"ByokOutcome(limit={self.limit}, rejected_model={self.rejected_model!r})"
 
 
+# Spend charged on a key Meta has not accepted yet, per state file: memory only, read and written under _LOCK
+# (the shared guards' lock), so it counts against the cap for every concurrent request on that key.
+_UNCONFIRMED: dict[Path, float] = {}
+
+
 class _ByokGuard(MetaSpendGuard):
-    def __init__(self, state_dir: Path, *, cap_usd: float, outcome: ByokOutcome | None = None) -> None:
+    """A provisional guard keeps a new key's charges in _UNCONFIRMED until settle(): a key Meta refuses
+    (401/403) never creates its spend dir, so random keys cannot fill the disk (review 2026-11-04)."""
+
+    def __init__(self, state_dir: Path, *, cap_usd: float, outcome=None, provisional: bool = False) -> None:
         super().__init__(state_dir, cap_usd=cap_usd)
         self._outcome = outcome
+        self._provisional = provisional
+        self._held = 0.0
 
     def charge(self, kind: str) -> None:
-        try:
-            super().charge(kind)
-        except MetaSpendCapReached:
-            if self._outcome is not None:
-                self._outcome.limit = True
-            raise ByokLimitReached(f"BYOK limit of ${self.cap_usd:.2f} reached: {kind} refused") from None
+        cost = _COSTS[kind]
+        with _LOCK:
+            stored = self.spent_usd
+            unconfirmed = _UNCONFIRMED.get(self._path, 0.0)
+            if stored + unconfirmed + cost > self.cap_usd:
+                if self._outcome is not None:
+                    self._outcome.limit = True
+                raise ByokLimitReached(f"BYOK limit of ${self.cap_usd:.2f} reached: {kind} refused")
+            if self._provisional and not self._path.exists():
+                _UNCONFIRMED[self._path] = unconfirmed + cost
+                self._held += cost
+            else:
+                _atomic_write(self._path, json.dumps({"spent_usd": stored + cost}).encode("ascii"))
+
+    def settle(self, *, accepted: bool) -> None:
+        """Release this guard's unconfirmed charges: stored if Meta accepted the key, else dropped."""
+        with _LOCK:
+            held, self._held = self._held, 0.0
+            if not held:
+                return
+            left = _UNCONFIRMED.pop(self._path, 0.0) - held
+            if left > 1e-9:
+                _UNCONFIRMED[self._path] = left
+            if accepted:
+                _atomic_write(self._path, json.dumps({"spent_usd": self.spent_usd + held}).encode("ascii"))
 
 
-def byok_guard(key: str, *, secret: bytes, spend_root: Path, cap_usd: float, outcome=None) -> MetaSpendGuard:
+def byok_guard(
+    key: str, *, secret: bytes, spend_root: Path, cap_usd: float, outcome=None, provisional: bool = False
+) -> MetaSpendGuard:
     """The key's own guard; a new guard for the same key reads the same state, so the limit holds."""
-    return _ByokGuard(spend_dir(key, secret=secret, spend_root=spend_root), cap_usd=cap_usd, outcome=outcome)
+    state_dir = spend_dir(key, secret=secret, spend_root=spend_root)
+    return _ByokGuard(state_dir, cap_usd=cap_usd, outcome=outcome, provisional=provisional)
 
 
 def _model_of(content: dict) -> str:
@@ -120,12 +154,19 @@ def _model_of(content: dict) -> str:
 class _ByokClient(MetaClient):
     """A MetaClient on the visitor's key that turns a refused key into ByokKeyRejected naming the model."""
 
-    def __init__(self, api_key: str, *, outcome: ByokOutcome, **kwargs: Any) -> None:
-        super().__init__(api_key, **kwargs)
+    def __init__(self, api_key: str, *, outcome: ByokOutcome, spend_guard: _ByokGuard, **kwargs: Any) -> None:
+        super().__init__(api_key, spend_guard=spend_guard, **kwargs)
         self._outcome = outcome
+        self._byok_guard = spend_guard
 
     def _send(self, path: str, **content: Any) -> CallResult:
-        result = super()._send(path, **content)
+        # Stored unless Meta answered 401/403; a call that raised may still have been billed, so it is stored.
+        accepted = True
+        try:
+            result = super()._send(path, **content)
+            accepted = result.status not in BAD_KEY_STATUSES
+        finally:
+            self._byok_guard.settle(accepted=accepted)
         if result.status in REJECTED_STATUSES:
             model = _model_of(content)
             self._outcome.rejected_model = model
@@ -158,7 +199,12 @@ def open_session(
 ) -> ByokSession:
     """A fresh backend on `key`: Meta's own base URL, its own guard, no chat fallback, no cache root."""
     outcome = ByokOutcome()
-    guard = byok_guard(key, secret=secret, spend_root=spend_root, cap_usd=cap_usd, outcome=outcome)
+    guard = _ByokGuard(
+        spend_dir(key, secret=secret, spend_root=spend_root),
+        cap_usd=cap_usd,
+        outcome=outcome,
+        provisional=True,
+    )
     client = _ByokClient(
         key, base_url=DEFAULT_BASE_URL, transport=transport, spend_guard=guard, outcome=outcome
     )

@@ -73,10 +73,19 @@ def _distance_m(lat: float, lon: float, other: tuple[float, float]) -> float:
     return EARTH_RADIUS_M * math.hypot(dx, dy)
 
 
+def _author(rec: dict) -> str | None:
+    """Contributor username, or None when blank: CC BY-SA needs a named creator in the credit block."""
+    creator = rec.get("creator")
+    name = creator.get("username") if isinstance(creator, dict) else None
+    return name if isinstance(name, str) and name.strip() else None
+
+
 def _nearest(lat: float, lon: float, data: list) -> dict:
     best, best_d = None, float("inf")
     for rec in data:
         if not isinstance(rec, dict) or not isinstance(rec.get("thumb_1024_url"), str):
+            continue
+        if _author(rec) is None:
             continue
         point = _point(rec)
         if point is None:
@@ -114,11 +123,9 @@ class BaselineProvider:
             # Type name only: an exception message can quote the request URL, which carries the coords.
             _log.warning("baseline lookup failed: %s", type(exc).__name__)
             raise BaselineFailed() from exc
-        creator = rec.get("creator")
-        author = creator.get("username") if isinstance(creator, dict) else None
         return {
             "image": JPEG_DATA_URL + base64.b64encode(jpeg).decode("ascii"),
-            "author": str(author or ""),
+            "author": _author(rec),
             "image_url": IMAGE_PAGE_URL + quote(str(rec["id"]), safe=""),
             "licence": LICENCE,
         }
@@ -172,4 +179,24 @@ class FixtureBaselineProvider:
         path = replay_path(self.root, lat, lon)
         if not path.is_file():
             raise NoBaseline()
-        return json.loads(path.read_bytes())
+        answer = json.loads(path.read_bytes())
+        if not _valid_answer(answer):
+            raise NoBaseline()
+        return answer
+
+
+def _valid_answer(answer: object) -> bool:
+    """A replay must carry the full CC BY-SA credit, same shape as a live answer, or it is not replayed."""
+    if not isinstance(answer, dict) or set(answer) != {"image", "author", "image_url", "licence"}:
+        return False
+    image, author, url = answer["image"], answer["author"], answer["image_url"]
+    return (
+        isinstance(image, str)
+        and image.startswith(JPEG_DATA_URL)
+        and isinstance(author, str)
+        and bool(author.strip())
+        and isinstance(url, str)
+        and url.startswith(IMAGE_PAGE_URL)
+        and len(url) > len(IMAGE_PAGE_URL)
+        and answer["licence"] == LICENCE
+    )

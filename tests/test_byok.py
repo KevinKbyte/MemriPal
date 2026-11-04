@@ -1,5 +1,5 @@
 # Covers: MEM-122
-# Requirement: bring your own key (BYOK), offered only once the Meta spend cap is hit (MEM-095 part C).
+# Requirement: bring your own key (BYOK), offered only once the Meta spend cap is hit (MEM-122).
 # Kev, 2026-11-04: "it should tell user yes they can add their own key if they need to have it keep running,
 # but should have a hard limit on it and to not reuse it afterwards (delete key after done)".
 # - The key rides only in header X-Memripal-Meta-Key, only on the 5 model routes (/loci, /split, /associate,
@@ -430,8 +430,84 @@ class TestByokLimit:
             assert "X-Memripal-Spend-Cap" not in resp.headers
         resp = _scenes(client, {KEY_HEADER: USER_KEY})
         assert resp.headers[OUTCOME_HEADER] == "limit"
+        # The visitor's own limit, not Kev's shared cap (security review, 2026-11-04).
+        assert resp.json() == {"tier": 3, "reason": "byok_limit_reached"}
         assert net.requests == []
         assert shared_guard.spent_usd == 0.0
+
+    # Security review, 2026-11-04: a random key must not leave a spend dir behind (unbounded disk growth).
+    @pytest.mark.parametrize("status", [401, 403])
+    @pytest.mark.parametrize("route", sorted(ROUTES))
+    def test_a_key_meta_refuses_leaves_no_spend_dir(self, tmp_path, route, status):
+        net = _Net(status=status)
+        client = TestClient(_app(tmp_path, net), base_url=LOOPBACK_URL)
+        for key in (USER_KEY, OTHER_KEY):
+            ROUTES[route](client, {KEY_HEADER: key})
+        assert net.requests, "no upstream call was made"
+        assert not (tmp_path / "spend" / "byok").exists()
+
+    def test_a_key_meta_accepts_persists_its_spend(self, tmp_path):
+        from memripal.byok import spend_dir
+
+        net = _Net()
+        client = TestClient(_app(tmp_path, net), base_url=LOOPBACK_URL)
+        assert _split(client, {KEY_HEADER: USER_KEY}).status_code == 200
+        state = spend_dir(USER_KEY, secret=KEY.encode(), spend_root=tmp_path / "spend") / STATE_FILE
+        assert json.loads(state.read_text("ascii"))["spent_usd"] > 0
+
+    def test_unconfirmed_spend_still_counts_against_the_cap(self, tmp_path):
+        """A first call's charge is held in memory until Meta answers; meanwhile it still counts, for every
+        guard on that key (concurrent requests), and a refused key gives it back without touching disk."""
+        from memripal.byok import open_session
+
+        root = tmp_path / "spend"
+        opts = {"secret": KEY.encode(), "spend_root": root, "cap_usd": 0.02}
+        first = open_session(USER_KEY, **opts)
+        second = open_session(USER_KEY, **opts)
+        try:
+            guard_a, guard_b = first.asr_client._spend_guard, second.asr_client._spend_guard
+            guard_a.charge("chat")  # in flight, not yet answered
+            with pytest.raises(MetaSpendCapReached):
+                guard_b.charge("chat")
+            assert not root.exists()
+            guard_a.settle(accepted=False)  # Meta refused the key: nothing was spent, nothing is stored
+            assert not root.exists()
+            guard_b.charge("chat")
+            guard_b.settle(accepted=True)
+            with pytest.raises(MetaSpendCapReached):
+                open_session(USER_KEY, **opts).asr_client._spend_guard.charge("chat")
+        finally:
+            first.close()
+            second.close()
+
+    def test_concurrent_first_calls_on_one_key_stay_under_the_cap(self, tmp_path, monkeypatch):
+        monkeypatch.setenv(BYOK_ENV, "0.02")  # one chat call
+        net = _Net()
+        release = threading.Event()
+
+        def held(request):
+            # The first call stays in flight (charged, not yet answered) until the others have been refused.
+            release.wait(timeout=10)
+            return net(request)
+
+        app = _app(tmp_path, net, byok_net=held)
+        results = []
+
+        def go():
+            results.append(_split(TestClient(app, base_url=LOOPBACK_URL), {KEY_HEADER: USER_KEY}))
+
+        threads = [threading.Thread(target=go) for _ in range(4)]
+        for t in threads:
+            t.start()
+        for _ in range(200):
+            if len(results) >= 3:
+                break
+            threading.Event().wait(0.05)
+        release.set()
+        for t in threads:
+            t.join()
+        assert len(net.requests) == 1
+        assert sorted(r.status_code for r in results) == [200, 503, 503, 503]
 
 
 # Criterion 5: without the header nothing changes.

@@ -1,9 +1,10 @@
 // @ts-check
 // Spend cap notice (MEM-121): when the server's Meta spend cap is reached it says how it is coping in
 // X-Memripal-Spend-Cap; the page names the cap in a dismissible top toast.
-// Bring your own key (MEM-122, MEM-095 part C): only when that toast says "capped", it offers a key field. The
+// Bring your own key (MEM-122): only when that toast says "capped", it offers a key field. The
 // key lives in this module's memory only (no web storage, IndexedDB or cookie), rides only in X-Memripal-Meta-Key
-// on the 5 model routes, and is dropped on reload, on "Forget key", at its limit and when Meta refuses it.
+// on the 5 model routes, and is dropped on reload, on pagehide (bfcache), on "Forget key", at its limit and when
+// Meta refuses it.
 
 export const SPEND_CAP_HEADER = "X-Memripal-Spend-Cap";
 export const KEY_HEADER = "X-Memripal-Meta-Key";
@@ -127,6 +128,26 @@ export function forgetKey(doc) {
 }
 
 /**
+ * The back/forward cache keeps a page's memory, key included (security review, 2026-11-04): pagehide forgets the
+ * key, hides the chip and empties the field; a pageshow restored from that cache (persisted) does the same, in
+ * case pagehide never ran. A no-op without a window (node tests, workers).
+ * @param {any} win
+ * @param {any} doc
+ */
+export function forgetOnPageHide(win, doc) {
+  if (!win || typeof win.addEventListener !== "function") return;
+  const clear = () => {
+    forgetKey(doc);
+    const parts = toasts.get(doc);
+    if (parts) parts.prompt.input.value = "";
+  };
+  win.addEventListener("pagehide", clear);
+  win.addEventListener("pageshow", (/** @type {any} */ ev) => {
+    if (ev?.persisted) clear();
+  });
+}
+
+/**
  * @param {any} doc
  * @param {string} tag
  * @param {string} [text]
@@ -137,12 +158,19 @@ function el(doc, tag, text) {
   return node;
 }
 
-/** The key form inside the toast: copy, password field, Continue, an inline error. @param {any} doc */
+/**
+ * The key prompt inside the toast: copy, key field, Continue, an inline error. Not a <form> and not a password
+ * field (security review, 2026-11-04): Chrome ignores autocomplete=off on a password field in a form and offers
+ * to save it, so this is a plain text field masked in style.css (#byok-key), with no name, that Continue or
+ * Enter reads.
+ * @param {any} doc
+ */
 function buildPrompt(doc) {
-  const form = el(doc, "form");
+  const form = el(doc, "div");
   form.id = "byok";
   form.hidden = true;
-  form.setAttribute("novalidate", "");
+  form.setAttribute("role", "group");
+  form.setAttribute("aria-label", BYOK_COPY.label);
   // A readable measure on desktop; [hidden] in style.css still wins over this display.
   Object.assign(form.style, {
     pointerEvents: "auto", flexBasis: "100%", maxWidth: "34rem", display: "grid", gap: "0.5rem",
@@ -155,15 +183,19 @@ function buildPrompt(doc) {
   label.setAttribute("for", "byok-key");
   const input = el(doc, "input");
   input.id = "byok-key";
-  input.type = "password";
+  input.type = "text";
   input.setAttribute("autocomplete", "off");
   input.setAttribute("spellcheck", "false");
   input.setAttribute("autocapitalize", "off");
   input.setAttribute("aria-describedby", "byok-error");
+  // Password managers that look past autocomplete=off: 1Password, LastPass, Bitwarden.
+  input.setAttribute("data-1p-ignore", "");
+  input.setAttribute("data-lpignore", "true");
+  input.setAttribute("data-bwignore", "");
   const row = el(doc, "div");
   row.classList.add("btn-row");
   const submit = el(doc, "button", BYOK_COPY.submit);
-  submit.type = "submit";
+  submit.type = "button";
   submit.classList.add("btn", "btn-primary");
   const error = el(doc, "p");
   error.id = "byok-error";
@@ -173,8 +205,7 @@ function buildPrompt(doc) {
   field.append(label, input);
   row.append(submit);
   form.append(copy, field, row, error);
-  form.addEventListener("submit", (/** @type {any} */ ev) => {
-    ev.preventDefault();
+  const accept = () => {
     const key = String(input.value ?? "");
     // Cleared either way: the field never keeps a key on screen.
     input.value = "";
@@ -189,8 +220,14 @@ function buildPrompt(doc) {
     const parts = toasts.get(doc);
     if (parts) parts.toast.hidden = true;
     showChip(doc, BYOK_COPY.chip, true);
+  };
+  submit.addEventListener("click", accept);
+  input.addEventListener("keydown", (/** @type {any} */ ev) => {
+    if (ev.key !== "Enter") return;
+    ev.preventDefault();
+    accept();
   });
-  return { form, error };
+  return { form, input, error };
 }
 
 /**

@@ -12,8 +12,15 @@
 # prefers-reduced-motion: reduce (ADR 0036 amendment), so animated pages shoot the same bytes each run,
 # and run launches Chromium with --disable-gpu in `args` (ADR 0036 amendment, option G) because GPU
 # raster makes bytes drift between runs: two runs of one plan write byte-identical PNGs.
+# Console errors count toward errors=N except the browser's automatic favicon request: a preview
+# page with no <link rel=icon> makes the browser fetch /favicon.ico, which python http.server
+# 404s ("Failed to load resource: ... 404 (File not found)" located at <origin>/favicon.ico);
+# is_ignored_console_error(text, url) is True for exactly that message, so it is not counted,
+# while any other 404 (a missing stylesheet, a non-root favicon.ico), a non-404 favicon failure
+# or a JS error still counts.
 import importlib.util
 import sys
+import types
 from pathlib import Path
 
 import pytest
@@ -301,3 +308,82 @@ class TestRunReducedMotionRealBrowser:
         assert module.run(plan, str(out)) == []
         rgb = centre_rgb(out / "s1_tiny_light.png")
         assert is_reduce_bg(rgb), f"centre pixel {rgb}: not rendered under prefers-reduced-motion: reduce"
+
+
+ORIGIN = "http://127.0.0.1:8765"
+FAVICON_404 = "Failed to load resource: the server responded with a status of 404 (File not found)"
+FAVICON_500 = "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+JS_ERROR = "Uncaught TypeError: Cannot read properties of null (reading 'x')"
+
+
+class TestIsIgnoredConsoleError:
+    def test_root_favicon_404_is_ignored(self):
+        assert _load().is_ignored_console_error(FAVICON_404, ORIGIN + "/favicon.ico") is True
+
+    @pytest.mark.parametrize(
+        "text, url",
+        [
+            (FAVICON_404, ORIGIN + "/static/x.css"),
+            (FAVICON_404, ORIGIN + "/docs/design/route/missing.png"),
+            (FAVICON_404, ORIGIN + "/static/favicon.ico"),
+            (FAVICON_404, ORIGIN + "/favicon.ico.css"),
+            (FAVICON_404, ORIGIN + "/not-favicon.ico"),
+            (FAVICON_500, ORIGIN + "/favicon.ico"),
+            (JS_ERROR, ORIGIN + "/docs/design/route/preview.html"),
+            (JS_ERROR, ORIGIN + "/favicon.ico"),
+            ("", ORIGIN + "/favicon.ico"),
+            (FAVICON_404, ""),
+            ("", ""),
+        ],
+    )
+    def test_every_other_console_error_still_counts(self, text, url):
+        assert _load().is_ignored_console_error(text, url) is False
+
+
+def _emit_console_on_goto(monkeypatch, messages_for):
+    """Make the fake page fire console messages (Playwright ConsoleMessage shape) on each goto."""
+    from shooter_support import FakePage
+
+    original_goto = FakePage.goto
+
+    def on(self, event, handler):
+        self.__dict__.setdefault("_handlers", []).append((event, handler))
+
+    def goto(self, url, **kwargs):
+        original_goto(self, url, **kwargs)
+        for text, res_url in messages_for(url):
+            msg = types.SimpleNamespace(
+                type="error", text=text, location={"url": res_url, "lineNumber": 0, "columnNumber": 0}
+            )
+            for event, handler in self.__dict__.get("_handlers", []):
+                if event == "console":
+                    handler(msg)
+
+    monkeypatch.setattr(FakePage, "on", on)
+    monkeypatch.setattr(FakePage, "goto", goto)
+
+
+class TestRunConsoleErrorFilter:
+    def test_favicon_404_alone_reports_no_errors(self, tmp_path, monkeypatch):
+        install_fake_playwright(monkeypatch)
+        _emit_console_on_goto(monkeypatch, lambda url: [(FAVICON_404, ORIGIN + "/favicon.ico")])
+        module = _load()
+        plan = module.shot_plan(_route_pages(tmp_path), ["1", "7"], [("phone", (375, 812))], ["light"])
+        assert module.run(plan, str(tmp_path / "shots")) == []
+
+    def test_missing_stylesheet_404_still_counts_beside_favicon(self, tmp_path, monkeypatch):
+        install_fake_playwright(monkeypatch)
+        _emit_console_on_goto(
+            monkeypatch,
+            lambda url: [(FAVICON_404, ORIGIN + "/favicon.ico"), (FAVICON_404, ORIGIN + "/static/x.css")],
+        )
+        module = _load()
+        plan = module.shot_plan(_route_pages(tmp_path), ["1"], [("phone", (375, 812))], ["light"])
+        assert module.run(plan, str(tmp_path / "shots")) == [FAVICON_404]
+
+    def test_js_console_error_still_counts(self, tmp_path, monkeypatch):
+        install_fake_playwright(monkeypatch)
+        _emit_console_on_goto(monkeypatch, lambda url: [(JS_ERROR, url)])
+        module = _load()
+        plan = module.shot_plan(_route_pages(tmp_path), ["1"], [("phone", (375, 812))], ["light"])
+        assert module.run(plan, str(tmp_path / "shots")) == [JS_ERROR]

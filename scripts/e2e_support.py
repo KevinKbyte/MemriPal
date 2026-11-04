@@ -5,6 +5,9 @@ import traceback
 from dataclasses import dataclass, field
 from pathlib import Path
 
+# MEM-095: static/tour.js opens a modal tour while TOUR_KEY is unset; every browser context seeds it as done.
+TOUR_SEED_JS = '(() => { try { localStorage.setItem("memripal.tour.done", "1"); } catch (e) {} })();'
+
 
 @dataclass
 class Ctx:

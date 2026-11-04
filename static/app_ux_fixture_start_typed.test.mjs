@@ -12,10 +12,11 @@ import { boot, click, el, loadDemo, settle, stored, TURNS, until, visibleText, w
 const FIXTURE = { status: "ok", mode: "fixture" };
 const LIVE = { status: "ok", mode: "meta" };
 
-/** Boot, wait for the health line to report `mode`, then Load demo. */
+/** Boot, wait for the health line to resolve (shows `mode`, or is hidden once MEM-088 hides it), then Load demo. */
 async function ready(health) {
   const b = boot({ health });
-  await until(() => visibleText(el(b, "status")).includes(`${health.mode} mode`), "health line shows the mode", TURNS);
+  await until(() => el(b, "status").hidden || visibleText(el(b, "status")).includes(`${health.mode} mode`),
+    "health line resolved", TURNS);
   await loadDemo(b);
   return b;
 }

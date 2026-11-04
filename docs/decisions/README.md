@@ -7,6 +7,15 @@ Why this log exists, Kev (2026-10-26): "can we make sure we record all architect
 choices and why we chose one over the other in the hackathon documentation" ... "such as why we chose cloud run over
 the others that you asked about".
 
+## Reserved numbers
+
+A branch may land an ADR above a gap when the missing numbers belong to ADRs still on unmerged branches. List those
+numbers on the `Reserved:` line (`Reserved: 0034, 0035`, or `Reserved: none`); MEM-018 accepts a gap only when every
+missing number is listed, and fails a listed number that also exists as a file (stale reservation: drop it when that
+ADR lands). ADR [0062](0062-reserved-adr-numbers.md).
+
+Reserved: none
+
 ## ADRs
 
 - [0001](0001-python-fastapi-stack.md) Python 3.13 + FastAPI, vanilla ES-module frontend (over full TS).
@@ -168,4 +177,14 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
   amends 0042 (over an importable backup file or committed photos).
 - [0061](0061-spend-cap-degrade-and-byok.md) Past the Meta spend cap: replay saved results (live cache, then fixture
   replay), chat on the backup provider, else the 503 cap code; `X-Memripal-Spend-Cap` toast; each retry charged;
-  BYOK offered only at the cap (MEM-095 part C); amends 0059 (over BYOK only or degrade only).
+  BYOK offered only at the cap (MEM-122); amends 0059 (over BYOK only or degrade only).
+- [0062](0062-reserved-adr-numbers.md) ADR numbering gaps pass only when every missing number is on the README
+  `Reserved:` line; a reserved number that exists as a file fails as stale; amends MEM-018 contiguity (over committing
+  only in land order or dropping the contiguity check).
+- [0063](0063-route-view-mounts-one-station-card.md) The route view mounts the single MEM-050 station card, opened on
+  station 1 and following the selected station, with a tap-summary chip row of only the set groups; amends 0060
+  (over a card per station or a tap line in each S5 li).
+- [0064](0064-memri-copilot-street-photo-scenes.md) Memri copilot: Mapillary street photos go through SAM + Muse Image
+  into CC BY-SA 4.0 memory scenes with per-scene credit; C-style pure modules (tool policy, undo stack, `/baseline`),
+  Messenger-style Pal chat bubble with on-device chats, fixture-mode demo; amends map-to-palace D1 (over a
+  display-only copilot or S11 add-ons only).

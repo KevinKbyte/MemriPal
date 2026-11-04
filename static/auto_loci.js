@@ -47,6 +47,14 @@ function project(p, line) {
   return best;
 }
 
+const SUFFIXES = new Map([["street", "st"], ["avenue", "ave"]]);
+
+/** "100 Binney Street" and "100 binney st." compare equal. @param {string} address */
+function addressKey(address) {
+  const words = address.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().split(" ");
+  return words.map((w) => SUFFIXES.get(w) ?? w).join(" ");
+}
+
 /**
  * @param {number[][]} polyline [[lat, lng], ...] (walk_route.js route().polyline)
  * @param {ReadonlyArray<Poi>} pois kendall_pois.json rows
@@ -59,6 +67,8 @@ export function candidates(polyline, pois, existingStations = []) {
   const stations = existingStations.flatMap((s) => (s.coords ? [[s.coords.lat, s.coords.lon]] : []));
   const seenIds = new Set();
   const seenNames = new Set();
+  // One building is one landmark (MEM-088): two POIs at one address read as a duplicate station.
+  const seenAddresses = new Set(existingStations.flatMap((s) => (s.address ? [addressKey(s.address)] : [])));
   /** @type {Array<{ poi: Poi, along: number, label: string }>} */
   const eligible = [];
   for (const poi of pois) {
@@ -68,6 +78,9 @@ export function candidates(polyline, pois, existingStations = []) {
     const { dist, along } = project(p, polyline);
     if (dist > RADIUS_M) continue;
     if (stations.some((s) => Math.hypot(...xy(s, p)) <= STATION_DEDUPE_M)) continue;
+    const addr = poi.address ? addressKey(poi.address) : null;
+    if (addr !== null && seenAddresses.has(addr)) continue;
+    if (addr !== null) seenAddresses.add(addr);
     seenIds.add(poi.osm_id);
     seenNames.add(poi.name);
     eligible.push({ poi, along, label });

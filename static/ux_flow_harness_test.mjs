@@ -53,11 +53,28 @@ function pageFromHtml() {
   return page;
 }
 
+/** GET <...>/data/kendall_walk_graph.json or kendall_pois.json (MEM-088): the committed file's name, else null. */
+export const walkDataFile = (u) => /(?:^|\/)data\/(kendall_walk_graph\.json|kendall_pois\.json)$/.exec(String(u))?.[1] ?? null;
+
+/** The committed static/data/<file> as a JSON Response, 404 when the file is absent. */
+function dataFileResponse(file) {
+  let text;
+  try {
+    text = readFileSync(new URL(`./data/${file}`, import.meta.url), "utf8");
+  } catch {
+    return jsonResponse({ error: "not_found" }, 404);
+  }
+  return new Response(text, { headers: { "content-type": "application/json" } });
+}
+
 /**
  * Demo server. Optional hooks: photo() / recall() / split() return the answer (a Response or a
  * promise of one; a fresh Response per call); replies[n]() answers the n-th POST /recall/audio;
  * health is the GET /healthz JSON body (e.g. {status: "ok", mode: "fixture"}; default 404);
  * healthReply() instead answers GET /healthz itself (a Response or a promise of one).
+ * MEM-088: GET .../data/kendall_walk_graph.json and .../data/kendall_pois.json are served from the committed
+ * static/data/ files; missingData lists file names answered 404 instead (e.g. ["kendall_walk_graph.json"]).
+ * extra(u, method, body) answers any request first when it returns a Response (or a promise of one).
  */
 function demoServer(opts) {
   const calls = [];
@@ -67,6 +84,12 @@ function demoServer(opts) {
     const method = (init.method ?? "GET").toUpperCase();
     const body = typeof init.body === "string" ? JSON.parse(init.body) : null;
     calls.push({ u, method, body });
+    const custom = opts.extra ? await opts.extra(u, method, body) : undefined;
+    if (custom) return custom;
+    const dataFile = method === "GET" ? walkDataFile(u) : null;
+    if (dataFile) {
+      return (opts.missingData ?? []).includes(dataFile) ? jsonResponse({ error: "not_found" }, 404) : dataFileResponse(dataFile);
+    }
     if (u === "/demo/photo.jpg") {
       return opts.photo ? opts.photo() : new Response(PHOTO, { headers: { "content-type": "image/jpeg" } });
     }
@@ -167,7 +190,7 @@ function clock() {
 }
 
 /**
- * Wire the page. opts: photo / recall / split / replies / health / healthReply (server hooks),
+ * Wire the page. opts: photo / recall / split / replies / health / healthReply / missingData / extra (server hooks),
  * mic ({hold, deny}), closeRejects, rehAdapter (rehearsal store adapter; default an in-memory map),
  * routes (a route_store.js store, passed to wireApp as deps.routes; omitted when not given),
  * realMap (a real-map loader { mount(svg, stations) }, passed to wireApp as deps.realMap; omitted when not given).

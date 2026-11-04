@@ -3,6 +3,8 @@
 Status: Accepted
 Amended by [0053](0053-station-street-address-and-poi-precision.md): seeded coords are stored at 5 dp, not 4, and
 the 6 seeded stations carry hand-verified street addresses.
+Amended by ADR-0060 ([0060](0060-demo-route-seeded-taps-and-profile.md)): the 6 seeded stations also carry
+photo-derived `taps` and `profile`, shown on the route view's station card after Load demo.
 Date: 2026-11-02
 Source: MEM-077 (`.claude/spec-cache/memripal/references/spec-4.md`); plan `docs/plans/2026-11-02-real-map.md` slice S6;
 commits 4269149, b772120.

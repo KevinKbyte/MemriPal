@@ -5,6 +5,7 @@
 // Object.prototype. Routes are exported / checked in backup_routes.js.
 
 import { exportRoutes, importRoutes } from "./backup_routes.js";
+import { backupChatOf, MAX_CHAT_MESSAGES } from "./chat_store.js";
 import { associationKey } from "./palace_store.js";
 import { pointOf } from "./rehearsals.js";
 
@@ -17,6 +18,20 @@ export const OLD_FORMAT = "Older backup format, not supported";
 // Entries accumulate per item + locus pair across runs, so far above one route's 12.
 export const MAX_IMPORT_ASSOCIATIONS = 500;
 export const MAX_IMPORT_REHEARSALS = 1000;
+// Pal chats (MEM-099, backup v3); title / text caps and roles are chat_store.js's.
+export const MAX_IMPORT_CHATS = 200;
+export const MAX_IMPORT_CHAT_MESSAGES = MAX_CHAT_MESSAGES;
+const TOP_KEYS_V3 = ["associations", "chats", "lists", "rehearsals", "routes", "v"];
+const CHAT_PICK = ["id", "title", "created_at", "messages"];
+const MESSAGE_PICK = ["id", "role", "text", "created_at"];
+/** @param {any} v @param {string[]} keys */
+const pick = (v, keys) => (isObject(v) ? Object.fromEntries(keys.filter((k) => k in v).map((k) => [k, v[k]])) : v);
+/** Whole-file chat caps (export and import), else null. @param {unknown[]} chats */
+function chatCapError(chats) {
+  if (chats.length > MAX_IMPORT_CHATS) return `over ${MAX_IMPORT_CHATS} chats`;
+  const crowded = chats.some((c) => isObject(c) && Array.isArray(c.messages) && c.messages.length > MAX_IMPORT_CHAT_MESSAGES);
+  return crowded ? `over ${MAX_IMPORT_CHAT_MESSAGES} messages in a chat` : null;
+}
 // split.py MAX_POINTS.
 const MAX_POINTS = 12;
 
@@ -135,7 +150,7 @@ const byteLength = (text) => new TextEncoder().encode(text).length;
  * would break an I1 cap, so every exported file imports.
  * @param {BackupDeps} deps
  */
-export async function buildBackup({ store, rehearsals, routes, thumbnail }) {
+export async function buildBackup({ store, rehearsals, routes, thumbnail, chats }) {
   // list() returns values only; the legacy loci route array fails associationOf like any other
   // non-entry and is not a v2 route. A stored entry may carry an image beside its record; only the
   // entry keys are exported.
@@ -148,7 +163,18 @@ export async function buildBackup({ store, rehearsals, routes, thumbnail }) {
   // thumbnail is only called when a route store holds a saved route.
   const backupRoutes = await exportRoutes(routes, /** @type {any} */ (thumbnail));
   // lists[] is pinned only as an array until slice B7 defines list contents.
-  const backup = { v: 2, routes: backupRoutes, lists: [], associations, rehearsals: runs };
+  /** @type {Record<string, any>} */
+  let backup = { v: 2, routes: backupRoutes, lists: [], associations, rehearsals: runs };
+  if (chats) {
+    // Extra store keys (updated_at, chat_id) are dropped before the allow-list; caps count every stored chat.
+    const picked = (await chats.exportChats()).map((c) => {
+      const p = pick(c, CHAT_PICK);
+      return isObject(p) && Array.isArray(p.messages) ? { ...p, messages: p.messages.map((m) => pick(m, MESSAGE_PICK)) } : p;
+    });
+    const chatReason = chatCapError(picked);
+    if (chatReason) throw new Error(chatReason);
+    backup = { ...backup, v: 3, chats: picked.map(backupChatOf).filter((c) => c !== null) };
+  }
   if (byteLength(JSON.stringify(backup)) > MAX_BACKUP_BYTES) throw new Error(`over ${MAX_BACKUP_BYTES} bytes`);
   return backup;
 }
@@ -167,13 +193,15 @@ function parseBackup(text) {
     throw new Error("not a JSON file");
   }
   if (isObject(data) && data.v === 1) throw new Error(OLD_FORMAT);
-  if (!isObject(data) || !exactKeys(data, TOP_KEYS)) throw new Error("not a MemriPal backup");
-  if (data.v !== 2) throw new Error("unsupported backup version");
+  // v3 = v2 plus chats (MEM-099); a v2 file carrying chats, or a v3 one without, fails the key set.
+  if (!isObject(data) || !exactKeys(data, data.v === 3 ? TOP_KEYS_V3 : TOP_KEYS)) throw new Error("not a MemriPal backup");
+  if (data.v !== 2 && data.v !== 3) throw new Error("unsupported backup version");
   const { routes, lists, associations, rehearsals } = data;
-  if (![routes, lists, associations, rehearsals].every(Array.isArray)) throw new Error("not a MemriPal backup");
-  const reason = capError({ associations, rehearsals });
+  const chats = data.v === 3 ? data.chats : [];
+  if (![routes, lists, associations, rehearsals, chats].every(Array.isArray)) throw new Error("not a MemriPal backup");
+  const reason = capError({ associations, rehearsals }) ?? chatCapError(chats);
   if (reason) throw new Error(reason);
-  return { routes, associations, rehearsals };
+  return { routes, associations, rehearsals, chats };
 }
 
 /**
@@ -184,9 +212,11 @@ function parseBackup(text) {
  * @param {BackupDeps} deps
  * @returns {Promise<{added: number, present: number, skipped: number}>}
  */
-export async function importBackup(text, { store, rehearsals, routes, loadImage }) {
+export async function importBackup(text, { store, rehearsals, routes, loadImage, chats }) {
   const file = parseBackup(text);
   if (file.routes.length && !routes) throw new Error("this page cannot store routes yet");
+  if (file.chats.length && !chats) throw new Error("this page cannot store chats yet");
+  const fileChats = file.chats.map(backupChatOf);
   // Every entry and route is validated before the first write, so nothing bad leaves a partial merge.
   const fileRoutes = await importRoutes(file.routes, loadImage);
   const entries = file.associations.map(associationOf);
@@ -222,6 +252,12 @@ export async function importBackup(text, { store, rehearsals, routes, loadImage 
       await rehearsals.restore(r);
       added += 1;
     }
+  }
+  // An invalid chat is skipped whole; restoreChat writes a chat with all its messages or none.
+  for (const c of fileChats) {
+    if (!c) skipped += 1;
+    else if (await /** @type {NonNullable<typeof chats>} */ (chats).restoreChat(c)) added += 1;
+    else present += 1;
   }
   return { added, present, skipped };
 }

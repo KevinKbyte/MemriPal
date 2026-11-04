@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MemriPal first-run tutorial design preview</title>
+    <!-- Design preview only: Pal's first-run tour over the real app shell. Not part of the app.
+         Serve the repo root over HTTP and open /docs/design/tutorial/preview.html.
+         Query: ?s=N shows step N (1-10 tour, 11 Settings replay, 12 skip toast); ?theme=dark|light forces a theme.
+         Without ?s the tour is clickable from step 1. -->
+    <link rel="icon" href="../../../static/icon.svg">
+    <link rel="stylesheet" href="../../../static/style.css">
+    <link rel="stylesheet" href="../../../static/theme-painterly.css">
+    <link rel="stylesheet" href="tutorial.css">
+    <link rel="stylesheet" href="preview.css">
+  </head>
+  <body class="map-shell">
+    <header class="topbar"><h1 class="brand">MemriPal</h1></header>
+    <main>
+      <section id="tab-routes" class="tab-panel">
+        <div class="map-wrap">
+          <svg class="route-map preview-map" viewBox="0 0 320 200" aria-hidden="true">
+            <path d="M40 160 C90 120 120 150 160 100 S240 60 280 40"></path>
+            <circle cx="40" cy="160" r="6"></circle><circle cx="160" cy="100" r="6"></circle><circle cx="280" cy="40" r="6"></circle>
+          </svg>
+        </div>
+        <details id="drawer" class="drawer">
+          <summary class="drawer-handle"><span class="when-closed">Route settings</span><span class="when-open">Close</span></summary>
+        </details>
+      </section>
+      <section id="tab-settings" class="tab-panel" hidden>
+        <section class="panel">
+          <h2>Pal's tour</h2>
+          <p>See the quick tour of MemriPal again.</p>
+          <button id="tour-replay" class="btn" type="button">Replay Pal's tour</button>
+        </section>
+      </section>
+    </main>
+    <nav class="tabbar" aria-label="Main">
+      <ul>
+        <li><a class="tab" href="#routes" aria-current="page">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19c3-6 11-2 14-12"></path><circle cx="5" cy="19" r="2"></circle><circle cx="19" cy="7" r="2"></circle></svg>
+          Routes</a></li>
+        <li><a class="tab" href="#landmarks">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6-6.5-6-11a6 6 0 0 1 12 0c0 4.5-6 11-6 11z"></path><circle cx="12" cy="10" r="2"></circle></svg>
+          Landmarks</a></li>
+        <li><a class="tab" href="#recall">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"></path><path d="M9 10.5l2 2 4-4"></path></svg>
+          Recall</a></li>
+        <li><a class="tab" href="#settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"></path></svg>
+          Settings</a></li>
+      </ul>
+    </nav>
+
+    <div id="tour" class="tour" role="dialog" aria-modal="true" aria-labelledby="tour-title">
+      <div class="tour-spot" aria-hidden="true"></div>
+      <div class="tour-card">
+        <img class="tour-pal" src="../../../static/assets/pal-idle.svg" alt="">
+        <div class="tour-head">
+          <p class="tour-count" aria-live="polite"><span class="sr-only">Step </span><span id="tour-n">1</span> of <span id="tour-total"></span></p>
+          <ol class="tour-dots" aria-hidden="true"></ol>
+          <button id="tour-skip" class="tour-skip" type="button">Skip tour</button>
+        </div>
+        <h2 id="tour-title"></h2>
+        <p id="tour-body"></p>
+        <div id="tour-house" class="tour-house" hidden></div>
+        <ol id="tour-fig" class="tour-fig" hidden></ol>
+        <p id="tour-after" hidden></p>
+        <div class="btn-row tour-actions">
+          <button id="tour-back" class="btn" type="button">Back</button>
+          <button id="tour-next" class="btn btn-primary" type="button">Next</button>
+        </div>
+      </div>
+    </div>
+    <p id="tour-toast" class="tour-toast" role="status" hidden>Tour skipped. Replay it any time in Settings.</p>
+    <script src="preview.js"></script>
+  </body>
+</html>

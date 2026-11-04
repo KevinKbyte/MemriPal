@@ -20,7 +20,16 @@ from e2e_steps import (
     s_walk,
     show_tab,
 )
-from e2e_support import hscroll, instrument, open_page, step, texts, wait_history_rows, wait_status_ready
+from e2e_support import (
+    TOUR_SEED_JS,
+    hscroll,
+    instrument,
+    open_page,
+    step,
+    texts,
+    wait_history_rows,
+    wait_status_ready,
+)
 
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 SCENES_KEYS = ["box", "image", "record", "sig"]
@@ -95,6 +104,7 @@ def s_signed(ctx, page):
 @step("(c) fresh context 0 runs -> history hidden")
 def s_empty(ctx, browser):
     bctx = browser.new_context(viewport={"width": 1100, "height": 900})
+    bctx.add_init_script(TOUR_SEED_JS)
     try:
         page = bctx.new_page()
         instrument(ctx, page, "empty")
@@ -182,6 +192,7 @@ def s_delete(ctx, page):
 @step("13 360px no horizontal scroll")
 def s_narrow(ctx, browser):
     bctx = browser.new_context(viewport={"width": 360, "height": 780})
+    bctx.add_init_script(TOUR_SEED_JS)
     try:
         page = bctx.new_page()
         instrument(ctx, page, "360")
@@ -212,6 +223,7 @@ def s_narrow(ctx, browser):
 @step("14 public banner on non-localhost Host")
 def s_public(ctx, browser):
     bctx = browser.new_context(viewport={"width": 1100, "height": 900})
+    bctx.add_init_script(TOUR_SEED_JS)
     try:
         page = bctx.new_page()
         instrument(ctx, page, "public")
@@ -238,6 +250,7 @@ def s_public(ctx, browser):
 def run_all(ctx, browser):
     """The full step sequence; order matters (later steps reuse the main context's stored runs)."""
     bctx = browser.new_context(viewport={"width": 1100, "height": 900})
+    bctx.add_init_script(TOUR_SEED_JS)
     try:
         page = bctx.new_page()
         instrument(ctx, page, "main")

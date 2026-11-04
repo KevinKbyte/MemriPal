@@ -121,9 +121,18 @@ const promptEl = (doc) => findIn(doc.body, (n) => n.id === "byok");
 const chipEl = (doc) => findIn(doc.body, (n) => n.id === "byok-chip");
 
 function submitKey(p, key) {
-  const form = promptEl(p.doc);
-  findIn(form, (n) => n.tagName === "INPUT").value = key;
-  return p.fire(form, "submit");
+  const prompt = promptEl(p.doc);
+  findIn(prompt, (n) => n.tagName === "INPUT").value = key;
+  return p.fire(button(prompt, "Continue"), "click");
+}
+
+/** A window stand-in: records listeners; fire(type, init) calls them. */
+function fakeWindow() {
+  const listeners = {};
+  return {
+    addEventListener: (type, fn) => (listeners[type] ??= []).push(fn),
+    fire: (type, init = {}) => (listeners[type] ?? []).forEach((fn) => fn({ type, ...init })),
+  };
 }
 
 describe("bring your own key", () => {
@@ -161,7 +170,6 @@ describe("bring your own key", () => {
     assert.equal(form.hidden, false);
     assert.match(textOf(form), /Free demo credit is used up\. To keep going, paste your own Meta API key\./);
     const input = findIn(form, (n) => n.tagName === "INPUT");
-    assert.equal(input.type, "password");
     assert.equal(input.getAttribute("autocomplete"), "off");
     assert.ok(button(form, "Continue"));
     const label = findIn(form, (n) => n.tagName === "LABEL");
@@ -177,8 +185,7 @@ describe("bring your own key", () => {
     try {
       const p = page();
       byok.showSpendCap(p.doc, "capped");
-      const ev = submitKey(p, KEY);
-      assert.equal(ev.defaultPrevented, true);
+      submitKey(p, KEY);
       assert.equal(byok.heldKey(p.doc), KEY);
       assert.equal(findIn(promptEl(p.doc), (n) => n.tagName === "INPUT").value, "");
       assert.equal(promptEl(p.doc).hidden, true);
@@ -279,6 +286,78 @@ describe("bring your own key", () => {
     assert.equal(toast.hidden, true);
     byok.showSpendCap(p.doc, "capped");
     assert.equal(toast.hidden, true);
+  });
+
+  // Security review, 2026-11-04: Chrome ignores autocomplete=off on a password field inside a form, so a
+  // password manager could offer to save the key. A plain text field masked by CSS, outside any form, is not.
+  test("the key field is a masked text input outside any form, with nothing that reads as a credential", () => {
+    const { doc } = page();
+    byok.showSpendCap(doc, "capped");
+    const input = findIn(promptEl(doc), (n) => n.tagName === "INPUT");
+    assert.equal(input.type, "text");
+    for (let n = input; n; n = n.parent) assert.notEqual(n.tagName, "FORM", "the key field sits in a <form>");
+    assert.equal(findIn(doc.body, (n) => n.tagName === "FORM"), null);
+    assert.equal(input.getAttribute("autocomplete"), "off");
+    assert.equal(input.getAttribute("autocapitalize"), "off");
+    assert.equal(input.getAttribute("spellcheck"), "false");
+    assert.equal(input.getAttribute("name") ?? null, null);
+    assert.doesNotMatch(input.id, /pass|pwd/i);
+    assert.equal(button(promptEl(doc), "Continue").type, "button");
+    // Masked in CSS: the WebKit/Blink property, plus a blur fallback where it is unsupported.
+    const css = read("style.css");
+    assert.match(css, /#byok-key\s*\{[^}]*-webkit-text-security:\s*disc/);
+    assert.match(css, /@supports not \(-webkit-text-security: disc\)\s*\{\s*#byok-key\s*\{[^}]*color:\s*transparent/);
+    assert.doesNotMatch(read("byok.js"), /"password"|"form"|"submit"/);
+  });
+
+  test("Enter in the key field continues, like Continue; other keys do nothing", () => {
+    const p = page();
+    byok.showSpendCap(p.doc, "capped");
+    const input = findIn(promptEl(p.doc), (n) => n.tagName === "INPUT");
+    input.value = KEY;
+    p.fire(input, "keydown", { key: "a" });
+    assert.equal(byok.heldKey(p.doc), null);
+    const ev = p.fire(input, "keydown", { key: "Enter" });
+    assert.equal(ev.defaultPrevented, true);
+    assert.equal(byok.heldKey(p.doc), KEY);
+    assert.equal(input.value, "");
+    assert.equal(chipEl(p.doc).hidden, false);
+  });
+
+  // Security review, 2026-11-04: the back/forward cache keeps a page's memory, so the key must go on pagehide.
+  test("pagehide forgets the key and hides the chip; a pageshow from the bfcache finds it gone", async () => {
+    const p = page();
+    const win = fakeWindow();
+    byok.forgetOnPageHide(win, p.doc);
+    byok.showSpendCap(p.doc, "capped");
+    submitKey(p, KEY);
+    assert.equal(byok.heldKey(p.doc), KEY);
+    findIn(promptEl(p.doc), (n) => n.tagName === "INPUT").value = "half-typed";
+    win.fire("pagehide", { persisted: true });
+    assert.equal(byok.heldKey(p.doc), null);
+    assert.equal(chipEl(p.doc).hidden, true);
+    assert.equal(findIn(promptEl(p.doc), (n) => n.tagName === "INPUT").value, "");
+    const net = recorder();
+    await byok.withMetaKey(net.fn, p.doc)("/split", {});
+    assert.equal(net.calls[0].headers.get("X-Memripal-Meta-Key"), null);
+
+    // A restored page (pageshow persisted=true) is treated as cleared even if pagehide never ran.
+    submitKey(p, KEY);
+    win.fire("pageshow", { persisted: false });
+    assert.equal(byok.heldKey(p.doc), KEY, "a fresh load is not a bfcache restore");
+    win.fire("pageshow", { persisted: true });
+    assert.equal(byok.heldKey(p.doc), null);
+    assert.equal(chipEl(p.doc).hidden, true);
+  });
+
+  test("forgetOnPageHide tolerates a missing window", () => {
+    const { doc } = page();
+    byok.forgetOnPageHide(undefined, doc);
+    byok.forgetOnPageHide(null, doc);
+  });
+
+  test("flow.js forgets the key on pagehide of the page's own window", () => {
+    assert.match(read("flow.js"), /forgetOnPageHide\(doc\.defaultView, doc\)/);
   });
 
   test("flow.js puts withMetaKey between the passcode and the spend cap notice", () => {
