@@ -7,7 +7,10 @@
 // replaceChildren / remove; textContent; hidden; disabled; dataset (setAttribute("data-x") mirrors
 // into dataset); style (plain object; style.setProperty sets the camelCase key); classList;
 // setAttribute / getAttribute / removeAttribute / toggleAttribute; addEventListener /
-// removeEventListener / on<type> handlers; img.src; canvas getContext("2d") (no-op context).
+// removeEventListener / on<type> handlers; img.src; canvas getContext("2d") (no-op context);
+// insertBefore(node, ref) (ref null appends); focus() / blur() track doc.activeElement;
+// setPointerCapture / releasePointerCapture / hasPointerCapture (no-ops, MEM-081 drag);
+// getBoundingClientRect() returns layout.rectOf(el) when a test sets it, else an all-zero rect.
 // No querySelector: page elements are found by id, created elements by reference.
 //
 // Every innerHTML / outerHTML write and insertAdjacentHTML call is logged in htmlWrites; every
@@ -62,6 +65,9 @@ export function fakePage(ids, opts = {}) {
   const htmlWrites = [];
   const srcWrites = [];
   const docListeners = {};
+  /** Tests set layout.rectOf = (el) => ({top, bottom, height, ...}) to lay rows out (no real layout). */
+  const layout = { rectOf: null };
+  const ZERO_RECT = { top: 0, bottom: 0, left: 0, right: 0, width: 0, height: 0, x: 0, y: 0 };
 
   function detach(child) {
     if (child && typeof child === "object" && child.parent) {
@@ -158,6 +164,18 @@ export function fakePage(ids, opts = {}) {
       remove() {
         detach(this);
       },
+      insertBefore(node, ref) {
+        if (ref == null) {
+          adopt(this, [node]);
+          return node;
+        }
+        detach(node);
+        const at = this.children.indexOf(ref);
+        if (at < 0) throw new Error("insertBefore: ref is not a child of this element");
+        node.parent = this;
+        this.children.splice(at, 0, node);
+        return node;
+      },
       setAttribute(k, v) {
         const key = String(k).toLowerCase();
         this.attrs[key] = String(v);
@@ -189,8 +207,18 @@ export function fakePage(ids, opts = {}) {
         listeners[type] = (listeners[type] ?? []).filter((f) => f !== fn);
       },
       _listeners: listeners,
-      focus() {},
-      blur() {},
+      focus() {
+        doc.activeElement = this;
+      },
+      blur() {
+        if (doc.activeElement === this) doc.activeElement = null;
+      },
+      setPointerCapture() {},
+      releasePointerCapture() {},
+      hasPointerCapture: () => false,
+      getBoundingClientRect() {
+        return { ...ZERO_RECT, ...(layout.rectOf ? layout.rectOf(this) : {}) };
+      },
       getContext: () => noopCtx,
       insertAdjacentHTML(pos, html) {
         htmlWrites.push(["insertAdjacentHTML", String(html)]);
@@ -215,7 +243,7 @@ export function fakePage(ids, opts = {}) {
 
   const els = {};
   for (const id of ids) {
-    const root = el(id === "generate" || id.endsWith("-prev") || id.endsWith("-next") || id.endsWith("-undo") ? "button" : "div");
+    const root = el(id === "generate" || id.endsWith("-prev") || id.endsWith("-next") || id.endsWith("-undo") || id.endsWith("-edit") ? "button" : "div");
     root.id = id;
     if ((opts.hidden ?? []).includes(id)) root.hidden = true;
     els[id] = root;
@@ -223,6 +251,7 @@ export function fakePage(ids, opts = {}) {
   const createdBefore = created.length;
 
   const doc = {
+    activeElement: null,
     getElementById: (id) => els[id] ?? null,
     createElement: (tag) => el(tag),
     // SVG children (MEM-051 route map): same fake element, namespace recorded.
@@ -281,7 +310,7 @@ export function fakePage(ids, opts = {}) {
   /** Elements the code under test created (page roots excluded). */
   const madeByCode = () => created.slice(createdBefore);
 
-  return { doc, els, created, madeByCode, htmlWrites, srcWrites, fire };
+  return { doc, els, created, madeByCode, htmlWrites, srcWrites, fire, layout };
 }
 
 export const tick = () => new Promise((r) => setImmediate(r));
