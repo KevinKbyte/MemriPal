@@ -2,6 +2,7 @@
 // Pal chat bubble (MEM-099, ADR 0064 amendment 2026-11-03): a draggable button on every screen that opens
 // a panel of on-device chats (chat_store.js). Self-mounts in the browser; importing it in node is inert.
 import { isTitle, MAX_TITLE_CHARS } from "./chat_store.js";
+import { messageNodes, typingNode, createComposer } from "./pal_chat.js";
 
 const POS_KEY = "memripal.palBubble.pos";
 const STYLE_HREF = "/static/pal_bubble.css";
@@ -39,8 +40,8 @@ function linkStylesheet(doc) {
   doc.head.append(link);
 }
 
-/** @param {{doc: any, win: any, storage: any, chats: any}} deps */
-export async function mountPalBubble({ doc, win, storage, chats }) {
+/** @param {{doc: any, win: any, storage: any, chats: any, reply?: (text: string, history: {role: string, text: string}[]) => Promise<string>}} deps */
+export async function mountPalBubble({ doc, win, storage, chats, reply }) {
   /** @param {string} tag @param {string} pal @param {string} [text] */
   const make = (tag, pal, text) => {
     const n = doc.createElement(tag);
@@ -76,7 +77,17 @@ export async function mountPalBubble({ doc, win, storage, chats }) {
   undoRow.hidden = true;
   const list = make("ul", "chats");
   const messages = make("ol", "messages");
-  panel.append(title, renameInput, newBtn, renameBtn, deleteBtn, confirmRow, undoRow, list, messages);
+  messages.className = "pal-messages";
+  messages.setAttribute("aria-live", "polite");
+  const errorNote = make("p", "chat-error", "Pal couldn't answer just now. Try again.");
+  errorNote.className = "pal-chat-error";
+  errorNote.setAttribute("role", "alert");
+  errorNote.hidden = true;
+  const composer = createComposer(doc, (/** @type {string} */ text) => sendMessage(text));
+  const actions = make("div", "actions");
+  actions.className = "pal-actions";
+  actions.append(newBtn, renameBtn, deleteBtn);
+  panel.append(title, renameInput, actions, confirmRow, undoRow, list, messages, errorNote, composer.form);
   root.append(bubble, panel);
   doc.body.append(root);
 
@@ -84,6 +95,7 @@ export async function mountPalBubble({ doc, win, storage, chats }) {
   let activeId = null;
   /** @type {string | null} */
   let deletedId = null;
+  let typing = false;
 
   // --- position: clamped, persisted; storage may throw or hold garbage ---
   const size = () => {
@@ -194,11 +206,35 @@ export async function mountPalBubble({ doc, win, storage, chats }) {
       return li;
     }));
     const msgs = active ? await chats.listMessages(active.id) : [];
-    messages.replaceChildren(...msgs.map((/** @type {any} */ m) => {
-      const li = make("li", "message", `${m.role === "user" ? "You" : "Pal"}: ${m.text}`);
-      li.dataset.role = m.role;
-      return li;
-    }));
+    messages.replaceChildren(...messageNodes(doc, msgs));
+    if (typing) messages.append(typingNode(doc));
+    messages.scrollTop = messages.scrollHeight;
+    composer.form.hidden = !chats;
+  }
+
+  /** @param {string} text */
+  async function sendMessage(text) {
+    if (!chats) return;
+    if (!activeId) activeId = (await chats.createChat()).id;
+    errorNote.hidden = true;
+    const chatId = activeId;
+    await chats.appendMessage(chatId, { role: "user", text });
+    if (!reply) {
+      await render();
+      return;
+    }
+    typing = true;
+    await render();
+    try {
+      const history = (await chats.listMessages(chatId)).map((/** @type {any} */ m) => ({ role: m.role, text: m.text }));
+      const answer = await reply(text, history);
+      if (typeof answer === "string" && answer.trim()) await chats.appendMessage(chatId, { role: "assistant", text: answer.trim() });
+    } catch {
+      errorNote.hidden = false;
+    } finally {
+      typing = false;
+      await render();
+    }
   }
 
   newBtn.addEventListener("click", async () => {

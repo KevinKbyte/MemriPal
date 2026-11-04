@@ -81,6 +81,32 @@ Tests: static/pal_bubble.test.mjs (incl. "MEM-099 Pal bubble loads its own style
 static/palace_export_chats.test.mjs, static/store_ids_insecure.test.mjs,
 tests/test_assets_wiring.py::test_index_loads_pal_bubble_module_once_after_app_js
 
+## MEM-116 Pal chat panel reads like a messenger (bubbles, greeting, composer)
+
+Kev ask (2026-11-04): "the chat interface should look much more ui/ux friendly - similar to messenger, whatsapp and
+other chat interfaces like chatgpt/copilot" (or Claude). Restyles the MEM-099 panel; no approach choice, so no ADR.
+Root problem: the MEM-099 panel listed messages as "You: ..." / "Pal: ..." text with no way to type, so it read as a
+log, not a chat.
+Actors: `static/pal_chat.js` (messageNodes, typingNode, createComposer, timeLabel); `static/pal_bubble.js` render
+and sendMessage; `static/pal_bubble.css` `.pal-panel` rules onward.
+NFR: DOM via textContent only (no innerHTML); theme tokens for colours; ASCII only; launcher button, drag and position
+code untouched; typing dots stop under `prefers-reduced-motion`.
+- B1: user messages sit right in a `--primary` bubble; Pal's sit left with Pal's face; each shows a local `h:mm`
+  `<time datetime>` when `created_at` is a valid ISO string, else no time.
+- B2: an empty chat shows a Pal greeting with Pal's face; it goes once a message exists.
+- B3: a bottom sticky composer (auto-growing textarea, max `MAX_MESSAGE_CHARS`, send button): Enter sends the
+  trimmed text and clears the box; Shift+Enter is a newline; blank text never sends and keeps send disabled; with no
+  active chat, sending creates one. The composer hides when chats are unavailable.
+- B4: `mountPalBubble({..., reply})` takes an optional `reply(text, history) => Promise<string>`; while it runs a
+  three-dot "Pal is typing" row shows; a non-blank answer lands as a Pal bubble; a throw keeps the user message,
+  clears the indicator and shows "Pal couldn't answer just now. Try again." (role alert).
+- B5: the message list is `aria-live="polite"` and scrolls to the newest message after each render.
+- Open: `selfMount` passes no `reply` (no /chat backend route yet), so the composer saves user messages only until a
+  reply provider is wired.
+- Accept: static/pal_chat.test.mjs green (11 tests); 375 px and desktop screenshots of the open panel.
+
+Tests: static/pal_chat.test.mjs
+
 ## MEM-045 Sticker pool and photo upload on the landmark photo
 
 Kev ask 2026-11-04: "or upload own images to sticker onto the place (eg. the kendall station) ... we can have a
