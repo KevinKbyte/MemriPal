@@ -27,6 +27,7 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 from memripal import ratelimit as rl
+from memripal.access import COOKIE, cookie_value
 from memripal.app import create_app
 
 LOOPBACK_URL = "http://127.0.0.1"
@@ -43,7 +44,9 @@ ENV_VARS = (
     "MEMRIPAL_LOCKOUT_S",
     "MEMRIPAL_ROUTE_CONCURRENCY",
     "K_SERVICE",
+    "MEMRIPAL_ACCESS_KEY",
 )
+ACCESS_KEY = "judges-key-0123456789abcdef"
 NOTES = "First, our budget doubled this year. Second, the new library opens in May."
 SPLIT_REPLY = {"points": [{"label": "budget", "source_quote": "our budget doubled this year"}]}
 PLACE_BODY = json.dumps({"lat": 51.5007, "lon": -0.1246}).encode("utf-8")
@@ -104,7 +107,13 @@ def _app(clock, backend=None, place=None, monkeypatch=None, rate=None):
 
 
 def _client(app) -> TestClient:
-    return TestClient(app, base_url=LOOPBACK_URL)
+    # The judge cookie is inert off Cloud Run and gets K_SERVICE tests past the MEM-100 access gate.
+    return TestClient(app, base_url=LOOPBACK_URL, cookies={COOKIE: cookie_value(ACCESS_KEY)})
+
+
+def _cloud_run(monkeypatch) -> None:
+    monkeypatch.setenv("K_SERVICE", "memripal")
+    monkeypatch.setenv("MEMRIPAL_ACCESS_KEY", ACCESS_KEY)
 
 
 def _place(client, xff: str | None = None):
@@ -254,14 +263,14 @@ class TestInstanceIsolation:
 # value cannot evade the limit; off Cloud Run X-Forwarded-For is ignored entirely.
 class TestClientIp:
     def test_spoofed_leftmost_xff_does_not_evade_on_cloud_run(self, monkeypatch):
-        monkeypatch.setenv("K_SERVICE", "memripal")
+        _cloud_run(monkeypatch)
         client = _client(_app(FakeClock(), monkeypatch=monkeypatch, rate=1))
         assert _place(client, "1.1.1.1, 203.0.113.9").status_code == 200
         _assert_429(_place(client, "2.2.2.2, 203.0.113.9"))
         _assert_429(_place(client, "203.0.113.9"))
 
     def test_distinct_rightmost_ips_get_separate_buckets_on_cloud_run(self, monkeypatch):
-        monkeypatch.setenv("K_SERVICE", "memripal")
+        _cloud_run(monkeypatch)
         client = _client(_app(FakeClock(), monkeypatch=monkeypatch, rate=1))
         assert _place(client, "203.0.113.9").status_code == 200
         _assert_429(_place(client, "203.0.113.9"))
@@ -269,7 +278,7 @@ class TestClientIp:
         assert _place(client, "203.0.113.9, 198.51.100.8").status_code == 200
 
     def test_cloud_run_without_xff_falls_back_to_peer_address(self, monkeypatch):
-        monkeypatch.setenv("K_SERVICE", "memripal")
+        _cloud_run(monkeypatch)
         client = _client(_app(FakeClock(), monkeypatch=monkeypatch, rate=1))
         assert _place(client).status_code == 200
         _assert_429(_place(client))
@@ -287,21 +296,21 @@ class TestClientIp:
 # keep separate buckets.
 class TestIpv6Prefix:
     def test_same_ipv6_64_shares_one_bucket(self, monkeypatch):
-        monkeypatch.setenv("K_SERVICE", "memripal")
+        _cloud_run(monkeypatch)
         client = _client(_app(FakeClock(), monkeypatch=monkeypatch, rate=1))
         assert _place(client, "2001:db8::1").status_code == 200
         _assert_429(_place(client, "2001:db8::ffff"))
         _assert_429(_place(client, "198.51.100.7, 2001:db8:0:0:abcd:ef01:2345:6789"))
 
     def test_different_ipv6_64s_get_separate_buckets(self, monkeypatch):
-        monkeypatch.setenv("K_SERVICE", "memripal")
+        _cloud_run(monkeypatch)
         client = _client(_app(FakeClock(), monkeypatch=monkeypatch, rate=1))
         assert _place(client, "2001:db8::1").status_code == 200
         _assert_429(_place(client, "2001:db8::1"))
         assert _place(client, "2001:db8:0:1::1").status_code == 200
 
     def test_ipv4_is_still_keyed_per_address(self, monkeypatch):
-        monkeypatch.setenv("K_SERVICE", "memripal")
+        _cloud_run(monkeypatch)
         client = _client(_app(FakeClock(), monkeypatch=monkeypatch, rate=1))
         assert _place(client, "203.0.113.9").status_code == 200
         _assert_429(_place(client, "203.0.113.9"))

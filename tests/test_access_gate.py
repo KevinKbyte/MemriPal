@@ -3,11 +3,14 @@
 # /access form trades the key (MEMRIPAL_ACCESS_KEY, stripped) for an HttpOnly cookie; every other path
 # without it redirects HTML GETs to /access and answers 401 access_required otherwise; on Cloud Run with
 # no key configured everything non-exempt is 503 access_unconfigured.
+import base64
+import io
 import json
 from urllib.parse import urlencode
 
 import pytest
 from fastapi.testclient import TestClient
+from PIL import Image
 
 from memripal.app import create_app
 
@@ -19,7 +22,18 @@ HTML = {"Accept": "text/html,application/xhtml+xml"}
 ENV_VARS = ("MEMRIPAL_MODE", "META_API_KEY", "MEMRIPAL_PASSCODE", "MEMRIPAL_ALLOWED_HOSTS", "K_SERVICE",
             "MEMRIPAL_ACCESS_KEY", "MEMRIPAL_ACCESS_MAX_FAILS", "MEMRIPAL_LOCKOUT_S",
             "MEMRIPAL_MAX_BODY_BYTES", "MEMRIPAL_TRUSTED_PROXY_HOPS", "MEMRIPAL_CALL_BUDGET")  # fmt: skip
-SPLIT = json.dumps({"mode": "notes", "text": "First, the budget doubled.", "loci_count": 3}).encode()
+
+
+def _jpeg(w: int = 64, h: int = 48) -> bytes:
+    buf = io.BytesIO()
+    Image.new("RGB", (w, h), (90, 60, 30)).save(buf, "JPEG")
+    return buf.getvalue()
+
+
+PHOTO = base64.b64encode(_jpeg()).decode("ascii")
+SPLIT = json.dumps(
+    {"photo": PHOTO, "mode": "notes", "text": "First, the budget doubled.", "loci_count": 3}
+).encode()
 
 
 class FakeClock:
