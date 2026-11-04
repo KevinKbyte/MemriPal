@@ -43,6 +43,7 @@ class El {
     this.parentNode = null;
     this.childNodes = [];
     this.attrs = {};
+    this.dataset = {};
     this.listeners = {};
     this.rect = { top: 100, left: 50, width: 80, height: 40 };
     this.style = { setProperty(k, v) { this[k] = String(v); }, removeProperty(k) { delete this[k]; } };
