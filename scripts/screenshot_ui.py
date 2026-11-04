@@ -1,5 +1,7 @@
 """Screenshot the UI before/after "Load demo", plus an imported backup's route view (MEM-017, MEM-073)
-and the Kendall demo route on the real map at 375 px, light and dark (MEM-077).
+and the Kendall demo route on the real map at 375 px, light and dark (MEM-077), plus Pal's first-run
+tour at step 1 and step 5 on a fresh unseeded page (tour-step1.png, tour-step5.png; MEM-095). Every
+other page seeds the tour-done key so the modal tour never blocks its clicks.
 
 Fails on page/console errors.
 
@@ -23,6 +25,9 @@ DEMO_VIEWPORT = {"width": 375, "height": 812}
 # The real map's first idle: the selector the S5 e2e waits on (static/real_map.js drops the pending class).
 MAP_IDLE = ".real-map:not(.real-map-pending)"
 MAP_IDLE_TIMEOUT_MS = 30000
+# MEM-095: static/tour.js opens a modal tour while TOUR_KEY is unset; marking it done keeps clicks reachable.
+TOUR_SEED_JS = '(() => { try { localStorage.setItem("memripal.tour.done", "1"); } catch (e) {} })();'
+TOUR_STEP5_CLICKS = 4
 
 Error = tuple[str, str]  # (message text, source URL)
 
@@ -63,6 +68,7 @@ def run(url: str, outdir: str) -> list[Error]:
         browser = p.chromium.launch(channel="chrome")
         try:
             page = browser.new_page(viewport={"width": 1100, "height": 900})
+            page.add_init_script(TOUR_SEED_JS)
             watch(page)
             page.goto(url)
             page.screenshot(path=str(out / "initial.png"), full_page=True)
@@ -87,6 +93,7 @@ def run(url: str, outdir: str) -> list[Error]:
             # MEM-077: the Kendall demo route on the real map, phone width, one fresh page per scheme.
             for scheme in ("light", "dark"):
                 demo = browser.new_page(viewport=DEMO_VIEWPORT, color_scheme=scheme)
+                demo.add_init_script(TOUR_SEED_JS)
                 watch(demo)
                 demo.goto(url)
                 set_drawer(demo, True)
@@ -100,6 +107,16 @@ def run(url: str, outdir: str) -> list[Error]:
                 demo.wait_for_selector(MAP_IDLE, timeout=MAP_IDLE_TIMEOUT_MS)
                 demo.screenshot(path=str(out / f"demo_route_{scheme}.png"), full_page=True)
                 demo.close()
+            # MEM-095: never seeded, so the tour opens on load; step 1, then four Next clicks reach step 5.
+            tour = browser.new_page(viewport=DEMO_VIEWPORT)
+            watch(tour)
+            tour.goto(url)
+            tour.screenshot(path=str(out / "tour-step1.png"))
+            for _ in range(TOUR_STEP5_CLICKS):
+                tour.click("#tour-next")
+            tour.wait_for_selector('#tour-n:text-is("5")')
+            tour.screenshot(path=str(out / "tour-step5.png"))
+            tour.close()
         finally:
             browser.close()
     print(f"items: {items}")
