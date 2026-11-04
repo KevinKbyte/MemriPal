@@ -675,3 +675,11 @@ provider name, latency and exception class only, never a provider body (MEM-106)
 
 Tests: tests/test_recall_grade.py, tests/test_recall_audio.py, static/recall_live.test.mjs
 - Out of scope: partial credit scoring; grading typed recall; per-visitor BYOK grading keys.
+- Setting (Kev 2026-11-04): Settings tab checkbox `#grade-with-spark` "Grade recall with Spark", persisted in
+  localStorage `memripal.gradeWithSpark` (default off); off = ASR + keyword only and the request carries no `grade`
+  field, so no grading call is made.
+- On + grading failure (spend cap, out of tokens, upstream error, timeout): that answer scores by ASR + keyword; the
+  response carries `grade_error: "unavailable"` (never a provider body) and the board shows a dismissible inline
+  `.grade-downgrade` notice ("Spark is unavailable ... keyword match") with a link to the existing BYOK key prompt.
+- BYOK reuses the MEM-122 visitor Meta key (tab memory only, `X-Memripal-Meta-Key`, never logged): when present the
+  grader tries that session's client first, then the configured providers.
