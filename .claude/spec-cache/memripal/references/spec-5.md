@@ -5,7 +5,7 @@ Continuation of [spec-4.md](spec-4.md), which is over its 500-line cap.
 ## MEM-102 Paper Crown theme
 
 `static/theme-painterly.css`, `static/fonts/`, `static/index.html`, `docs/design/paper-crown/`.
-Decided-by: ADR-0062
+Decided-by: ADR-0065
 Root problem: the painterly theme read as generic; the demo needs a distinct storybook look (direction A "Paper Crown"
 plus direction C's lantern stations) without breaking MEM-044's CSP, contrast and layout guarantees.
 Actors: browser (renders the theme); `static/theme-painterly.css` (last stylesheet, MEM-044 P1).

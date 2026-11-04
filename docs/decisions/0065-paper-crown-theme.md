@@ -1,4 +1,4 @@
-# 0062: Paper Crown theme (direction A) with direction C's lantern stations
+# 0065: Paper Crown theme (direction A) with direction C's lantern stations
 
 Status: Accepted
 Relates: [0030](0030-adopt-v6-css-markup-only.md) (v6 tokens the theme remaps), MEM-044 (painterly theme), MEM-102
