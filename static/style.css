@@ -151,6 +151,19 @@ select {
   letter-spacing: -0.01em;
 }
 
+/* Tagline tucks under the wordmark: the brand gives up its bottom padding only when a tagline follows. */
+.brand:has(+ .tagline) {
+  padding-bottom: 0.2rem;
+}
+
+.tagline {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 0 0.75rem 0.75rem;
+  font: 400 0.85rem/1.3 var(--body);
+  color: var(--muted);
+}
+
 .panel {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

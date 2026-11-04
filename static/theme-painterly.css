@@ -76,6 +76,13 @@ body {
   color: var(--primary);
 }
 
+/* Storybook subtitle: italic body face under the Fraunces wordmark. */
+.tagline {
+  font-family: var(--body);
+  font-style: italic;
+  color: var(--muted);
+}
+
 .brand,
 h2,
 h3,
