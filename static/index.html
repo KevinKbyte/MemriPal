@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="/static/style.css">
     <link rel="manifest" href="/static/manifest.webmanifest">
     <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/static/tour.css">
     <link rel="stylesheet" href="/static/theme-painterly.css">
     <meta name="theme-color" content="#1f3a5f">
 
@@ -205,6 +206,11 @@
           </div>
           <p id="backup-status" role="status"></p>
         </section>
+        <section class="panel">
+          <h2>Pal's tour</h2>
+          <p>See the quick tour of MemriPal again.</p>
+          <button id="tour-replay" class="btn" type="button">Replay Pal's tour</button>
+        </section>
       </section>
       <div id="scene-overlay" hidden></div>
     </main>
@@ -224,6 +230,27 @@
           Settings</a></li>
       </ul>
     </nav>
+
+    <div id="tour" class="tour" role="dialog" aria-modal="true" aria-labelledby="tour-title" hidden>
+      <div class="tour-spot" aria-hidden="true"></div>
+      <div class="tour-card">
+        <img class="tour-pal" src="/static/assets/pal-idle.svg" alt="">
+        <div class="tour-head">
+          <p class="tour-count" aria-live="polite"><span class="sr-only">Step </span><span id="tour-n">1</span> of <span id="tour-total"></span></p>
+          <ol class="tour-dots" aria-hidden="true"></ol>
+          <button id="tour-skip" class="tour-skip" type="button">Skip tour</button>
+        </div>
+        <h2 id="tour-title"></h2>
+        <p id="tour-body"></p>
+        <ol id="tour-fig" class="tour-fig" hidden></ol>
+        <p id="tour-after" hidden></p>
+        <div class="btn-row tour-actions">
+          <button id="tour-back" class="btn" type="button">Back</button>
+          <button id="tour-next" class="btn btn-primary" type="button">Next</button>
+        </div>
+      </div>
+    </div>
+    <p id="tour-toast" class="tour-toast" role="status" hidden>Tour skipped. Replay it any time in Settings.</p>
     <script type="module" src="/static/app.js"></script>
   </body>
 </html>
