@@ -1,6 +1,6 @@
 // @ts-check
 // S3 Station card (MEM-050, plan B5): a named station's name, its Visual / Spatial / Conceptual
-// profile, five quick-tap groups stored on the station, a validated name edit and a drop with
+// profile, four quick-tap groups stored on the station, a validated name edit and a drop with
 // arm -> confirm -> Undo. Model-derived text is only ever set via textContent.
 
 /** Part A S3 tap groups; the stored value is the tapped label. Smell is the user's own note. */
@@ -9,11 +9,10 @@ export const TAP_GROUPS = {
   smell: ["Food", "Coffee", "Flowers", "Fumes", "Rain", "None"],
   feel: ["Warm", "Cold", "Windy", "Uphill", "Stairs", "Shade"],
   mood: ["Calm", "Busy", "Bright", "Cosy", "Grand", "Odd"],
-  turn: ["Straight", "Left", "Right", "Arrive"],
 };
 
 /** Display names for the tap groups, matching the card's group headings. */
-export const TAP_GROUP_LABELS = { sound: "Sound", smell: "Smell", feel: "Feel", mood: "Mood", turn: "Next turn" };
+export const TAP_GROUP_LABELS = { sound: "Sound", smell: "Smell", feel: "Feel", mood: "Mood" };
 
 /**
  * MEM-110: the station's set taps as "<Group>: <label>" lines in TAP_GROUPS order; groups without a value

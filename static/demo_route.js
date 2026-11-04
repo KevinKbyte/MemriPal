@@ -14,9 +14,8 @@
  *   profile: Record<string, string>, taps: Record<string, string>,
  * }} DemoStation
  * Taps and profile (MEM-110) are hand-authored from Kev's six walk photos, one per station in walk order;
- * photo 6 is a nearby stand-in for the Meta office, where security barred photos. No `turn` tap (ADR 0060):
- * route_view renders taps.turn into the S5 station list, which MEM-077 pins to plain names; profile.spatial
- * carries the turns instead.
+ * photo 6 is a nearby stand-in for the Meta office, where security barred photos. No `turn` tap: the
+ * Next turn group was removed (MEM-135); profile.spatial carries the turns instead.
  * @typedef {{ id: string, name: string, kind: "daily", stations: DemoStation[] }} DemoRoute
  */
 

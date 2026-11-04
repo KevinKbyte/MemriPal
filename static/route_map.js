@@ -86,7 +86,7 @@ export function renderRouteMap(svg, stations, doc) {
 }
 
 /**
- * The turn cue is shown beside the station but never matched, so "red bench left" cannot hit a second name.
+ * Practice matches station names only (no turn cue is shown, MEM-135), so "red bench left" cannot hit a second name.
  * @param {Route} route
  * @returns {{ id: string, label: string, source_quote: string }[]}
  */

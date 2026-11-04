@@ -206,12 +206,7 @@ export function createRouteView({ doc, routes, rehearsals, onPractice, realMap, 
   /** @param {Route} route */
   const renderRoute = (route) => {
     heading.textContent = `${route.name} (${kindLabel(route.kind)})`;
-    byId("route-view-stations")?.replaceChildren(...route.stations.map((s) => {
-      const li = stationLi(s);
-      const turn = s.taps?.turn;
-      if (turn) li.append(textEl("span", ` then ${String(turn).toLowerCase()}`, "route-meta"));
-      return li;
-    }));
+    byId("route-view-stations")?.replaceChildren(...route.stations.map((s) => stationLi(s)));
     renderRouteMap(byId("route-map"), route.stations, doc);
     mountRealMap("route-map", route);
     for (const id of ["route-view-practice", "route-view-delete"]) setHidden(id, false);
