@@ -38,6 +38,7 @@ MAP_SCREENS = ("closed", "open", "landmark", "hidden")
 RENDER_PATHS = ["docs/design", "static"]
 PHONE_WIDTH = 375
 AXE_RULES = ("color-contrast", "target-size")
+AXE_HTML_MAX = 120
 MANIFEST = "design-gate-run.json"
 FILE_EXTS = "css|js|mjs|ts|html|md|py|svg|png|jpg|json|txt|sh"
 
@@ -180,7 +181,8 @@ def real_shoot(repo: Path, rev: str, outdir: str) -> dict:
                             "scroll_width": page.evaluate("document.documentElement.scrollWidth"),
                             "axe": page.evaluate(
                                 "async r => (await axe.run(document, {runOnly: {type: 'rule', values: r}}))"
-                                ".violations.map(v => v.id)",
+                                ".violations.map(v => ({id: v.id,"
+                                " nodes: v.nodes.map(n => ({target: n.target, html: n.html}))}))",
                                 list(AXE_RULES),
                             ),
                             "ids": page.evaluate("[...document.querySelectorAll('[id]')].map(e => e.id)"),
@@ -229,6 +231,27 @@ def _parse(argv: list[str]) -> argparse.Namespace:
     return args
 
 
+def _snippet(html: str) -> str:
+    text = "".join(c if c.isascii() else "?" for c in re.sub(r"\s+", " ", html).strip())
+    return text[:AXE_HTML_MAX] + "..." if len(text) > AXE_HTML_MAX else text
+
+
+def axe_problems(shot_name: str, violations: list) -> list[str]:
+    """A line per offending node of each AXE_RULES violation (MEM-112); bare rule id or no nodes: one line."""
+    problems = []
+    for v in violations:
+        # Older renders recorded bare rule ids; current ones record {"id", "nodes": [{"target", "html"}]}.
+        rule, nodes = (v, []) if isinstance(v, str) else (v.get("id"), v.get("nodes") or [])
+        if rule not in AXE_RULES:
+            continue
+        if not nodes:
+            problems.append(f"axe {rule}: {shot_name}")
+        for n in nodes:
+            target = " ".join(str(t) for t in n.get("target", []))
+            problems.append(f"axe {rule}: {shot_name}: {target} {_snippet(str(n.get('html', '')))}")
+    return problems
+
+
 def _render_problems(render: dict, tip_dir: Path) -> tuple[list[str], dict[str, str]]:
     """Problems in the tip render itself, plus {filename: sha256} of every shot on disk."""
     problems = [f"render error: {e}" for e in render.get("errors", [])]
@@ -245,9 +268,7 @@ def _render_problems(render: dict, tip_dir: Path) -> tuple[list[str], dict[str, 
         hashes[name] = _sha256(path)
         if shot["viewport"][0] == PHONE_WIDTH and shot["scroll_width"] > PHONE_WIDTH:
             problems.append(f"overflow: {name} scroll width {shot['scroll_width']} > {PHONE_WIDTH}")
-        for rule in shot.get("axe", []):
-            if rule in AXE_RULES:
-                problems.append(f"axe {rule}: {name}")
+        problems += axe_problems(name, shot.get("axe", []))
     return problems, hashes
 
 
