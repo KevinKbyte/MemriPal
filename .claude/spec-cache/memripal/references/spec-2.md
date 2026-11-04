@@ -345,16 +345,16 @@ ADR [0004](../../../../docs/decisions/0004-public-deploy-spend-guard.md),
 - MEMRIPAL_MAX_BODY_BYTES: app-wide cap ahead of route caps; declared or streamed body past it -> 413 "too_large".
   Non-integer or < 1 -> ValueError.
 - Dockerfile: python:3.13-slim, `uv sync --frozen --no-dev`, copies only src, static, fixtures; non-root user;
-  `MEMRIPAL_MODE=fixture`, never meta; no secret-named ENV/ARG; uvicorn on 0.0.0.0:`$PORT` (default 8080).
-  `.dockerignore` excludes .git, venvs, .env*, .secrets, *.dpapi, refs, fixtures/raw, docs, tests, scripts, node
-  tests; `.gcloudignore` includes it plus `.gitignore`.
+  `MEMRIPAL_MODE=fixture`, never meta; no secret-named ENV/ARG; uvicorn on 0.0.0.0:`$PORT` (default 8080);
+  `MEMRIPAL_META_SPEND_DIR` under /tmp (no home dir; ADR 0069). `.dockerignore` excludes .git, venvs, .env*, .secrets,
+  *.dpapi, refs, fixtures/raw, docs, tests, scripts, node tests; `.gcloudignore` includes it plus `.gitignore`.
 - `scripts/deploy_cloud_run.sh` (env GCP_PROJECT, REGION us-central1, SERVICE memripal, EXTRA_HOSTS): `gcloud run
   deploy --source . --max-instances=1 --allow-unauthenticated`, env MEMRIPAL_MODE=fixture, MEMRIPAL_CALL_BUDGET=300,
   MEMRIPAL_MAX_BODY_BYTES=21233664 (= the largest route cap, /split), MEMRIPAL_ALLOWED_HOSTS = the deterministic
   `<service>-<project number>.<region>.run.app` host (+ EXTRA_HOSTS); secrets only via `--set-secrets`
   (MEMRIPAL_PASSCODE from secret memripal-passcode, META_API_KEY from meta-api-key); never reads a secret value.
 
-Tests: tests/test_deploy_guards.py, tests/test_deploy_artifacts.py
+Tests: tests/test_deploy_guards.py, tests/test_deploy_artifacts.py (`test_dockerfile_sets_writable_meta_spend_dir`)
 
 ## MEM-035 Web manifest + public banner
 

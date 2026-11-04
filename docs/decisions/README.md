@@ -200,3 +200,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0068](0068-sticker-pool-client-indexeddb.md) The sticker pool (emoji, uploads, generated) lives client-side in
   IndexedDB behind `selectStore` with a localStorage fallback, uploads downscaled before storing (offline, stateless
   backend) over the sqlite-wasm db or server-side storage.
+- [0069](0069-container-spend-state-dir.md) The Dockerfile sets `MEMRIPAL_META_SPEND_DIR=/tmp/memripal/meta-spend`
+  so the homeless non-root user can write Meta spend state; resets per instance restart (over a deploy-script env
+  var, creating the home dir, or a code tempdir fallback).
