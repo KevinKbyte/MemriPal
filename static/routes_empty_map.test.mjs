@@ -52,10 +52,10 @@ describe("empty Routes map (MEM-114)", () => {
   });
 
   test("show() puts the slogan in the CTA overlay and exports SLOGAN", () => {
-    assert.equal(SLOGAN, "Find a home for every memory");
+    assert.equal(SLOGAN, "Make what's important unforgettable");
     const { map, ctas } = setup();
     map.show();
-    assert.ok(ctas()[0].textContent.includes("Find a home for every memory"));
+    assert.ok(ctas()[0].textContent.includes("Make what's important unforgettable"));
   });
 
   test("CTA buttons reuse the existing #load-demo and #routes-new handlers", () => {

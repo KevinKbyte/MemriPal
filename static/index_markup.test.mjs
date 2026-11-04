@@ -380,12 +380,12 @@ describe("MEM-073 first screen has no room-photo copy", () => {
 });
 
 // Covers: MEM-114
-// Requirement: the zero-route empty state shows the slogan "Find a home for every memory" beside Pal.
+// Requirement: the zero-route empty state shows the slogan "Make what's important unforgettable" beside Pal.
 describe("MEM-114 empty-state slogan markup (static/index.html)", () => {
-  test("#empty-slogan text is exactly 'Find a home for every memory'", () => {
+  test("#empty-slogan text is exactly \"Make what's important unforgettable\"", () => {
     const m = HTML.match(/<([a-z0-9]+)\b[^>]*\bid=["']empty-slogan["'][^>]*>([\s\S]*?)<\/\1>/i);
     assert.ok(m, "index.html has no element with id empty-slogan");
-    assert.equal(m[2].replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim(), "Find a home for every memory");
+    assert.equal(m[2].replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim(), "Make what's important unforgettable");
   });
 
   test("#empty-slogan is not hidden in the markup", () => {
