@@ -7,6 +7,7 @@ import { countInOrder } from "./recall_match.js";
 import { routeHitRates } from "./rehearsals.js";
 import { learnedCount, renderRouteMap } from "./route_map.js";
 import { createRouteNew } from "./route_new.js";
+import { createStationCard } from "./station_card.js";
 import { showTab } from "./tabbar.js";
 
 /**
@@ -79,18 +80,47 @@ export function createRouteView({ doc, routes, rehearsals, onPractice, realMap, 
     return li;
   };
 
+  /** @type {Route | null} */
+  let current = null;
+
+  // MEM-110: one S3 station card (station_card.js, fixed #station-* ids) follows the selected station of the
+  // opened route, so the seeded taps show after Load demo. Created on first use; absent markup -> no card.
+  /** @type {ReturnType<typeof createStationCard> | null} */
+  let stationCard = null;
+  /** @param {Route} route @param {string} id */
+  const showCard = (route, id) => {
+    if (!byId("station-card") || !byId("station-name")) return;
+    stationCard ??= createStationCard({ doc, store: routes, routeId: route.id });
+    setHidden("station-card", false);
+    void stationCard.show(id, route.id).catch(() => {});
+  };
+
+  /** @param {Element | null} from @param {Element} root @returns {string | null} */
+  const stationIdFrom = (from, root) => {
+    const idOf = (/** @type {any} */ n) => n?.dataset?.stationId || n?.getAttribute?.("data-station-id") || null;
+    let node = from;
+    while (node && node !== root && !idOf(node)) node = /** @type {Element | null} */ (node.parentNode);
+    return node && node !== root ? idOf(node) : null;
+  };
+
   // MEM-088: a click on a map marker (or inside one) selects its station in both lists. Delegated on
   // #route-map so it holds whichever layer (sketch or real-map overlay) draws the markers.
   const routeMap = byId("route-map");
   routeMap?.addEventListener("click", (event) => {
-    let node = /** @type {Element | null} */ (event.target);
-    while (node && node !== routeMap && !node.getAttribute("data-station-id")) {
-      node = /** @type {Element | null} */ (node.parentNode);
-    }
-    const id = node && node !== routeMap ? node.getAttribute("data-station-id") : null;
-    if (!id) return;
+    const id = stationIdFrom(/** @type {Element | null} */ (event.target), routeMap);
+    if (id) selectStation(id, { scroll: true });
+  });
+  // MEM-110: a click on a station in the S5 list selects it too.
+  const stationList = byId("route-view-stations");
+  stationList?.addEventListener("click", (event) => {
+    const id = stationIdFrom(/** @type {Element | null} */ (event.target), stationList);
+    if (id) selectStation(id, { scroll: false });
+  });
+
+  /** @param {string} id @param {{ scroll: boolean }} opts */
+  function selectStation(id, { scroll }) {
     // The marker itself shows the selection too (style.css .route-node.selected).
-    for (const n of /** @type {Element[]} */ ([...routeMap.children])) {
+    for (const n of /** @type {Element[]} */ ([...(routeMap?.children ?? [])])) {
       if (n.classList?.contains("route-node")) n.classList.toggle("selected", n.getAttribute("data-station-id") === id);
     }
     for (const list of ["route-view-stations", "landmarks-list"]) {
@@ -99,14 +129,12 @@ export function createRouteView({ doc, routes, rehearsals, onPractice, realMap, 
         else {
           li.setAttribute("aria-current", "true");
           // The drawer list can outgrow the drawer; Landmarks is another tab, so only the visible list scrolls.
-          if (list === "route-view-stations") li.scrollIntoView?.({ block: "nearest" });
+          if (scroll && list === "route-view-stations") li.scrollIntoView?.({ block: "nearest" });
         }
       }
     }
-  });
-
-  /** @type {Route | null} */
-  let current = null;
+    if (current) showCard(current, id);
+  }
   // routeGone: deleteRoute landed, so Undo must restore it; records: the rehearsals to put back.
   /** @type {{ id: string, records: import("./rehearsals.js").Rehearsal[], routeGone: boolean } | null} */
   let deleted = null;
@@ -157,6 +185,7 @@ export function createRouteView({ doc, routes, rehearsals, onPractice, realMap, 
 
   const showHome = async () => {
     setHidden("route-view", true);
+    setHidden("station-card", true);
     setHidden("route-view-undo", true);
     deleted = null;
     setHidden("routes-home", false);
@@ -207,6 +236,9 @@ export function createRouteView({ doc, routes, rehearsals, onPractice, realMap, 
     const chip = byId("map-chip");
     if (chip) chip.textContent = route.name;
     byId("landmarks-list")?.replaceChildren(...route.stations.map(stationLi));
+    // MEM-110: the station card opens on the first station (nothing marked selected until the user picks one).
+    if (route.stations.length) showCard(route, route.stations[0].id);
+    else setHidden("station-card", true);
     showTab("routes", doc);
   };
 
@@ -230,6 +262,7 @@ export function createRouteView({ doc, routes, rehearsals, onPractice, realMap, 
     byId("hit-rates")?.replaceChildren();
     for (const id of ["route-view-practice", "route-view-delete"]) setHidden(id, true);
     setHidden("route-view-undo", false);
+    setHidden("station-card", true);
     try {
       stash.records = await rehearsals.list(route.id);
       await routes.deleteRoute(route.id);
@@ -270,6 +303,7 @@ export function createRouteView({ doc, routes, rehearsals, onPractice, realMap, 
     const map = renderRouteMap(byId("recall-map"), current.stations, doc);
     mountRealMap("recall-map", current);
     setHidden("route-view", true);
+    setHidden("station-card", true);
     setHidden("recall", false);
     showTab("recall", doc);
     onPractice(current, map);
@@ -294,6 +328,7 @@ export function createRouteView({ doc, routes, rehearsals, onPractice, realMap, 
   onClick("routes-new", () => {
     setHidden("routes-home", true);
     setHidden("route-view", true);
+    setHidden("station-card", true);
     const drawer = /** @type {HTMLDetailsElement | null} */ (byId("drawer"));
     if (drawer) drawer.open = true;
     routeNew.open();

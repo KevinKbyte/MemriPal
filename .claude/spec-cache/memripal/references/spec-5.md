@@ -87,6 +87,37 @@ NFR: POSIX sh, idempotent (describe-or-create per resource); never reads secrets
   does not lock out network B.
 
 Tests: tests/test_proxy_hops.py, tests/test_deploy_scripts.py
+Continuation of [spec-4.md](spec-4.md), which is at its 500-line cap.
+
+## MEM-088 Wire the route builder into the page (Map a new route)
+
+Status: IN PROGRESS
+Decided-by: none
+Root problem: "Map a new route" (`#routes-new`) only opened the already-open drawer; `walk_route.js` (MEM-084) and
+`auto_loci.js` (MEM-085) had no page caller, so no route could be mapped in the UI and the map was blank on a fresh
+origin.
+Actors: the user; `static/app.js`; `static/route_builder.js`; `static/walk_route.js`; `static/auto_loci.js`;
+`static/route_store.js`.
+NFR: 0 network calls beyond same-origin `/static/data/*.json`; text via `textContent` only; graph fetched once per page.
+- Map a new route shows the route builder `#route-new` (Start `#route-from`, End `#route-to`, Find the walk
+  `#route-find`, Cancel `#route-new-cancel`) in the drawer and hides Your routes / route view.
+- Find the walk geocodes both ends locally (`walk_route.js` geocode over `/static/data/kendall_pois.json` + aliases),
+  routes over `/static/data/kendall_walk_graph.json`, and lists the stations: start, up to 6 evenly spaced
+  `auto_loci.js` candidates, end (max 8). Distance label "About 600 m, about 8 min walk" (km above 1000 m, 80 m/min);
+  a missing graph falls back to the straight line, labelled "(straight line; walking paths unavailable)".
+- A geocode miss shows `No match for "<phrase>". Try: <names>.` and no result.
+- Save route stores the route (saved, stations with coords and address; name defaults to "<start> to <end>") and
+  opens it on the live map (route view, map chip, Landmarks list).
+- geocode ignores tokens under 2 characters when ranking misses; a miss sharing no word with any name suggests the
+  aliases only.
+- `auto_loci.js` `candidates()` drops a candidate whose normalized address matches an earlier candidate's or an
+  existing station's (same building).
+- `#map-empty` empty state shows on the map until a route is drawn.
+- `#status` (backend health dev text) is hidden while the backend is healthy; "Backend unavailable" still shows.
+- Out of scope (later MEM-088 landing): Landmarks candidates swap/undo UI, Memorize tab, station photo upload wiring,
+  marker/route-line restyle.
+
+Tests: static/route_builder.test.mjs, static/app_route_new_flow.test.mjs
 
 ## MEM-106 Spark chat falls back to Meta; breaker, logging, provider bounds
 

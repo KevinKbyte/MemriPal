@@ -181,3 +181,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0062](0062-reserved-adr-numbers.md) ADR numbering gaps pass only when every missing number is on the README
   `Reserved:` line; a reserved number that exists as a file fails as stale; amends MEM-018 contiguity (over committing
   only in land order or dropping the contiguity check).
+- [0063](0063-route-view-mounts-one-station-card.md) The route view mounts the single MEM-050 station card, opened on
+  station 1 and following the selected station, with a tap-summary chip row of only the set groups; amends 0060
+  (over a card per station or a tap line in each S5 li).

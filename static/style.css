@@ -539,6 +539,26 @@ button[aria-expanded]:hover {
   margin: 0 0 0.5rem;
 }
 
+/* MEM-110: the station's set taps as wrapping chips above the editor; no chip for an untapped group. */
+.tap-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+
+.tap-chip {
+  padding: 0.2rem 0.6rem;
+  border: 1px solid var(--lamp);
+  border-radius: 999px;
+  background: var(--lamp-soft);
+  color: var(--ink);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
 button[aria-pressed="true"],
 button[aria-pressed="true"]:hover {
   background: var(--primary);
