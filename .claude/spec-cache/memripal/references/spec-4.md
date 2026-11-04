@@ -139,3 +139,102 @@ Card-list flow (2026-10-31); S2-S9 flow rules still apply:
   all at 6/8 with 3 candidates adds 2 and keeps 1 as an alternative; Add all at 8/8 is disabled with a reason;
   capture button present on S1-S9; no capture screen shows a required hint-or-stop choice; check_route_css.py and
   design_gate.py pass at 375 px.
+
+## MEM-074 Real map: Kendall Square PMTiles extract build (PLANNED)
+
+PLANNED, not built, unverified: extract script not written. Vendored runtime assets landed at 1e46d72 under this ID
+(maplibre-gl 5.24.0 CSP trio, pmtiles 4.5.0 IIFE, `@protomaps/basemaps` 5.7.2 build-time, Noto Sans glyph ranges +
+v4 sprites; provenance and sha256 in each `VERSION`).
+ADR [0041](../../../../docs/decisions/0041-real-map-whole-file-pmtiles.md).
+Decided-by: ADR-0041
+Root problem: ADR 0038 option A needs real Kendall Square streets served same-origin; the only official extractor is
+the Go `pmtiles extract` CLI and the host has no Go.
+Actors: `scripts/build_map_extract.py` (planned), PyPI `pmtiles` 3.8.1 (`Reader`, `Writer`), the build.protomaps.com
+planet, `static/map/kendall.pmtiles`, `static/map/VERSION`.
+NFR: output <= 3 MiB (3,145,728 bytes); build-time only, no runtime network; pytest never touches the network.
+<!-- claim-exempt: planned -->
+- Source: build key from `https://build-metadata.protomaps.dev/builds.json` (latest, or an explicit key); planet
+  `https://build.protomaps.com/<key>.pmtiles` read by `Reader` over an HTTP-Range `get_bytes`.
+- Scope: BBOX `(-71.1083, 42.3494, -71.0719, 42.3764)` (min lon, min lat, max lon, max lat), zooms 12-14; every tile
+  intersecting the bbox at each zoom; raw stored bytes (gzip MVT) copied, never re-encoded.
+- Output: `Writer` in ascending tile-id order (clustered); header tile type MVT, tile compression gzip, bounds = bbox,
+  zooms 12-14; planet metadata (`vector_layers`, attribution) carried over.
+- Commit `static/map/kendall.pmtiles`; append build key, bbox, zooms and output sha256 to `static/map/VERSION`.
+  <!-- claim-exempt: planned -->
+- Accept (fake in-memory planet + the committed file): magic `PMTiles`, version 3; min/max zoom 12/14; bounds == bbox
+  at e7 precision; tile count == the count enumerated from the bbox, none outside it; tile bytes identical to the
+  source's; committed file <= 3,145,728 bytes.
+
+## MEM-075 Real map: light/dark style generation (PLANNED)
+
+PLANNED, not built, unverified. ADR [0041](../../../../docs/decisions/0041-real-map-whole-file-pmtiles.md).
+Decided-by: ADR-0041
+Root problem: stock Protomaps styles fetch glyphs and sprites from a github.io CDN and emit no labels unless `lang` is
+set, breaking ADR 0038 conditions 5 and 8.
+Actors: `scripts/build_map_style.mjs` (planned), `vendor-node/protomaps-basemaps/basemaps.js` 5.7.2,
+`static/map/style-light.json`, `static/map/style-dark.json`, `static/map/{fonts,sprites}`.
+NFR: deterministic (re-run is byte-identical); no network. <!-- claim-exempt: planned -->
+- `layers("kendall", namedFlavor("light" | "dark"), {lang: "en"})` per flavour; source `kendall` =
+  `{type: "vector", url: "pmtiles://kendall"}` with the Protomaps + "(c) OpenStreetMap contributors" attribution.
+- `glyphs` -> `map/fonts/{fontstack}/{range}.pbf`, `sprite` -> `map/sprites/v4/<flavour>`, module-relative paths the
+  MEM-076 loader resolves against `import.meta.url`.
+- Accept: both files parse; 0 `http(s)://` in `sources.*.url`, `glyphs`, `sprite`; >= 1 `symbol` layer with
+  `text-field` per flavour; every `text-font` stack has a dir under `static/map/fonts`; sprite files for both flavours
+  exist; a second run is byte-identical.
+
+## MEM-076 Real map: lazy loader, validation, sketch fallback, theme flavour (PLANNED)
+
+PLANNED, not built, unverified. ADR [0041](../../../../docs/decisions/0041-real-map-whole-file-pmtiles.md) conditions
+1-4.
+Decided-by: ADR-0041
+Root problem: the basemap must never blank the route view: Capacitor may answer a missing asset with `index.html` 200,
+the shell's `apiUrl()` sends root-relative paths cross-origin, and the whole-file fetch is slow on web links.
+Actors: a planned loader module in `static/`, `static/route_map.js` (sketch, kept), `static/route_view.js` call sites
+(`#route-map`, `#recall-map`), vendored `static/vendor/maplibre` and `static/vendor/pmtiles`.
+NFR: no fetch at app boot; one extract fetch per session, held as a Blob.
+- Trigger: route-view entry for a `geo` route with every station inside the bbox; else sketch only.
+- Fetch: one GET of module-relative `map/kendall.pmtiles`, no `Range` header, never via `api_base.js`.
+- Validate: `res.ok`, bytes 0-6 == `PMTiles`, byte 7 == 3, byteLength <= 3 MiB; any failure -> sketch stays.
+- Wire: `maplibregl.setWorkerUrl` -> vendored `maplibre-gl-csp-worker.js`; `addProtocol("pmtiles", ...)`;
+  `protocol.add(new PMTiles(new FileSource(new File([blob], "kendall"))))`.
+- Sketch until ready: the SVG sketch renders immediately and is replaced on the map's first `idle`.
+- Theme: app theme light/dark selects `style-light.json` / `style-dark.json`; a theme change swaps the style.
+- Accept (fake fetch): 404, HTML body with 200, body < 127 bytes, oversize -> sketch, no map; valid archive -> map;
+  0 fetches before route view; request carries no `Range`; URL neither root-relative nor absolute; module does not
+  import `api_base.js`; dark theme -> `style-dark.json`.
+
+## MEM-077 Real map: one SVG overlay, viewport-only markers, a11y, attribution (PLANNED)
+
+PLANNED, not built, unverified. Folds plan item 18 (off-screen landmarks not in the DOM). ADR
+[0041](../../../../docs/decisions/0041-real-map-whole-file-pmtiles.md); ADR 0038 map-source conditions 3, 4, 6, 7, 9.
+Decided-by: ADR-0041
+Root problem: two basemaps (map, sketch) must share one route renderer, and markers must stay bounded at 1000+
+landmarks.
+Actors: the MEM-076 loader, MapLibre `map.project`, the route overlay SVG.
+NFR: DOM marker count == in-viewport count after every `moveend`.
+- One SVG overlay above the canvas, re-positioned via `map.project([lon, lat])` on `move`; no route layers in the style.
+- Markers: only stations and landmarks inside the viewport bounds (plus the ADR 0038 margin) exist in the DOM,
+  recomputed on `moveend`.
+- A11y: map canvas container `aria-hidden="true"`; the route and landmark lists stay the accessible path.
+- Attribution: Protomaps + "(c) OpenStreetMap contributors" visible without interaction at 375 px.
+- Any station outside the bbox -> the whole route renders as sketch.
+- Accept: each station's overlay point within 1 px of `map.project` after a pan and a zoom; marker DOM count ==
+  in-viewport count at 3 viewports; canvas container `aria-hidden="true"`; attribution text visible at 375 px; one
+  out-of-bbox station -> sketch and 0 extract fetches.
+
+## MEM-078 Real map: security and privacy (PLANNED)
+
+PLANNED, not built, unverified. ADR [0041](../../../../docs/decisions/0041-real-map-whole-file-pmtiles.md) conditions
+6 and 9; ADR 0038 map-source conditions 1 and 8.
+Decided-by: ADR-0041
+Root problem: the map must not widen the CSP, add a third-party origin, or leak location.
+Actors: `src/memripal/security_headers.py`, `scripts/build_mobile_web.mjs` (native CSP), `src/memripal/app.py`
+(static mount), a Playwright e2e on the map page.
+NFR: web and native CSP strings unchanged.
+- CSP unchanged on web and native; MapLibre's worker loads same-origin via `setWorkerUrl` (no `blob:` worker).
+- Every map request is same-origin; no request URL carries coordinates (the extract URL is constant; tiles are read
+  in memory).
+- `.pmtiles` served as `application/vnd.pmtiles`.
+- Accept: CSP strings equal their pre-map values; 0 `securitypolicyviolation` events on the map page; 0 requests to a
+  non-page origin during load, pan and zoom; 0 request URLs matching a lat/lon pattern; `GET
+  /static/map/kendall.pmtiles` Content-Type == `application/vnd.pmtiles`.

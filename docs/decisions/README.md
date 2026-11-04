@@ -101,3 +101,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0039](0039-route-design-file-split.md) Route design files split under the 500-line cap; preview pages carry an
   explicit screen map and the design gate follows `<link>` hrefs in link order (over a redirect/stub page or runtime
   CSS fetch/concat).
+- [0041](0041-real-map-whole-file-pmtiles.md) Real map: bundled Kendall Square PMTiles extract fetched whole into
+  pmtiles `FileSource`, validated, sketch fallback; maplibre-gl 5.24 CSP build; own Python extract script; amends 0038
+  condition 2 (over HTTP Range, a z/x/y tile dir, MapLibre 6, or the Go `pmtiles extract` CLI).
