@@ -244,7 +244,7 @@ class TestProbeLiveAudioFlag:
 
         monkeypatch.setenv("META_API_KEY", KEY)
         monkeypatch.setattr(memripal.probe, "run_probe", fake_run_probe)
-        monkeypatch.setattr(memripal.meta_client, "MetaClient", lambda key: object())
+        monkeypatch.setattr(memripal.meta_client, "MetaClient", lambda key, **kw: object())
         photo = tmp_path / "p.jpg"
         photo.write_bytes(PHOTO)
         code = _load_script().main(["--photo", str(photo), "--out", str(tmp_path / "out"), *extra])

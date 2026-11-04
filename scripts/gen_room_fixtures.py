@@ -22,6 +22,7 @@ from pathlib import Path
 from PIL import Image
 
 from memripal.meta_client import CallResult, MetaClient, image_bytes
+from memripal.meta_spend_guard import guard_from_env
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUT = REPO_ROOT / "fixtures" / "rooms"
@@ -142,7 +143,8 @@ def main(argv: list[str] | None = None, make_client: Callable[..., MetaClient] =
         return 2
 
     # Budget is exactly one paid call per missing room, so the client never retries.
-    client = make_client(api_key, max_retries=0)
+    # Charged to the server's guard (MEM-121): generation spends the same Meta credit.
+    client = make_client(api_key, max_retries=0, spend_guard=guard_from_env())
     failed = False
     for room_id, subject in ROOMS:
         path = out / f"{room_id}.webp"

@@ -131,8 +131,14 @@ class MetaClient:
     def post(self, path: str, payload: dict) -> CallResult:
         return self._send(path, json=payload)
 
-    def _send(self, path: str, *, retries: int | None = None, **content) -> CallResult:
-        """`retries` overrides max_retries for this request only; None keeps the client's."""
+    def _send(
+        self, path: str, *, retries: int | None = None, charge: str | None = None, **content
+    ) -> CallResult:
+        """`retries` overrides max_retries for this request only; None keeps the client's.
+
+        `charge` names the spend-guard kind billed before every attempt, retries included (MEM-121): each
+        sent attempt may be billed. A retry the cap refuses raises MetaSpendCapReached, sending nothing more.
+        """
         max_retries = self._max_retries if retries is None else retries
         url = self._base_url + path
         headers = {"Authorization": "Bearer " + self._api_key} if self._api_key else {}
@@ -141,6 +147,8 @@ class MetaClient:
         while True:
             attempt += 1
             retry_after = None
+            if charge is not None:
+                self._charge(charge)
             try:
                 with self._http.stream("POST", url, headers=headers, **content) as response:
                     status = response.status_code
@@ -195,8 +203,7 @@ class MetaClient:
                 "json_schema": {"name": schema_name, "strict": True, "schema": schema},
             },
         }
-        self._charge("chat")
-        return self.post("/chat/completions", payload)
+        return self._send("/chat/completions", json=payload, charge="chat")
 
     def segment(self, *, image_data_url: str, phrase: str, model: str = "sam-3.1") -> CallResult:
         content = [
@@ -208,8 +215,7 @@ class MetaClient:
             "input": [{"type": "message", "role": "user", "content": content}],
             "metadata": {"include_confidence": "true"},
         }
-        self._charge("segment")
-        return self.post("/responses", payload)
+        return self._send("/responses", json=payload, charge="segment")
 
     def image_edit(
         self,
@@ -232,9 +238,8 @@ class MetaClient:
             payload["size"] = size
         # Omitted rather than None: httpx reads timeout=None as "no timeout at all".
         per_request = {} if timeout is None else {"timeout": timeout}
-        self._charge("image_edit")
         # Never retried: an edit is slow and paid, and the scene slot is held for the whole call.
-        return self._send("/images/edits", json=payload, retries=0, **per_request)
+        return self._send("/images/edits", json=payload, retries=0, charge="image_edit", **per_request)
 
     def image_generate(
         self,
@@ -252,9 +257,10 @@ class MetaClient:
         """
         payload = {"model": model, "prompt": prompt, "n": 1, "output_format": output_format}
         per_request = {} if timeout is None else {"timeout": timeout}
-        self._charge("image_generate")
         # Never retried: generation is paid and a retry after a 5xx may double-bill.
-        return self._send("/images/generations", json=payload, retries=0, **per_request)
+        return self._send(
+            "/images/generations", json=payload, retries=0, charge="image_generate", **per_request
+        )
 
     def transcribe(
         self,
@@ -280,8 +286,7 @@ class MetaClient:
             "request": (None, json.dumps(request).encode(), "application/json"),
             "audio": ("audio.wav", wav_bytes, "audio/wav"),
         }
-        self._charge("asr")
-        return self._send("/asr/transcribe", files=files)
+        return self._send("/asr/transcribe", files=files, charge="asr")
 
 
 def transcript_text(body: bytes) -> str:

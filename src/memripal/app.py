@@ -62,6 +62,7 @@ from memripal.record_sign import record_key, sig_ok, sign_record
 from memripal.routes_station import make_station_router
 from memripal.scenes import render_scene
 from memripal.security_headers import SecurityHeaders
+from memripal.spend_degrade import SpendCapHeader, with_saved_results
 from memripal.split import SplitRejected, check_notes, split_list, split_notes
 from memripal.static_files import static_files
 
@@ -136,7 +137,7 @@ class _BudgetedBackend:
 
 
 def create_app(
-    backend: ModelBackend | None = None, place_provider=None, asr_client=None, clock=None
+    backend: ModelBackend | None = None, place_provider=None, asr_client=None, clock=None, saved_roots=None
 ) -> FastAPI:
     if backend is None:
         backend = select_backend(None, fixtures_root=REPLAY_DIR, live_cache_root=LIVE_CACHE_DIR)
@@ -156,6 +157,11 @@ def create_app(
     access_key = access.access_key()
     access_lockout = access.lockout_from_env(_env_int, clock)
     live = backend.mode != "fixture"
+    if live:
+        # Past the Meta spend cap, replay saved results: live cache, then the committed replay (MEM-121).
+        backend = with_saved_results(
+            backend, (LIVE_CACHE_DIR, REPLAY_DIR) if saved_roots is None else saved_roots
+        )
     if live and call_budget is not None:
         backend = _BudgetedBackend(backend, call_budget)
 
@@ -175,6 +181,7 @@ def create_app(
     # /docs and /redoc stop rendering.
     app.add_middleware(SecurityHeaders)
     app.add_middleware(ChatFallbackHeader)
+    app.add_middleware(SpendCapHeader)
     _ensure_log_handler()
 
     def _passcode_error(request: Request) -> JSONResponse | None:

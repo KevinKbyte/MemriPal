@@ -166,3 +166,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0060](0060-demo-route-seeded-taps-and-profile.md) Demo route seeds photo-derived `taps` `{ sound, smell, feel,
   mood }` and `profile` in `static/demo_route.js`, copied by `seedRoute`, no `turn` (S5 list, MEM-077) and no photos;
   amends 0042 (over an importable backup file or committed photos).
+- [0061](0061-spend-cap-degrade-and-byok.md) Past the Meta spend cap: replay saved results (live cache, then fixture
+  replay), chat on the backup provider, else the 503 cap code; `X-Memripal-Spend-Cap` toast; each retry charged;
+  BYOK offered only at the cap (MEM-095 part C); amends 0059 (over BYOK only or degrade only).
