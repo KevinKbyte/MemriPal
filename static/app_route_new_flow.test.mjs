@@ -4,7 +4,7 @@
 // 3-8 stations (start, landmarks, end), the distance line and a default name "<from> to <to>"; a graph 404
 // falls back to a straight line, labelled; a miss shows 'No match for "<phrase>".' with suggestions. Save
 // stores one saved route and opens it (map mount, chip, Landmarks); Cancel returns to Routes home. #map-empty
-// shows until a route is opened. #status hides on a healthy backend and says "Backend unavailable" otherwise.
+// is the no-JS notice only; once booted, the MEM-114 call to action replaces it (hidden). #status hides on a healthy backend and says "Backend unavailable" otherwise.
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 
@@ -114,10 +114,11 @@ describe("Map a new route: Save stores and opens the route (MEM-088)", () => {
 });
 
 describe("map empty state and health line (MEM-088)", () => {
-  test("#map-empty shows on a fresh boot and hides once Load demo opens a route", async () => {
+  test("#map-empty gives way to the MEM-114 call to action on a fresh boot and stays hidden once Load demo opens a route", async () => {
     const { b } = start();
     await settle(20);
-    assert.equal(el(b, "map-empty").hidden, false);
+    // MEM-114: the .empty-map-cta card replaced the MEM-088 text notice, so it is hidden on a fresh boot.
+    assert.equal(el(b, "map-empty").hidden, true);
     await loadDemo(b);
     await until(() => !el(b, "route-view").hidden, "demo route opened", TURNS);
     assert.equal(el(b, "map-empty").hidden, true);

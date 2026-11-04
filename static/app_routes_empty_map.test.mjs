@@ -33,6 +33,10 @@ function fakeRealMap() {
 function start(adapter = memoryAdapter()) {
   const realMap = fakeRealMap();
   const b = boot({ routes: createRouteStore(adapter), realMap, rehAdapter: kvAdapter(), health: FIXTURE });
+  // The harness page is flat (no parents); stand in for index.html's .map-wrap so the CTA has a mount point.
+  const wrap = b.p.doc.createElement("div");
+  wrap.classList.add("map-wrap");
+  wrap.append(el(b, "route-map"));
   // The fake DOM has no click(); the production CTA calls getElementById(id).click().
   for (const id of ["load-demo", "routes-new"]) {
     const node = el(b, id);
@@ -43,7 +47,7 @@ function start(adapter = memoryAdapter()) {
 
 const ctaOf = (b) => {
   const wrap = el(b, "route-map").parentNode ?? el(b, "route-map").parent;
-  return wrap && find(wrap, (n) => typeof n.className === "string" && n.className.split(/\s+/).includes("empty-map-cta"));
+  return wrap && find(wrap, (n) => n.classList?.contains("empty-map-cta") || (typeof n.className === "string" && n.className.split(/\s+/).includes("empty-map-cta")));
 };
 const buttonOf = (cta, action) => cta && find(cta, (n) => n.tagName === "BUTTON" && n.dataset.action === action);
 
