@@ -568,3 +568,21 @@ Actors: a visitor with a Meta API key; the 5 model routes; Meta's API.
   no-key path is unchanged.
 
 Tests: tests/test_byok.py, static/byok.test.mjs
+## MEM-112 Design gate: axe violations name the offending DOM node
+
+Extends MEM-070 (design gate axe check).
+Decided-by: none
+Root problem: `scripts/design_gate.py` printed only `axe <rule>: <shot>`, so every a11y failure cost a manual hunt
+for the element.
+Actors: `scripts/design_gate.py` (`real_shoot`, `axe_problems`).
+- Shooter: keeps each axe violation's `id` plus `nodes[].target` (CSS selector list) and `nodes[].html`.
+- Problem lines come from the pure function `design_gate.axe_problems(shot_name, violations)`:
+  - one line per node: `axe <rule>: <shot>: <target> <snippet>`; target = the node's selectors joined by one space;
+  - snippet = the node's html, whitespace runs collapsed to one space, non-ASCII chars replaced by `?`, cut to the
+    first 120 chars with `...` appended when cut;
+  - a gated violation with no nodes (or a legacy bare rule-id string) still yields `axe <rule>: <shot>`;
+  - rules outside `AXE_RULES` (`color-contrast`, `target-size`) yield nothing.
+- Accept: target + snippet appear; 2 nodes -> 2 lines; no nodes -> rule line; non-gated rule -> no line; 300-char
+  html -> 120 chars + `...`.
+
+Tests: tests/test_design_gate.py
