@@ -1,7 +1,7 @@
 """FastAPI app: health, static shell (MEM-001), POST /loci (MEM-015), demo photo (MEM-017),
 POST /split (MEM-020), POST /associate (MEM-021), demo notes (MEM-023), POST /scenes (MEM-028),
 POST /recall/audio and the demo recall replay (MEM-032), deploy guards (MEM-034), signed records (MEM-036),
-POST /station (MEM-083)."""
+POST /station (MEM-083), POST /baseline (MEM-098)."""
 
 import base64
 import hmac
@@ -29,6 +29,8 @@ from memripal.associate import (
     record_ok,
 )
 from memripal.backend import BackendCallFailed, FixtureMissing, ModelBackend, select_backend
+from memripal.baseline import TOKEN_ENV as MAPILLARY_TOKEN_ENV
+from memripal.baseline import BaselineProvider, FixtureBaselineProvider
 from memripal.bodies import (
     UPLOAD_TYPES,
     BudgetExhausted,
@@ -57,6 +59,7 @@ from memripal.recall_relay import (
     transcript_or_none,
 )
 from memripal.record_sign import record_key, sig_ok, sign_record
+from memripal.routes_baseline import baseline_router
 from memripal.routes_station import make_station_router
 from memripal.scenes import render_scene
 from memripal.security_headers import SecurityHeaders
@@ -126,13 +129,24 @@ class _BudgetedBackend:
 
 
 def create_app(
-    backend: ModelBackend | None = None, place_provider=None, asr_client=None, clock=None
+    backend: ModelBackend | None = None,
+    place_provider=None,
+    asr_client=None,
+    clock=None,
+    baseline_provider=None,
 ) -> FastAPI:
     if backend is None:
         backend = select_backend(None, fixtures_root=REPLAY_DIR, live_cache_root=LIVE_CACHE_DIR)
     if place_provider is None:
         # Fixture mode stays offline end to end, so the demo place replays like every other answer.
         place_provider = FixturePlaceProvider(REPLAY_DIR) if backend.mode == "fixture" else PlaceProvider()
+    if baseline_provider is None:
+        # Fixture mode replays recorded baselines and never touches Mapillary (MEM-098 NFR: 0 live calls).
+        baseline_provider = (
+            FixtureBaselineProvider(REPLAY_DIR)
+            if backend.mode == "fixture"
+            else BaselineProvider(os.environ.get(MAPILLARY_TOKEN_ENV, "").strip())
+        )
     if asr_client is None and backend.mode != "fixture":
         api_key = os.environ.get("META_API_KEY", "")
         asr_client = MetaClient(api_key) if api_key else None
@@ -463,6 +477,15 @@ def create_app(
 
     # Before the /static mount; shares this app's passcode guard, like /loci (MEM-083).
     app.include_router(make_station_router(backend, _passcode_error))
+    # Same passcode guard; the live Mapillary lookups share the deploy call budget and route concurrency cap.
+    app.include_router(
+        baseline_router(
+            baseline_provider,
+            _passcode_error,
+            call_budget=call_budget if live else None,
+            max_concurrent=concurrency,
+        )
+    )
     app.mount("/static", static_files(STATIC_DIR), name="static")
     return app
 
