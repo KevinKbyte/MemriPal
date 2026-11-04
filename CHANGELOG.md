@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.52] - 2026-11-04
+
+### Added
+
+- `scripts/push_secret_gcp.ps1 <name>` pushes a DPAPI-stored API key (meta-api-key, baseten-api-key, fireworks-api-key) to GCP Secret Manager through gcloud stdin, byte-exact with no trailing newline; the deploy runbook uses it instead of typing keys (MEM-111).
+
+### Changed
+
+- Submission checklist and demo script name Muse Spark Open served on Baseten for the open-weights prize.
+
 ## [0.20.51] - 2026-11-04
 
 ### Added
