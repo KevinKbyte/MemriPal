@@ -43,4 +43,26 @@ CREATE UNIQUE INDEX stations_live_pos ON stations(route_id, pos) WHERE deleted_a
 CREATE INDEX stations_photo ON stations(photo_id);
 `;
 
-export const MIGRATIONS = [V1];
+// V2 (MEM-099): Pal chats, on-device only. Same soft delete as V1 (deleted_at NULL = live, never
+// hard-deleted). seq orders ties on equal timestamps; message ids are unique per chat, as in a backup.
+const V2 = `
+CREATE TABLE chats (
+  seq INTEGER PRIMARY KEY,
+  id TEXT NOT NULL UNIQUE,
+  title TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT
+);
+CREATE TABLE chat_messages (
+  seq INTEGER PRIMARY KEY,
+  chat_id TEXT NOT NULL REFERENCES chats(id),
+  id TEXT NOT NULL,
+  role TEXT NOT NULL,
+  text TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  UNIQUE (chat_id, id)
+);
+`;
+
+export const MIGRATIONS = [V1, V2];
