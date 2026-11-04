@@ -95,6 +95,12 @@ PASSCODE_HEADER = "X-Memripal-Passcode"
 logger = logging.getLogger(__name__)
 
 
+def _upstream(route: str, exc: BackendCallFailed) -> JSONResponse:
+    # The cause goes to the server log only: the client still gets the bare code (MEM-015).
+    logger.warning("POST %s upstream failure: %s: %s", route, type(exc).__name__, exc)
+    return _call_failed(exc)
+
+
 def _env_int(name: str, minimum: int) -> int | None:
     """The env var as an int >= `minimum`, None when unset; anything else fails startup loudly."""
     raw = os.environ.get(name)
@@ -318,7 +324,7 @@ def create_app(
         except FixtureMissing:
             return _error(404, "fixture_missing")
         except BackendCallFailed as exc:
-            return _call_failed(exc)
+            return _upstream("/loci", exc)
         except BudgetExhausted:
             return _error(429, "budget_exhausted")
         except Exception:
@@ -371,7 +377,7 @@ def create_app(
         except FixtureMissing:
             return _error(404, "fixture_missing")
         except BackendCallFailed as exc:
-            return _call_failed(exc)
+            return _upstream("/split", exc)
         except BudgetExhausted:
             return _error(429, "budget_exhausted")
         return JSONResponse({"points": points})
@@ -417,7 +423,7 @@ def create_app(
         except FixtureMissing:
             return _error(404, "fixture_missing")
         except BackendCallFailed as exc:
-            return _call_failed(exc)
+            return _upstream("/associate", exc)
         except BudgetExhausted:
             return _error(429, "budget_exhausted")
         except Exception:

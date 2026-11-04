@@ -308,6 +308,12 @@ NO_PHOTO_CACHE = "no_photo_cache"
 IMAGE_EDIT_TIMEOUT_S = 30
 # After a provider failure Spark goes straight to Meta this long: one timeout per dead window (MEM-106).
 CHAT_SKIP_S = 120
+# Spark reasons before it answers and the reasoning counts against max_completion_tokens (live: 1341 reasoning
+# tokens on the 1024-token phrase call -> finish_reason "length", content null). Send-time only, like the
+# edit timeout: the request's own cap, hence its cache key and committed fixtures, stays as is (ADR 0061).
+REASONING_HEADROOM_TOKENS = 8192
+# Upstream body chars quoted in the server-side failure log; never in a response or exception text.
+LOG_BODY_CHARS = 500
 
 
 class MetaBackend:
@@ -398,6 +404,8 @@ class MetaBackend:
             gen_params = dict(req.gen_params)
             prompt_args = gen_params.pop(PROMPT_ARGS, {})
             send_image = gen_params.pop(SEND_IMAGE, True)
+            if "max_completion_tokens" in gen_params:
+                gen_params["max_completion_tokens"] += REASONING_HEADROOM_TOKENS
             prompt = prompt_for(req.prompt_template_id, prompt_args)
             ask = dict(prompt=prompt, schema=req.schema, schema_name=req.subject, **gen_params)
             ask["image_data_url"] = image_url if send_image else None
@@ -437,14 +445,23 @@ class MetaBackend:
         if not result.ok:
             # CallResult.error is "<status> <safe code>" and already key-redacted; the body is never quoted.
             failed = BackendTimeout if result.error in TIMEOUT_ERRORS else BackendCallFailed
-            raise failed(f"{req.method} call failed: {result.error}")
+            raise self._logged(failed(f"{req.method} call failed: {result.error}"), req.method, result)
         try:
             value = parse(result.body)
         except (ValueError, KeyError, IndexError, TypeError) as exc:
-            raise BackendReplyInvalid(f"{req.method} response incomplete or malformed") from exc
+            invalid = BackendReplyInvalid(f"{req.method} response incomplete or malformed")
+            raise self._logged(invalid, req.method, result) from exc
         if not valid(value):
-            raise BackendReplyInvalid(f"{req.method} response does not match its schema")
+            invalid = BackendReplyInvalid(f"{req.method} response does not match its schema")
+            raise self._logged(invalid, req.method, result)
         return self._store(store_req, value)
+
+    def _logged(self, exc: BackendCallFailed, method: str, result: Any) -> BackendCallFailed:
+        """Log the upstream cause server-side (the 502 body stays a bare code); key masked before the cut."""
+        body = result.body.decode("utf-8", "replace").replace(self._api_key, "***")[:LOG_BODY_CHARS]
+        name, status = type(exc).__name__, result.status
+        _log.warning("%s upstream failure: %s: %s; status=%s body=%s", method, name, exc, status, body)
+        return exc
 
     def _store(self, req: ModelRequest, value: Any) -> Any:
         if self.cache is not None:
