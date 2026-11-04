@@ -61,8 +61,10 @@ export function attachOverlay(map, svg, stations, doc) {
         emoji.classList.add("lm-emoji");
         emoji.setAttribute("data-station-id", id);
         emoji.setAttribute("aria-hidden", "true");
-        // Presentation attributes, not CSS, so the glyph needs no style rule; centred on the station.
+        // Presentation attributes, not CSS, so the glyph needs no style rule. Centred on (x, y): a baseline at
+        // y left the pin floating ~20 px off its station; centred it still clears the hover-doubled circle.
         emoji.setAttribute("text-anchor", "middle");
+        emoji.setAttribute("dominant-baseline", "central");
         emoji.setAttribute("font-size", "20");
         node.after(emoji);
       }
