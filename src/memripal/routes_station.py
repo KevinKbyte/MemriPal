@@ -11,7 +11,7 @@ from starlette.concurrency import run_in_threadpool
 from memripal.backend import BackendCallFailed, FixtureMissing, ModelBackend
 
 # Shared with app.py so /station's upload types, size check and budget refusal match /loci's.
-from memripal.bodies import UPLOAD_TYPES, BudgetExhausted, _error, _length_error, _read_capped
+from memripal.bodies import UPLOAD_TYPES, BudgetExhausted, _call_failed, _error, _length_error, _read_capped
 from memripal.imaging import MAX_UPLOAD_BYTES, ImageRejected, process_upload
 from memripal.station import BadReply, BlurFailed, parse_used_names, run_station
 
@@ -60,8 +60,8 @@ def make_station_router(
             return _error(502, "bad_reply")
         except FixtureMissing:
             return _error(404, "fixture_missing")
-        except BackendCallFailed:
-            return _error(502, "upstream")
+        except BackendCallFailed as exc:
+            return _call_failed(exc)
         except BudgetExhausted:
             return _error(429, "budget_exhausted")
         finally:

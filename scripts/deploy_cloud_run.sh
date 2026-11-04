@@ -36,11 +36,16 @@ if [ "$MODE" = meta ]; then
   SECRETS="$SECRETS,META_API_KEY=""meta-api-key:latest"
 fi
 # Optional provider secrets are mapped only when they exist, so a missing one never fails the deploy.
+CHAT=""
 for pair in BASETEN_API_KEY:baseten-api-key FIREWORKS_API_KEY:fireworks-api-key \
   MODAL_SEG_TOKEN:modal-seg-token MEMRIPAL_MAPILLARY_TOKEN:memripal-mapillary-token; do
   name="${pair#*:}"
   if gcloud secrets describe "$name" --project "$PROJECT" >/dev/null 2>&1; then
     SECRETS="$SECRETS,${pair%%:*}=$name:latest"
+    # Gated on the secret: MEMRIPAL_CHAT_PROVIDER=baseten without BASETEN_API_KEY fails startup (MissingApiKey).
+    if [ "$name" = baseten-api-key ] && [ "$MODE" = meta ]; then
+      CHAT=";MEMRIPAL_CHAT_PROVIDER=baseten"
+    fi
   fi
 done
 
@@ -80,7 +85,7 @@ gcloud run deploy "$SERVICE" \
   --concurrency=20 \
   --timeout=120 \
   --ingress="$INGRESS" \
-  --set-env-vars="^;^MEMRIPAL_MODE=${MODE};MEMRIPAL_CALL_BUDGET=300;MEMRIPAL_MAX_BODY_BYTES=21233664;MEMRIPAL_ALLOWED_HOSTS=${HOSTS}${HOPS}" \
+  --set-env-vars="^;^MEMRIPAL_MODE=${MODE};MEMRIPAL_CALL_BUDGET=300;MEMRIPAL_MAX_BODY_BYTES=21233664;MEMRIPAL_ALLOWED_HOSTS=${HOSTS}${HOPS}${CHAT}" \
   --set-secrets="$SECRETS"
 
 if [ -n "$EDGE_HOST" ]; then

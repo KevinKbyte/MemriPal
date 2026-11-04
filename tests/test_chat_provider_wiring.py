@@ -310,8 +310,8 @@ class TestChatProviderStartup:
 # Covers: MEM-026
 # Requirement: no provider key ever surfaces: the live backend's repr/str hold no key, and a
 # failed provider chat call (an error status whose body echoes the key, or a transport error
-# whose text holds it) raises BackendCallFailed whose message holds no key and no response body,
-# and logs no key.
+# whose text holds it) whose Meta fallback (MEM-106) also fails raises BackendCallFailed whose
+# message holds no key and no response body, and logs no key.
 class TestChatProviderSecrets:
     @pytest.mark.parametrize("provider", sorted(KEYED))
     def test_backend_repr_and_str_hold_no_key(self, monkeypatch, tmp_path, provider):
@@ -335,6 +335,15 @@ class TestChatProviderSecrets:
                 raise httpx.ConnectError(echo)
 
             net.chat_answer = _raise
+        provider_answer = net.chat_answer
+
+        def _answer():
+            # The Meta fallback fails too (non-retryable 401 echoing the keys), so the call still raises.
+            if net.requests[-1].url.host == "api.meta.ai":
+                return httpx.Response(401, json={"error": {"message": echo, "code": None}})
+            return provider_answer()
+
+        net.chat_answer = _answer
         backend = select_backend("meta", tmp_path)
 
         with caplog.at_level(logging.DEBUG), pytest.raises(BackendCallFailed) as excinfo:
@@ -342,6 +351,7 @@ class TestChatProviderSecrets:
 
         assert len(net.chats()) >= 1
         assert str(net.chats()[0].url) == KEYED[provider][0]
+        assert str(net.chats()[-1].url) == META_CHAT_URL
         message = str(excinfo.value)
         assert "bad key" not in message
         for secret in ALL_KEYS:

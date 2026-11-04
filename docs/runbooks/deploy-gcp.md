@@ -99,6 +99,17 @@ Secrets come from step 3 via `--set-secrets` (table above); the always-mapped on
 deploy; the script always passes the full list. SUPERSEDED: "going live = edit the script's `--set-env-vars`" is now
 `MODE=meta`; `MEMRIPAL_PASSCODE` is no longer mapped.
 
+Open-weights Spark: create secret `baseten-api-key` (step 3 command) and a `MODE=meta` deploy also sets
+`MEMRIPAL_CHAT_PROVIDER=baseten`, so Spark chat runs on Baseten with automatic Meta fallback (ADR 0058, MEM-106). No
+secret, or `MODE=fixture` -> Spark stays on Meta. Check which model answered:
+
+```bash
+gcloud run services logs read <service> --region <region> --limit 200 --log-filter='textPayload:"spark chat"'
+```
+
+`spark chat served by baseten` = open-weights; `spark chat: baseten failed (<class>), falling back to meta` then
+`spark chat served by meta` = fallback (the provider is skipped for 120 s after each failure).
+
 ## 5. Edge: load balancer + Cloud Armor
 
 1. Create the edge (idempotent: each resource is described first and created only if missing, so re-running is safe

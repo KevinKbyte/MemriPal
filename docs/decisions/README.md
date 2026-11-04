@@ -156,3 +156,13 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0057](0057-emoji-for-keyword-table-fills-station-emoji.md) `emojiFor({ name, category?, tags? })` keyword/category
   table fills `Station.emoji` once at station creation; demo stations hand-picked, kept by `seedRoute` (over
   render-time derivation or OSM tags).
+- [0058](0058-spark-chat-meta-fallback.md) Spark chat on an open-weights provider falls back to Meta on any
+  `BackendCallFailed` inside `MetaBackend.call`, 120 s breaker, 30 s/5 s connect, 0 retries; `X-Memripal-Chat-Fallback`
+  header via ContextVar + ASGI middleware drives a client toast (over a JSON body field, a wrapper backend, no
+  breaker, or a flat 20 s timeout).
+- [0059](0059-meta-spend-guard.md) Persisted per-call Meta cost estimate; at a configurable cap (default $135, under the $150
+  credit) Meta calls get a typed refusal and chat falls back to Baseten or Fireworks; amends 0004 (over dashboard
+  notifications only, a billing API per call, or an unpersisted call count).
+- [0060](0060-demo-route-seeded-taps-and-profile.md) Demo route seeds photo-derived `taps` `{ sound, smell, feel,
+  mood }` and `profile` in `static/demo_route.js`, copied by `seedRoute`, no `turn` (S5 list, MEM-077) and no photos;
+  amends 0042 (over an importable backup file or committed photos).

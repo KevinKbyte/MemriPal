@@ -441,6 +441,8 @@ export function createRouteStore(adapter, { now = Date.now, newId = () => crypto
           if (c) st.coords = c;
           if (s.address) st.address = s.address;
           if (s.emoji) st.emoji = s.emoji;
+          if (s.profile) st.profile = { ...s.profile };
+          if (s.taps) st.taps = { ...s.taps };
           return st;
         }),
       };

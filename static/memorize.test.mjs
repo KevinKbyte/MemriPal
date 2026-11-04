@@ -233,12 +233,19 @@ describe("associateKeywords: one /associate per (keyword, station)", () => {
   // station key (id, n, photo, coords, address) leaves the phone.
   test("a station without profile or taps sends station {name, profile: {}, taps: {}}", async () => {
     const { fetch, calls } = countingFetch();
-    await associateKeywords(KEYWORDS, DEMO_ROUTE.stations, { fetch });
+    // DEMO_ROUTE stations carry profile/taps since MEM-110, so strip them.
+    const stations = DEMO_ROUTE.stations.map((s) => {
+      const bare = { ...s };
+      delete bare.profile;
+      delete bare.taps;
+      return bare;
+    });
+    await associateKeywords(KEYWORDS, stations, { fetch });
     assert.equal(calls.length, 6);
     calls.forEach((c, i) => {
-      assert.deepEqual(c.body.station, { name: DEMO_ROUTE.stations[i].name, profile: {}, taps: {} });
+      assert.deepEqual(c.body.station, { name: stations[i].name, profile: {}, taps: {} });
       assert.equal(c.body.item, KEYWORDS[i].label);
-      assert.equal(c.body.locus, DEMO_ROUTE.stations[i].name);
+      assert.equal(c.body.locus, stations[i].name);
       assert.ok(c.body.image.startsWith("data:image/jpeg;base64,"), "image is not a JPEG data URL");
     });
   });

@@ -13,6 +13,7 @@ from dataclasses import dataclass
 import httpx
 
 from memripal.backend import MissingApiKey
+from memripal.meta_spend_guard import MetaSpendGuard
 
 DEFAULT_BASE_URL = "https://api.meta.ai/v1"
 RETRYABLE_STATUSES = frozenset({429, 500, 503})
@@ -98,6 +99,7 @@ class MetaClient:
         sleep: Callable[[float], None] = time.sleep,
         rand: Callable[[], float] = random.random,
         max_retries: int = 2,
+        spend_guard: MetaSpendGuard | None = None,
     ) -> None:
         # None (not "") opts out of auth for a keyless local OpenAI-compatible server (MEM-026).
         if api_key is not None and not api_key:
@@ -108,6 +110,8 @@ class MetaClient:
         self._rand = rand
         self._max_retries = max_retries
         self._http = httpx.Client(transport=transport, timeout=timeout)
+        # None leaves calls uncounted: chat-provider clients reuse this class, spending no Meta credit.
+        self._spend_guard = spend_guard
 
     # Explicit so the key can never surface through a default object repr.
     def __repr__(self) -> str:
@@ -117,6 +121,12 @@ class MetaClient:
 
     def _redact(self, text: str) -> str:
         return text.replace(self._api_key, "***") if self._api_key else text
+
+    def _charge(self, kind: str) -> None:
+        # Before sending, so a refused call never reaches the network; a sent one counts even if it then
+        # fails, as the paid request may have landed.
+        if self._spend_guard is not None:
+            self._spend_guard.charge(kind)
 
     def post(self, path: str, payload: dict) -> CallResult:
         return self._send(path, json=payload)
@@ -185,6 +195,7 @@ class MetaClient:
                 "json_schema": {"name": schema_name, "strict": True, "schema": schema},
             },
         }
+        self._charge("chat")
         return self.post("/chat/completions", payload)
 
     def segment(self, *, image_data_url: str, phrase: str, model: str = "sam-3.1") -> CallResult:
@@ -197,6 +208,7 @@ class MetaClient:
             "input": [{"type": "message", "role": "user", "content": content}],
             "metadata": {"include_confidence": "true"},
         }
+        self._charge("segment")
         return self.post("/responses", payload)
 
     def image_edit(
@@ -220,6 +232,7 @@ class MetaClient:
             payload["size"] = size
         # Omitted rather than None: httpx reads timeout=None as "no timeout at all".
         per_request = {} if timeout is None else {"timeout": timeout}
+        self._charge("image_edit")
         # Never retried: an edit is slow and paid, and the scene slot is held for the whole call.
         return self._send("/images/edits", json=payload, retries=0, **per_request)
 
@@ -239,6 +252,7 @@ class MetaClient:
         """
         payload = {"model": model, "prompt": prompt, "n": 1, "output_format": output_format}
         per_request = {} if timeout is None else {"timeout": timeout}
+        self._charge("image_generate")
         # Never retried: generation is paid and a retry after a 5xx may double-bill.
         return self._send("/images/generations", json=payload, retries=0, **per_request)
 
@@ -266,6 +280,7 @@ class MetaClient:
             "request": (None, json.dumps(request).encode(), "application/json"),
             "audio": ("audio.wav", wav_bytes, "audio/wav"),
         }
+        self._charge("asr")
         return self._send("/asr/transcribe", files=files)
 
 

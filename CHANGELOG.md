@@ -2,6 +2,25 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.50] - 2026-11-04
+
+### Added
+
+- Kendall demo stations seed photo-derived multisensory taps (sound, smell, feel, mood) and a visual/spatial/conceptual profile, hand-authored from Kev's six walk photos and kept by seedRoute; no turn tap and no photos committed (MEM-110, ADR 0060).
+
+## [0.20.49] - 2026-11-03
+
+### Added
+
+- Meta spend guard: a persisted per-call estimate of Meta spend (Spark chat, SAM, ASR, image calls) with a configurable cap (MEMRIPAL_META_SPEND_CAP_USD, default $135, under the $150 credit; state in MEMRIPAL_META_SPEND_DIR). Past the cap the server sends no Meta request and returns 503 meta_spend_cap_reached; Spark chat falls back to Baseten, else Fireworks. ADR 0059 (MEM-094).
+
+## [0.20.48] - 2026-11-03
+
+### Added
+
+- Spark chat on an open-weights provider (MEMRIPAL_CHAT_PROVIDER=baseten|fireworks|local) falls back to Meta's hosted model on error, timeout or schema-invalid reply, with a 120 s skip breaker, 30 s read / 5 s connect timeout and no retries; each call logs which provider served it. The fallback sets response header X-Memripal-Chat-Fallback and the client shows a dismissible, non-blocking notice (MEM-106..108, ADR 0058).
+- Deploy: scripts/deploy_cloud_run.sh sets MEMRIPAL_CHAT_PROVIDER=baseten when MODE=meta and secret baseten-api-key exists (MEM-106).
+
 ## [0.20.47] - 2026-11-03
 
 ### Added

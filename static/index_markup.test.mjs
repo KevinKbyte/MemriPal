@@ -177,6 +177,10 @@ const JS = readdirSync(new URL("./", import.meta.url)).filter((n) => n.endsWith(
   .map((f) => read(`./${f}`)).join("\n");
 const inJs = (c) => new RegExp(`["'\`]([^"'\`\\n]*\\s)?${c}(\\s[^"'\`\\n]*)?["'\`]`).test(JS);
 
+// MEM-108: the Spark Meta-fallback toast; it starts hidden and shows only after a fallback reply.
+const MEM108_IDS = ["chat-fallback", "chat-fallback-text", "chat-fallback-dismiss"];
+const MEM108_MAY_START_HIDDEN = ["chat-fallback"];
+
 // Covers: MEM-044
 // Requirement: MEM-044 A2 v6 shell + control markup in static/index.html (see the file header).
 describe("MEM-044 A2 v6 shell + control markup (static/index.html, F13)", () => {
@@ -184,17 +188,17 @@ describe("MEM-044 A2 v6 shell + control markup (static/index.html, F13)", () => 
   // only additions allowed are the 14 MEM-048 Part A ids (exact allowlist). MEM-050 (plan B5) widened the
   // allowlist by its 15 S3 station-card ids; MEM-051 (plan B6) adds its S5/S8 ids; MEM-072 (map-first shell)
   // adds its tab panel, map chip, drawer and landmarks-list ids (older ids only move); MEM-081 its 4 route review ids;
-  // MEM-088 its 12 route builder / map empty-state ids.
-  test("every 748a5e1 id kept exactly once; the only ids added are MEM-048's, MEM-050's, MEM-051's, MEM-072's, MEM-081's and MEM-088's", () => {
+  // MEM-088 its 12 route builder / map empty-state ids; MEM-108 its 3 chat-fallback toast ids (#chat-fallback starts hidden).
+  test("every 748a5e1 id kept exactly once; the only ids added are MEM-048's, MEM-050's, MEM-051's, MEM-072's, MEM-081's, MEM-088's and MEM-108's", () => {
     const ids = ELS.map((e) => e.attrs.id).filter((id) => id !== undefined);
     const count = (id) => ids.filter((x) => x === id).length;
     const lost = BASE_IDS.filter((id) => count(id) !== 1);
     assert.deepEqual(lost, [], `748a5e1 ids missing or duplicated: ${lost.join(" ")}`);
     const allowed = new Set([...BASE_IDS, ...MEM048_IDS, ...MEM050_IDS, ...MEM051_IDS, ...MEM072_IDS, ...MEM081_IDS,
-      ...MEM088_IDS]);
+      ...MEM088_IDS, ...MEM108_IDS]);
     const unexpected = ids.filter((id) => !allowed.has(id));
     assert.deepEqual(unexpected, [],
-      `ids outside 748a5e1 + MEM-048 + MEM-050 + MEM-051 + MEM-072 + MEM-081 + MEM-088: ${unexpected.join(" ")}`);
+      `ids outside 748a5e1 + MEM-048 + MEM-050 + MEM-051 + MEM-072 + MEM-081 + MEM-088 + MEM-108: ${unexpected.join(" ")}`);
     const missing = MEM072_IDS.filter((id) => count(id) !== 1);
     assert.deepEqual(missing, [], `MEM-072 shell ids missing or duplicated: ${missing.join(" ")}`);
     const dupes = [...new Set(ids.filter((id) => count(id) > 1))];
@@ -211,7 +215,7 @@ describe("MEM-044 A2 v6 shell + control markup (static/index.html, F13)", () => 
     assert.deepEqual(lostHidden, [], `748a5e1 hidden ids no longer hidden: ${lostHidden.join(" ")}`);
     const mayHide = new Set([...STAY_HIDDEN, ...MEM048_MAY_START_HIDDEN, ...MEM050_MAY_START_HIDDEN,
       ...MEM051_MAY_START_HIDDEN, ...MEM072_MAY_START_HIDDEN, ...MEM081_MAY_START_HIDDEN,
-      ...MEM088_MAY_START_HIDDEN]);
+      ...MEM088_MAY_START_HIDDEN, ...MEM108_MAY_START_HIDDEN]);
     const extra = hidden.filter((id) => !mayHide.has(id));
     assert.deepEqual(extra, [], `hidden but not allowed to start hidden: ${extra.join(" ")}`);
   });

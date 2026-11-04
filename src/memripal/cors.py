@@ -5,6 +5,8 @@ import os
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
+from memripal.chat_fallback import HEADER
+
 # Capacitor WebView origins: Android (androidScheme https) and iOS.
 DEFAULT_ORIGINS = ("https://localhost", "capacitor://localhost")
 ALLOWED_HEADERS = ("X-Memripal-Passcode", "Content-Type")
@@ -27,4 +29,6 @@ def add_cors(app: FastAPI) -> None:
         allow_methods=["GET", "POST"],
         allow_headers=list(ALLOWED_HEADERS),
         allow_credentials=False,
+        # The shell reads it to show the Spark fallback notice (MEM-107).
+        expose_headers=[HEADER],
     )
