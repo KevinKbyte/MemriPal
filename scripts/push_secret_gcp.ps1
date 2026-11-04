@@ -8,7 +8,7 @@ Decrypts $HOME/.secrets/<name>.dpapi (the format scripts/run_live.ps1 reads), th
 `gcloud secrets describe <name>`: exit 0 adds a version, otherwise creates the secret. The key
 reaches gcloud only as stdin bytes (UTF-8, no BOM, no trailing newline): never argv, env, stdout
 or a file. gcloud = $env:MEMRIPAL_GCLOUD, else gcloud.cmd on PATH. Exit code = the add/create
-call's; an unknown name or a missing key file exits 2 without running gcloud.
+call's; an unknown name, a missing key file or a gcloud not on PATH exits 2 without running gcloud.
 #>
 
 $Names = @('meta-api-key', 'baseten-api-key', 'fireworks-api-key')
@@ -29,6 +29,15 @@ if (-not (Test-Path -LiteralPath $KeyFile -PathType Leaf)) {
 
 $Gcloud = $env:MEMRIPAL_GCLOUD
 if (-not $Gcloud) { $Gcloud = 'gcloud.cmd' }
+if (-not [System.IO.Path]::IsPathRooted($Gcloud)) {
+    # gcloud.cmd finds its install via %~dp0, which is the cwd when launched by bare name.
+    $resolved = Get-Command $Gcloud -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $resolved) {
+        [Console]::Error.WriteLine("push_secret_gcp: gcloud not found on PATH: $Gcloud")
+        exit 2
+    }
+    $Gcloud = $resolved.Source
+}
 $ViaCmd = [System.IO.Path]::GetExtension($Gcloud) -in @('.cmd', '.bat')
 
 # Same reason as run_live.ps1: an inherited PowerShell 7 PSModulePath breaks the autoload.
