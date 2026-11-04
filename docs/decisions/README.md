@@ -233,3 +233,7 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
   Redis, a GCS generation-precondition object, or the `/tmp` file).
 - [0082](0082-landmark-slots-from-loci.md) Landmark photo slots: reuse POST `/loci`, client picks 3 largest
   distinct-label loci, live -> cached -> sample fallback, drag by dynamic import (MEM-141).
+- [0072](0072-fixed-row-js-windowing-for-long-lists.md) Long lists: a client-side token-AND filter
+  (`static/list_filter.js`, over server search) plus fixed-row-height JS windowing (`static/virtual_window.js`,
+  CSSOM padding, `aria-setsize`/`aria-posinset`; over `content-visibility`, pagination, a virtual-list library, or
+  measured rows). Windowing half pending: lands with the virtual_window fix. <!-- claim-exempt: planned -->

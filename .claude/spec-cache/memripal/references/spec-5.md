@@ -481,3 +481,33 @@ innerHTML / style writes); ASCII only.
   reveals the route chip.
 
 Tests: static/flashcard_deck.test.mjs, static/flashcard_view.test.mjs, static/flashcard_mount.test.mjs
+## MEM-124 Routes list scales: typeahead filter + virtualized recent-first list
+
+Root problem: Kev: "shouldnt there be also a typeahead search for which route in case we have so many routes? and we
+can have the most recent ones in a scrollable view that uses virtualization". The "Your routes" list (`#routes-list`,
+`static/route_view.js` renderHome) renders every route card; with hundreds of routes it is slow and unsearchable.
+Actors: the user; `static/list_filter.js`; later the virtual_window module (phase A2), `static/route_view.js` and the
+Landmarks gallery (item 73).
+NFR: pure modules, no DOM in list_filter; virtual_window CSP-safe (CSSOM padding only, never a style attribute);
+ASCII source.
+Decided-by: ADR-0072
+Phase A1 (built):
+- `static/list_filter.js`: `normalize(text)` (NFD, combining marks stripped, lowercase, whitespace collapsed);
+  `queryTokens(query)`; `filterItems(items, query, { key = item.name, anyOf, groupKey })` token-AND match on key
+  fields (string or string[]), optional multi-group OR filter (anyOf vs groupKey, TypeError if anyOf without
+  groupKey), input order kept, input not mutated; `sortRecentFirst(items, { time = item.created_at })` newest first,
+  stable, missing/invalid times last; `debounce(fn, ms)` with `.cancel()`.
+- Accept (phase A1): typing a query filters to matching names (case/diacritic-insensitive, all tokens); routes order
+  newest `created_at` first, ties stable.
+Phase A2 (PLANNED, not landed; lands with the virtual_window fix):
+- `static/virtual_window.js`: `computeWindow({ count, rowHeight, scrollTop, viewportHeight, overscan = 3 })` ->
+  `{ start, end, padTop, padBottom }` (end exclusive, scrollTop clamped); `mountVirtualList(container, { rowHeight,
+  renderRow, overscan, items, ResizeObserver })` -> `{ setItems, refresh, destroy }`: only window rows in the DOM,
+  padding keeps full scroll height, rows carry `aria-setsize`/`aria-posinset`, follows scroll and ResizeObserver
+  resize, reuses in-window rows. <!-- claim-exempt: planned -->
+- Accept (phase A2): a 1000-route seed renders <= 30 DOM rows.
+Phase B (PLANNED, not built): search input above `#routes-list` with `aria-controls="routes-list"`, debounced
+`filterItems` over `sortRecentFirst(listRoutes())`, an empty-result message ("No routes match ..."), and
+`#routes-list` mounted via `mountVirtualList` (fixed row height, sync renderRow over precomputed learned counts).
+
+Tests: static/list_filter.test.mjs (44 tests)
