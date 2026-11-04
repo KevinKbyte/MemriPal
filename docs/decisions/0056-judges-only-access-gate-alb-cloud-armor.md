@@ -26,7 +26,8 @@ Judges must reach the live (paid Meta) app for two weeks; nobody else should. Co
   loopback Host values, which a client controls behind an LB default route.
 - CSP `form-action 'none'` is set by the outermost middleware, so a no-JS login form cannot submit.
 - python-multipart is not installed, so FastAPI `Form()` would crash app startup.
-- Judge identities (emails) are unknown; the key is delivered once in the private judges-notes field.
+- Judge identities (emails) are unknown; the key is delivered once in the submission's Project Description text (the form has
+  no private notes field).
 
 ## Options considered
 

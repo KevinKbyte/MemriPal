@@ -200,13 +200,15 @@ returns 401 `passcode_required`.
 
 ## 7. Judges key delivery
 
-Put `https://<host>/` and the access key (step 3.1) in the submission's private judges-notes field only. Never in the
-README, the video, the public description, or a commit.
+Put `https://<host>/` and the access key (step 3.1) in the submission's Project Description text (the form has no
+private notes field). Never in the README, the video, or a commit. Anyone who can read the Project Description can get
+in, so the cost cap is the Meta console spend limit plus `MEMRIPAL_CALL_BUDGET` (300 live calls, whole-service with
+`--max-instances=1`); rotate the key after judging (section 8).
 
 ## 8. Rotation
 
 Rotating the access key signs every judge out at once (old cookies stop validating), so do it deliberately, then
-update the judges-notes field.
+update the key in the Project Description.
 
 1. `gcloud secrets versions add memripal-access-key --data-file=-` (same input rule as step 3).
 2. Redeploy with the same env as step 5.2 so new instances read `:latest`.
