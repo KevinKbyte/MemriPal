@@ -649,3 +649,29 @@ only `blob:`/`data:image` photo srcs.
   "Candidate for:" and no Open route button; a `javascript:` URL or non-image photo src is never rendered.
 
 Tests: static/landmark_gallery_detail.test.mjs, static/landmark_gallery_tile_button.test.mjs (regression lock: tile is a native button; click opens #landmark-detail, never a file input)
+## MEM-136 Muse Spark grades spoken recall; keyword match stays the floor and fallback
+
+ADR [0080](../../../../docs/decisions/0080-spark-recall-grading-keyword-fallback.md). Extends MEM-031 / ADR 0008, 0026
+(deterministic keyword matcher); the matcher is unchanged and remains the whole fallback.
+Decided-by: ADR-0080
+Root problem: a paraphrased recall ("the bang-bang sky lights" for "fireworks") scores a miss under exact keyword match.
+Actors: `src/memripal/recall_grade.py::RecallGrader`, `grader_from_env`; `app.py` POST /recall/audio;
+`static/mic_wav.js`, `static/recall_match.js`, `static/recall_live.js`, `static/flow.js`.
+NFR: grading never blocks or alters the transcript; any grader failure -> response is exactly `{"text"}`; logs carry
+provider name, latency and exception class only, never a provider body (MEM-106); ASCII only.
+- Grader: strict json_schema `recall_grade` = `items[]` of `{index:int, verdict: correct|partial|miss, reason:string}`;
+  prompt quotes the transcript as data and lists numbered expected labels (fixed server-side from request keywords);
+  `max_completion_tokens` = 256 + `REASONING_HEADROOM_TOKENS` (ADR 0077); reason truncated to 120 chars.
+- Returns `{"provider", "latency_ms", "items"}` or None on: exception, `ok` False, malformed JSON, index out of range,
+  unknown verdict, empty transcript or empty keywords (no call made).
+- Providers: configured `MEMRIPAL_CHAT_PROVIDER` when not `meta`, then `chat_fallback_from_env()` when different;
+  Meta is never used for grading (keeps Meta spend for ASR); first success wins; per-call timeout 8 s (connect 3 s).
+- POST /recall/audio: `{"text"}` plus `"grade"` only when the grader returns one.
+- Client: got = union of matcher keyword hits and grade `correct` indices; `matcher.gradeGot(i)` marks got (not
+  override) at the current token count so in-order counting still works; `partial` never counts as got; the board
+  shows a `.grade-tag` pill "Spark - <provider> - <ms> ms" beside the LIVE badge; Done-remainder applies the same.
+- Accept: valid grade passes through and lights paraphrase hits; malformed or absent grade leaves keyword scoring
+  exactly as before.
+
+Tests: tests/test_recall_grade.py, tests/test_recall_audio.py, static/recall_live.test.mjs
+- Out of scope: partial credit scoring; grading typed recall; per-visitor BYOK grading keys.
