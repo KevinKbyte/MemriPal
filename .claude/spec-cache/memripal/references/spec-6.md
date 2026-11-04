@@ -78,7 +78,8 @@ edit is the mount line, landed after MEM-088.
   rejected or skipped with 0 partial writes.
 
 Tests: static/pal_bubble.test.mjs (incl. "MEM-099 Pal bubble loads its own stylesheet"), static/chat_store.test.mjs,
-static/palace_export_chats.test.mjs, tests/test_assets_wiring.py::test_index_loads_pal_bubble_module_once_after_app_js
+static/palace_export_chats.test.mjs, static/store_ids_insecure.test.mjs,
+tests/test_assets_wiring.py::test_index_loads_pal_bubble_module_once_after_app_js
 
 ## MEM-045 Sticker pool and photo upload on the landmark photo
 
@@ -141,5 +142,3 @@ Decided-by: ADR-0068
   same kv keeps entries and placements; one `.sticker-layer` after repeated renders; box centre maths as above;
   peel needs confirm and Undo restores; no innerHTML.
 - Out of scope: search picker (follow-up MEM, merge 2); the image-generation caller (the pool already accepts kind generated); cross-device sync.
-static/palace_export_chats.test.mjs, static/store_ids_insecure.test.mjs,
-tests/test_assets_wiring.py::test_index_loads_pal_bubble_module_once_after_app_js
