@@ -423,3 +423,59 @@ Decided-by: ADR-0067
 - Out of scope: new sticker pool, sticker persistence across page loads.
 
 Tests: static/tour_sticker_polish.test.mjs
+
+## MEM-125 Recall flashcards from loci material
+
+Anki-style supplemental review of the material placed on route loci. Phase A: pure deck module + card view. Phase B
+part 1: Recall tab mount.
+Decided-by: ADR-0076
+Root problem: the Recall tab only replays whole routes; Kev wants per-locus flashcards, auto-generated from the
+material attached to the loci, with an optional user note per card, showing the answer and its route after each card.
+Actors: user (browser); `static/flashcard_deck.js`, `static/flashcard_view.js`, `static/flashcard_mount.js`,
+`static/flashcards.css`; inputs `static/route_store.js` (Route, KvAdapter), `static/memorize.js` (MemorizeItem),
+`static/recall_schedule.js`.
+NFR: `// @ts-check` + JSDoc, no build step; pure functions do not mutate inputs; CSP-safe DOM (textContent only, no
+innerHTML / style writes); ASCII only.
+- `deriveCards(routes, items)`: per item (in order) whose `route_id` is in `routes`, keyword i pairs with the i-th
+  station whose `status === "named"`; extra keywords and items with an absent route make no card; null routes/items
+  -> []. Card: id `${item.id}:${station.id}` (stable across regeneration), front = `station.name` (locus), back =
+  `keyword.label` (material), source = `keyword.source_quote`, route tag `routeName`, `n`, `itemTitle`, deadline =
+  `Date.parse(item.remember_by)` or null.
+- `mergeUserEdits(cards, records)`: adds `note` ("" default) and `review` `{start, due}` (null default) by id;
+  records matching no card ignored.
+- `RATINGS` = `["again", "good"]` (frozen). `grade(card, rating, now)`: start = `card.review?.start ?? now`; good ->
+  first MEM-090 `recallSchedule(card.deadline, { now: () => start })` time > now, else due null (finished); again ->
+  due = now + 1d (ADR 0049), start kept; other rating -> TypeError.
+- `dueOrder(cards, now)`: new (review null) or `review.due <= now`; excludes due null and due > now; ascending
+  effective due (new = now), ties routeName, n, id. Overdue reviews precede new cards.
+- `createFlashcardStore(adapter)` on the route KV: key `card:<id>`, value `{ type: "card", id, note, review }`;
+  `list()` returns only type "card"; `setNote` trims, rejects non-string or > `NOTE_MAX` (1000) with TypeError and
+  writes nothing, keeps review; `setReview` requires finite start and finite-or-null due, keeps note; calls
+  serialized.
+- `renderFlashcard(doc, card, { onGrade, onNote })`: `article.flashcard[data-card-id]`; front `Stop <n>`, locus,
+  "What did you place here?"; "Show answer" reveals `.flashcard-back` (answer, source if different, route tag chip
+  `.flashcard-route` aria-label `Route: <name>`, Again / Got it -> `onGrade(id, rating)`, note textarea
+  `.flashcard-note` maxlength 1000 + "Save note" -> `onNote(id, value)`) and hides itself.
+- `static/flashcards.css` uses `style.css` tokens. Phase A: touches no `index.html`, `app.js`, `style.css`,
+  `tabbar.js`, `route_view.js`, `route_capture.js`.
+- `mountFlashcards(doc, { adapter, now })` (phase B, `static/flashcard_mount.js`): needs page ids
+  `flashcards-status` and `flashcards-card` (in `#tab-recall`, `static/index.html`; the mount links
+  `flashcards.css` once into `<head>`, as `pal_bubble.js` does, since index.html's `<link>` list is pinned by
+  `tests/test_assets_wiring.py`), else returns null; reads the route KV once on mount (`ready`) and on
+  `refresh()`: routes
+  (type "route"), MemorizeItems (raw `list:<id>` values, no type), card overlays; shows one card, the first of
+  `dueOrder(mergeUserEdits(deriveCards(...)))`; status "<k> card(s) due" / "No flashcards yet. Memorize a list
+  onto a route to make some." / "All caught up: no cards due." / "Flashcards could not load."; a rating saves
+  `grade()` via `setReview` then shows the next due card, a second rating while one saves is ignored, a failed
+  save says "Rating not saved. Try again." and keeps the card; Save note -> `setNote`, "Note saved." / "Note not
+  saved. Try again.". Wired from `static/app.js` on the route KV only when IndexedDB exists.
+- Phase B part 2 (PLANNED): a live Memorize flow saves its MemorizeItem via `static/memorize.js`
+  `saveMemorizeItem(kv, item)` (key `list:<id>`) on the route KV, so the deck has cards outside tests; today no
+  live caller saves one and `static/palace_export.js` exports `lists: []`.
+- Phase C (PLANNED): carry notes and review state in the backup; offer a new date when the deadline has passed.
+- Accept: 2 named + 1 pending station with 3 keywords -> 2 cards, ids `item:station`; re-derive keeps ids; good on a
+  new no-deadline card -> due S+1d; again -> now+1d; finished card absent from `dueOrder`; 1001-char note rejects and
+  writes nothing; concurrent setNote + setReview both survive; `<img onerror>` card text renders as text; Show answer
+  reveals the route chip.
+
+Tests: static/flashcard_deck.test.mjs, static/flashcard_view.test.mjs, static/flashcard_mount.test.mjs

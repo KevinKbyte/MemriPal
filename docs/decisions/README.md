@@ -14,7 +14,7 @@ numbers on the `Reserved:` line (`Reserved: 0034, 0035`, or `Reserved: none`); M
 missing number is listed, and fails a listed number that also exists as a file (stale reservation: drop it when that
 ADR lands). ADR [0062](0062-reserved-adr-numbers.md).
 
-Reserved: 0073, 0074, 0075, 0076
+Reserved: 0073, 0074, 0075
 
 ## ADRs
 
@@ -211,6 +211,9 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
   the whole scene image.
 - [0072](0072-tour-bubble-body-data-attribute.md) `tour.js` sets body `data-tour-target` to the current step's
   selector; the Pal bubble goes inert unless it is the target (over tour CustomEvents, or a module import).
+- [0076](0076-flashcards-derived-from-memorize-items.md) Recall flashcards derived at read time from MemorizeItem
+  keywords on named stations (id `item:station`); only a `{note, review}` overlay stored under KV `card:<id>`; two
+  ratings via the 0049 schedule (over a persisted deck, notes inside MemorizeItem, or four Anki ratings).
 - [0077](0077-spark-reasoning-headroom.md) Spark reasoning headroom: `MetaBackend.call` adds
   `REASONING_HEADROOM_TOKENS` (8192) to `max_completion_tokens` at send time for every `spark_json` call, so cache keys
   and fixtures stay unchanged; `BackendCallFailed` is logged with a body excerpt masking every configured key (Meta and
