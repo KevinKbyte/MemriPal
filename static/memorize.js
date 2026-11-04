@@ -65,7 +65,10 @@ export function splitList(text, lociCount) {
 
 /**
  * Keyword i at stations[i], one POST /associate each, in order; an invalid reply leaves its station out.
- * @param {Keyword[]} keywords @param {{id: string, name: string}[]} stations
+ * Each body carries the station as exactly {name, profile, taps}; the server then never shows the
+ * sentinel photo to the model (ADR 0048).
+ * @param {Keyword[]} keywords
+ * @param {{id: string, name: string, profile?: Record<string, string> | null, taps?: Record<string, string> | null}[]} stations
  * @param {{fetch: typeof fetch}} deps
  * @returns {Promise<Record<string, {record: object, sig: string}>>}
  */
@@ -75,7 +78,8 @@ export async function associateKeywords(keywords, stations, { fetch }) {
   const n = Math.min(keywords.length, stations.length);
   for (let i = 0; i < n; i++) {
     const station = stations[i];
-    const body = { image: JPEG_DATA_URL + DEMO_PHOTO_B64, item: keywords[i].label, locus: station.name };
+    const block = { name: station.name, profile: station.profile ?? {}, taps: station.taps ?? {} };
+    const body = { image: JPEG_DATA_URL + DEMO_PHOTO_B64, item: keywords[i].label, locus: station.name, station: block };
     const reply = await postJson("/associate", body, fetch);
     const ok = reply?.status === "valid" && typeof reply.record === "object" && reply.record !== null
       && typeof reply.sig === "string";
