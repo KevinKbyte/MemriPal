@@ -207,7 +207,7 @@ export function rig({ theme = null, stations = stationsAt(KENDALL) } = {}) {
   const libs = fakeLibs(doc);
   const fetch = fakeFetch();
   const loader = createRealMapLoader({ fetch, loadLibs: libs.loadLibs, doc, win });
-  return { doc, view, svg, ctl, libs, fetch, loader, stations };
+  return { doc, view, svg, ctl, libs, fetch, loader, stations, htmlWrites: page.htmlWrites };
 }
 
 /** Mount, size the container, run the first load + idle. Resolves the map (throws if none was made). */
