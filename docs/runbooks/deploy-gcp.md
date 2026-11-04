@@ -60,13 +60,27 @@ unusable on GCP). On GCP it lives in Secret Manager. The app reads env vars only
 python -c "import secrets;print(secrets.token_urlsafe(24))"
 ```
 
-2. Create each secret (`memripal-access-key`, `memripal-record-key`, `meta-api-key`), typing the value at the prompt
+2. Create `memripal-access-key` and `memripal-record-key`, typing the value at the prompt
    (never on the command line or in shell history):
    `gcloud secrets create <name> --replication-policy=automatic --data-file=-`
    End input on a blank line with Ctrl-D (bash/Cloud Shell) or Ctrl-Z then Enter (PowerShell/cmd). The trailing
    newline is stored with the value; the app strips it. SUPERSEDED: `memripal-passcode` is no longer needed.
-3. Rotate: step 8.
-4. Read access: the deploy script grants the runtime service account `roles/secretmanager.secretAccessor` on every
+3. Push the DPAPI-held API keys (never typed). In PowerShell from the repo root:
+
+   ```powershell
+   ./scripts/push_secret_gcp.ps1 meta-api-key
+   ```
+
+   ```powershell
+   ./scripts/push_secret_gcp.ps1 baseten-api-key
+   ```
+
+   The script decrypts `~/.secrets/<name>.dpapi` and pipes the key byte-exact (no trailing newline) to
+   `gcloud secrets versions add` (secret exists) or `gcloud secrets create` (it doesn't), then prints `pushed <name>`.
+   The app does not strip these keys, so a typed value's trailing newline would break auth (MEM-111). Names allowed:
+   `meta-api-key`, `baseten-api-key`, `fireworks-api-key`.
+4. Rotate: step 8.
+5. Read access: the deploy script grants the runtime service account `roles/secretmanager.secretAccessor` on every
    secret it maps (MEM-104). SUPERSEDED manual grant, only to repair a failed one (default runtime SA:
    `<project-number>-compute@developer.gserviceaccount.com`):
    `gcloud secrets add-iam-policy-binding <name> --member=serviceAccount:<runtime-sa> --role=roles/secretmanager.secretAccessor`
@@ -99,7 +113,7 @@ Secrets come from step 3 via `--set-secrets` (table above); the always-mapped on
 deploy; the script always passes the full list. SUPERSEDED: "going live = edit the script's `--set-env-vars`" is now
 `MODE=meta`; `MEMRIPAL_PASSCODE` is no longer mapped.
 
-Open-weights Spark: create secret `baseten-api-key` (step 3 command) and a `MODE=meta` deploy also sets
+Open-weights Spark: push secret `baseten-api-key` (step 3.3 script) and a `MODE=meta` deploy also sets
 `MEMRIPAL_CHAT_PROVIDER=baseten`, so Spark chat runs on Baseten with automatic Meta fallback (ADR 0058, MEM-106). No
 secret, or `MODE=fixture` -> Spark stays on Meta. Check which model answered:
 
@@ -224,7 +238,8 @@ update the key in the Project Description.
 1. `gcloud secrets versions add memripal-access-key --data-file=-` (same input rule as step 3).
 2. Redeploy with the same env as step 5.2 so new instances read `:latest`.
 
-The same two steps rotate any other secret.
+The same two steps rotate any other secret; for a DPAPI-held key, re-encrypt the local file and rerun its step 3.3
+script instead of step 1.
 
 ## 9. Kill switch
 

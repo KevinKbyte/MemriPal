@@ -364,6 +364,8 @@ does not send CORS headers yet (`memripal.cors.add_cors` is not wired in), so th
 ## Deploy
 
 GCP Cloud Run with Secret Manager keys: [docs/runbooks/deploy-gcp.md](docs/runbooks/deploy-gcp.md).
+`./scripts/push_secret_gcp.ps1 <name>` (PowerShell) pushes a `~/.secrets/<name>.dpapi` key to Secret Manager
+byte-exact (MEM-111).
 
 ## Credits
 
