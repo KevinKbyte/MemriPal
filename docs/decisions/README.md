@@ -156,3 +156,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0057](0057-emoji-for-keyword-table-fills-station-emoji.md) `emojiFor({ name, category?, tags? })` keyword/category
   table fills `Station.emoji` once at station creation; demo stations hand-picked, kept by `seedRoute` (over
   render-time derivation or OSM tags).
+- [0058](0058-paper-crown-theme.md) Paper Crown theme: self-hosted Fraunces/Nunito, crown-edge topbar, gold
+  (`--lamp`, `--on-lamp`, `--glow`) reserved for lit recall items as lanterns, dark mode on Lantern Walk roles
+  (over Field Atlas, whole-app Lantern Walk, or Pop Palace).
