@@ -373,3 +373,90 @@ class TestImport:
         module = _load()
         assert callable(module.main)
         assert module.touches_design([CSS_PATH]) is True
+
+
+# Covers: MEM-112
+# Requirement: a gated axe violation (color-contrast, target-size) names WHICH elements fail:
+# `design_gate.axe_problems(shot_name, violations)` turns the shooter's per-shot
+# `[{"id", "nodes": [{"target": [sel, ...], "html"}]}]` into one "axe <rule>: <shot>: <target>
+# <snippet>" line per node, in node order (target selectors joined by one space; snippet = html
+# with whitespace runs collapsed to one space, non-ASCII as "?", cut to 120 chars plus "..."
+# when longer). A gated violation with no nodes, or a legacy bare rule string, yields the single
+# line "axe <rule>: <shot>"; non-gated rules yield nothing. The gate's FAIL lines carry these.
+class TestAxeNodeTargets:
+    SHOT = "home-mobile.png"
+
+    def test_one_node_gives_one_line_with_target_and_snippet(self):
+        violations = [
+            {
+                "id": "target-size",
+                "nodes": [{"target": ['a[href="?s=1"]'], "html": '<a href="?s=1" class="x">Go</a>'}],
+            }
+        ]
+        assert _load().axe_problems(self.SHOT, violations) == [
+            'axe target-size: home-mobile.png: a[href="?s=1"] <a href="?s=1" class="x">Go</a>'
+        ]
+
+    def test_two_nodes_give_two_lines_in_node_order(self):
+        violations = [
+            {
+                "id": "color-contrast",
+                "nodes": [
+                    {"target": ["p.faint"], "html": '<p class="faint">a</p>'},
+                    {"target": ["span.dim"], "html": '<span class="dim">b</span>'},
+                ],
+            }
+        ]
+        assert _load().axe_problems(self.SHOT, violations) == [
+            'axe color-contrast: home-mobile.png: p.faint <p class="faint">a</p>',
+            'axe color-contrast: home-mobile.png: span.dim <span class="dim">b</span>',
+        ]
+
+    @pytest.mark.parametrize(
+        "violation",
+        [{"id": "color-contrast", "nodes": []}, {"id": "color-contrast"}, "color-contrast"],
+        ids=["empty-nodes", "missing-nodes", "legacy-string"],
+    )
+    def test_gated_violation_without_nodes_gives_bare_line(self, violation):
+        assert _load().axe_problems(self.SHOT, [violation]) == ["axe color-contrast: home-mobile.png"]
+
+    @pytest.mark.parametrize(
+        "violation",
+        [{"id": "region", "nodes": [{"target": ["main"], "html": "<main></main>"}]}, "region"],
+        ids=["dict", "string"],
+    )
+    def test_non_gated_rule_gives_no_lines(self, violation):
+        assert _load().axe_problems(self.SHOT, [violation]) == []
+
+    @pytest.mark.parametrize("length, truncated", [(300, True), (121, True), (120, False)])
+    def test_snippet_is_cut_to_120_chars_with_ellipsis(self, length, truncated):
+        html = "<div>" + "y" * (length - 5)
+        assert len(html) == length
+        violations = [{"id": "target-size", "nodes": [{"target": ["div"], "html": html}]}]
+        expected = html[:120] + "..." if truncated else html
+        assert _load().axe_problems(self.SHOT, violations) == [
+            f"axe target-size: home-mobile.png: div {expected}"
+        ]
+
+    def test_whitespace_runs_collapse_and_non_ascii_becomes_question_mark(self):
+        html = '<a\n\thref="x">  caf\u00e9 \n\n  go</a>'
+        violations = [{"id": "target-size", "nodes": [{"target": ["a"], "html": html}]}]
+        lines = _load().axe_problems(self.SHOT, violations)
+        assert lines == ['axe target-size: home-mobile.png: a <a href="x"> caf? go</a>']
+        assert all(line.isascii() for line in lines)
+
+    def test_multi_selector_target_is_joined_by_one_space(self):
+        node = {"target": ["iframe#f", "button.b"], "html": "<button>b</button>"}
+        violations = [{"id": "target-size", "nodes": [node]}]
+        assert _load().axe_problems(self.SHOT, violations) == [
+            "axe target-size: home-mobile.png: iframe#f button.b <button>b</button>"
+        ]
+
+    def test_gate_fail_line_names_the_failing_element(self, capsys, tmp_path, repo):
+        axe = [{"id": "target-size", "nodes": [{"target": ["a.tiny"], "html": '<a class="tiny">x</a>'}]}]
+        shots = [_shot(PHONE, (375, 812), axe=axe), _shot(WIDE, (1000, 800))]
+        code, lines = _gate(
+            capsys, tmp_path, repo, FakeShooter(_design_commit(repo), tip=_render(shots=shots))
+        )
+        assert code == 1, lines
+        assert any("target-size" in line and PHONE in line and "a.tiny" in line for line in _fails(lines))
