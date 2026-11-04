@@ -136,6 +136,18 @@ def _split(client, passcode, xff=None):
     return client.post("/split", content=SPLIT_BODY, headers=headers)
 
 
+def _peer(app, ip: str) -> TestClient:
+    """A client whose ASGI peer address is ip; off Cloud Run the peer is the lockout key."""
+    return TestClient(app, base_url=LOOPBACK_URL, client=(ip, 50000))
+
+
+def _live_app(monkeypatch, stub, fails: str):
+    monkeypatch.setenv("MEMRIPAL_PASSCODE", PASSCODE)
+    monkeypatch.setenv("MEMRIPAL_PASSCODE_MAX_FAILS", fails)
+    monkeypatch.setenv("MEMRIPAL_LOCKOUT_S", "300")
+    return create_app(backend=stub, clock=FakeClock())
+
+
 def _assert_locked(resp) -> int:
     assert resp.status_code == 429, resp.text[:300]
     assert resp.json() == {"error": "too_many_attempts"}
@@ -146,6 +158,7 @@ def _assert_locked(resp) -> int:
 
 # Requirement: repeated wrong passcodes from one IP lock that IP out (429 too_many_attempts, even with the
 # right passcode) for a sliding window, so the shared passcode cannot be brute-forced; other IPs keep working.
+# Applies off Cloud Run (no access key); on Cloud Run the /access gate lockout applies (MEM-100).
 class TestPasscodeLockout:
     def _live(self, monkeypatch, clock, fails="3", window="300"):
         monkeypatch.setenv("MEMRIPAL_PASSCODE", PASSCODE)
@@ -212,13 +225,15 @@ class TestPasscodeLockout:
         _assert_locked(resp)
 
     def test_another_ip_with_the_right_passcode_still_works(self, monkeypatch):
-        monkeypatch.setenv("K_SERVICE", "memripal")
-        stub, client = self._live(monkeypatch, FakeClock())
+        stub = LiveStub()
+        app = _live_app(monkeypatch, stub, fails="3")
+        locked, other = _peer(app, "203.0.113.9"), _peer(app, "198.51.100.7")
         for _ in range(3):
-            assert _split(client, "wrong", xff="203.0.113.9").status_code == 401
-        _assert_locked(_split(client, PASSCODE, xff="203.0.113.9"))
-        _assert_locked(_split(client, PASSCODE, xff="6.6.6.6, 203.0.113.9"))
-        assert _split(client, PASSCODE, xff="198.51.100.7").status_code == 200
+            assert _split(locked, "wrong").status_code == 401
+        _assert_locked(_split(locked, PASSCODE))
+        # Off Cloud Run X-Forwarded-For is client-supplied and ignored, so it cannot dodge the lockout.
+        _assert_locked(_split(locked, PASSCODE, xff="198.51.100.7"))
+        assert _split(other, PASSCODE).status_code == 200
         assert stub.calls == 1
 
     def test_lockout_state_is_per_app_instance(self, monkeypatch):
@@ -239,6 +254,7 @@ class TestPasscodeLockout:
 
 # Requirement: a correct passcode clears that IP's failure count, so a user who mistypes a few times and then
 # gets in is not locked out by a later handful of typos; other IPs' successes never clear it.
+# Applies off Cloud Run (no access key); on Cloud Run the /access gate lockout applies (MEM-100).
 class TestLockoutResetOnSuccess:
     def _live(self, monkeypatch, fails="5"):
         monkeypatch.setenv("MEMRIPAL_PASSCODE", PASSCODE)
@@ -260,28 +276,26 @@ class TestLockoutResetOnSuccess:
         assert stub.calls == 2
 
     def test_another_ips_success_does_not_reset_the_count(self, monkeypatch):
-        monkeypatch.setenv("K_SERVICE", "memripal")
-        _, client = self._live(monkeypatch)
+        app = _live_app(monkeypatch, LiveStub(), fails="5")
+        typist, other = _peer(app, "203.0.113.9"), _peer(app, "198.51.100.7")
         for _ in range(4):
-            assert _split(client, "wrong", xff="203.0.113.9").status_code == 401
-        assert _split(client, PASSCODE, xff="198.51.100.7").status_code == 200
-        assert _split(client, "wrong", xff="203.0.113.9").status_code == 401
-        _assert_locked(_split(client, PASSCODE, xff="203.0.113.9"))
+            assert _split(typist, "wrong").status_code == 401
+        assert _split(other, PASSCODE).status_code == 200
+        assert _split(typist, "wrong").status_code == 401
+        _assert_locked(_split(typist, PASSCODE))
 
 
-# Requirement: behind Cloud Run the passcode lockout keys an IPv6 client by its /64 prefix, so rotating the
-# low 64 bits cannot buy fresh guesses; another /64 is unaffected.
+# Requirement: the passcode lockout keys an IPv6 client by its /64 prefix, so rotating the low 64 bits cannot
+# buy fresh guesses; another /64 is unaffected. Applies off Cloud Run (no access key); on Cloud Run the
+# /access gate lockout applies (MEM-100).
 class TestLockoutIpv6Prefix:
     def test_same_ipv6_64_shares_one_lockout(self, monkeypatch):
-        monkeypatch.setenv("K_SERVICE", "memripal")
-        monkeypatch.setenv("MEMRIPAL_PASSCODE", PASSCODE)
-        monkeypatch.setenv("MEMRIPAL_PASSCODE_MAX_FAILS", "3")
         stub = LiveStub()
-        client = TestClient(create_app(backend=stub, clock=FakeClock()), base_url=LOOPBACK_URL)
+        app = _live_app(monkeypatch, stub, fails="3")
         for addr in ("2001:db8::1", "2001:db8::2", "2001:db8::3"):
-            assert _split(client, "wrong", xff=addr).status_code == 401
-        _assert_locked(_split(client, PASSCODE, xff="2001:db8::ffff"))
-        assert _split(client, PASSCODE, xff="2001:db8:0:1::1").status_code == 200
+            assert _split(_peer(app, addr), "wrong").status_code == 401
+        _assert_locked(_split(_peer(app, "2001:db8::ffff"), PASSCODE))
+        assert _split(_peer(app, "2001:db8:0:1::1"), PASSCODE).status_code == 200
         assert stub.calls == 1
 
 
