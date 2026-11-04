@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.40] - 2026-11-03
+
+### Added
+
+- README Credits section for map data and libraries; demo script reworked to the map-first path.
+
 ## [0.20.39] - 2026-11-03
 
 ### Added
