@@ -463,3 +463,80 @@ class TestDemoRecallReplayFixture:
         times = [c["t_ms"] for c in chunks]
         assert times[0] >= 0
         assert times == sorted(times)
+
+
+GRADE = {
+    "provider": "fireworks",
+    "latency_ms": 412,
+    "items": [{"index": 2, "verdict": "correct", "reason": "paraphrased"}],
+}
+TEXT = "vivid images stick better than plain facts"
+
+
+class FakeGrader:
+    def __init__(self, reply=GRADE):
+        self.reply = reply
+        self.calls: list[tuple] = []
+
+    def grade(self, *args, **kwargs):
+        self.calls.append((args, kwargs))
+        if isinstance(self.reply, BaseException):
+            raise self.reply
+        return self.reply
+
+
+def _graded_client(grader: FakeGrader) -> TestClient:
+    app = create_app(
+        backend=_ModeBackend("meta"), place_provider=object(), asr_client=FakeAsr(), recall_grader=grader
+    )
+    return TestClient(app, base_url=LOOPBACK_URL)
+
+
+def _graded_body(**extra) -> dict:
+    return {**_body(_wav()), **extra}
+
+
+# Covers: MEM-136
+class TestRelaySparkGrade:
+    # Requirement: Spark grading is opt-in per request (body field "grade": true); when on, the grade rides
+    # beside the transcript, and a grader failure says {"grade_error": "unavailable"} so the client can tell
+    # the visitor it fell back to keyword match. Without the flag the grader is never called.
+    def test_no_flag_never_calls_grader(self):
+        grader = FakeGrader()
+        resp = _post(_graded_client(grader), _graded_body())
+        assert resp.status_code == 200, resp.text[:200]
+        assert resp.json() == {"text": TEXT}
+        assert grader.calls == []
+
+    def test_flag_on_grade_rides_beside_text(self):
+        grader = FakeGrader()
+        resp = _post(_graded_client(grader), _graded_body(grade=True))
+        assert resp.status_code == 200, resp.text[:200]
+        assert resp.json() == {"text": TEXT, "grade": GRADE}
+        assert len(grader.calls) == 1
+        args, kwargs = grader.calls[0]
+        assert args[0] == TEXT
+        assert list(args[1]) == LABELS
+        assert kwargs.get("byok_client") is None
+
+    def test_flag_false_is_same_as_absent(self):
+        grader = FakeGrader()
+        resp = _post(_graded_client(grader), _graded_body(grade=False))
+        assert resp.status_code == 200, resp.text[:200]
+        assert resp.json() == {"text": TEXT}
+        assert grader.calls == []
+
+    @pytest.mark.parametrize("bad", ["yes", None, [True]])
+    def test_non_bool_flag_is_bad_request(self, bad):
+        grader = FakeGrader()
+        resp = _post(_graded_client(grader), _graded_body(grade=bad))
+        assert resp.status_code == 400
+        assert resp.json() == {"error": "bad_request"}
+        assert grader.calls == []
+
+    @pytest.mark.parametrize("reply", [None, RuntimeError(SENTINEL)], ids=["none", "raises"])
+    def test_grader_failure_is_text_plus_grade_error(self, reply):
+        resp = _post(_graded_client(FakeGrader(reply)), _graded_body(grade=True))
+        assert resp.status_code == 200, resp.text[:200]
+        assert resp.json() == {"text": TEXT, "grade_error": "unavailable"}
+        assert SENTINEL not in resp.text
