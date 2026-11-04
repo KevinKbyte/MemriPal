@@ -87,3 +87,72 @@ NFR: POSIX sh, idempotent (describe-or-create per resource); never reads secrets
   does not lock out network B.
 
 Tests: tests/test_proxy_hops.py, tests/test_deploy_scripts.py
+
+## MEM-106 Spark chat falls back to Meta; breaker, logging, provider bounds
+
+Amends MEM-026 (spec-2.md, ADR 0023): a provider failure on Spark chat no longer fails the call.
+Decided-by: ADR-0058
+Root problem: with `MEMRIPAL_CHAT_PROVIDER` set (judged deploy: `baseten`, `meta-models/muse-spark-open-1026`), a
+provider error, timeout or schema-invalid reply failed the judge's request, and a dead provider cost a full timeout
+on every call.
+Actors: judges (any Spark route); `src/memripal/backend.py` (`MetaBackend.call`, `_call_once`, `CHAT_SKIP_S`),
+`src/memripal/chat_provider.py` (`PROVIDER_TIMEOUT`, `PROVIDER_RETRIES`), `src/memripal/app.py`
+(`_ensure_log_handler`, `_BudgetedBackend`), `scripts/deploy_cloud_run.sh`.
+NFR: no key, exception message or response body in any log line or error; no new dependency; ASCII only.
+- `spark_json` only: `MetaBackend.call` wraps one whole `_call_once(req, chat)`; any `BackendCallFailed` (incl.
+  `BackendTimeout`, `BackendReplyInvalid`) -> one retry on Meta (Meta client, model, key), answer cached under the
+  Meta request key. Provider answer -> no Meta call. Meta also fails -> `BackendCallFailed` as before. Segment and
+  image_edit never fall back or touch the provider.
+- Breaker: a provider failure sets skip-until = now + `CHAT_SKIP_S` (120 s); inside it Spark goes straight to Meta;
+  after it the provider is tried again.
+- Logs (logger `memripal`): INFO `spark chat served by <provider>` or `spark chat served by meta` per successful
+  call; WARNING `spark chat: <provider> failed (<exception class>), falling back to meta` (class name only).
+  `create_app` adds one INFO `StreamHandler` to `memripal` only if it has no handler (idempotent across calls).
+- Provider clients: `httpx.Timeout(30.0, connect=5.0)`, `max_retries=0`. Retune read timeout to
+  max(15, 2 x warm p95) after a live run.
+- Budget: one unit per `backend.call`, fallback included.
+- Deploy: `scripts/deploy_cloud_run.sh` sets `MEMRIPAL_CHAT_PROVIDER=baseten` only when `MODE=meta` and secret
+  `baseten-api-key` exists.
+- Accept: provider 5xx / timeout / schema-invalid -> Meta answer under the Meta key; provider ok -> no Meta call;
+  Meta fails too -> raises; second call within 120 s skips the provider, after it retries; WARNING names provider and
+  class only; segment failure raises without the provider; fallback costs one budget unit; one handler across two
+  `create_app` calls; deploy env set only for `MODE=meta` + secret present.
+
+Tests: tests/test_chat_fallback.py, tests/test_chat_provider_wiring.py, tests/test_deploy_scripts.py
+
+## MEM-107 Fallback header: X-Memripal-Chat-Fallback
+
+Decided-by: ADR-0058
+Root problem: the client cannot tell a Meta-served fallback answer from an open-weights one, and the backend has no
+handle on the HTTP response.
+Actors: `src/memripal/chat_fallback.py` (`HEADER`, `note_chat_fallback`, `ChatFallbackHeader`),
+`src/memripal/backend.py`, `src/memripal/cors.py`, `src/memripal/app.py`.
+NFR: pure ASGI; no route or response-body change; no state leaks across requests.
+- `ChatFallbackHeader` gives each HTTP request a fresh list in a `ContextVar`; non-`http` scopes pass through.
+  `note_chat_fallback(provider)` appends to it, a no-op outside a request (default `None`).
+- `MetaBackend.call` notes the provider only after Meta answered the fallback; on `http.response.start` the
+  middleware sets `X-Memripal-Chat-Fallback: <first noted provider>`. No note -> no header.
+- `cors.add_cors` lists the header in `expose_headers` (cross-origin Capacitor shell).
+- Accept: noted request carries the header; first provider wins; the next un-noted request has none; note outside a
+  request is a no-op; live `POST /station`: provider served -> no header, fallback -> header, then cleared after the
+  window; Meta also fails -> 502 without the header; `expose_headers` holds the header.
+
+Tests: tests/test_chat_fallback.py
+
+## MEM-108 Client fallback toast
+
+Decided-by: ADR-0058
+Root problem: judges should see that the open-weights path degraded, without the notice blocking the app or
+rendering server-supplied text.
+Actors: judges (browser); `static/chat_fallback.js`, `static/app.js`, `static/index.html`, `static/style.css`.
+NFR: non-blocking; header value never rendered; no inline style; ASCII only.
+- `withChatFallbackNotice(fetchFn, onFallback)` wraps the app's fetch, returns the same Response, and calls
+  `onFallback` only for an allowlisted header value (own-property check): `baseten` -> "Baseten", `fireworks` ->
+  "Fireworks", `local` -> "the local server".
+- Toast `#chat-fallback` (`role=status`, `.notice.toast`, fixed top-centered, outside `details#drawer`) reads
+  "Open-weights Spark on <label> is unavailable; continuing on Meta's hosted model".
+- `#chat-fallback-dismiss` hides it for the rest of the page session.
+- Accept: unknown / non-string / `toString` values -> no toast; Response passed through; missing headers object
+  tolerated, rejections propagate; dismiss keeps it hidden; markup and CSS present; app.js wires it.
+
+Tests: static/chat_fallback.test.mjs

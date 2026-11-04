@@ -156,3 +156,7 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0057](0057-emoji-for-keyword-table-fills-station-emoji.md) `emojiFor({ name, category?, tags? })` keyword/category
   table fills `Station.emoji` once at station creation; demo stations hand-picked, kept by `seedRoute` (over
   render-time derivation or OSM tags).
+- [0058](0058-spark-chat-meta-fallback.md) Spark chat on an open-weights provider falls back to Meta on any
+  `BackendCallFailed` inside `MetaBackend.call`, 120 s breaker, 30 s/5 s connect, 0 retries; `X-Memripal-Chat-Fallback`
+  header via ContextVar + ASGI middleware drives a client toast (over a JSON body field, a wrapper backend, no
+  breaker, or a flat 20 s timeout).

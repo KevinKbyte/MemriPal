@@ -155,6 +155,12 @@ other value fails startup). `META_API_KEY` is still required; fixture mode ignor
 Missing provider key or local model -> startup error. Strict `json_schema` structured output on the non-Meta hosts is
 not yet verified live.
 
+Open-weights fallback: when the provider errors, times out (30 s read, 5 s connect, no retries) or returns an
+invalid reply, the call is answered by Meta's hosted model instead, and Spark skips the provider for 120 s. The
+response carries `X-Memripal-Chat-Fallback: <provider>` and the UI shows a dismissible notice so judges see the
+switch; logs read `spark chat served by <provider|meta>`
+([ADR 0058](docs/decisions/0058-spark-chat-meta-fallback.md), MEM-106..108).
+
 Other provider toggles (exact match; any other value raises):
 
 - `MEMRIPAL_SEG_PROVIDER`: `meta` (default, SAM 3.1) or `modal` (own Modal-hosted SAM endpoint; requires
