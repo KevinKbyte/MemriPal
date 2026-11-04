@@ -349,9 +349,12 @@ tests/test_app.py::TestDemoPhotoRoute, tests/test_fixtures_manifest.py::TestDemo
   only for ADR 0005 (key custody) and 0009 (image intake), and only when the section says "Alternatives not
   formally evaluated"; the marker on any other ADR does not lower the minimum.
 - README links every ADR; every README link resolves to an existing file; ADR numbers unique and contiguous from
-  0001.
+  0001, except numbers listed on a README `Reserved:` line (4-digit tokens; `Reserved: none` = empty; ADR
+  [0061](../../../../docs/decisions/0061-reserved-adr-numbers.md)): a gap passes only when every missing number is
+  reserved; reserved numbers above the highest ADR are allowed.
 - Missing heading/Status/Date, headings out of order, one option, option without Pros or Cons, unlinked ADR,
-  dangling link, numbering gap, duplicate number -> each fails.
+  dangling link, unreserved numbering gap, reserved number that also exists as a file (stale reservation),
+  duplicate number (reserved or not) -> each fails.
 
 Tests: tests/test_decisions_structure.py
 

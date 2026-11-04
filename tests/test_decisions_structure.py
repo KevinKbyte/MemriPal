@@ -6,7 +6,9 @@
 # only exceptions are ADRs explicitly marked "Alternatives not formally
 # evaluated"); every ADR is linked from docs/decisions/README.md, every README
 # link resolves to an existing file, and ADR numbers are unique and contiguous
-# from 0001. Every .md in docs/decisions/ other than README.md must match the
+# from 0001 except for numbers listed on a README.md `Reserved:` line (taken by an
+# unmerged branch, ADR 0061); a reserved number that also exists as a file fails as
+# a stale reservation. Every .md in docs/decisions/ other than README.md must match the
 # NNNN-slug.md name, so a misnamed ADR cannot silently escape these checks.
 # Covers: MEM-018
 # Directive source: QUAL-014 claim hash prefix cf9fea4ed55b (memripal CLAUDE.md ADR rule).
@@ -28,6 +30,8 @@ HEADINGS = [
 ]
 ADR_NAME = re.compile(r"^(\d{4})-[a-z0-9-]+\.md$")
 LINK = re.compile(r"\]\(([^)\s]+)\)")
+RESERVED_PREFIX = "Reserved:"
+RESERVED_NUMBER = re.compile(r"\b(\d{4})\b")
 NO_ALTERNATIVES = "Alternatives not formally evaluated"
 # ADRs whose decision was taken without a recorded comparison; each must say so
 # with NO_ALTERNATIVES in its Options considered section.
@@ -96,16 +100,28 @@ def naming_errors(root):
 
 
 def reserved_numbers(root):
-    return set()
+    """Numbers on README.md `Reserved:` lines (ADR 0061); `Reserved: none` is empty."""
+    readme = root / "README.md"
+    if not readme.is_file():
+        return set()
+    return {
+        int(n)
+        for line in readme.read_text(encoding="utf-8").splitlines()
+        if line.startswith(RESERVED_PREFIX)
+        for n in RESERVED_NUMBER.findall(line)
+    }
 
 
 def numbering_errors(root):
     numbers = [int(ADR_NAME.match(p.name).group(1)) for p in _adr_files(root)]
     if len(numbers) != len(set(numbers)):
         return [f"duplicate ADR numbers: {sorted(numbers)}"]
-    if sorted(numbers) != list(range(1, len(numbers) + 1)):
-        return [f"ADR numbers not contiguous from 1: {sorted(numbers)}"]
-    return []
+    present = set(numbers)
+    reserved = reserved_numbers(root)
+    errors = [f"{n:04d}: stale reservation, ADR file exists" for n in sorted(reserved & present)]
+    missing = set(range(1, max(present, default=0) + 1)) - present
+    errors += [f"{n:04d}: numbering gap not reserved in README.md" for n in sorted(missing - reserved)]
+    return errors
 
 
 def test_decisions_dir_has_adrs():
@@ -121,7 +137,7 @@ def test_readme_links_every_adr_and_resolves():
     assert index_errors(DECISIONS) == []
 
 
-def test_adr_numbers_unique_and_contiguous():
+def test_adr_numbers_unique_and_contiguous_or_reserved():
     assert numbering_errors(DECISIONS) == []
 
 
@@ -302,8 +318,3 @@ def test_reserved_numbers_parse(adr_dir):
 
 def test_no_reserved_line_means_nothing_reserved(adr_dir):
     assert reserved_numbers(adr_dir) == set()
-
-
-def test_real_readme_has_reserved_line():
-    text = (DECISIONS / "README.md").read_text(encoding="utf-8")
-    assert any(line.startswith("Reserved:") for line in text.splitlines())
