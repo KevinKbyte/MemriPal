@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.59] - 2026-11-04
+
+### Added
+
+- Regression test: push_secret_gcp.ps1 exits 2 with "gcloud not found on PATH" when $env:MEMRIPAL_GCLOUD cannot be resolved, before decrypting the key and without leaking it (MEM-111).
+
 ## [0.20.58] - 2026-11-04
 
 ### Added
