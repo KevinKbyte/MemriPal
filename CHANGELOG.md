@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.65] - 2026-11-04
+
+### Added
+
+- Generated stickers from the memorized item (MEM-052, ADR 0071): after Load demo, each item's AI scene is cropped to its spot and stuck onto the landmark photo as a die-cut sticker, saved to the sticker pool and listed as "(AI-generated)" in the Stickers panel; offline or on any failure Pal falls back to a matching emoji sticker, else skips the spot.
+
 ## [0.20.64] - 2026-11-04
 
 ### Fixed
