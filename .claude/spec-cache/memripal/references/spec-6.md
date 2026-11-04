@@ -305,3 +305,29 @@ NFR: no data migration; stored routes keep loading; ASCII only.
 - Accept: no next-turn element on the route view; the map still renders one node per station.
 
 Tests: static/no_next_turn.test.mjs
+## MEM-114 Routes empty-state map, call to action and slogan
+
+Amends MEM-088 (`#map-empty` notice) and MEM-074 (real map loader).
+Decided-by: ADR-0074
+Root problem: a zero-route Routes tab showed a blank sketch box with a text notice; Load demo / Map a new route lived
+only inside the closed "Route settings" drawer; the app slogan appeared nowhere.
+Actors: `static/routes_empty_map.js` (`createEmptyMap`, `EMPTY_MAP_CENTER`, `EMPTY_MAP_ZOOM`, `SLOGAN`);
+`static/real_map.js` (loader `mountAt(svg, center, zoom)`); `static/route_view.js` (`renderHome`);
+`static/index.html` (`#empty-slogan`); `static/style.css`.
+NFR: no network tiles beyond the bundled extract; ASCII; text via `textContent`.
+Source: Kev 2026-11-04, "why isnt the routes showing anything, shouldnt it have some sort of default location, maybe
+the main meta office or something"; "should we have the slogan somewhere - find a home for every memory".
+- Zero routes: the real-map loader runs `mountAt(#route-map, EMPTY_MAP_CENTER {lat 42.3664, lon -71.0832} Kendall
+  Square, zoom 15)`, which fetches the self-hosted extract (no station overlay). A center outside `REAL_MAP_BBOX`
+  resolves null with no Map. A later station mount on the same svg removes it.
+- A `.empty-map-cta` card in `.map-wrap` carries the slogan "Find a home for every memory" and two buttons, Load demo
+  (`data-action` `empty-load-demo`) and Map a new route (`empty-new-route`), which click the drawer's `#load-demo` /
+  `#routes-new` (one copy of their handlers). Visible without opening the drawer. It stands in for `#map-empty`
+  (hidden on show; `#map-empty` stays in the markup as the pre-boot notice).
+- `show()` is idempotent. Once any route exists the CTA is removed and no `mountAt` runs.
+- A loader without `mountAt`, or a `mountAt` that rejects, still shows the CTA with no unhandled rejection.
+- `#empty-slogan` "Find a home for every memory" is the next sibling after Pal's `#empty-state`, visible in the
+  markup, hidden once a route exists.
+
+Tests: static/routes_empty_map.test.mjs, static/real_map_mount_at.test.mjs, static/app_routes_empty_map.test.mjs,
+static/index_markup.test.mjs (MEM-114 describe), static/app_route_new_flow.test.mjs (`#map-empty` gives way to the CTA)
