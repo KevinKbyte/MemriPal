@@ -221,3 +221,27 @@ Amends MEM-095. Actors: `static/index.html` (#tab-settings gains a "Pal's tour" 
   Skip after replay -> hidden again.
 
 Tests: static/tour.test.mjs
+
+## MEM-111 Push a DPAPI-stored API key to GCP Secret Manager
+
+Decided-by: none
+Root problem: deploy runbook step 3 had Kev type the meta/baseten keys at a gcloud prompt though DPAPI copies already
+exist at `~/.secrets/<name>.dpapi`; a typed or echoed key also risks a trailing newline, and the app does not strip
+keys, so auth breaks.
+Actors: Kev; `scripts/push_secret_gcp.ps1`; gcloud; `scripts/deploy_cloud_run.sh` (consumes `meta-api-key`,
+`baseten-api-key`).
+NFR: the key never reaches argv, env, stdout, or a file; written byte-exact; ASCII only.
+Source: Kev 2026-11-04, "why do we have to promptt o type the key when we already have the key in the gpapi".
+- Arg `<name>` in {`meta-api-key`, `baseten-api-key`, `fireworks-api-key`}, else exit 2 with no gcloud call.
+- Reads `$HOME/.secrets/<name>.dpapi`; missing -> exit 2.
+- gcloud = `$env:MEMRIPAL_GCLOUD` or `gcloud.cmd`; a `.cmd`/`.bat` runs via `cmd.exe /d /c`.
+- Runs `secrets describe <name> --format=value(name)`; exit 0 -> `secrets versions add <name> --data-file=-`, else
+  `secrets create <name> --replication-policy=automatic --data-file=-`.
+- Key written byte-exact (UTF-8, no BOM, no newline) to the child's stdin.
+- Exit = child's; prints `pushed <name>`.
+- Accept: unknown name -> exit 2, zero gcloud calls; missing `.dpapi` -> exit 2; `MEMRIPAL_GCLOUD` honored, `.cmd`/`.bat`
+  launched via `cmd.exe /d /c`; describe exit 0 -> `versions add`, nonzero -> `create --replication-policy=automatic`;
+  child stdin bytes equal the decrypted key exactly (no BOM, no trailing newline); key absent from child argv, env,
+  script stdout, and any written file; script exit equals the child's; stdout carries `pushed <name>`.
+
+Tests: tests/test_push_secret_gcp.py
