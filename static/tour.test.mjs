@@ -12,7 +12,7 @@
 import { describe, test, beforeEach, afterEach, mock } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
-import { makeTourDom } from "./tour_fake_dom_test.mjs";
+import { makeTourDom, makeEvent } from "./tour_fake_dom_test.mjs";
 
 const mod = await import("./tour.js").catch((err) => ({ __missing: String(err) }));
 
@@ -553,5 +553,261 @@ describe("step 3 dog house: segmented spots, numbered pins, route (MEM-095)", ()
     assert.match(house, /var\(--surface\)/, "dog house uses --surface");
     assert.doesNotMatch(house, /#[0-9a-f]{3,8}\b/i, "dog house uses tokens, not hex colours");
     assert.match(house, /\.tour-house svg\s*\{[^}]*width:\s*100%/, "svg scales to the card width");
+  });
+});
+
+// Covers: MEM-117
+// Requirement: MEM-117 amends MEM-095. Step 3's dog house gains a sticker per locus: houseFig appends 5
+// g.tour-sticker after the pins, in walk order (SVG namespace, role=button, tabindex 0, aria-label
+// "Re-roll <spot>"), each anchored at its box's top-right corner (x + w, y) clamped inside the 320x200 viewBox;
+// its text children are stickers.compose(STEPS[2].fig[i].item).parts, the first in a larger font. Each step-3 fig
+// row's icon shows the same parts joined and a .tour-kw caption gives the item's keywords joined by " + " (row 1
+// "sizzling + bacon"). STEPS[2].after is "I break each item into keywords and mash their emoji into one sticker.
+// Tap a sticker to re-roll it." Steps without a house show no sticker and no caption.
+const stkMod = await import("./stickers.js").catch((err) => ({ __missing: String(err) }));
+
+function needStk(name) {
+  assert.ok(name in stkMod, `static/stickers.js must export ${name} (${stkMod.__missing ?? "not exported"})`);
+  return stkMod[name];
+}
+
+const BREAKDOWN = "I break each item into keywords and mash their emoji into one sticker. Tap a sticker to re-roll it.";
+const figItems = () => need("STEPS")[2].fig.map((r) => r.item);
+const composed = (v) => figItems().map((item) => needStk("compose")(item, () => v).parts);
+const houseSvgOf = (dom) => dom.$("tour-house").querySelector("svg");
+const stickerFor = (dom, spot) => {
+  const g = houseSvgOf(dom).querySelectorAll("g.tour-sticker").find((e) => e.getAttribute("aria-label") === `Re-roll ${spot}`);
+  assert.ok(g, `no g.tour-sticker with aria-label "Re-roll ${spot}"`);
+  return g;
+};
+const partsOf = (g) => g.querySelectorAll("text").map((t) => t.textContent);
+const allParts = (dom) => HOUSE_SPOTS.map((s) => partsOf(stickerFor(dom, s)));
+const figIcons = (dom) => dom.$("tour-fig").children.map((li) => li.querySelector(".fig-icon")?.textContent);
+const rolling = (dom, spot) => stickerFor(dom, spot).classList.contains("is-rolling");
+
+/** Wire the tour with Math.random returning `rng.v` (mutable), then go to step 3. */
+function onHouse(t, rng = { v: 0 }) {
+  t.mock.method(Math, "random", () => rng.v);
+  const dom = wire();
+  next(dom, 2);
+  return dom;
+}
+
+/** Position of a sticker text part in viewBox units: its x/y plus any translate() on its ancestors up to the svg. */
+function partPos(t) {
+  let [x, y] = [num(t, "x") || 0, num(t, "y") || 0];
+  for (let n = t.parentNode; n && typeof n.getAttribute === "function"; n = n.parentNode) {
+    const m = /translate\(\s*(-?[\d.]+)(?:[\s,]+(-?[\d.]+))?\s*\)/.exec(n.getAttribute("transform") ?? "");
+    if (m) { x += Number(m[1]); y += Number(m[2] ?? 0); }
+    if (String(n.tagName).toLowerCase() === "svg") break;
+  }
+  return [x, y];
+}
+const inView = ([x, y]) => x >= 0 && x <= 320 && y >= 0 && y <= 200;
+
+describe("step 3 stickers on Pal's dog house (MEM-117)", () => {
+  test("still 10 steps; step 3's closer is the keyword breakdown", () => {
+    const steps = need("STEPS");
+    assert.equal(steps.length, 10);
+    assert.equal(steps[2].after, BREAKDOWN);
+  });
+
+  test("5 g.tour-sticker in walk order, drawn after every pin, SVG namespace, role=button, tabindex 0", (t) => {
+    const svg = houseSvgOf(onHouse(t));
+    const kids = svg.children;
+    const at = (cls) => kids.map((k, n) => (k.classList.contains(cls) ? n : -1)).filter((n) => n >= 0);
+    assert.equal(at("tour-sticker").length, 5, "5 g.tour-sticker as direct children of the house svg");
+    assert.ok(Math.min(...at("tour-sticker")) > Math.max(...at("pin")), "every sticker comes after every pin");
+    const gs = svg.querySelectorAll("g.tour-sticker");
+    assert.deepEqual(gs.map((g) => g.getAttribute("aria-label")), HOUSE_SPOTS.map((s) => `Re-roll ${s}`));
+    for (const g of gs) {
+      assert.equal(g.namespaceURI, SVG_NS, "sticker built with createElementNS");
+      assert.equal(g.getAttribute("role"), "button");
+      assert.equal(g.getAttribute("tabindex"), "0");
+      for (const p of g.querySelectorAll("text")) assert.equal(p.namespaceURI, SVG_NS, "sticker part in the SVG namespace");
+    }
+  });
+
+  test("each sticker's text children are compose(fig item).parts; the first part has the largest font-size", (t) => {
+    const dom = onHouse(t);
+    assert.deepEqual(allParts(dom), composed(0));
+    let layered = 0;
+    for (const spot of HOUSE_SPOTS) {
+      const [first, ...rest] = stickerFor(dom, spot).querySelectorAll("text");
+      if (rest.length) layered++;
+      for (const r of rest) {
+        assert.ok(num(first, "font-size") > num(r, "font-size"),
+          `${spot}: first part font-size ${first.getAttribute("font-size")} not above ${r.getAttribute("font-size")}`);
+      }
+    }
+    assert.ok(layered >= 1, "at least one sticker merges 2+ emoji");
+  });
+
+  test("each sticker sits at its box's top-right corner and every part lies inside the 320x200 viewBox", (t) => {
+    const dom = onHouse(t);
+    need("STEPS")[2].house.forEach(({ spot, box: [x, y, w] }) => {
+      const parts = stickerFor(dom, spot).querySelectorAll("text");
+      const [px, py] = partPos(parts[0]);
+      assert.ok(Math.abs(px - (x + w)) <= 16 && Math.abs(py - y) <= 16,
+        `${spot} sticker at (${px}, ${py}), box top-right (${x + w}, ${y})`);
+      for (const p of parts) assert.ok(inView(partPos(p)), `${spot} part at ${partPos(p)} leaves the viewBox`);
+    });
+  });
+
+  test("a box touching the viewBox's top-right corner gets its sticker clamped inside", (t) => {
+    const box = need("STEPS")[2].house[4].box;
+    const saved = [...box];
+    try {
+      box.splice(0, 4, 268, 0, 52, 30);
+      const parts = stickerFor(onHouse(t), "Window").querySelectorAll("text");
+      const [px, py] = partPos(parts[0]);
+      assert.ok(px < 320 && py > 0, `corner sticker at (${px}, ${py}) not pulled inside`);
+      for (const p of parts) assert.ok(inView(partPos(p)), `Window part at ${partPos(p)} leaves the viewBox`);
+    } finally {
+      box.splice(0, 4, ...saved);
+    }
+  });
+
+  test("step 3 fig rows: icon = the sticker's parts joined; one .tour-kw caption = keywords joined by ' + '", (t) => {
+    const dom = onHouse(t);
+    const rows = dom.$("tour-fig").children;
+    assert.equal(rows.length, 5);
+    assert.deepEqual(figIcons(dom), composed(0).map((p) => p.join("")));
+    const caps = rows.map((li) => li.querySelectorAll(".tour-kw").map((k) => k.textContent));
+    assert.deepEqual(caps, figItems().map((item) => [needStk("keywords")(item).join(" + ")]));
+    assert.deepEqual(caps[0], ["sizzling + bacon"]);
+  });
+
+  test("steps without a house show no sticker and no .tour-kw; step 4 icons stay its STEPS icons", () => {
+    const steps = need("STEPS");
+    const dom = wire();
+    steps.forEach((s, i) => {
+      if (i > 0) next(dom);
+      if (i === 2) return;
+      assert.equal(dom.doc.querySelectorAll("g.tour-sticker").length, 0, `step ${i + 1} has a sticker`);
+      assert.equal(dom.doc.querySelectorAll(".tour-kw").length, 0, `step ${i + 1} has a .tour-kw caption`);
+      if (i === 3) assert.deepEqual(figIcons(dom), s.fig.map((r) => r.icon), "step 4 icons");
+    });
+  });
+});
+
+// Covers: MEM-117
+// Requirement: "Roll all" (#tour-roll, in .tour-actions) shows only on the house step and re-rolls every locus;
+// a click or Enter/Space on one g.tour-sticker re-rolls that locus only (sticker and fig row icon); a re-rolled
+// sticker carries is-rolling for 300 ms; rolls are kept while the tour is open (Next then Back); #tour-roll joins
+// the focus trap's visible buttons. tour.css styles .tour-sticker, .tour-kw and .is-rolling and turns the roll
+// animation off under prefers-reduced-motion: reduce.
+describe("rolling stickers on step 3 (MEM-117)", () => {
+  test("#tour-roll 'Roll all' is visible on step 3 only", () => {
+    const steps = need("STEPS");
+    const dom = wire();
+    const roll = dom.$("tour-roll");
+    steps.forEach((_, i) => {
+      if (i > 0) next(dom);
+      assert.equal(roll.hidden, i !== 2, `#tour-roll hidden on step ${i + 1}: ${roll.hidden}`);
+    });
+    assert.equal(roll.textContent, "Roll all");
+  });
+
+  test("Roll all re-rolls every sticker and fig icon, stays on step 3, keeps 5 stickers, 5 pins, 1 route", (t) => {
+    const rng = { v: 0 };
+    const dom = onHouse(t, rng);
+    const before = allParts(dom);
+    rng.v = 0.999;
+    dom.click(dom.$("tour-roll"));
+    assert.equal(stepN(dom), "3");
+    const svg = houseSvgOf(dom);
+    for (const [sel, n] of [["g.tour-sticker", 5], ["g.pin", 5], ["polyline.route-line", 1]]) {
+      assert.equal(svg.querySelectorAll(sel).length, n, `${sel} after Roll all`);
+    }
+    const after = allParts(dom);
+    assert.deepEqual(after, composed(0.999));
+    HOUSE_SPOTS.forEach((s, i) => assert.notDeepEqual(after[i], before[i], `${s} sticker changed`));
+    assert.deepEqual(figIcons(dom), composed(0.999).map((p) => p.join("")), "fig icons follow the roll");
+  });
+
+  test("clicking one sticker re-rolls only that locus and its fig icon", (t) => {
+    const rng = { v: 0 };
+    const dom = onHouse(t, rng);
+    const before = allParts(dom);
+    const iconsBefore = figIcons(dom);
+    rng.v = 0.999;
+    dom.click(stickerFor(dom, "Chew-toy throne"));
+    const after = allParts(dom);
+    assert.deepEqual(after[2], composed(0.999)[2], "Chew-toy throne re-rolled");
+    assert.notDeepEqual(after[2], before[2], "Chew-toy throne sticker changed");
+    for (const i of [0, 1, 3, 4]) assert.deepEqual(after[i], before[i], `${HOUSE_SPOTS[i]} untouched`);
+    const icons = figIcons(dom);
+    assert.equal(icons[2], composed(0.999)[2].join(""), "row 3 icon follows its sticker");
+    for (const i of [0, 1, 3, 4]) assert.equal(icons[i], iconsBefore[i], `row ${i + 1} icon untouched`);
+    assert.equal(houseSvgOf(dom).querySelectorAll("g.tour-sticker").length, 5);
+  });
+
+  test("Enter and Space on a sticker re-roll only that locus", (t) => {
+    const rng = { v: 0 };
+    const dom = onHouse(t, rng);
+    const before = allParts(dom);
+    rng.v = 0.999;
+    stickerFor(dom, "Doormat").dispatchEvent(makeEvent("keydown", { key: "Enter" }));
+    assert.deepEqual(allParts(dom)[0], composed(0.999)[0], "Enter re-rolled the Doormat");
+    stickerFor(dom, "Window").dispatchEvent(makeEvent("keydown", { key: " " }));
+    const after = allParts(dom);
+    assert.deepEqual(after[4], composed(0.999)[4], "Space re-rolled the Window");
+    for (const i of [1, 2, 3]) assert.deepEqual(after[i], before[i], `${HOUSE_SPOTS[i]} untouched`);
+    assert.equal(stepN(dom), "3", "Enter/Space on a sticker does not change the step");
+  });
+
+  test("a re-rolled sticker carries is-rolling for 300 ms; the others never do", (t) => {
+    const dom = onHouse(t);
+    dom.click(stickerFor(dom, "Water bowl"));
+    assert.equal(rolling(dom, "Water bowl"), true, "is-rolling on click");
+    for (const s of HOUSE_SPOTS.filter((x) => x !== "Water bowl")) assert.equal(rolling(dom, s), false, `${s} not rolling`);
+    mock.timers.tick(299);
+    assert.equal(rolling(dom, "Water bowl"), true, "still rolling at 299 ms");
+    mock.timers.tick(1);
+    assert.equal(rolling(dom, "Water bowl"), false, "done at 300 ms");
+  });
+
+  test("Roll all marks every sticker is-rolling, cleared after 300 ms", (t) => {
+    const dom = onHouse(t);
+    dom.click(dom.$("tour-roll"));
+    for (const s of HOUSE_SPOTS) assert.equal(rolling(dom, s), true, `${s} rolling`);
+    mock.timers.tick(300);
+    for (const s of HOUSE_SPOTS) assert.equal(rolling(dom, s), false, `${s} done`);
+  });
+
+  test("rolls are kept while the tour is open: Next then Back shows the same stickers and icons", (t) => {
+    const rng = { v: 0.999 };
+    const dom = onHouse(t, rng);
+    rng.v = 0;
+    dom.click(dom.$("tour-roll"));
+    const rolled = allParts(dom);
+    const icons = figIcons(dom);
+    rng.v = 0.5;
+    next(dom);
+    dom.click(dom.$("tour-back"));
+    assert.deepEqual(allParts(dom), rolled);
+    assert.deepEqual(figIcons(dom), icons);
+  });
+
+  test("focus trap: step 3 Shift+Tab from Next reaches Back then Roll all; step 4 skips the hidden Roll all", () => {
+    const dom = wire();
+    next(dom, 2);
+    assert.equal(dom.doc.activeElement?.id, "tour-next");
+    dom.key("Tab", { shiftKey: true });
+    assert.equal(dom.doc.activeElement?.id, "tour-back");
+    dom.key("Tab", { shiftKey: true });
+    assert.equal(dom.doc.activeElement?.id, "tour-roll", "Shift+Tab from Back reaches #tour-roll");
+    next(dom);
+    dom.key("Tab", { shiftKey: true });
+    dom.key("Tab", { shiftKey: true });
+    assert.equal(dom.doc.activeElement?.id, "tour-skip", "step 4: Shift+Tab from Back skips the hidden #tour-roll");
+  });
+
+  test("tour.css styles .tour-sticker, .tour-kw and .is-rolling; reduced motion turns .is-rolling off", () => {
+    const css = readFileSync(new URL("./tour.css", import.meta.url), "utf8");
+    for (const sel of [".tour-sticker", ".tour-kw", ".is-rolling"]) assert.ok(css.includes(sel), `tour.css styles ${sel}`);
+    const blocks = [...css.matchAll(/@media[^{]*prefers-reduced-motion\s*:\s*reduce[^{]*\{([\s\S]*?)\n\}/g)].map((m) => m[1]);
+    assert.ok(blocks.some((b) => b.includes(".is-rolling")), "no prefers-reduced-motion: reduce rule for .is-rolling");
   });
 });

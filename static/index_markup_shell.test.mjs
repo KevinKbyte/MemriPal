@@ -321,3 +321,21 @@ describe("Pal's tour markup (MEM-095, MEM-112)", () => {
     assert.equal(norm(text(btn)), "Replay Pal's tour");
   });
 });
+
+// Covers: MEM-117
+// Requirement: Pal's dog-house step has a "Roll all" button#tour-roll (type=button) inside the tour card's
+// .tour-actions row, hidden at load; tour.js shows it only on the house step.
+describe("Pal's tour Roll all markup (MEM-117)", () => {
+  test("#tour-roll is a hidden 'Roll all' button inside .tour-card > .tour-actions", () => {
+    const btn = byId("tour-roll");
+    assert.equal(btn?.tag, "button", "no button#tour-roll");
+    assert.equal(btn.attrs.type, "button");
+    assert.equal(btn.attrs.hidden, "", "#tour-roll hidden at load");
+    assert.equal(norm(text(btn)), "Roll all");
+    assert.ok(classes(btn.parent).includes("tour-actions"), `#tour-roll parent is ${desc(btn.parent)}`);
+    assert.ok(inside(btn, "tour"), "#tour-roll inside #tour");
+    let p = btn.parent;
+    while (p && !classes(p).includes("tour-card")) p = p.parent;
+    assert.ok(p, "#tour-roll inside .tour-card");
+  });
+});

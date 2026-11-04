@@ -74,8 +74,11 @@ export const MEM088_MAY_START_HIDDEN = ["route-new", "route-new-error", "route-n
 export const MEM095_IDS = [
   "tour", "tour-n", "tour-total", "tour-skip", "tour-title", "tour-body", "tour-house", "tour-fig", "tour-after",
   "tour-back", "tour-next", "tour-toast", "tour-replay",
+  // MEM-117: the "Roll all" button of the dog-house sticker step.
+  "tour-roll",
 ];
 
 // MEM-095: tour.js opens #tour only for a first-time visitor; the figures (dog house, locus list) and closer show
 // only on steps that have them; the toast only after a skip.
-export const MEM095_MAY_START_HIDDEN = ["tour", "tour-house", "tour-fig", "tour-after", "tour-toast"];
+// MEM-117: #tour-roll shows only on the house step.
+export const MEM095_MAY_START_HIDDEN = ["tour", "tour-house", "tour-fig", "tour-after", "tour-toast", "tour-roll"];
