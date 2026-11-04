@@ -436,7 +436,7 @@ Decision: ADR [0049](../../../../docs/decisions/0049-recall-schedule-and-push-re
 - Pure schedule module matching ADR 0049's simulated schedules exactly.
 - Accept: S = 11-03 18:00 with T = 11-21; no deadline; T = S+12h; T already passed.
 
-Tests: (filled at land)
+Tests: static/recall_schedule.test.mjs
 ## MEM-096 Real map resizes when its box gains size (PLANNED)
 ## MEM-096 Real map resizes when its box gains size
 
