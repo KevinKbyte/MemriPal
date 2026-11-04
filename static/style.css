@@ -705,6 +705,24 @@ li.said-missed {
   margin-top: 0;
 }
 
+/* MEM-088: the empty map says what to do instead of showing a blank sketch box. */
+.map-empty {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(20rem, calc(100vw - 6rem));
+  margin: 0;
+  padding: 0.875rem 1rem;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  text-align: center;
+  line-height: 1.4;
+}
+
 /* Selected route name, pinned over the map's lower-left corner. */
 .map-chip {
   position: fixed;

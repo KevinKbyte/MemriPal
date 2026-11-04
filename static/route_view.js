@@ -6,6 +6,7 @@
 import { countInOrder } from "./recall_match.js";
 import { routeHitRates } from "./rehearsals.js";
 import { learnedCount, renderRouteMap } from "./route_map.js";
+import { createRouteNew } from "./route_new.js";
 import { showTab } from "./tabbar.js";
 
 /**
@@ -34,9 +35,10 @@ export function routeRun(route, starts) {
  *   rehearsals: ReturnType<typeof import("./rehearsals.js").createRehearsalStore>,
  *   onPractice: (route: Route, map: RouteMap) => void,
  *   realMap?: RealMap,
+ *   fetch: typeof fetch,
  * }} deps
  */
-export function createRouteView({ doc, routes, rehearsals, onPractice, realMap }) {
+export function createRouteView({ doc, routes, rehearsals, onPractice, realMap, fetch }) {
   /** @param {string} id */
   const byId = (id) => doc.getElementById(id);
   /**
@@ -166,7 +168,9 @@ export function createRouteView({ doc, routes, rehearsals, onPractice, realMap }
     renderRoute(route);
     await renderRates(route);
     setHidden("routes-home", true);
+    setHidden("route-new", true);
     setHidden("route-view", false);
+    setHidden("map-empty", true);
     // MEM-072: the opened route owns the Routes tab map, its chip and the Landmarks list.
     const chip = byId("map-chip");
     if (chip) chip.textContent = route.name;
@@ -246,10 +250,21 @@ export function createRouteView({ doc, routes, rehearsals, onPractice, realMap }
   onClick("route-view-delete-confirm", confirmDelete);
   onClick("route-view-undo", undoDelete);
   onClick("route-view-practice", practice);
-  // MEM-072: capture runs inside the route drawer, so Map a new route opens it.
+  // MEM-088: Map a new route opens the builder form in the route drawer (MEM-072).
+  const routeNew = createRouteNew({
+    doc, routes, fetch,
+    onSaved: async (/** @type {string} */ id) => {
+      await renderHome();
+      await openRoute(id);
+    },
+    onCancel: showHome,
+  });
   onClick("routes-new", () => {
+    setHidden("routes-home", true);
+    setHidden("route-view", true);
     const drawer = /** @type {HTMLDetailsElement | null} */ (byId("drawer"));
     if (drawer) drawer.open = true;
+    routeNew.open();
   });
 
   return {

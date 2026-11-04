@@ -4,6 +4,8 @@
 // Save enforces 3-8 named stations. Coordinates are rounded at write: the user's own GPS to 4 dp (about
 // 11 m), public places (seeded stations, map candidates) to 5 dp (about 1 m, ADR 0053).
 
+import { emojiFor } from "./landmark_emoji.js";
+
 export { createCaptureSession } from "./route_capture.js";
 
 /**
@@ -173,7 +175,7 @@ export function createRouteStore(adapter, { now = Date.now, newId = () => crypto
     const coords = coordsOf({ lat: c.lat, lon: c.lng }, 5);
     if (typeof c.name !== "string" || !c.name.trim() || !coords) throw new TypeError(`${c.key}: no candidate stored or given`);
     /** @type {Station} */
-    const st = { id: newId(), n, name: c.name.trim(), photo_ref: newId(), status: "named", coords };
+    const st = { id: newId(), n, name: c.name.trim(), photo_ref: newId(), status: "named", coords, emoji: emojiFor({ name: c.name }) };
     // The address is the POI's own; a "near <street>" label is never stored as one (ADR 0053).
     if (c.address) st.address = c.address;
     if (c.osm_id) st.osm_id = c.osm_id;

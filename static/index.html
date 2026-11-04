@@ -19,6 +19,7 @@
       <section id="tab-routes" class="tab-panel">
         <div class="map-wrap">
           <svg id="route-map" class="route-map" viewBox="0 0 320 200" role="img" aria-label="Route map"></svg>
+          <p id="map-empty" class="map-empty">No route yet. Open Route settings to map a new route or load the demo.</p>
         </div>
         <p id="map-chip" class="map-chip" aria-live="polite"></p>
         <details id="drawer" class="drawer">
@@ -46,6 +47,33 @@
               <div class="btn-row">
                 <button id="routes-new" class="btn btn-primary" type="button">Map a new route</button>
                 <button id="load-demo" class="btn btn-primary" type="button">Load demo</button>
+              </div>
+            </section>
+            <section id="route-new" class="panel" hidden>
+              <h2>Map a new route</h2>
+              <div class="field">
+                <label for="route-from">Start</label>
+                <input id="route-from" type="text" maxlength="80" autocomplete="off" placeholder="Kendall/MIT T">
+              </div>
+              <div class="field">
+                <label for="route-to">End</label>
+                <input id="route-to" type="text" maxlength="80" autocomplete="off" placeholder="Meta office">
+              </div>
+              <div class="btn-row">
+                <button id="route-find" class="btn btn-primary" type="button">Find route</button>
+                <button id="route-new-cancel" class="btn" type="button">Cancel</button>
+              </div>
+              <p id="route-new-error" class="notice" role="alert" hidden></p>
+              <div id="route-new-result" hidden>
+                <p id="route-distance" class="route-meta"></p>
+                <ol id="route-new-stations"></ol>
+                <div class="field">
+                  <label for="route-new-name">Route name</label>
+                  <input id="route-new-name" type="text" maxlength="40" autocomplete="off">
+                </div>
+                <div class="btn-row">
+                  <button id="route-new-save" class="btn btn-primary" type="button">Save route</button>
+                </div>
               </div>
             </section>
             <section id="capture-session" class="panel" hidden>
