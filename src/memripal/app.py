@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from memripal import access
+from memripal import access, byok
 from memripal import ratelimit as rl
 from memripal.associate import (
     FIELDS,
@@ -47,7 +47,7 @@ from memripal.chat_fallback import ChatFallbackHeader
 from memripal.demo_room import room_photo
 from memripal.imaging import MAX_UPLOAD_BYTES, ImageRejected, process_upload, sniff, validate_processed
 from memripal.loci import find_loci, locus_json
-from memripal.meta_spend_guard import meta_asr_client_from_env
+from memripal.meta_spend_guard import meta_asr_client_from_env, spend_dir_from_env
 from memripal.place import FixturePlaceProvider, PlaceProvider
 from memripal.recall_relay import (
     MAX_CHUNK_BYTES,
@@ -62,6 +62,7 @@ from memripal.record_sign import record_key, sig_ok, sign_record
 from memripal.routes_station import make_station_router
 from memripal.scenes import render_scene
 from memripal.security_headers import SecurityHeaders
+from memripal.spend_degrade import SpendCapHeader, with_saved_results
 from memripal.split import SplitRejected, check_notes, split_list, split_notes
 from memripal.static_files import static_files
 
@@ -136,7 +137,12 @@ class _BudgetedBackend:
 
 
 def create_app(
-    backend: ModelBackend | None = None, place_provider=None, asr_client=None, clock=None
+    backend: ModelBackend | None = None,
+    place_provider=None,
+    asr_client=None,
+    clock=None,
+    saved_roots=None,
+    byok_transport=None,
 ) -> FastAPI:
     if backend is None:
         backend = select_backend(None, fixtures_root=REPLAY_DIR, live_cache_root=LIVE_CACHE_DIR)
@@ -156,6 +162,13 @@ def create_app(
     access_key = access.access_key()
     access_lockout = access.lockout_from_env(_env_int, clock)
     live = backend.mode != "fixture"
+    # The visitor's own Meta key (MEM-122); `byok_transport` is for tests only.
+    byok_config = byok.ByokConfig(signing_key, spend_dir_from_env(), byok.cap_from_env(), byok_transport)
+    if live:
+        # Past the Meta spend cap, replay saved results: live cache, then the committed replay (MEM-121).
+        backend = with_saved_results(
+            backend, (LIVE_CACHE_DIR, REPLAY_DIR) if saved_roots is None else saved_roots
+        )
     if live and call_budget is not None:
         backend = _BudgetedBackend(backend, call_budget)
 
@@ -175,6 +188,8 @@ def create_app(
     # /docs and /redoc stop rendering.
     app.add_middleware(SecurityHeaders)
     app.add_middleware(ChatFallbackHeader)
+    app.add_middleware(SpendCapHeader)
+    app.add_middleware(byok.ByokOutcomeHeader)
     _ensure_log_handler()
 
     def _passcode_error(request: Request) -> JSONResponse | None:
@@ -194,6 +209,16 @@ def create_app(
             return None
         lockout.record(ip)
         return _error(401, "passcode_required")
+
+    def _model_route(request: Request) -> tuple[Any, Any, JSONResponse | None]:
+        """(backend, ASR client, error): passcode first, then the shared pair or a per-request pair on the
+        visitor's own Meta key (MEM-122); both are checked before the body is read."""
+        if (error := _passcode_error(request)) is not None or not live:
+            return backend, asr_client, error
+        session, error = byok.session_for(request, byok_config)
+        return (
+            (backend, asr_client, error) if session is None else (session.backend, session.asr_client, None)
+        )
 
     @app.get("/healthz")
     def healthz() -> dict[str, str | bool]:
@@ -238,8 +263,9 @@ def create_app(
         if backend.mode == "fixture":
             return _error(409, "live_only")
         # Before the body: an unauthenticated caller gets no validation hints and spends no ASR.
-        if (passcode_error := _passcode_error(request)) is not None:
-            return passcode_error
+        model, asr, error = _model_route(request)
+        if error is not None:
+            return error
         media_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
         if media_type != "application/json":
             return _error(415, "unsupported_media_type")
@@ -259,12 +285,13 @@ def create_app(
             return _error(413, "too_large")
         if not is_relayable_wav(audio):
             return _error(400, "bad_audio")
-        if asr_client is None:
+        if asr is None:
             return _error(503, "asr_unavailable")
         try:
-            if isinstance(backend, _BudgetedBackend):
+            # The MEM-034 budget counts the shared key's calls only; a BYOK relay is on the visitor's key.
+            if model is backend and isinstance(backend, _BudgetedBackend):
                 backend.spend()
-            result = await run_in_threadpool(asr_client.transcribe, audio, keywords=keywords)
+            result = await run_in_threadpool(asr.transcribe, audio, keywords=keywords)
         except (BudgetExhausted, BackendCallFailed) as exc:
             return _call_failed(exc)
         text = transcript_or_none(result.body) if result.ok else None
@@ -291,8 +318,9 @@ def create_app(
 
     @app.post("/loci")
     async def post_loci(request: Request) -> JSONResponse:
-        if (passcode_error := _passcode_error(request)) is not None:
-            return passcode_error
+        model, _, error = _model_route(request)
+        if error is not None:
+            return error
         media_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
         if media_type not in UPLOAD_TYPES:
             return _error(415, "unsupported_media_type")
@@ -304,7 +332,7 @@ def create_app(
         try:
             # Both block (Pillow decode, SAM fan-out), so keep them off the event loop.
             processed = await run_in_threadpool(process_upload, data)
-            result = await run_in_threadpool(find_loci, backend, processed)
+            result = await run_in_threadpool(find_loci, model, processed)
         except ImageRejected as exc:
             return _error(exc.status, str(exc))
         except FixtureMissing:
@@ -329,8 +357,9 @@ def create_app(
 
     @app.post("/split")
     async def post_split(request: Request) -> JSONResponse:
-        if (passcode_error := _passcode_error(request)) is not None:
-            return passcode_error
+        model, _, error = _model_route(request)
+        if error is not None:
+            return error
         media_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
         if media_type != "application/json":
             return _error(415, "unsupported_media_type")
@@ -354,7 +383,7 @@ def create_app(
                 return _error(400, "bad_base64")
             processed = await run_in_threadpool(validate_processed, photo)
             if body["mode"] == "notes":
-                points = await run_in_threadpool(split_notes, backend, processed.jpeg, text, loci_count)
+                points = await run_in_threadpool(split_notes, model, processed.jpeg, text, loci_count)
         except SplitRejected as exc:
             return _error(422, str(exc))
         except ImageRejected as exc:
@@ -369,8 +398,9 @@ def create_app(
 
     @app.post("/associate")
     async def post_associate(request: Request) -> JSONResponse:
-        if (passcode_error := _passcode_error(request)) is not None:
-            return passcode_error
+        model, _, error = _model_route(request)
+        if error is not None:
+            return error
         media_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
         if media_type != "application/json":
             return _error(415, "unsupported_media_type")
@@ -399,7 +429,7 @@ def create_app(
                 return _error(400, "bad_base64")
             # Never re-encoded: the bytes key the fixture/cache entries.
             processed = await run_in_threadpool(validate_processed, photo)
-            result = await run_in_threadpool(associate, backend, processed, item, locus, place, station)
+            result = await run_in_threadpool(associate, model, processed, item, locus, place, station)
         except AssociateRejected as exc:
             return _error(400, str(exc))
         except ImageRejected as exc:
@@ -426,8 +456,9 @@ def create_app(
 
     @app.post("/scenes")
     async def post_scenes(request: Request) -> JSONResponse:
-        if (passcode_error := _passcode_error(request)) is not None:
-            return passcode_error
+        model, _, error = _model_route(request)
+        if error is not None:
+            return error
         media_type = request.headers.get("content-type", "").split(";")[0].strip().lower()
         if media_type != "application/json":
             return _error(415, "unsupported_media_type")
@@ -459,7 +490,7 @@ def create_app(
         if not _box_ok(box, processed.width, processed.height):
             return _error(400, "bad_box")
         # Never raises: every model failure, fixture miss included, comes back as tier 3.
-        scene = await run_in_threadpool(render_scene, backend, processed, box, record)
+        scene = await run_in_threadpool(render_scene, model, processed, box, record)
         if scene.tier != 1:
             return JSONResponse({"tier": scene.tier, "reason": scene.reason})
         return JSONResponse(

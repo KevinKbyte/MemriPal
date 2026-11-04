@@ -12,6 +12,7 @@ from memripal.imaging import (
     _check_bytes,
     _open_header,
 )
+from memripal.meta_spend_guard import CAP_ERROR_CODE, MetaSpendCapReached
 
 IMAGE_MODEL = "muse-image-1.0"
 # Server-wide: every POST /scenes runs in the threadpool, so the cap must hold across threads (ADR 0007).
@@ -101,6 +102,9 @@ def render_scene(backend: ModelBackend, processed: Processed, box: dict, record:
             _SLOTS.release()
     except FixtureMissing:
         return _fallback("fixture_missing")
+    # Ahead of BackendCallFailed (it is one): names the cap, not a generic upstream failure (MEM-121).
+    except MetaSpendCapReached:
+        return _fallback(CAP_ERROR_CODE)
     # Ahead of BackendCallFailed: a live timeout is a BackendTimeout, which is both.
     except TimeoutError:
         return _fallback("timeout")

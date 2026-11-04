@@ -34,6 +34,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # Imported after the key check so a misconfigured run fails fast with no side effects.
     from memripal.meta_client import MetaClient
+    from memripal.meta_spend_guard import guard_from_env
     from memripal.probe import run_probe
 
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
@@ -41,7 +42,11 @@ def main(argv: list[str] | None = None) -> int:
     images: dict[str, bytes] = {}
     audio_wav = args.audio.read_bytes() if args.audio is not None else None
     report = run_probe(
-        MetaClient(api_key), args.photo.read_bytes(), on_image=images.__setitem__, audio_wav=audio_wav
+        # Charged to the server's guard (MEM-121): a probe spends the same Meta credit.
+        MetaClient(api_key, spend_guard=guard_from_env()),
+        args.photo.read_bytes(),
+        on_image=images.__setitem__,
+        audio_wav=audio_wav,
     )
 
     out_dir.mkdir(parents=True, exist_ok=True)
