@@ -197,3 +197,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0067](0067-restart-sticker-roll-animation.md) A mid-roll sticker tap restarts the spin by removing `is-rolling`,
   forcing a style flush via `getBoundingClientRect()`, and re-adding it, over alternating keyframe classes or the Web
   Animations API.
+- [0068](0068-sticker-pool-client-indexeddb.md) The sticker pool (emoji, uploads, generated) lives client-side in
+  IndexedDB behind `selectStore` with a localStorage fallback, uploads downscaled before storing (offline, stateless
+  backend) over the sqlite-wasm db or server-side storage.

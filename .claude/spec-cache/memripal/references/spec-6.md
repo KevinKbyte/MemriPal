@@ -76,3 +76,65 @@ edit is the mount line, landed after MEM-088.
 
 Tests: static/pal_bubble.test.mjs (incl. "MEM-099 Pal bubble loads its own stylesheet"), static/chat_store.test.mjs,
 static/palace_export_chats.test.mjs, tests/test_assets_wiring.py::test_index_loads_pal_bubble_module_once_after_app_js
+
+## MEM-045 Sticker pool and photo upload on the landmark photo
+
+Kev ask 2026-11-04: "or upload own images to sticker onto the place (eg. the kendall station) ... we can have a
+storage for stickers that have text desc so we can search the stickers rather than having to generate al the time";
+"generated stickers will automatically be added to that pool"; "emojis can be the base stickers to search from";
+"make it fun and friendly ui ux". Merge 1 of 2; the search picker is a follow-up MEM (merge 2), not this entry.
+Root problem: the user wants their own pictures stuck on a locus of the landmark photo, kept in a described pool they
+can reuse instead of regenerating each time; no client store or placement layer exists for that.
+Actors: the user; `static/sticker_pool.js` (new, pure, no DOM); `static/sticker_board.js` (new, DOM);
+`static/encode.js` `runDemoPalace`; `static/app.js` boot; `static/index.html` Recall tab; `static/style.css`;
+`static/idb_adapter.js` via flow.js `selectStore`; `static/thumbnail.js`; `BASE_STICKERS` (`static/stickers.js`).
+NFR: no server change or storage; offline and fixture mode work; textContent only, never innerHTML; the pool never
+stores the original photo (client downscale: long side 256, JPEG q 0.8); ASCII only.
+Decided-by: ADR-0068
+- Store: `selectStore(globalThis, {dbName: "memripal-stickers", storeName: "stickers", prefix:
+  "memripal.sticker:"})`; IndexedDB with localStorage fallback.
+- Constants: `MAX_UPLOAD_BYTES = 2 * 1024 * 1024`; `MAX_DESC = 60`; `UPLOAD_TYPES` = image/jpeg, image/png,
+  image/webp, image/gif; `SEED_TIME = "1970-01-01T00:00:00.000Z"`.
+- Entry `{ id, kind: "emoji"|"upload"|"generated", desc, image, created_at }`; emoji `image` is the glyph, upload and
+  generated `image` is a `data:image/(jpeg|png|webp);base64,...` URL.
+- `emojiEntries()`: one per `BASE_STICKERS` item in order: id `"emoji:" + name`, desc `[name, ...words].join(" ")`,
+  `created_at: SEED_TIME`.
+- `uploadError(file, desc)` -> Pal-voiced string or null; non-null for: no file; type not in `UPLOAD_TYPES` (incl.
+  "text/plain", "image/svg+xml", ""); size 0 or > `MAX_UPLOAD_BYTES`; trimmed desc empty or > `MAX_DESC`.
+- `createStickerPool(kv, { now, newId })` (kv = `{get, put, delete, list}`), all async:
+  - `list()`: emoji entries first, then stored entries by `created_at`.
+  - `add({kind, desc, image})` stores `{ id: newId(), kind, desc: desc.trim(), image, created_at: now() }`; rejects
+    kind other than upload/generated, bad desc, or image not matching
+    `^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$` (javascript:, svg data URLs and https rejected).
+  - `get(id)` -> emoji or stored entry, else null.
+  - `place(placeKey, n, stickerId)` -> `{ placeKey, n, stickerId, placed_at }`; one sticker per locus (re-place
+    replaces); rejects unknown stickerId, non-positive-integer n, empty placeKey.
+  - `placements(placeKey)` sorted by n, other places excluded; `unplace(placeKey, n)` -> removed placement or null;
+    `restore(placement)` puts it back.
+  - A second pool over the same kv sees the same entries and placements.
+- `createStickerBoard({ doc, pool, makeImage, undo })` -> `{ show({ placeKey, width, height, loci }) }`:
+  - unhides `#sticker-panel`; `#sticker-locus` gets one option per locus, value `String(n)`, text `${n}. ${label}`.
+  - `#sticker-placed` gets one li per placement (text includes the desc); `#scene-wrap` gets ONE reused
+    `.sticker-layer` with one `.sticker` per boxed placement at the box centre in percent (box {0,0,100,50} on
+    200x100 -> left "25%", top "25%"); upload = img (`src` data URL, `alt` desc), emoji = span with the glyph.
+  - `#sticker-add`: `uploadError` non-null -> `#sticker-error` shows it, `makeImage` not called, pool unchanged;
+    `makeImage` rejects -> Pal-voiced "couldn't read that picture", nothing added; success -> `pool.add` kind upload,
+    `pool.place`, re-render, error hidden, desc and file inputs cleared.
+  - Peel: li button `data-action="peel"` ("Peel off") reveals `peel-confirm` ("Yes, peel it off") and `peel-cancel`
+    ("Keep it"); only confirm removes, pushes one undo entry and shows `#sticker-toast`; `#sticker-undo` restores li
+    and photo sticker and hides the toast.
+  - Re-show over the same pool renders stored placements.
+- Markup: `section#sticker-panel.sticker-panel` (hidden) right after `<ol id="loci">` in the Recall tab: h3
+  "Stickers", Pal hint, `#sticker-locus` ("Spot"), `input#sticker-file` (accept = the 4 upload types, "Your
+  picture"), `input#sticker-desc` maxlength 60 ("What it shows"), `button#sticker-add.btn.btn-primary` "Stick it on",
+  `p#sticker-error.notice` role=alert hidden, `ul#sticker-placed`, `div#sticker-toast` role=status hidden with
+  `span#sticker-toast-text` and `button#sticker-undo` "Undo".
+- Wiring: `runDemoPalace` calls `deps.stickers?.show({ placeKey: "demo", width, height, loci })` once `/loci` is
+  valid; a sticker failure never breaks the demo; absent `deps.stickers` is fine. `app.js` boot builds the board over
+  the pool and a thumbnail.js + FileReader `makeImage`.
+- CSS: die-cut look (white border, shadow, slight tilt); pop-in animation off under prefers-reduced-motion;
+  `#scene-wrap` position relative.
+- Accept: every `uploadError` / `add` / `place` rejection case above fails and the valid examples pass; reload over the
+  same kv keeps entries and placements; one `.sticker-layer` after repeated renders; box centre maths as above;
+  peel needs confirm and Undo restores; no innerHTML.
+- Out of scope: search picker (follow-up MEM, merge 2); the image-generation caller (the pool already accepts kind generated); cross-device sync.
