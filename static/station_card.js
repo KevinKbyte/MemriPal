@@ -12,6 +12,21 @@ export const TAP_GROUPS = {
   turn: ["Straight", "Left", "Right", "Arrive"],
 };
 
+/** Display names for the tap groups, matching the card's group headings. */
+export const TAP_GROUP_LABELS = { sound: "Sound", smell: "Smell", feel: "Feel", mood: "Mood", turn: "Next turn" };
+
+/**
+ * MEM-110: the station's set taps as "<Group>: <label>" lines in TAP_GROUPS order; groups without a value
+ * (or with a value outside TAP_GROUPS) produce no line, so an untapped station yields [].
+ * @param {Record<string, unknown> | undefined | null} taps
+ * @returns {string[]}
+ */
+export function tapSummary(taps) {
+  return Object.entries(TAP_GROUPS)
+    .filter(([group, labels]) => typeof taps?.[group] === "string" && labels.includes(/** @type {string} */ (taps[group])))
+    .map(([group]) => `${TAP_GROUP_LABELS[/** @type {keyof typeof TAP_GROUP_LABELS} */ (group)]}: ${taps?.[group]}`);
+}
+
 const PROFILE_LABELS = [["visual", "Visual"], ["spatial", "Spatial"], ["conceptual", "Conceptual"]];
 const MAX_WORDS = 3;
 
@@ -61,6 +76,7 @@ export function createStationCard({ doc, store, routeId }) {
   let stationId = null;
   /** @type {Record<string, string>} */
   let taps = {};
+  let shown = 0;
 
   const otherNames = async () => {
     const r = await store.getRoute(routeId);
@@ -94,7 +110,22 @@ export function createStationCard({ doc, store, routeId }) {
     dl.replaceChildren(frag);
   }
 
+  /** MEM-110: one li per group that has a value, "<Group>: <label>"; no li (and hidden) for an untapped station. */
+  function renderSummary() {
+    const ul = el("station-tap-summary");
+    if (!ul) return;
+    const items = tapSummary(taps).map((line) => {
+      const li = doc.createElement("li");
+      li.className = "tap-chip";
+      li.textContent = line;
+      return li;
+    });
+    ul.replaceChildren(...items);
+    ul.hidden = items.length === 0;
+  }
+
   function renderTaps() {
+    renderSummary();
     for (const [group, labels] of Object.entries(TAP_GROUPS)) {
       const box = el(`tap-${group}`);
       const btns = labels.map((label) => {
@@ -118,6 +149,7 @@ export function createStationCard({ doc, store, routeId }) {
     else next[group] = label;
     taps = next;
     for (const b of btns) b.setAttribute("aria-pressed", String(taps[group] === b.textContent));
+    renderSummary();
     await store.setStationTaps(routeId, stationId, taps);
   }
 
@@ -140,10 +172,16 @@ export function createStationCard({ doc, store, routeId }) {
   });
 
   return {
-    /** @param {string} id */
-    async show(id) {
+    /**
+     * @param {string} id
+     * @param {string} [onRoute] switch the card to another route first (one card serves the route view, MEM-110)
+     */
+    async show(id, onRoute) {
+      if (onRoute !== undefined) routeId = onRoute;
+      const ticket = ++shown;
       const station = (await store.getRoute(routeId))?.stations.find((s) => s.id === id);
-      if (!station) return;
+      // A newer show() started while this one awaited the store: it owns the card.
+      if (!station || ticket !== shown) return;
       stationId = id;
       taps = { ...(station.taps ?? {}) };
       nameInput.value = station.name;
@@ -151,8 +189,13 @@ export function createStationCard({ doc, store, routeId }) {
       renderTaps();
       setArmed(false);
       undoBtn.hidden = true;
-      // A Spark name that clashes on arrival is shown with the error; the user renames.
-      await checkName();
+      // A Spark name that clashes on arrival is shown with the error; the user renames. A stored name that
+      // only breaks the shape rule (the long seeded demo titles, MEM-110) is not flagged until it is edited.
+      if (stationNameError(station.name, []) === null) await checkName();
+      else {
+        nameError.textContent = "";
+        nameError.hidden = true;
+      }
     },
   };
 }

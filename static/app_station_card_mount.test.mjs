@@ -1,14 +1,15 @@
 // Covers: MEM-110
 // Requirement: the MEM-110 seeded multisensory taps are visible in the app. Load demo opens the Kendall demo
 // route (MEM-072); the route view then mounts the S3 station card (static/station_card.js, MEM-050) for the
-// selected station: #station-card is shown with the first station selected (its li in #route-view-stations
-// aria-current="true"), #station-name holds its name, #station-profile its profile, and #station-tap-summary
+// selected station: #station-card is shown for the first station on open (no li is marked aria-current until
+// the user selects one: MEM-088 pins an unselected list on open), #station-name holds its name, #station-profile its profile, and #station-tap-summary
 // lists one li per tap group the station has a value for, in TAP_GROUPS order, reading "<Group>: <label>"
 // (Sound, Smell, Feel, Mood, Next turn). The editor buttons in #tap-<group> mark the seeded label
 // aria-pressed="true". Clicking a station li (or a map marker, MEM-088) selects that station and the card
 // follows, so every demo station shows its seeded taps. A station without taps renders no group in
 // #station-tap-summary (no children, hidden); a station with some taps lists only those groups. The S5 list
-// li text stays the plain station name (MEM-077). Leaving the route (Back to routes) hides the card.
+// li text stays the plain station name (MEM-077). A stored name that only breaks the <= 3 word shape rule (the
+// seeded demo titles) shows no #station-name-error on arrival (a clash still does, MEM-050). Leaving the route (Back to routes) hides the card.
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
 
@@ -50,11 +51,12 @@ describe("Load demo mounts the station card with the MEM-110 seeded taps", () =>
     await until(() => !el(b, "station-card").hidden, "#station-card shown after Load demo", TURNS);
     const s1 = DEMO_ROUTE.stations[0];
     assert.equal(el(b, "station-name").value, s1.name);
-    assert.equal(lis(b, "route-view-stations")[0].getAttribute("aria-current"), "true");
     assert.deepEqual(summary(b), want(s1.taps));
     assert.equal(el(b, "station-tap-summary").hidden, false);
     for (const g of ["sound", "smell", "feel", "mood"]) assert.deepEqual(pressed(b, g), [s1.taps[g]], `#tap-${g} pressed`);
     assert.ok(el(b, "station-profile").textContent.includes(s1.profile.visual), "profile shown");
+    // The long seeded titles predate the <= 3 word rule: not flagged on arrival, only once edited.
+    assert.equal(el(b, "station-name-error").hidden, true, "no name error on arrival for a seeded title");
     assert.deepEqual(rejections, []);
   });
 
