@@ -1,5 +1,5 @@
 // Covers: MEM-127
-// Requirement: the Landmarks tab carries the gallery markup (MEM-127, ADR 0073): inside #tab-landmarks a labelled
+// Requirement: the Landmarks tab carries the gallery markup (MEM-127, ADR 0081): inside #tab-landmarks a labelled
 // input#landmarks-search (type=search), a labelled input#landmarks-route-input wired to datalist#landmarks-route-options
 // (list=), ul#landmarks-route-chips, two radios name="landmarks-show" (#landmarks-show-on-routes value on-routes,
 // checked; #landmarks-show-candidates value candidates), p#landmarks-count role=status, ul#landmarks-grid and

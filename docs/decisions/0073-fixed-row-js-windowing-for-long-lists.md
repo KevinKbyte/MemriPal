@@ -1,4 +1,4 @@
-# 0072: Long lists use a client-side token filter plus fixed-row JS windowing (windowing pending)
+# 0073: Long lists use a client-side token filter plus fixed-row JS windowing (windowing pending)
 
 Status: Accepted
 Relates: MEM-124.

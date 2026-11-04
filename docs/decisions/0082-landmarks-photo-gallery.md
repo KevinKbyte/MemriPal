@@ -1,7 +1,7 @@
-# 0073: Landmarks tab is a photo-tile gallery beside the hidden list, with a datalist route typeahead
+# 0082: Landmarks tab is a photo-tile gallery beside the hidden list, with a datalist route typeahead
 
 Status: Accepted
-Relates: MEM-127, MEM-124 (ADR 0072).
+Relates: MEM-127, MEM-124 (ADR 0073).
 Date: 2026-11-04
 
 ## Context
@@ -40,9 +40,9 @@ Multi-select is chips (`button.lg-chip`, click removes) beside the input; a pick
 
 ### 3. Tile filtering
 
-- (3a) Reuse `filterItems`/`normalize` from `static/list_filter.js` (ADR 0072) through `filterGallery` (chosen).
+- (3a) Reuse `filterItems`/`normalize` from `static/list_filter.js` (ADR 0073) through `filterGallery` (chosen).
   Name tokens are AND-matched; the `anyOf` + `groupKey` options give the multi-route OR.
-  Pros: one filter, one normalization (case, accents) across routes and landmarks; ADR 0072 already anticipated
+  Pros: one filter, one normalization (case, accents) across routes and landmarks; ADR 0073 already anticipated
   this reuse; no new matching bugs.
   Cons: the gallery depends on a sibling module's option shape.
 - (3b) Local filter in the gallery module.
@@ -67,7 +67,7 @@ Multi-select is chips (`button.lg-chip`, click removes) beside the input; a pick
 ## Why this over the others
 
 The gallery is additive, so (1a) leaves the old list contract untouched. (2a) gives the native, accessible
-typeahead at no code cost, and chips cover multi-select, which a datalist cannot. (3a) reuses the filter ADR 0072
+typeahead at no code cost, and chips cover multi-select, which a datalist cannot. (3a) reuses the filter ADR 0073
 built generically for exactly this, so name matching is identical everywhere. (4a) is the only option that keeps
 `flow.js` within the cap.
 

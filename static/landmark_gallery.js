@@ -1,5 +1,5 @@
 // @ts-check
-// Landmarks tab photo gallery (MEM-127, ADR 0073): every landmark across every route as a tile, narrowed by a
+// Landmarks tab photo gallery (MEM-127, ADR 0074): every landmark across every route as a tile, narrowed by a
 // name typeahead and by one or more route chips (union), or a switch to the chosen routes' auto-loci
 // candidates. Text via textContent only: landmark and route names are user data.
 

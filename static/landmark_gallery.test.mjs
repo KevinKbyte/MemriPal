@@ -1,5 +1,5 @@
 // Covers: MEM-127
-// Requirement: the Landmarks tab is a photo gallery (MEM-127, ADR 0073): galleryItems(routes) gives one tile per
+// Requirement: the Landmarks tab is a photo gallery (MEM-127, ADR 0081): galleryItems(routes) gives one tile per
 // landmark across every route (same osm_id, else same case/space-insensitive name, is one landmark; nameless
 // osm-less stations are each an "Untitled landmark"), unioning its routes in first-seen order and keeping the first
 // non-empty photo; candidateItems(routes, pois) gives each route's auto-loci candidates (routes with >= 2 coord

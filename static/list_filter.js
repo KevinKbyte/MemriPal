@@ -1,5 +1,5 @@
 // @ts-check
-// Typeahead filtering and ordering for long item lists (MEM-124, ADR 0072): "Your routes" now, the
+// Typeahead filtering and ordering for long item lists (MEM-124, ADR 0073): "Your routes" now, the
 // Landmarks gallery (item 73) next, hence the generic key / groupKey / time accessors. Pure, no DOM.
 
 /** @typedef {string | string[] | null | undefined} Fields */

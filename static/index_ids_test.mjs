@@ -111,7 +111,7 @@ export const MEM134_MAY_START_HIDDEN = ["emoji-remove", "emoji-undo", "emoji-pic
 // #tap-turn.
 export const MEM134_SUPERSEDED_IDS = ["tap-sound", "tap-smell", "tap-feel", "tap-mood"];
 
-// MEM-127 (Landmarks gallery, ADR 0073): name search, route typeahead + datalist + chips, the On routes / Candidates
+// MEM-127 (Landmarks gallery, ADR 0081): name search, route typeahead + datalist + chips, the On routes / Candidates
 // radios, the count line, the tile grid and its empty state.
 export const MEM127_IDS = [
   "landmarks-search", "landmarks-route-input", "landmarks-route-options", "landmarks-route-chips",

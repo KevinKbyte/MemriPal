@@ -490,7 +490,7 @@ Actors: the user; `static/list_filter.js`; later the virtual_window module (phas
 Landmarks gallery (item 73).
 NFR: pure modules, no DOM in list_filter; virtual_window CSP-safe (CSSOM padding only, never a style attribute);
 ASCII source.
-Decided-by: ADR-0072
+Decided-by: ADR-0073
 Phase A1 (built):
 - `static/list_filter.js`: `normalize(text)` (NFD, combining marks stripped, lowercase, whitespace collapsed);
   `queryTokens(query)`; `filterItems(items, query, { key = item.name, anyOf, groupKey })` token-AND match on key
