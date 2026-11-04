@@ -237,3 +237,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
   (`static/list_filter.js`, over server search) plus fixed-row-height JS windowing (`static/virtual_window.js`,
   CSSOM padding, `aria-setsize`/`aria-posinset`; over `content-visibility`, pagination, a virtual-list library, or
   measured rows). Windowing half pending: lands with the virtual_window fix. <!-- claim-exempt: planned -->
+- [0073](0073-landmarks-photo-gallery.md) Landmarks tab: photo-tile gallery beside the hidden `ol#landmarks-list`,
+  native datalist + chips route typeahead (union), `list_filter.js` reuse, wiring in `mountLandmarkGallery` (over
+  replacing the list, a custom listbox, a local filter, or wiring in `flow.js`).
