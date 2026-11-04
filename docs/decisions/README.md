@@ -144,3 +144,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
   aliases, then OSM addr tags, else "near <street>"); public-place coords at 5 dp, own GPS stays 4 dp; plain "Open
   in Maps" link; backups unchanged; amends 0031, 0042 (over 5 dp everywhere, coords in backups, `geo:` URIs, or a
   nearest-way label).
+- [0066](0066-judges-only-access-gate-alb-cloud-armor.md) Judges-only live deploy: app key gate (no-JS `/access`
+  form, HMAC cookie, fail-closed on Cloud Run) behind a global HTTPS ALB + Cloud Armor (rate ban, sqli/xss WAF),
+  LB-only ingress; amends 0004, 0025, 0028 (over IAP, HTTP Basic, key-in-URL, an Armor header rule, or the gate alone).
