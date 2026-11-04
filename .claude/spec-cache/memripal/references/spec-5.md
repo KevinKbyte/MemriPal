@@ -178,3 +178,32 @@ Source: Kev, "I took pictures of the route, can you add multisensory info for th
   the `DEMO_ROUTE` ones.
 
 Tests: static/demo_route_taps.test.mjs
+
+## MEM-120 Landmark fun facts + editable multisensory connections (phase A, pure module)
+
+Builds on MEM-110 (seeded `taps`/`profile` on `DEMO_ROUTE`) and MEM-087 (station `{ name, profile, taps }` shape).
+Root problem: a landmark gives the user nothing to hook new knowledge onto beyond its name; Kev wants short, cited
+historical facts per landmark and multisensory connections the user can generate, then change to their liking.
+Actors: the user (reads facts, generates and edits connections); `static/landmark_facts.js`; the storage adapter
+(`idb_adapter.js` shape: `get`/`put`, as `static/route_store.js` uses it).
+NFR: pure module, no UI mount (the landmark detail dialog that shows the bullets is phase B, MEM-108 on Kev's branch);
+no network or model call; facts are seeded and hand-checked: every URL was fetched and supports its fact.
+Source: Kev, "the landmarks should have fun facts/concise and easy to understand historical info with citations, so
+shouldnt be to much but just enough to make it connectable to whatever info user wants to learn. And when a place is
+linked, user can generate a the multisensory connections which they can update/change to their liking"; follow-up:
+"facts/historical info bullets (3 points max) in the landmark tab".
+- `factsFor(stationId, table?)` returns at most 3 facts `{ text, title, url }` for a station (seeded `LANDMARK_FACTS`
+  keyed by `DEMO_ROUTE` station id, 1-3 per station), as copies; an unknown id returns `[]`. Every fact has non-empty
+  plain-language `text`, a non-empty source `title` and an `https:` `url`.
+- `createConnectionStore(adapter, { generate? })`: `generate(station)` builds `{ taps, profile }` (taps keys sound,
+  smell, feel, mood with `TAP_GROUPS` values; profile keys visual, spatial, conceptual), persists it under
+  `connections:<stationId>` via `adapter.put`, and returns it. The default generator derives taps from the station's
+  seeded taps and profile from its seeded profile plus its first fact (conceptual), with no model call; an injected
+  generator replaces it. `edit(stationId, patch)` merges a partial `{ taps?, profile? }`; `replace(stationId, conn)`
+  overwrites; `get(stationId)` reads back (null when none). Tap values outside `TAP_GROUPS` and empty or >200-char
+  profile lines are refused with an error before any write.
+- Accept: every seeded station yields 1-3 facts and a 4th fact in the table is never returned; unknown station -> [];
+  every fact has a title and an https URL; generate/edit/replace round-trip through a fake adapter; a new store over
+  the same adapter returns the edited connections.
+
+Tests: static/landmark_facts.test.mjs
