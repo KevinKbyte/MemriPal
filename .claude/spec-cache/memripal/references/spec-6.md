@@ -69,6 +69,8 @@ edit is the mount line, landed after MEM-088.
 - B5: `buildBackup` writes `chats[]` as backup `v: 3`; `importBackup` accepts v2 (no chats) and v3; chats are rebuilt
   through an allow-list with caps (chat count, messages per chat, text length, role enum, ids); an invalid chat is
   skipped with 0 partial writes; a stored id counts as present.
+- B6: chat and message ids mint through `static/uuid.js` `newId`, so creating a chat works on a plain-http,
+  non-localhost origin (no `crypto.randomUUID` there; `crypto.getRandomValues` is used instead).
 - Accept: the bubble is on every tab; outside click and Esc collapse it and reopening resumes the chat; drag clamps
   at all 4 edges, survives a reload and is keyboard-movable; V2 migrates a V1 db with routes intact; delete confirm
   plus Undo restores the chat; export then import round-trips chats; a v2 file still imports; a hostile `chats[]` is
@@ -138,3 +140,5 @@ Decided-by: ADR-0068
   same kv keeps entries and placements; one `.sticker-layer` after repeated renders; box centre maths as above;
   peel needs confirm and Undo restores; no innerHTML.
 - Out of scope: search picker (follow-up MEM, merge 2); the image-generation caller (the pool already accepts kind generated); cross-device sync.
+static/palace_export_chats.test.mjs, static/store_ids_insecure.test.mjs,
+tests/test_assets_wiring.py::test_index_loads_pal_bubble_module_once_after_app_js

@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.63] - 2026-11-04
+
+### Fixed
+
+- Pal chats can be created where `crypto.randomUUID` is missing: the chat store mints chat and message ids via `static/uuid.js` (crypto.getRandomValues fallback). A plain-http non-localhost origin still shows "Chats unavailable in this tab", since Web Locks and OPFS are secure-context only (MEM-099).
+
 ## [0.20.62] - 2026-11-04
 
 ### Added
