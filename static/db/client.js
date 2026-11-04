@@ -54,3 +54,32 @@ export function openDb({ locks, createWorker }) {
       .catch(reject);
   });
 }
+
+// One database open per page, shared by every module (the Pal bubble, MEM-088): the lock is asked for and the
+// worker started once. `open` is injected so tests can count calls. Only a "ready" result is kept for the page
+// lifetime. A rejection is dropped so the next caller retries, and so is a resolved non-"ready" status
+// ("locked": another tab owns the db), because that tab may close and a later ifAvailable request then succeeds;
+// retrying a locked open is cheap (no wait, no worker). Callers sharing an in-flight open get the same promise.
+export function createSharedOpen(open) {
+  let cached = null;
+  return function sharedOpen(deps) {
+    if (cached) return cached;
+    // open runs now (not a microtask later); a synchronous throw becomes a rejection, dropped like any failure.
+    let p;
+    try {
+      p = Promise.resolve(open(deps));
+    } catch (err) {
+      p = Promise.reject(err);
+    }
+    cached = p;
+    const drop = () => {
+      if (cached === p) cached = null;
+    };
+    p.then((opened) => {
+      if (opened?.status !== "ready") drop();
+    }, drop);
+    return p;
+  };
+}
+
+export const sharedOpenDb = createSharedOpen(openDb);
