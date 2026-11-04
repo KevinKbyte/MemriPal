@@ -1,4 +1,4 @@
-# 0066: Restart a sticker's roll animation by remove, flush, re-add
+# 0067: Restart a sticker's roll animation by remove, flush, re-add
 
 Status: Accepted
 Date: 2026-11-04

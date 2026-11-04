@@ -401,7 +401,7 @@ keyboard user cannot re-roll one locus; a second tap mid-roll repaints but the s
 looks ignored; Settings replay shows the previous run's rolls.
 Actors: `static/tour.js`.
 NFR: none.
-Decided-by: ADR-0066
+Decided-by: ADR-0067
 - Focus trap (MEM-095, MEM-117) cycles the card's visible buttons plus the drawn `g.tour-sticker` badges in document
   order: Skip, the 5 stickers in walk order, Roll all, Back, Next. Tab from Next wraps to Skip; Shift+Tab from Skip
   wraps to Next. Enter/Space on a focused sticker re-rolls that locus only and focus stays on that sticker.

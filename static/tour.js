@@ -277,7 +277,7 @@ export function wireTour(doc, store) {
       paintSticker(g, stickers[i]);
       icons[i].textContent = stickers[i].parts.join("");
       // Re-adding a class already present does not restart its CSS animation; the layout read between remove
-      // and add flushes style so a mid-roll tap spins again (ADR 0066).
+      // and add flushes style so a mid-roll tap spins again (ADR 0067).
       g.classList.remove("is-rolling");
       g.getBoundingClientRect();
       g.classList.add("is-rolling");
