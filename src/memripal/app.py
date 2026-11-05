@@ -49,6 +49,7 @@ from memripal.imaging import MAX_UPLOAD_BYTES, ImageRejected, process_upload, sn
 from memripal.loci import find_loci, locus_json
 from memripal.meta_spend_guard import meta_asr_client_from_env, spend_dir_from_env
 from memripal.place import FixturePlaceProvider, PlaceProvider
+from memripal.recall_grade import grade_reply
 from memripal.recall_relay import (
     MAX_CHUNK_BYTES,
     MAX_TRANSCRIPT_CHARS,
@@ -129,6 +130,7 @@ def create_app(
     byok_transport=None,
     baseline_provider=None,
     pal_chat=None,
+    recall_grader=None,
 ) -> FastAPI:
     if backend is None:
         backend = select_backend(None, fixtures_root=REPLAY_DIR, live_cache_root=LIVE_CACHE_DIR)
@@ -265,7 +267,7 @@ def create_app(
         parsed = parse_body(raw)
         if parsed is None:
             return _error(400, "bad_request")
-        audio_b64, keywords = parsed
+        audio_b64, keywords, grade = parsed
         audio = decode_audio(audio_b64)
         if audio is None:
             return _error(400, "bad_base64")
@@ -285,7 +287,11 @@ def create_app(
         text = transcript_or_none(result.body) if result.ok else None
         if text is None:
             return _error(502, "upstream")
-        return JSONResponse({"text": text[:MAX_TRANSCRIPT_CHARS]})
+        reply = {"text": text[:MAX_TRANSCRIPT_CHARS]}
+        if grade:  # MEM-136: only a visitor's own-key session grades on Meta, never the server key.
+            byok_client = asr if model is not backend else None
+            reply |= await run_in_threadpool(grade_reply, recall_grader, reply["text"], keywords, byok_client)
+        return JSONResponse(reply)
 
     # Stateless: the coords are used for one lookup and never stored or logged (MEM-025).
     @app.post("/place")

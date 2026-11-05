@@ -177,10 +177,32 @@ const STATUS_CODES = {
 };
 
 /**
- * @param {{ fetch: typeof fetch, wav: Uint8Array, keywords: string[], passcode?: string | null }} opts
- * @returns {Promise<{ text: string }>}
+ * @typedef {{ provider: string, latency_ms: number, items: { index: number, verdict: string, reason: string }[] }} Grade
  */
-export async function postRecallAudio({ fetch: fetchFn, wav, keywords, passcode }) {
+
+const VERDICTS = new Set(["correct", "partial", "miss"]);
+const isIndex = (/** @type {unknown} */ n) => Number.isInteger(n) && /** @type {number} */ (n) >= 0;
+
+/** @param {any} g @returns {g is Grade} the server's grade shape (MEM-136); anything else is dropped */
+function isGrade(g) {
+  return (
+    !!g &&
+    typeof g === "object" &&
+    typeof g.provider === "string" &&
+    isIndex(g.latency_ms) &&
+    Array.isArray(g.items) &&
+    g.items.every(
+      (/** @type {any} */ it) =>
+        !!it && isIndex(it.index) && VERDICTS.has(it.verdict) && typeof it.reason === "string",
+    )
+  );
+}
+
+/**
+ * @param {{ fetch: typeof fetch, wav: Uint8Array, keywords: string[], passcode?: string | null, grade?: boolean }} opts
+ * @returns {Promise<{ text: string, grade?: Grade, gradeError?: true }>}
+ */
+export async function postRecallAudio({ fetch: fetchFn, wav, keywords, passcode, grade }) {
   /** @type {Record<string, string>} */
   const headers = { "Content-Type": "application/json" };
   if (passcode) headers["X-Memripal-Passcode"] = passcode;
@@ -189,7 +211,7 @@ export async function postRecallAudio({ fetch: fetchFn, wav, keywords, passcode 
     resp = await fetchFn("/recall/audio", {
       method: "POST",
       headers,
-      body: JSON.stringify({ audio: toBase64(wav), keywords }),
+      body: JSON.stringify(grade === true ? { audio: toBase64(wav), keywords, grade: true } : { audio: toBase64(wav), keywords }),
     });
   } catch {
     throw new RecallAudioError("network", null);
@@ -198,5 +220,7 @@ export async function postRecallAudio({ fetch: fetchFn, wav, keywords, passcode 
   if (!resp.ok) throw new RecallAudioError(STATUS_CODES[resp.status] ?? "unexpected", resp.status);
   const payload = await resp.json().catch(() => null);
   if (!payload || typeof payload.text !== "string") throw new RecallAudioError("upstream", resp.status);
+  if (payload.grade_error !== undefined && payload.grade_error !== null) return { text: payload.text, gradeError: true };
+  if (isGrade(payload.grade)) return { text: payload.text, grade: payload.grade };
   return { text: payload.text };
 }

@@ -16,22 +16,28 @@ MAX_TRANSCRIPT_CHARS = 2000
 # Base64 of a max-size clip plus room for 12 labels even when JSON-escaped as \uXXXX.
 RELAY_BODY_CAP = 4 * -(-MAX_CHUNK_BYTES // 3) + 16 * 1024
 BODY_KEYS = {"audio", "keywords"}
+# MEM-136: the opt-in Spark grade flag, a JSON bool only.
+GRADE_KEY = "grade"
 
 
-def parse_body(raw: bytes) -> tuple[str, list[str]] | None:
-    """(audio base64, keywords) when the body is exactly {audio, keywords} within label caps, else None."""
+def parse_body(raw: bytes) -> tuple[str, list[str], bool] | None:
+    """(audio base64, keywords, grade) when the body is {audio, keywords} plus an optional bool grade, within
+    label caps; else None."""
     try:
         body = json.loads(raw)
     except ValueError:
         return None
-    if not isinstance(body, dict) or set(body) != BODY_KEYS:
+    if not isinstance(body, dict) or set(body) - {GRADE_KEY} != BODY_KEYS:
+        return None
+    grade = body.get(GRADE_KEY, False)
+    if not isinstance(grade, bool):
         return None
     audio, keywords = body["audio"], body["keywords"]
     if not isinstance(audio, str) or not isinstance(keywords, list) or len(keywords) > MAX_POINTS:
         return None
     if not all(isinstance(k, str) and len(k) <= MAX_LABEL_CHARS for k in keywords):
         return None
-    return audio, keywords
+    return audio, keywords, grade
 
 
 def decode_audio(audio: str) -> bytes | None:

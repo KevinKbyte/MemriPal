@@ -41,7 +41,7 @@ class ChatProvider:
     model: str
 
 
-def chat_provider_from_env(provider: str) -> ChatProvider:
+def chat_provider_from_env(provider: str, timeout: httpx.Timeout = PROVIDER_TIMEOUT) -> ChatProvider:
     # Environment only, like META_API_KEY: never read .env files.
     if provider == "local":
         model = os.environ.get("MEMRIPAL_LOCAL_CHAT_MODEL", "")
@@ -49,23 +49,23 @@ def chat_provider_from_env(provider: str) -> ChatProvider:
             raise ValueError("local chat provider requires MEMRIPAL_LOCAL_CHAT_MODEL")
         url = os.environ.get("MEMRIPAL_LOCAL_CHAT_URL") or LOCAL_DEFAULT_URL
         # None: a local Ollama-style server takes no Authorization header.
-        return ChatProvider(provider, _client(None, url), model)
+        return ChatProvider(provider, _client(None, url, timeout), model)
     base_url, model, key_env = _KEYED[provider]
     key = os.environ.get(key_env, "")
     if not key:
         raise MissingApiKey(f"{provider} chat provider requires {key_env} in the environment")
-    return ChatProvider(provider, _client(key, base_url), model)
+    return ChatProvider(provider, _client(key, base_url, timeout), model)
 
 
-def _client(key: str | None, base_url: str) -> MetaClient:
-    return MetaClient(key, base_url=base_url, timeout=PROVIDER_TIMEOUT, max_retries=PROVIDER_RETRIES)
+def _client(key: str | None, base_url: str, timeout: httpx.Timeout) -> MetaClient:
+    return MetaClient(key, base_url=base_url, timeout=timeout, max_retries=PROVIDER_RETRIES)
 
 
-def chat_fallback_from_env() -> ChatProvider | None:
+def chat_fallback_from_env(timeout: httpx.Timeout = PROVIDER_TIMEOUT) -> ChatProvider | None:
     """Spark chat once the Meta spend cap refuses it (MEM-094): Baseten, else Fireworks, by key set."""
     for provider in ("baseten", "fireworks"):
         if os.environ.get(_KEYED[provider][2]):
-            return chat_provider_from_env(provider)
+            return chat_provider_from_env(provider, timeout)
     return None
 
 

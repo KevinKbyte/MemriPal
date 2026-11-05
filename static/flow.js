@@ -15,14 +15,15 @@ import { createIdbAdapter } from "./idb_adapter.js";
 import { mountLandmarkGallery } from "./landmark_gallery.js";
 import { chunkSamples, encodeWav, postRecallAudio, recordClip, TARGET_SAMPLE_RATE } from "./mic_wav.js";
 import { wireBackup } from "./backup_ui.js";
-import { forgetOnPageHide, showSpendCap, withMetaKey, withSpendCapNotice } from "./byok.js";
+import { forgetOnPageHide, showKeyPrompt, showSpendCap, withMetaKey, withSpendCapNotice } from "./byok.js";
 import { localStorageAdapter } from "./palace_store.js";
 import { pointOf } from "./rehearsals.js";
 import { showPublicBanner } from "./public_banner.js";
 import { REPLAY_LABEL, replayRecording, startRecall } from "./recall.js";
 import { createMatcher } from "./recall_match.js";
 import { markPointGot, pointCounted, renderEndScreen } from "./recall_end.js";
-import { createLiveRelay, renderLiveBoard } from "./recall_live.js";
+import { createLiveRelay, renderLiveBoard, scoreReply } from "./recall_live.js";
+import { GRADE_KEY_PROMPT, wireGradeSetting } from "./recall_settings.js";
 import { routePracticePoints } from "./route_map.js";
 import { createRouteView, routeRun } from "./route_view.js";
 
@@ -164,7 +165,7 @@ export function wireApp(deps) {
    * @typedef {{
    *   relay: ReturnType<typeof createLiveRelay>,
    *   board: ReturnType<typeof renderLiveBoard>,
-   *   failure: { err: unknown } | null,
+   *   failure: { err: unknown } | null, grade: boolean,
    * }} LiveRun
    */
   /** @type {LiveRun | null} */
@@ -208,7 +209,7 @@ export function wireApp(deps) {
       board.light(got);
       map.light(routeRun(route, matcher.starts()).counted);
     };
-    return { el: board.el, light };
+    return { ...board, light };
   };
   // Ends any recording in progress, its live relay and the mic; resolves to the untaken WAV, or null if none.
   const stopSpeaking = () => {
@@ -247,6 +248,7 @@ export function wireApp(deps) {
   // Stored runs are listed on open, before (and without) Load demo.
   void renderHistory();
   wireBackup(deps, renderHistory);
+  const gradeSetting = wireGradeSetting(doc);
   const routeView = deps.routes
     ? createRouteView({ doc, routes: deps.routes, rehearsals, realMap: deps.realMap, fetch: deps.fetch, onPractice: (route, map) => {
       discardSpeaking();
@@ -398,15 +400,19 @@ export function wireApp(deps) {
       clip = recording;
       const board = showBoard("LIVE", current.matcher);
       const keywords = points.map((p) => p.label);
+      const grade = gradeSetting();
       /** @type {LiveRun} */
       const run = {
         board,
+        grade,
         failure: null,
         relay: createLiveRelay({
           clip: recording,
-          post: (wav) => postRecallAudio({ fetch: fetchFn, wav, keywords }),
+          post: (wav) => postRecallAudio({ fetch: fetchFn, wav, keywords, grade }),
           matcher: current.matcher,
           onMatch: board.light,
+          onGrade: board.tag,
+          onDowngrade: () => board.downgrade(() => showKeyPrompt(doc, GRADE_KEY_PROMPT)),
           onFail: (err) => {
             run.failure = { err };
             // Once Done has detached the run, Done owns the fallback.
@@ -447,9 +453,11 @@ export function wireApp(deps) {
       try {
         const remainder = await wav;
         for (const chunk of remainder ? wavChunks(remainder) : []) {
-          const { text } = await postRecallAudio({ fetch: fetchFn, wav: chunk, keywords: points.map((p) => p.label) });
-          const got = current.matcher.append(text);
+          const keywords = points.map((p) => p.label);
+          const reply = await postRecallAudio({ fetch: fetchFn, wav: chunk, keywords, grade: run?.grade });
+          const got = scoreReply(current.matcher, reply);
           if (run) run.board.light(got);
+          if (run && reply.grade) run.board.tag(reply.grade);
         }
       } catch (err) {
         // A relay error or a failing AudioContext.close(): either way the spoken run goes on typed.

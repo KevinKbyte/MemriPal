@@ -265,7 +265,7 @@ export function showSpendCap(doc, state) {
  * @param {any} doc
  * @param {string} error
  */
-function showKeyPrompt(doc, error) {
+export function showKeyPrompt(doc, error) {
   if (!doc.body) return;
   dismissed.delete(doc);
   const parts = toastParts(doc);

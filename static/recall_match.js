@@ -188,6 +188,19 @@ export function createMatcher(points) {
       p.got = true;
       p.override = true;
     },
+    /**
+     * A Spark "correct" verdict (MEM-136): got by speech, not override; start = the token count so far so
+     * countInOrder places it after everything already said.
+     * @param {number} index
+     * @returns {boolean} true only when this call newly marked the point
+     */
+    gradeGot(index) {
+      const p = Number.isInteger(index) ? state[index] : undefined;
+      if (p === undefined || p.got) return false;
+      p.got = true;
+      p.start = tokens.length;
+      return true;
+    },
     /** @returns {RecallResult[]} */
     results() {
       return state.map((p) => ({
