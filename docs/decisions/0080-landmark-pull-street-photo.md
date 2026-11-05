@@ -40,9 +40,9 @@ cost and nondeterminism the demo does not need. (d) is the status quo whose wron
 
 ## Consequences
 
-- Prerequisite: `/baseline` returns one nearest image (`src/memripal/baseline.py::_nearest`) and requests no
-  `compass_angle` or capture time (`FIELDS`); (a) needs an additive candidates contract carrying those per
-  candidate. Its shape is a backend task for `software-engineer`.
+- Backend: `/baseline` gains an additive candidates contract for (a). `src/memripal/baseline.py::_nearby` returns
+  credited in-radius records nearest first; `lookup` builds up to `MAX_CANDIDATES` (4), each with `compass_angle`
+  and capture time (`FIELDS`), replacing the former single nearest image.
 - Fallback only: the pull is offered only when a landmark has no user photo; it never overwrites or deletes one,
   and a later user photo supersedes it.
 - The top candidate auto-sets; a picker offers the rest; Undo restores no photo.

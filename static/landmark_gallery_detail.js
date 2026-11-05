@@ -4,6 +4,8 @@
 // facts are user or seeded data, so all text goes through textContent; hrefs are http(s) only and the photo src
 // is blob:/data:image only.
 
+import { mountPullPhoto } from "./landmark_pull_photo.js";
+
 /** @typedef {import("./landmark_gallery.js").GalleryItem} GalleryItem */
 /** @typedef {import("./landmark_facts.js").LandmarkFact} LandmarkFact */
 
@@ -175,6 +177,20 @@ function routesSection(doc, item, close, onOpenRoute) {
 }
 
 /**
+ * "Pull a street photo" for a landmark with no user photo (MEM-137); null when it has one, or no coords.
+ * @param {Document} doc
+ * @param {GalleryItem} item
+ * @param {((path: string, init: any) => Promise<Response>) | undefined} fetchFn
+ * @param {{ get(k: string): any, set(k: string, v: any): void, clear(k: string): void } | undefined} store
+ */
+function pullSection(doc, item, fetchFn, store) {
+  if (item.photo_ref || typeof fetchFn !== "function" || !store) return null;
+  const wrap = make(doc, "div", "lg-detail-pull");
+  mountPullPhoto(wrap, item, { doc, fetchFn, store });
+  return wrap.children.length ? wrap : null;
+}
+
+/**
  * Open (or reopen) the detail dialog for one gallery item.
  * @param {GalleryItem} item
  * @param {{
@@ -183,10 +199,12 @@ function routesSection(doc, item, close, onOpenRoute) {
  *   onOpenRoute?: (routeId: string) => unknown,
  *   factsFor?: (stationId: string) => LandmarkFact[],
  *   opener?: { focus?: () => void } | null,
+ *   fetchFn?: (path: string, init: any) => Promise<Response>,
+ *   pullStore?: { get(k: string): any, set(k: string, v: any): void, clear(k: string): void },
  * }} deps
  * @returns {{ close(): void }}
  */
-export function openGalleryDetail(item, { doc, getPhotoUrl, onOpenRoute, factsFor, opener = null }) {
+export function openGalleryDetail(item, { doc, getPhotoUrl, onOpenRoute, factsFor, opener = null, fetchFn, pullStore }) {
   const d = /** @type {any} */ (ensureDialog(doc));
   const seq = (states.get(d)?.seq ?? 0) + 1;
   states.set(d, { opener, seq });
@@ -205,6 +223,7 @@ export function openGalleryDetail(item, { doc, getPhotoUrl, onOpenRoute, factsFo
   d.replaceChildren(...[
     header,
     routesSection(doc, item, close, onOpenRoute),
+    pullSection(doc, item, fetchFn, pullStore),
     locationSection(doc, item),
     profileSection(doc, item),
     factsSection(doc, item, factsFor),

@@ -29,6 +29,8 @@ import { createRouteView, routeRun } from "./route_view.js";
 
 // The model routes the live server gates on the passcode (MEM-034); /demo/* fixtures stay open.
 const PASSCODE_ROUTES = new Set(["/loci", "/split", "/associate", "/scenes", "/recall/audio", "/chat"]);
+// Passcode-gated but not a model route (MEM-053): the passcode rides, the BYOK Meta key never does.
+const BASELINE_ROUTES = new Set(["/baseline"]);
 
 // The demo is the only palace this page builds, so its history keys on a name that survives reloads.
 const DEMO_PALACE_ID = "demo";
@@ -62,13 +64,14 @@ const MAX_RECALL_MS = 3 * 60 * 1000;
  * box is read per request, so a passcode typed after load still applies.
  * @param {typeof fetch} fetchFn
  * @param {Pick<Document, "getElementById">} doc
+ * @param {Set<string>} [routes] the paths that get the header
  * @returns {typeof fetch}
  */
-export function withPasscode(fetchFn, doc) {
+export function withPasscode(fetchFn, doc, routes = PASSCODE_ROUTES) {
   return (url, init = {}) => {
     const box = /** @type {HTMLInputElement | null} */ (doc.getElementById("passcode"));
     const code = box && box.value ? String(box.value) : "";
-    if (!code || !PASSCODE_ROUTES.has(String(url))) return fetchFn(url, init);
+    if (!code || !routes.has(String(url))) return fetchFn(url, init);
     const headers = new Headers(init.headers);
     headers.set("X-Memripal-Passcode", code);
     return fetchFn(url, { ...init, headers });
@@ -272,7 +275,10 @@ export function wireApp(deps) {
   }
   // Open route from the Landmarks-tab detail dialog (MEM-142); openRoute switches to the Routes tab itself.
   if (deps.routes) {
-    mountLandmarkGallery(doc, deps.routes, deps.fetch, { onOpenRoute: (id) => routeView?.openRoute(id).catch(() => {}) });
+    // MEM-137: the detail dialog's street-photo pull POSTs /baseline, which the live server passcode-gates.
+    mountLandmarkGallery(doc, deps.routes, withPasscode(deps.fetch, doc, BASELINE_ROUTES), {
+      onOpenRoute: (id) => routeView?.openRoute(id).catch(() => {}),
+    });
   }
 
   /**

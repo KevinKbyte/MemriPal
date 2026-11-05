@@ -7,6 +7,7 @@ import { candidates } from "./auto_loci.js";
 import { emojiFor } from "./landmark_emoji.js";
 import { factsFor } from "./landmark_facts.js";
 import { openGalleryDetail } from "./landmark_gallery_detail.js";
+import { createPhotoStore } from "./landmark_pull_photo.js";
 import { filterItems, normalize } from "./list_filter.js";
 
 /**
@@ -277,8 +278,18 @@ export function mountLandmarkGallery(doc, routes, fetchFn, { onOpenRoute } = {})
     }
     return /** @type {Promise<string | null>} */ (photoUrls.get(ref));
   };
+  // Lazy: merely touching localStorage throws where storage is disabled; the store then keeps choices in memory.
+  const win = /** @type {any} */ (doc.defaultView);
+  const pullStore = createPhotoStore({
+    storage: {
+      getItem: (k) => win.localStorage.getItem(k),
+      setItem: (k, v) => win.localStorage.setItem(k, v),
+      removeItem: (k) => win.localStorage.removeItem(k),
+    },
+  });
   /** @param {GalleryItem} item @param {HTMLButtonElement} opener */
-  const onOpen = (item, opener) => openGalleryDetail(item, { doc, getPhotoUrl, onOpenRoute, factsFor, opener });
+  const onOpen = (item, opener) =>
+    openGalleryDetail(item, { doc, getPhotoUrl, onOpenRoute, factsFor, opener, fetchFn, pullStore });
   const gallery = createLandmarkGallery({ doc, routes, loadPois, onOpen, getPhotoUrl });
   // A failed store read keeps the last grid; the Routes home already shows the storage error.
   const refresh = () => void gallery.refresh().catch(() => {});

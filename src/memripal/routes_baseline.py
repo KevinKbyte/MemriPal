@@ -90,6 +90,9 @@ def baseline_router(
         finally:
             with lock:
                 state["in_flight"] -= 1
+        if "candidates" not in result:
+            # A legacy single-answer provider (fixture replay) answers as its own sole candidate (MEM-137).
+            result = {**result, "candidates": [dict(result)]}
         return JSONResponse(result)
 
     return router

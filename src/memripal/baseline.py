@@ -29,9 +29,13 @@ RADIUS_M = 30
 SEARCH_LIMIT = 20
 MAX_IMAGE_BYTES = 2 * 1024 * 1024
 TIMEOUT_S = 5.0
-FIELDS = "id,thumb_1024_url,computed_geometry,geometry,creator"
+FIELDS = "id,thumb_1024_url,computed_geometry,geometry,creator,compass_angle,captured_at"
+# Candidates offered to the client's picker (MEM-137); each costs one CDN fetch.
+MAX_CANDIDATES = 4
 EARTH_RADIUS_M = 6_371_008.8
 JPEG_DATA_URL = "data:image/jpeg;base64,"
+LEGACY_KEYS = ("image", "author", "image_url", "licence")
+_FAILURES = (httpx.HTTPError, httpx.InvalidURL, ValueError, KeyError, TypeError)
 
 _log = logging.getLogger(__name__)
 
@@ -80,8 +84,13 @@ def _author(rec: dict) -> str | None:
     return name if isinstance(name, str) and name.strip() else None
 
 
-def _nearest(lat: float, lon: float, data: list) -> dict:
-    best, best_d = None, float("inf")
+def _number(value: object) -> float | int | None:
+    return value if isinstance(value, int | float) and not isinstance(value, bool) else None
+
+
+def _nearby(lat: float, lon: float, data: list) -> list[tuple[dict, tuple[float, float]]]:
+    """Credited, well-formed records within RADIUS_M with their points, nearest first."""
+    found = []
     for rec in data:
         if not isinstance(rec, dict) or not isinstance(rec.get("thumb_1024_url"), str):
             continue
@@ -91,11 +100,12 @@ def _nearest(lat: float, lon: float, data: list) -> dict:
         if point is None:
             continue
         d = _distance_m(lat, lon, point)
-        if d <= RADIUS_M and d < best_d:
-            best, best_d = rec, d
-    if best is None:
+        if d <= RADIUS_M:
+            found.append((d, rec, point))
+    if not found:
         raise NoBaseline()
-    return best
+    found.sort(key=lambda item: item[0])
+    return [(rec, point) for _, rec, point in found]
 
 
 def _allowed_thumb(url: str) -> httpx.URL:
@@ -117,17 +127,37 @@ class BaselineProvider:
     def lookup(self, lat: float, lon: float) -> dict:
         lat, lon = round(lat, 4), round(lon, 4)
         try:
-            rec = _nearest(lat, lon, self._search(lat, lon))
-            jpeg = self._thumb(_allowed_thumb(rec["thumb_1024_url"]))
-        except (httpx.HTTPError, httpx.InvalidURL, ValueError, KeyError, TypeError) as exc:
+            nearby = _nearby(lat, lon, self._search(lat, lon))
+        except _FAILURES as exc:
             # Type name only: an exception message can quote the request URL, which carries the coords.
             _log.warning("baseline lookup failed: %s", type(exc).__name__)
             raise BaselineFailed() from exc
+        candidates: list[dict] = []
+        for rec, point in nearby:
+            if len(candidates) == MAX_CANDIDATES:
+                break
+            try:
+                candidates.append(self._candidate(rec, point))
+            except (BaselineFailed, *_FAILURES) as exc:
+                # One broken thumb must not sink the pull; only all of them failing does.
+                _log.warning("baseline candidate skipped: %s", type(exc).__name__)
+        if not candidates:
+            raise BaselineFailed()
+        first = candidates[0]
+        return {**{key: first[key] for key in LEGACY_KEYS}, "candidates": candidates}
+
+    def _candidate(self, rec: dict, point: tuple[float, float]) -> dict:
+        jpeg = self._thumb(_allowed_thumb(rec["thumb_1024_url"]))
+        captured = rec.get("captured_at")
         return {
             "image": JPEG_DATA_URL + base64.b64encode(jpeg).decode("ascii"),
             "author": _author(rec),
             "image_url": IMAGE_PAGE_URL + quote(str(rec["id"]), safe=""),
             "licence": LICENCE,
+            "lat": point[0],
+            "lon": point[1],
+            "compass_angle": _number(rec.get("compass_angle")),
+            "captured_at": captured if isinstance(captured, int) and not isinstance(captured, bool) else None,
         }
 
     def _search(self, lat: float, lon: float) -> list:
