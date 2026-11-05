@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [0.20.77] - 2026-11-04
 
+### Fixed
+
+- Generating landmark connections no longer throws an unknown-tap error for stations stored before the next-turn cue was removed: legacy turn taps are dropped from the generated connections, while the stored station keeps its data (MEM-139).
+
 ### Changed
 
 - The station card's Sound/Smell/Feel/Mood quick-taps are replaced by a compact row of emoji tags: Muse auto-fills them from the station's context (legacy taps migrate to emojis), and you can search a picker of 120+ emojis to add more (up to 6) or remove one with arm, confirm and Undo. A user edit is never overwritten; stored taps are kept unchanged, and backups round-trip the emojis (MEM-134, ADR 0080).
@@ -26,7 +30,6 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 - King Memri's face is centred in the Pal chat bubble again: the global img max-width rule no longer shrinks the 84px head crop (MEM-138).
 
-## [0.20.74] - 2026-11-04
 
 ### Added
 
