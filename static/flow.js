@@ -268,7 +268,10 @@ export function wireApp(deps) {
       await view.openRoute(id);
     } }));
   }
-  if (deps.routes) mountLandmarkGallery(doc, deps.routes, deps.fetch);
+  // Open route from the Landmarks-tab detail dialog (MEM-142); openRoute switches to the Routes tab itself.
+  if (deps.routes) {
+    mountLandmarkGallery(doc, deps.routes, deps.fetch, { onOpenRoute: (id) => routeView?.openRoute(id).catch(() => {}) });
+  }
 
   /**
    * @param {string} transcript

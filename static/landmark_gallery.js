@@ -5,6 +5,8 @@
 
 import { candidates } from "./auto_loci.js";
 import { emojiFor } from "./landmark_emoji.js";
+import { factsFor } from "./landmark_facts.js";
+import { openGalleryDetail } from "./landmark_gallery_detail.js";
 import { filterItems, normalize } from "./list_filter.js";
 
 /**
@@ -105,7 +107,7 @@ const plural = (n, noun) => `${n} ${noun}${n === 1 ? "" : "s"}`;
  *   doc: Document,
  *   routes: { listRoutes: () => Promise<GalleryRoute[]> },
  *   loadPois: () => Promise<Poi[]>,
- *   onOpen: (item: GalleryItem) => unknown,
+ *   onOpen: (item: GalleryItem, opener: HTMLButtonElement) => unknown,
  *   getPhotoUrl: (ref: string) => Promise<string | null>,
  * }} deps
  * @returns {{ refresh(): Promise<void> }}
@@ -185,7 +187,7 @@ export function createLandmarkGallery({ doc, routes, loadPois, onOpen, getPhotoU
     const names = item.routeNames.join(", ");
     meta.textContent = item.candidate ? `Candidate - ${names}` : names;
     btn.append(thumb, name, meta);
-    btn.addEventListener("click", () => onOpen(item));
+    btn.addEventListener("click", () => onOpen(item, btn));
     li.append(btn);
     return li;
   };
@@ -252,8 +254,9 @@ const POIS_URL = "/static/data/kendall_pois.json";
  * @param {Document} doc
  * @param {ReturnType<typeof import("./route_store.js").createRouteStore>} routes
  * @param {typeof fetch} fetchFn
+ * @param {{ onOpenRoute?: (routeId: string) => unknown }} [opts] the detail dialog's Open route action
  */
-export function mountLandmarkGallery(doc, routes, fetchFn) {
+export function mountLandmarkGallery(doc, routes, fetchFn, { onOpenRoute } = {}) {
   // One POI fetch per page; a failed one is not cached, so the next Candidates view retries.
   /** @type {Promise<any> | null} */
   let pois = null;
@@ -274,8 +277,9 @@ export function mountLandmarkGallery(doc, routes, fetchFn) {
     }
     return /** @type {Promise<string | null>} */ (photoUrls.get(ref));
   };
-  // No landmark detail view on this branch yet; a tile click is a no-op until one lands.
-  const gallery = createLandmarkGallery({ doc, routes, loadPois, onOpen: () => {}, getPhotoUrl });
+  /** @param {GalleryItem} item @param {HTMLButtonElement} opener */
+  const onOpen = (item, opener) => openGalleryDetail(item, { doc, getPhotoUrl, onOpenRoute, factsFor, opener });
+  const gallery = createLandmarkGallery({ doc, routes, loadPois, onOpen, getPhotoUrl });
   // A failed store read keeps the last grid; the Routes home already shows the storage error.
   const refresh = () => void gallery.refresh().catch(() => {});
   refresh();
