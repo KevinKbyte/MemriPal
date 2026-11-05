@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.80] - 2026-11-04
+
+### Added
+
+- Landmarks photo gallery (MEM-127, ADR 0083): the Landmarks tab shows a photo-tile grid labeled by landmark name, with a name typeahead, a route typeahead where several routes can be picked (union), and a Candidates filter for the selected routes; the plain list stays as a hidden fallback.
+- Long lists filter as you type (MEM-124, ADR 0073): a client-side token filter with accent/case normalization and recent-first ordering for "Your routes".
+
 ## [0.20.79] - 2026-11-04
 
 ### Added
