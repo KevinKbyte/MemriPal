@@ -92,3 +92,27 @@ NFR: no mode deploys, reads secrets, or changes env vars; idempotent; POSIX sh; 
   `--update-secrets`.
 
 Tests: tests/test_gcp_app_script.py
+Continuation of [spec-6.md](spec-6.md), which is at its 500-line cap.
+
+## MEM-140 Landmark emoji: Spark, then BM25, then pushpin
+
+Source: Kev, 2026-11-05: icons auto-generate "to the best of Spark's ability" with "a fallback keyword search ...
+similar to how sqlite does it with bm25 ... against the emoji". Amends the keyword-only `emojiFor`.
+Decided-by: ADR-0084
+Root problem: `static/landmark_emoji.js` `emojiFor` matched only name keywords, so routes between arbitrary places
+mostly showed pushpin U+1F4CD.
+Actors: the user; Spark via `ChatProvider`; `static/landmark_emoji.js`; chat `create_route`.
+NFR: no 500 from the endpoint; client waits <= 2.5s; offline path deterministic; ASCII only.
+- `pickLandmarkEmoji` (`static/landmark_emoji_spark.js`) calls `POST /landmark-emoji`
+  (`src/memripal/routes_landmark_emoji.py`); the endpoint returns `{"emoji": null}` on any failure.
+- The client accepts only a single pictographic grapheme; anything else, a timeout, or offline falls to `emojiFor`.
+- `emojiFor`: keyword table, then Okapi BM25 (k1 1.2, b 0.75, SQLite FTS5 `bm25()`-style) over
+  `static/emoji_corpus.js` (>= 100 entries, name + keywords), query = landmark name + POI category + tag values
+  (`static/emoji_bm25.js`), then pushpin.
+- Chat `create_route` passes Spark through.
+- Accept: a landmark with no keyword-table match but a corpus hit gets a non-pushpin emoji offline; a Spark failure
+  or invalid reply never errors and yields the BM25 result.
+
+Tests: static/emoji_corpus.test.mjs, static/emoji_bm25.test.mjs, static/landmark_emoji_bm25.test.mjs,
+  static/landmark_emoji_spark.test.mjs, static/chat_route_spark.test.mjs, static/route_builder.test.mjs,
+  tests/test_landmark_emoji_api.py

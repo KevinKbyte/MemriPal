@@ -14,7 +14,7 @@ numbers on the `Reserved:` line (`Reserved: 0034, 0035`, or `Reserved: none`); M
 missing number is listed, and fails a listed number that also exists as a file (stale reservation: drop it when that
 ADR lands). ADR [0062](0062-reserved-adr-numbers.md).
 
-Reserved: 0075, 0087
+Reserved: 0075
 
 ## ADRs
 
@@ -250,6 +250,9 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
   default off; BYOK Meta key first, then non-Meta chat providers, 8 s timeout); got = union with the unchanged keyword
   matcher, which stays the whole fallback, with a downgrade notice on failure (over keyword-only or Spark replacing
   the matcher).
+- [0087](0087-landmark-emoji-spark-bm25.md) Landmark station emoji: Spark via `POST /landmark-emoji` (2.5s, single
+  pictographic grapheme), else keyword table, then BM25 over `static/emoji_corpus.js`, then pushpin (over keyword table,
+  BM25 or Spark alone).
 - [0088](0088-landmark-pull-street-photo.md) A photo-less landmark can pull a Mapillary street photo, ranked
   client-side by pure `landmark_pull_photo.js` (distance, facing, recency) and never replacing a user photo (over a
   backend ranking endpoint, a Spark rerank, or taking the nearest result).
