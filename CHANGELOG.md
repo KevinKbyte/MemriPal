@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [0.20.74] - 2026-11-04
 
+### Changed
+
+- Demo Kendall walk text drops facing-dependent direction words (left/right/bear/turn/compass points) from station names, profiles and taps, since the user sees the route on the map and their facing changes the direction; landmark facts web-checked (Kendall Boiler and Tank ghost sign at 275 Third St, Cafe Luna at The Watermark 350 Third St, Toomey Park on Rogers St; unverified street names dropped) and the six conceptual cues rewritten from the station photos; design preview PROFILES match (MEM-137).
+
 ### Fixed
 
 - King Memri's face is centred in the Pal chat bubble again: the global img max-width rule no longer shrinks the 84px head crop (MEM-138).
