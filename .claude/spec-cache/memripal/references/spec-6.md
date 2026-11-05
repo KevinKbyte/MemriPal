@@ -414,3 +414,21 @@ NFR: CSS only; no change to the global img rule for other images; ASCII only.
 - Accept: at 375 and 1280 px viewports the face is 84x84 (+-0.5) and the head centre is within 1px of the disc centre.
 
 Tests: tests/test_pal_bubble_face_centre.py, static/pal_bubble_face_tour.test.mjs
+## MEM-137 Demo route text has no facing-dependent directions
+
+Source: Kev, 2026-11-04 (on the next-turn cue): "not sure why the user would need that when they can see it on the
+map themselves, and depending on the way they're facing they would have a different direction". MEM-135 removed the
+next-turn UI; this drops the same kind of cue from the seeded demo text. A text rewrite with no approach choice, so no
+ADR. MEM-136 was taken on another branch.
+Decided-by: none
+Root problem: "bear left", "turn right", "on your right", "walk east" are relative to the walker's facing, so the
+demo text is wrong whenever they face another way, and the route map already draws the route.
+Actors: `static/demo_route.js` `DEMO_ROUTE`; `docs/design/map/preview.js` STATIONS titles (station names mirror them).
+NFR: ASCII only; station ids, coords, addresses, emoji and taps unchanged.
+- No `DEMO_ROUTE` route name, station name, or station cue text (profile visual/spatial/conceptual, tap values)
+  matches `/\b(left|right|bear|turn(s|ed)?|east|west|north|south)\b/i`.
+- Station names still equal the preview.js titles, stay <= 100 chars, first starts "Kendall/MIT station", last
+  starts "Meta office, 100 Binney St".
+- Accept: the demo route shows landmarks only; no facing-dependent direction words anywhere in its text.
+
+Tests: static/demo_route_no_directions.test.mjs
