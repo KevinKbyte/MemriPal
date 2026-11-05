@@ -108,7 +108,8 @@ export function factsFor(stationId, table = LANDMARK_FACTS) {
 const clip = (/** @type {string} */ s) => (s.length <= LINE_MAX ? s : `${s.slice(0, LINE_MAX - 3).trimEnd()}...`);
 
 /**
- * Default generator: no model call. Taps copy the station's seeded taps; profile keeps its seeded visual and
+ * Default generator: no model call. Taps copy the station's seeded taps (TAP_KEYS only; unknown/legacy tap
+ * keys such as a pre-MEM-135 `turn` are dropped, MEM-139); profile keeps its seeded visual and
  * spatial lines and makes the first fact the conceptual hook (falling back to the seeded conceptual line).
  * @param {StationLike} station
  * @returns {Connections}
@@ -122,7 +123,11 @@ export function defaultGenerate(station) {
     spatial: seeded.spatial || name,
     conceptual: clip(fact ? fact.text : seeded.conceptual || name),
   };
-  return { taps: { ...(station.taps ?? {}) }, profile };
+  const seededTaps = /** @type {Record<string, string>} */ (station.taps ?? {});
+  /** @type {Record<string, string>} */
+  const taps = {};
+  for (const k of TAP_KEYS) if (k in seededTaps) taps[k] = seededTaps[k];
+  return { taps, profile };
 }
 
 /**
