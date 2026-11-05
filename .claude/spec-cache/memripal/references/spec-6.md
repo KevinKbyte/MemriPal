@@ -620,13 +620,3 @@ NFR: ASCII only; CSP unchanged; no new network calls beyond the one POI fetch; `
 
 Tests: static/landmark_gallery.test.mjs, static/index_markup_landmarks.test.mjs, static/index_ids_test.mjs,
 static/index_markup.test.mjs
-Tests: tests/test_recall_grade.py, tests/test_recall_grade_byok.py, tests/test_recall_audio.py, static/recall_grade.test.mjs
-- Out of scope: partial credit scoring; grading typed recall.
-- Setting (Kev 2026-11-04): Settings tab checkbox `#grade-with-spark` "Grade recall with Spark", persisted in
-  localStorage `memripal.gradeWithSpark` (default off); off = ASR + keyword only and the request carries no `grade`
-  field, so no grading call is made.
-- On + grading failure (spend cap, out of tokens, upstream error, timeout): that answer scores by ASR + keyword; the
-  response carries `grade_error: "unavailable"` (never a provider body) and the board shows a dismissible inline
-  `.grade-downgrade` notice ("Spark is unavailable ... keyword match") with a link to the existing BYOK key prompt.
-- BYOK reuses the MEM-122 visitor Meta key (tab memory only, `X-Memripal-Meta-Key`, never logged): when present the
-  grader tries that session's client first, then the configured providers.
