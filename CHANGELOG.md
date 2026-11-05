@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [0.20.78] - 2026-11-04
 
+### Changed
+
+- Pal's tour step 3, My Royal Shopping List, reads clean on phones: list rows at 17px/1.5, keywords at 16px in the body face, roomier row padding, and the story card scrolls inside the viewport instead of clipping (MEM-140).
+
 ### Added
 
 - The Meta spend counter now lives in one Firestore document updated by a transaction, so an instance restart or a second instance can no longer reset it and let spend cross the cap; if the store is unreachable, times out, or the doc is unseeded, Meta is refused (fail closed). The meta-mode deploy sets `MEMRIPAL_META_SPEND_STORE=firestore` and grants `roles/datastore.user`; `scripts/seed_meta_spend.py` seeds the doc (MEM-136, ADR 0081).
