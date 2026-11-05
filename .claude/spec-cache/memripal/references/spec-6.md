@@ -516,3 +516,19 @@ every delete needs arm + confirm + Undo; fits 375px with no horizontal scroll; c
 - Out of scope: a live Spark call per station for auto-fill (ADR 0080 option B, follow-up).
 
 Tests: static/emoji_tags.test.mjs, static/station_card_emoji.test.mjs
+## MEM-139 Legacy turn taps dropped when generating landmark connections
+
+Source: follow-up held out of MEM-137, 2026-11-04. A bug fix with no approach choice, so no ADR.
+Decided-by: none
+Root problem: stations stored before MEM-135 (next-turn UI removed) can still carry `taps.turn`; `defaultGenerate` in
+`static/landmark_facts.js` copied taps verbatim, so `createConnectionStore().generate()` threw `Unknown tap "turn"`.
+Actors: `static/landmark_facts.js` `defaultGenerate`; `createConnectionStore().generate`.
+NFR: never delete stored user data: the input station (and its stored record) keeps its `taps.turn`; only the
+generated connections omit it. ASCII only.
+- Generated connections carry only the MEM-135 tap keys (sound, smell, feel, mood).
+- Unknown/legacy tap keys are dropped at generation; valid taps are kept.
+- Generation does not mutate the input station.
+- An explicit edit patch with `turn` is still rejected by validation.
+- Accept: generating connections for a station with legacy `taps.turn` succeeds and stores no `turn`.
+
+Tests: static/landmark_facts_legacy_turn.test.mjs
