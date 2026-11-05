@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.82] - 2026-11-04
+
+### Added
+
+- Landmarks tile detail (MEM-143, ADR 0085): clicking or pressing Enter on a Landmarks-tab photo tile opens a native detail dialog with the landmark's routes, location (address, coordinates, Open in Maps), memory profile, facts, and an Open route button.
+
 ## [0.20.81] - 2026-11-04
 
 ### Added
