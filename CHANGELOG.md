@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.93] - 2026-11-05
+
+### Added
+
+- Landmarks pull street photo (MEM-146, ADR 0088): a landmark with no user photo offers "Pull a street photo" in its detail dialog; `POST /baseline` now returns ranked `candidates` and the client picks the best credited Mapillary photo (data:image/jpeg only).
+
 ## [0.20.92] - 2026-11-04
 
 ### Changed
