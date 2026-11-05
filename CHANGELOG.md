@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.81] - 2026-11-04
+
+### Added
+
+- Pal chat replies live (MEM-142, ADR 0084): the Pal bubble posts each message to a dedicated `POST /chat` route that adds Pal's system prompt server-side and calls the configured chat provider (or the visitor's BYOK key); passcode-gated and rate-limited like `/split`, with a 502 `chat_unavailable` fallback.
+
 ## [0.20.80] - 2026-11-04
 
 ### Added
