@@ -163,7 +163,7 @@
   color: var(--muted);
 }
 
-/* Tile detail dialog (MEM-136): a native modal; full-width sheet on phones, centered card on wider screens. */
+/* Tile detail dialog (MEM-142): a native modal; full-width sheet on phones, centered card on wider screens. */
 .lg-detail {
   width: min(32rem, calc(100vw - 1.5rem));
   max-height: calc(100dvh - 1.5rem);
