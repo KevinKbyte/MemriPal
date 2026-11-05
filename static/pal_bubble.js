@@ -396,7 +396,28 @@ async function selfMount() {
     // storage access denied; position falls back to the default corner
   }
   // The actor is read per message: wireApp may set it after the bubble mounts.
-  await mountPalBubble({ doc: document, win: window, storage, chats, act: (t) => getActor()?.act(t) ?? null });
+  // app.js already loaded these on the page; imported lazily so node tests of this module stay light.
+  const [{ withApiBase }, { withPasscode }, { withMetaKey }, { createPalReply }] = await Promise.all([
+    import("./api_base.js"),
+    import("./flow.js"),
+    import("./byok.js"),
+    import("./pal_reply.js"),
+  ]);
+  const live = createPalReply(withMetaKey(withPasscode(withApiBase(fetch.bind(globalThis)), document), document));
+  const reply = (/** @type {string} */ text, /** @type {{role: string, text: string}[]} */ history) =>
+    live(text, toChatHistory(history));
+  await mountPalBubble({ doc: document, win: window, storage, chats, reply, act: (t) => getActor()?.act(t) ?? null });
+}
+
+/**
+ * The bubble's stored turns as POST /chat history (MEM-139): {role, content}, user/assistant only, minus
+ * the just-sent message (the server appends it), capped to the route's last 40.
+ * @param {{role: string, text: string}[]} history
+ */
+export function toChatHistory(history) {
+  const turns = history.filter((m) => (m.role === "user" || m.role === "assistant") && typeof m.text === "string");
+  if (turns.length && turns[turns.length - 1].role === "user") turns.pop();
+  return turns.slice(-40).map((m) => ({ role: m.role, content: m.text }));
 }
 
 if (typeof document !== "undefined" && typeof window !== "undefined") selfMount();

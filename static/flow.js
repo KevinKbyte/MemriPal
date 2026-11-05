@@ -27,7 +27,7 @@ import { routePracticePoints } from "./route_map.js";
 import { createRouteView, routeRun } from "./route_view.js";
 
 // The model routes the live server gates on the passcode (MEM-034); /demo/* fixtures stay open.
-const PASSCODE_ROUTES = new Set(["/loci", "/split", "/associate", "/scenes", "/recall/audio"]);
+const PASSCODE_ROUTES = new Set(["/loci", "/split", "/associate", "/scenes", "/recall/audio", "/chat"]);
 
 // The demo is the only palace this page builds, so its history keys on a name that survives reloads.
 const DEMO_PALACE_ID = "demo";

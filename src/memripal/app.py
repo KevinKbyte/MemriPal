@@ -60,6 +60,7 @@ from memripal.recall_relay import (
 )
 from memripal.record_sign import record_key, sig_ok, sign_record
 from memripal.routes_baseline import baseline_router, default_baseline_provider
+from memripal.routes_pal_chat import make_pal_chat_router
 from memripal.routes_station import make_station_router
 from memripal.scenes import render_scene
 from memripal.security_headers import SecurityHeaders
@@ -127,6 +128,7 @@ def create_app(
     saved_roots=None,
     byok_transport=None,
     baseline_provider=None,
+    pal_chat=None,
 ) -> FastAPI:
     if backend is None:
         backend = select_backend(None, fixtures_root=REPLAY_DIR, live_cache_root=LIVE_CACHE_DIR)
@@ -491,6 +493,7 @@ def create_app(
 
     # Before the /static mount; shares this app's passcode guard, like /loci (MEM-083).
     app.include_router(make_station_router(backend, _passcode_error))
+    app.include_router(make_pal_chat_router(_model_route, backend, pal_chat))  # Passcode + BYOK, like /split (MEM-139).
     # Same passcode guard; the live Mapillary lookups share the deploy call budget and route concurrency cap.
     budget = call_budget if live else None
     app.include_router(
