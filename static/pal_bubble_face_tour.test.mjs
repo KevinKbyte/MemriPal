@@ -164,3 +164,15 @@ describe("Pal bubble stylesheet is inert during the tour (MEM-055)", () => {
     assert.match(m[1], /pointer-events\s*:\s*none/);
   });
 });
+
+// Covers: MEM-138
+// Requirement: the bubble face rule opts out of the global `img { max-width: 100% }` clamp so the 84px head crop
+// keeps its full size and stays centred in the disc.
+describe("Pal bubble face is not clamped by the global img max-width (MEM-138)", () => {
+  test(".pal-bubble-face declares max-width: none", () => {
+    const css = readFileSync(new URL("./pal_bubble.css", import.meta.url), "utf8");
+    const m = css.match(/^\.pal-bubble-face\s*\{([^}]*)\}/m);
+    assert.ok(m, ".pal-bubble-face rule exists");
+    assert.match(m[1], /max-width\s*:\s*none/);
+  });
+});
