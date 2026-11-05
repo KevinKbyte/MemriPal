@@ -16,13 +16,16 @@
   user-select: none;
 }
 .pal-bubble:focus-visible { outline: 3px solid #ffbf47; outline-offset: 2px; }
-/* Head crop of the 512px pal-still.svg (head about x 100-410, y 50-395) centred in the disc. */
+/* Head crop of the 512px pal-still.svg centred in the disc (MEM-138). max-width: none overrides
+   style.css's global img max-width: 100% / height: auto, which shrank the face to the 50px padding box.
+   Head centre is viewBox 256,222.5 of 512 -> 42,36.5 at 84px; subtract that from the 50x50 box centre. */
 .pal-bubble-face {
   position: absolute;
   width: 84px;
+  max-width: none;
   height: 84px;
-  left: -17px;
-  top: -11px;
+  left: calc(50% - 42px);
+  top: calc(50% - 36.5px);
   pointer-events: none;
 }
 /* Inert while the tour is open, unless the open step targets the bubble (MEM-055, ADR 0072). */
