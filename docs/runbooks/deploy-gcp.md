@@ -79,8 +79,11 @@ gcloud auth application-default login
 ```
 
 ```bash
-python scripts/seed_meta_spend.py --usd <current spend>
+uv run python scripts/seed_meta_spend.py --usd <current spend> --project <project>
 ```
+
+   `uv run` is required: plain `python` fails because the script imports `memripal`. Skipping the ADC login above
+   raises `DefaultCredentialsError`.
 
 4. Deploy (step 4): the script sets `MEMRIPAL_META_SPEND_STORE=firestore` and grants the runtime service account
    `roles/datastore.user`.
@@ -217,6 +220,10 @@ MODE=meta EDGE_HOST=<host> sh scripts/deploy_cloud_run.sh
 $env:MODE = "meta"; $env:EDGE_HOST = "<host>"; sh scripts/deploy_cloud_run.sh; Remove-Item Env:MODE, Env:EDGE_HOST
 ```
 
+   Every later redeploy keeps `EDGE_HOST` set (omitting it drops LB-only ingress, the host-guard entry and proxy hops
+   2) and runs from the primary checkout on `main` (a stale worktree deploys an old script, e.g. one missing the
+   MEM-136 spend-store wiring). In PowerShell, `cd` to the primary checkout as a separate command first.
+
 3. Cert wait: run the printed cert status command until it reads `ACTIVE` (typically 15-60 min after the IP resolves).
    `FAILED_NOT_VISIBLE` or `FAILED_RATE_LIMITED` (sslip.io is a heavily shared domain), or still `PROVISIONING` after
    60 min -> fallback: a self-signed cert on the same proxy (judges click through one browser warning). Names come
@@ -256,10 +263,12 @@ curl -s https://<host>/healthz
    runs) and the deploy no longer maps `MEMRIPAL_PASSCODE`. On Cloud Run the controls are the access gate (its own
    per-IP `/access` lockout) and Cloud Armor.
 3. Right key -> redirected to the app; no passcode box; "Load demo" and a live model route work.
-4. The `run.app` URL is refused: expect HTTP 404 (Cloud Run ingress denial, not the app):
+4. The `run.app` URL is refused: expect HTTP 404 (Cloud Run ingress denial, not the app). Probe `/`, never
+   `/healthz`: Cloud Run reserves paths ending in `z`, so run.app `/healthz` returns a Google 404 even with ingress
+   `all` -- a false pass:
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}\n" https://<service>-<project-number>.<region>.run.app/healthz
+curl -s -o /dev/null -w "%{http_code}\n" https://<service>-<project-number>.<region>.run.app/
 ```
 
 5. Proxy hops (MEM-105): from network A (e.g. a phone hotspot) send 21 wrong keys until A gets 429; then from
@@ -268,6 +277,21 @@ curl -s -o /dev/null -w "%{http_code}\n" https://<service>-<project-number>.<reg
 
 ```bash
 gcloud run services update <service> --region <region> --update-env-vars MEMRIPAL_TRUSTED_PROXY_HOPS=<n>
+```
+
+   Network B without a second device: a one-step Cloud Build job POSTs a wrong key from Google's network. Expect 401
+   while A is still locked out: `_login` in `src/memripal/access.py` checks the lockout before comparing the key, so
+   401 (not 429) proves separate buckets. Cloud Shell ssh is no substitute on Windows (plink hangs
+   non-interactively). `network-b.yaml`:
+
+```yaml
+steps:
+  - name: curlimages/curl
+    args: ["-s", "-o", "/dev/null", "-w", "%{http_code}\n", "-X", "POST", "-d", "key=wrong", "https://<host>/access"]
+```
+
+```bash
+gcloud builds submit --no-source --config network-b.yaml
 ```
 
 SUPERSEDED (pre-ADR 0056, fixture deploy without the edge): open the `run.app` URL; banner reads "live needs passcode
