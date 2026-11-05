@@ -1,4 +1,4 @@
-# Covers: MEM-143
+# Covers: MEM-145
 # Requirement: the 30-char Meta ASR keyword cap (MEM-010) only trims what is sent to speech-to-text; the
 # /recall/audio relay still hands the FULL palace label list, including labels over 30 chars, to the
 # transcriber call and to the Spark recall grader, so grading can match long labels.
@@ -71,7 +71,7 @@ def _env(monkeypatch, tmp_path):
 
 
 class TestLongLabelsReachGrader:
-    # Covers: MEM-143
+    # Covers: MEM-145
     def test_label_over_30_chars_reaches_asr_client_and_grader(self):
         asr = FakeAsr()
         grader = FakeGrader()

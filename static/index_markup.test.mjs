@@ -192,7 +192,7 @@ const MEM110_MAY_START_HIDDEN = ["station-tap-summary"];
 const MEM125_IDS = ["flashcards", "flashcards-title", "flashcards-status", "flashcards-card"];
 // MEM-114: the zero-route empty-state slogan beside Pal; visible in the markup (never start-hidden).
 const MEM114_IDS = ["empty-slogan"];
-// MEM-143: the Settings "Grade recall with Spark" opt-in checkbox.
+// MEM-145: the Settings "Grade recall with Spark" opt-in checkbox.
 const MEM143_IDS =["grade-with-spark"];
 
 // Covers: MEM-044, MEM-095, MEM-112, MEM-045, MEM-134, MEM-127
@@ -205,8 +205,8 @@ describe("MEM-044 A2 v6 shell + control markup (static/index.html, F13)", () => 
   // MEM-088 its 12 route builder / map empty-state ids; MEM-108 its 3 chat-fallback toast ids (#chat-fallback starts hidden);
   // MEM-110 its station tap summary id; MEM-095 its Pal tour ids; MEM-045 its sticker panel ids; MEM-125 its
   // flashcards panel ids; MEM-114 its #empty-slogan id; MEM-134 its emoji tag ids (and removes the superseded
-  // #tap-sound #tap-smell #tap-feel #tap-mood); MEM-127 its Landmarks gallery ids; MEM-143 its Spark grading checkbox id.
-  test("every 748a5e1 id kept exactly once; the only ids added are MEM-048's, MEM-050's, MEM-051's, MEM-072's, MEM-081's, MEM-088's, MEM-108's, MEM-110's, MEM-095's, MEM-045's, MEM-125's, MEM-114's, MEM-134's, MEM-127's and MEM-143's", () => {
+  // #tap-sound #tap-smell #tap-feel #tap-mood); MEM-127 its Landmarks gallery ids; MEM-145 its Spark grading checkbox id.
+  test("every 748a5e1 id kept exactly once; the only ids added are MEM-048's, MEM-050's, MEM-051's, MEM-072's, MEM-081's, MEM-088's, MEM-108's, MEM-110's, MEM-095's, MEM-045's, MEM-125's, MEM-114's, MEM-134's, MEM-127's and MEM-145's", () => {
     const ids = ELS.map((e) => e.attrs.id).filter((id) => id !== undefined);
     const count = (id) => ids.filter((x) => x === id).length;
     const lost = BASE_IDS.filter((id) => count(id) !== 1);
@@ -218,7 +218,7 @@ describe("MEM-044 A2 v6 shell + control markup (static/index.html, F13)", () => 
     for (const id of MEM134_SUPERSEDED_IDS) allowed.delete(id);
     const unexpected = ids.filter((id) => !allowed.has(id));
     assert.deepEqual(unexpected, [],
-      `ids outside 748a5e1 + MEM-048 + MEM-050 + MEM-051 + MEM-072 + MEM-081 + MEM-088 + MEM-108 + MEM-110 + MEM-095 + MEM-045 + MEM-125 + MEM-114 + MEM-134 + MEM-127 + MEM-143: ${unexpected.join(" ")}`);
+      `ids outside 748a5e1 + MEM-048 + MEM-050 + MEM-051 + MEM-072 + MEM-081 + MEM-088 + MEM-108 + MEM-110 + MEM-095 + MEM-045 + MEM-125 + MEM-114 + MEM-134 + MEM-127 + MEM-145: ${unexpected.join(" ")}`);
     const missing = MEM072_IDS.filter((id) => count(id) !== 1);
     assert.deepEqual(missing, [], `MEM-072 shell ids missing or duplicated: ${missing.join(" ")}`);
     const dupes = [...new Set(ids.filter((id) => count(id) > 1))];

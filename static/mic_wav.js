@@ -183,7 +183,7 @@ const STATUS_CODES = {
 const VERDICTS = new Set(["correct", "partial", "miss"]);
 const isIndex = (/** @type {unknown} */ n) => Number.isInteger(n) && /** @type {number} */ (n) >= 0;
 
-/** @param {any} g @returns {g is Grade} the server's grade shape (MEM-143); anything else is dropped */
+/** @param {any} g @returns {g is Grade} the server's grade shape (MEM-145); anything else is dropped */
 function isGrade(g) {
   return (
     !!g &&

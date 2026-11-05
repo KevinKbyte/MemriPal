@@ -1,4 +1,4 @@
-// Covers: MEM-143
+// Covers: MEM-145
 // Requirement: an opt-in "Grade recall with Spark" setting sends grade: true with each recall slice; a valid
 // Spark grade lights paraphrased points on top of the keyword matcher; a malformed or absent grade leaves
 // keyword scoring exactly as before; when Spark is unavailable the board says it fell back to keyword match

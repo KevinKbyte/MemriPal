@@ -189,7 +189,7 @@ export function createMatcher(points) {
       p.override = true;
     },
     /**
-     * A Spark "correct" verdict (MEM-143): got by speech, not override; start = the token count so far so
+     * A Spark "correct" verdict (MEM-145): got by speech, not override; start = the token count so far so
      * countInOrder places it after everything already said.
      * @param {number} index
      * @returns {boolean} true only when this call newly marked the point

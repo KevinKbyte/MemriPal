@@ -16,7 +16,7 @@ MAX_TRANSCRIPT_CHARS = 2000
 # Base64 of a max-size clip plus room for 12 labels even when JSON-escaped as \uXXXX.
 RELAY_BODY_CAP = 4 * -(-MAX_CHUNK_BYTES // 3) + 16 * 1024
 BODY_KEYS = {"audio", "keywords"}
-# MEM-143: the opt-in Spark grade flag, a JSON bool only.
+# MEM-145: the opt-in Spark grade flag, a JSON bool only.
 GRADE_KEY = "grade"
 
 

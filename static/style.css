@@ -693,7 +693,7 @@ button[aria-pressed="true"]:hover {
   color: var(--lamp-ink);
 }
 
-/* MEM-143: which grader lit the board, and the keyword-fallback notice; both wrap at 375px. */
+/* MEM-145: which grader lit the board, and the keyword-fallback notice; both wrap at 375px. */
 .grade-tag {
   font: 600 0.8rem/1.3 var(--mono);
   color: var(--muted);
