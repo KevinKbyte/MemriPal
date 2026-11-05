@@ -45,8 +45,8 @@ never parsed as HTML; ASCII only; 0 live calls in fixture mode.
 
 ## MEM-142 Pal chat gets a live model reply
 
-ADR [0087](../../../../docs/decisions/0087-pal-chat-dedicated-route.md).
-Decided-by: ADR-0087
+ADR [0084](../../../../docs/decisions/0084-pal-chat-dedicated-route.md).
+Decided-by: ADR-0084
 Root problem: `static/pal_bubble.js` selfMount passed only `act`, no `reply`, and no chat route existed, so Pal chat
 never produced a model reply.
 Actors: the user; `app.py` POST /chat, `create_app(pal_chat=...)`; `static/pal_reply.js` `createPalReply`;

@@ -19,7 +19,9 @@ DEFAULT_RATE_PER_MIN = 30
 DEFAULT_MAX_FAILS = 5
 DEFAULT_LOCKOUT_S = 300
 DEFAULT_ROUTE_CONCURRENCY = 4
-LIMITED_ROUTES = frozenset({"/loci", "/split", "/associate", "/scenes", "/recall/audio", "/place", "/access", "/chat"})
+LIMITED_ROUTES = frozenset(
+    {"/loci", "/split", "/associate", "/scenes", "/recall/audio", "/place", "/access", "/chat"}
+)
 CAPPED_ROUTES = ("/loci", "/split", "/associate", "/recall/audio")
 # Short and bounded: a burst past the cap is refused fast instead of queueing behind a stalled upstream.
 SLOT_WAIT_S = 1.0

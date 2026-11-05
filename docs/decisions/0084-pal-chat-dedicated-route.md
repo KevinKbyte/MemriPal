@@ -1,4 +1,4 @@
-# 0087: Pal chat gets a dedicated POST /chat route (MEM-142)
+# 0084: Pal chat gets a dedicated POST /chat route (MEM-142)
 
 Status: Accepted
 Date: 2026-11-04
