@@ -1,4 +1,4 @@
-# 0081: Landmark photo slots reuse POST /loci with a cached/sample fallback (MEM-141)
+# 0082: Landmark photo slots reuse POST /loci with a cached/sample fallback (MEM-141)
 
 Status: Accepted
 Date: 2026-11-04

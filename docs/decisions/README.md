@@ -231,5 +231,5 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0081](0081-central-meta-spend-counter-firestore.md) The meta-mode Meta spend counter is one Firestore doc updated
   by a check-and-increment transaction; any store failure or a missing (unseeded) doc refuses Meta (over Memorystore
   Redis, a GCS generation-precondition object, or the `/tmp` file).
-- [0081](0081-landmark-slots-from-loci.md) Landmark photo slots: reuse POST `/loci`, client picks 3 largest
+- [0082](0082-landmark-slots-from-loci.md) Landmark photo slots: reuse POST `/loci`, client picks 3 largest
   distinct-label loci, live -> cached -> sample fallback, drag by dynamic import (MEM-141).
