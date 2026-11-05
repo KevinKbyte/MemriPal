@@ -1,5 +1,5 @@
 // @ts-check
-// Okapi BM25 keyword search over the emoji corpus (MEM-140): the offline fallback when the MEM-100 keyword
+// Okapi BM25 keyword search over the emoji corpus (MEM-144): the offline fallback when the MEM-100 keyword
 // table misses a landmark. Pure and deterministic; a bad query returns [] instead of throwing.
 
 import { EMOJI_CORPUS } from "./emoji_corpus.js";

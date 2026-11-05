@@ -1,4 +1,4 @@
-// Covers: MEM-140
+// Covers: MEM-144
 // Requirement: emojiFor keeps every MEM-100 keyword-table pick (landmark_emoji.test.mjs is unchanged); only when
 // the table finds nothing does it search the emoji corpus by BM25 over the name, category and tag values, and
 // only when that also finds nothing does it return the U+1F4CD pushpin.
@@ -12,9 +12,9 @@ import { emojiFor } from "./landmark_emoji.js";
 const PIZZA = "\u{1F355}";
 const PUSHPIN = "\u{1F4CD}";
 
-// Covers: MEM-140
+// Covers: MEM-144
 // Requirement: a table miss falls through to the corpus search, then to the pushpin.
-describe("MEM-140 emojiFor BM25 fallback", () => {
+describe("MEM-144 emojiFor BM25 fallback", () => {
   test("a name the table misses gets the corpus pick", () => {
     assert.equal(emojiFor({ name: "Pizza Regina" }), PIZZA);
   });

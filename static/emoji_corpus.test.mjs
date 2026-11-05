@@ -1,4 +1,4 @@
-// Covers: MEM-140
+// Covers: MEM-144
 // Requirement: landmarks the MEM-100 keyword table does not know still get a best-fit emoji, found by keyword
 // search over a committed emoji corpus (works offline). The corpus is a plain data module with enough breadth
 // to be useful (100+ entries), one row per emoji, every row searchable by its name and keywords, and a transit
@@ -21,9 +21,9 @@ function corpus() {
 const tokens = (row) => `${row.name} ${row.keywords.join(" ")}`.toLowerCase().match(/[a-z0-9]+/g) ?? [];
 const STATION = ["\u{1F689}", "\u{1F686}", "\u{1F687}"];
 
-// Covers: MEM-140
+// Covers: MEM-144
 // Requirement: the corpus is well-formed, broad and unambiguous (one row per emoji).
-describe("MEM-140 EMOJI_CORPUS shape", () => {
+describe("MEM-144 EMOJI_CORPUS shape", () => {
   test("has at least 100 well-formed rows", () => {
     const rows = corpus();
     assert.ok(rows.length >= 100, `got ${rows.length} rows`);

@@ -94,11 +94,11 @@ NFR: no mode deploys, reads secrets, or changes env vars; idempotent; POSIX sh; 
 Tests: tests/test_gcp_app_script.py
 Continuation of [spec-6.md](spec-6.md), which is at its 500-line cap.
 
-## MEM-140 Landmark emoji: Spark, then BM25, then pushpin
+## MEM-144 Landmark emoji: Spark, then BM25, then pushpin
 
 Source: Kev, 2026-11-05: icons auto-generate "to the best of Spark's ability" with "a fallback keyword search ...
 similar to how sqlite does it with bm25 ... against the emoji". Amends the keyword-only `emojiFor`.
-Decided-by: ADR-0084
+Decided-by: ADR-0087
 Root problem: `static/landmark_emoji.js` `emojiFor` matched only name keywords, so routes between arbitrary places
 mostly showed pushpin U+1F4CD.
 Actors: the user; Spark via `ChatProvider`; `static/landmark_emoji.js`; chat `create_route`.

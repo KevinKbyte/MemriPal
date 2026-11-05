@@ -1,4 +1,4 @@
-// Covers: MEM-140
+// Covers: MEM-144
 // Requirement: a landmark name the keyword table misses is matched to the emoji corpus by Okapi BM25 keyword
 // search, so "Flour Bakery + Cafe" gets a bakery/cafe glyph and "Kendall Square T station" a train, offline and
 // deterministically; a query with no matching word gets no pick (the caller falls back to the pushpin), and a
@@ -25,9 +25,9 @@ const best = (q) => fn("bestEmoji")(q);
 const STATION = ["\u{1F689}", "\u{1F686}", "\u{1F687}"];
 const BAKERY_CAFE = ["\u{2615}", "\u{1F950}", "\u{1F35E}", "\u{1F370}", "\u{1F9C1}"];
 
-// Covers: MEM-140
+// Covers: MEM-144
 // Requirement: BM25 scoring and ordering follow the stated formula and parameters.
-describe("MEM-140 createEmojiIndex search", () => {
+describe("MEM-144 createEmojiIndex search", () => {
   test("score matches Okapi BM25 with k1 1.2, b 0.75 over name + keywords", () => {
     const idx = index([
       { emoji: "A", name: "Red apple", keywords: ["fruit"] },
@@ -78,9 +78,9 @@ describe("MEM-140 createEmojiIndex search", () => {
   });
 });
 
-// Covers: MEM-140
+// Covers: MEM-144
 // Requirement: bestEmoji picks from the shipped corpus for real Kendall landmark names, or null when nothing matches.
-describe("MEM-140 bestEmoji over EMOJI_CORPUS", () => {
+describe("MEM-144 bestEmoji over EMOJI_CORPUS", () => {
   test("Kendall Square T station -> a station/train emoji", () => {
     assert.ok(STATION.includes(best("Kendall Square T station")), best("Kendall Square T station"));
   });

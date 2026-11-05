@@ -2,7 +2,7 @@
 // Pal chat route creation (MEM-132, ADR 0079): "route from X to Y" is parsed here, client-side, planned by
 // route_plan.js over the committed Kendall graph + POIs, and run as the copilot tool create_route through
 // copilot_dispatch.js, so the undo stack can remove it. The only server call is the optional Spark emoji pick
-// (MEM-140), which falls back offline; never throws into the chat.
+// (MEM-144), which falls back offline; never throws into the chat.
 
 import { createDispatcher } from "./copilot_dispatch.js";
 import { pickLandmarkEmoji, sparkEmojiClient } from "./landmark_emoji_spark.js";
@@ -48,7 +48,7 @@ export function createRouteTool({ routes, load, newId = uuid, spark }) {
       if (!plan.ok) return { result: { ok: false, text: plan.text } };
       const id = newId();
       const { name } = plan;
-      // MEM-140: the emoji is picked before the save, so the stored stations carry it (ADR 0057).
+      // MEM-144: the emoji is picked before the save, so the stored stations carry it (ADR 0057).
       const stations = await Promise.all(plan.stations.map(async (st) =>
         ({ ...st, emoji: await pickLandmarkEmoji({ name: st.name }, { spark }) })));
       await routes.seedRoute({ id, name, kind: "daily", stations });
@@ -98,7 +98,7 @@ export function createChatRouteActor({ dispatcher, onCreated }) {
  *   fetch: typeof fetch,
  *   onCreated: (id: string) => unknown,
  *   sparkFetch?: typeof fetch,
- * }} deps sparkFetch carries the passcode for the Spark emoji route (MEM-140)
+ * }} deps sparkFetch carries the passcode for the Spark emoji route (MEM-144)
  */
 export function createPageRouteActor({ routes, fetch, onCreated, sparkFetch = fetch }) {
   /** @type {Promise<{ graph: any, pois: any[] }> | null} */

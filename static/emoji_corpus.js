@@ -1,5 +1,5 @@
 // @ts-check
-// Emoji search corpus (MEM-140): one row per emoji, searched by emoji_bm25.js when the MEM-100 keyword table
+// Emoji search corpus (MEM-144): one row per emoji, searched by emoji_bm25.js when the MEM-100 keyword table
 // misses a landmark. Pure data, so the pick works offline. Keywords avoid words the MEM-100 tests pin to the
 // pushpin ("Parking garage", "Technology Square", "Kendall Building").
 

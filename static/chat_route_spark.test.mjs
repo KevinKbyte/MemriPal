@@ -1,4 +1,4 @@
-// Covers: MEM-140
+// Covers: MEM-144
 // Requirement: a route made from the Pal chat gets Spark-picked landmark emoji when Spark is available, and the
 // offline picks (emojiFor) otherwise; the pick happens before the route is saved, so the stored stations carry it.
 // Contract (RED; GREEN extends static/chat_route.js createRouteTool): optional dep spark; before seedRoute each
@@ -26,9 +26,9 @@ async function seeded(spark) {
   return route.stations;
 }
 
-// Covers: MEM-140
+// Covers: MEM-144
 // Requirement: Spark's emoji lands in the saved stations; without Spark the offline picks are kept.
-describe("MEM-140 createRouteTool landmark emoji", () => {
+describe("MEM-144 createRouteTool landmark emoji", () => {
   test("a fake spark's emoji lands in every seeded station; spark sees each station name", async () => {
     const asked = [];
     const stations = await seeded(async (lm) => { asked.push(lm.name); return MUSEUM; });

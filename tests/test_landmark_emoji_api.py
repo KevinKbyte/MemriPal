@@ -1,4 +1,4 @@
-# Covers: MEM-140
+# Covers: MEM-144
 # Requirement: the browser asks the server for a Spark-picked landmark emoji via
 # POST /landmark-emoji (router from routes_landmark_emoji.make_landmark_emoji_router(ask,
 # passcode_error), exercised on a standalone FastAPI app, and mounted by memripal.app.create_app
@@ -56,7 +56,7 @@ def _post(client, body):
     return client.post("/landmark-emoji", json=body)
 
 
-# Covers: MEM-140
+# Covers: MEM-144
 class TestLandmarkEmojiReply:
     def test_single_emoji_reply_returns_200_with_it_and_prompt_names_landmark(self):
         ask = FakeAsk(MUSEUM)
@@ -98,7 +98,7 @@ class TestLandmarkEmojiReply:
         assert resp.json() == {"emoji": None}
 
 
-# Covers: MEM-140
+# Covers: MEM-144
 class TestLandmarkEmojiValidation:
     def test_boundaries_accepted(self):
         ask = FakeAsk()
@@ -174,7 +174,7 @@ def _clean_env(monkeypatch, tmp_path):
     monkeypatch.setenv("USERPROFILE", str(tmp_path / "home"))
 
 
-# Covers: MEM-140
+# Covers: MEM-144
 @pytest.mark.usefixtures("_clean_env")
 class TestLandmarkEmojiMountedOnApp:
     def _client(self):

@@ -1,4 +1,4 @@
-// Covers: MEM-140
+// Covers: MEM-144
 // Requirement: when Spark (the LLM) is reachable it picks the landmark's emoji, but only a reply that is exactly
 // one emoji is trusted; anything else (no Spark, a failure, a slow reply, text, two emoji, empty, non-string)
 // falls back to the offline pick (keyword table, then BM25 corpus, then pushpin). Picking never rejects, and
@@ -29,9 +29,9 @@ const COOK = "\u{1F468}\u{200D}\u{1F373}";
 const CAFE_LANDMARK = { name: "Corner Cafe" };
 const OFFLINE = emojiFor(CAFE_LANDMARK);
 
-// Covers: MEM-140
+// Covers: MEM-144
 // Requirement: a single-emoji Spark reply wins; everything else falls back to emojiFor, never a rejection.
-describe("MEM-140 pickLandmarkEmoji", () => {
+describe("MEM-144 pickLandmarkEmoji", () => {
   test("one-emoji replies are used (FE0F and ZWJ sequences included)", async () => {
     for (const reply of [MUSEUM, "\u{1F3DB}", COOK]) {
       assert.equal(await pick(CAFE_LANDMARK, { spark: async () => reply }), reply, JSON.stringify(reply));
@@ -79,9 +79,9 @@ describe("MEM-140 pickLandmarkEmoji", () => {
   });
 });
 
-// Covers: MEM-140
+// Covers: MEM-144
 // Requirement: the browser Spark client posts the landmark to /landmark-emoji and returns the server's emoji or null.
-describe("MEM-140 sparkEmojiClient", () => {
+describe("MEM-144 sparkEmojiClient", () => {
   const client = (fetchFn) => fn("sparkEmojiClient")(fetchFn);
   const reply = (ok, body) => async () => ({ ok, status: ok ? 200 : 500, json: async () => body });
 

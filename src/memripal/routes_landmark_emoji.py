@@ -1,4 +1,4 @@
-"""POST /landmark-emoji (MEM-140): one Spark-picked emoji for a route landmark, or null."""
+"""POST /landmark-emoji (MEM-144): one Spark-picked emoji for a route landmark, or null."""
 
 import json
 import logging

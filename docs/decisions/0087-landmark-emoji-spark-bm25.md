@@ -1,4 +1,4 @@
-# 0087: Landmark station emoji: Spark first, then BM25 over an emoji corpus, then pushpin (MEM-140)
+# 0087: Landmark station emoji: Spark first, then BM25 over an emoji corpus, then pushpin (MEM-144)
 
 Status: Accepted
 Date: 2026-11-05

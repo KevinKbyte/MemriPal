@@ -1,5 +1,5 @@
 // @ts-check
-// Spark-picked landmark emoji (MEM-140): when the LLM is reachable it chooses the glyph, but only a reply that is
+// Spark-picked landmark emoji (MEM-144): when the LLM is reachable it chooses the glyph, but only a reply that is
 // exactly one emoji is trusted; anything else (no Spark, failure, slow reply, text) falls back to the offline
 // emojiFor (keyword table, BM25 corpus, pushpin). Never rejects.
 

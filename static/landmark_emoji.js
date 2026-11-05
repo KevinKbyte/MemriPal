@@ -75,7 +75,7 @@ function fromTags(tags) {
 const tagValues = (tags) => (tags && typeof tags === "object" && !Array.isArray(tags) ? Object.values(tags) : []);
 
 /**
- * Best-fit emoji for a landmark: the keyword table, then a BM25 corpus search (MEM-140), then EMOJI_DEFAULT.
+ * Best-fit emoji for a landmark: the keyword table, then a BM25 corpus search (MEM-144), then EMOJI_DEFAULT.
  * Never throws.
  * @param {{ name?: unknown, category?: unknown, tags?: unknown } | null | undefined} input
  * @returns {string}
