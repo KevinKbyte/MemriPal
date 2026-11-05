@@ -1,13 +1,14 @@
-# Covers: MEM-095
+# Covers: MEM-095, MEM-056
 # Requirement: Pal's first-run tour (MEM-095) opens a modal #tour on any app-shell load whose localStorage
 # has no "memripal.tour.done" (static/tour.js TOUR_KEY), and that modal intercepts every click, so
 # scripts/screenshot_ui.py keeps its existing shots working by seeding the key on every page it drives:
 # before a page's first navigation, add_init_script was called on that page (or on the browser context
 # that created it) with a script that writes the key to localStorage. It also delivers MEM-095's
-# "real-browser screenshot of step 1 and step 5": on one fresh page that is never seeded it navigates to
-# the app, shoots tour-step1.png before any #tour-next click, then clicks #tour-next exactly four times
-# and shoots tour-step5.png, with no navigation between the two shots. Driven with a fake playwright
-# module that tracks which page or context each call was made on; no browser is launched.
+# "real-browser screenshot of step 1 and step 5" plus MEM-056's step-3 shot ("My Royal Shopping List"):
+# on one fresh page that is never seeded it navigates to the app, shoots tour-step1.png before any
+# #tour-next click, clicks #tour-next exactly twice and shoots tour-step3.png, then clicks exactly twice
+# more and shoots tour-step5.png, each shot once, with no navigation between the shots. Driven with a
+# fake playwright module that tracks which page or context each call was made on; no browser is launched.
 import importlib.util
 import re
 import sys
@@ -18,7 +19,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = REPO_ROOT / "scripts" / "screenshot_ui.py"
 TOUR_JS = REPO_ROOT / "static" / "tour.js"
 URL = "http://127.0.0.1:8000/"
-TOUR_SHOTS = ("tour-step1.png", "tour-step5.png")
+TOUR_SHOTS = ("tour-step1.png", "tour-step3.png", "tour-step5.png")
 NAVIGATIONS = ("goto", "reload")
 CHILD_LOOKUPS = (
     "locator",
@@ -174,14 +175,14 @@ class TestTourShotsAndSeeding:
     def test_tour_key_is_the_literal_static_tour_js_exports(self):
         assert _tour_key() == "memripal.tour.done"
 
-    def test_run_writes_tour_step1_and_step5_once_each(self, monkeypatch, tmp_path):
+    def test_run_writes_tour_step1_step3_and_step5_once_each(self, monkeypatch, tmp_path):
         rec = _run_with_fake_browser(monkeypatch, tmp_path)
         shots = [s for s in (_shot_name(e) for e in rec.log) if s]
         for name in TOUR_SHOTS:
             assert shots.count(name) == 1, (name, shots)
             assert (tmp_path / name).is_file(), name
 
-    def test_both_tour_shots_come_from_one_unseeded_page_with_no_navigation_between(
+    def test_all_tour_shots_come_from_one_unseeded_page_with_no_navigation_between(
         self, monkeypatch, tmp_path
     ):
         key = _tour_key()
@@ -190,9 +191,10 @@ class TestTourShotsAndSeeding:
         assert rec.kind[page] == "page", "tour shots must be taken on a page"
         at = {_shot_name(e): i for i, e in enumerate(rec.log) if _shot_name(e) in TOUR_SHOTS}
         assert set(at) == set(TOUR_SHOTS), f"tour shots taken: {sorted(at)}"
-        s1, s5 = at["tour-step1.png"], at["tour-step5.png"]
+        s1, s3, s5 = at["tour-step1.png"], at["tour-step3.png"], at["tour-step5.png"]
+        assert rec.log[s3][1] == page, "tour-step3.png must be shot on the same page as tour-step1.png"
         assert rec.log[s5][1] == page, "tour-step5.png must be shot on the same page as tour-step1.png"
-        assert s1 < s5, "tour-step1.png must come before tour-step5.png"
+        assert s1 < s3 < s5, "tour shots must be taken in order step1, step3, step5"
         owners = _owners(rec, page)
         gotos = [i for i in range(s1) if rec.log[i][0] == "goto" and rec.log[i][1] == page]
         assert gotos, "the tour page never navigated to the app before tour-step1.png"
@@ -201,19 +203,24 @@ class TestTourShotsAndSeeding:
         navs = [
             rec.log[i][0] for i in range(s1 + 1, s5) if rec.log[i][1] == page and rec.log[i][0] in NAVIGATIONS
         ]
-        assert navs == [], f"navigation {navs} between the two tour shots"
+        assert navs == [], f"navigation {navs} between the tour shots"
 
-    def test_step1_precedes_any_next_click_and_step5_follows_exactly_four(self, monkeypatch, tmp_path):
+    def test_step1_precedes_any_next_click_then_two_clicks_to_step3_and_two_to_step5(
+        self, monkeypatch, tmp_path
+    ):
         rec = _run_with_fake_browser(monkeypatch, tmp_path)
         page = _tour_page(rec)
         at = {_shot_name(e): i for i, e in enumerate(rec.log) if _shot_name(e) in TOUR_SHOTS}
         assert set(at) == set(TOUR_SHOTS), f"tour shots taken: {sorted(at)}"
-        s1, s5 = at["tour-step1.png"], at["tour-step5.png"]
+        s1, s3, s5 = at["tour-step1.png"], at["tour-step3.png"], at["tour-step5.png"]
+        assert s1 < s3 < s5, "tour shots must be taken in order step1, step3, step5"
         last_nav = max(i for i in range(s1) if rec.log[i][1] == page and rec.log[i][0] in NAVIGATIONS)
         before = [i for i in range(last_nav, s1) if rec.log[i][1] == page and _is_tour_next_click(rec.log[i])]
         assert before == [], f"{len(before)} #tour-next click(s) before tour-step1.png"
-        between = [i for i in range(s1, s5) if rec.log[i][1] == page and _is_tour_next_click(rec.log[i])]
-        assert len(between) == 4, f"{len(between)} #tour-next clicks between the shots; step 5 needs 4"
+        to3 = [i for i in range(s1, s3) if rec.log[i][1] == page and _is_tour_next_click(rec.log[i])]
+        assert len(to3) == 2, f"{len(to3)} #tour-next clicks between step1 and step3 shots; step 3 needs 2"
+        to5 = [i for i in range(s3, s5) if rec.log[i][1] == page and _is_tour_next_click(rec.log[i])]
+        assert len(to5) == 2, f"{len(to5)} #tour-next clicks between step3 and step5 shots; step 5 needs 2"
 
     def test_every_other_page_is_seeded_with_the_tour_key_before_its_first_navigation(
         self, monkeypatch, tmp_path
