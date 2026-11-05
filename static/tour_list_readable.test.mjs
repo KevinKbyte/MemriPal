@@ -65,8 +65,8 @@ function paddingBlock(d) {
 // list rows at least 17px with roomy 1.5 line-height and padding, keyword captions and spot labels at least
 // 16px in the body (not mono) face, the card scrolls instead of overflowing, and ink/muted text keeps
 // WCAG AA (4.5:1) contrast on the row and card backgrounds in light and both dark contexts.
-// Covers: MEM-056
-describe("tour royal shopping list is readable at phone size (MEM-056)", () => {
+// Covers: MEM-140
+describe("tour royal shopping list is readable at phone size (MEM-140)", () => {
   test(".fig-row font-size >= 17px and the house-step row does not shrink it", () => {
     const base = fontSizePx(declsFor(".fig-row"));
     assert.ok(base !== undefined, ".fig-row declares no font-size");

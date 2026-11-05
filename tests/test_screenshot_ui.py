@@ -252,7 +252,7 @@ class TestRouteViewShot:
 # no navigation between that Open and the shot. DEMO_ROUTE_NAME is a module-level str equal to
 # static/demo_route.js DEMO_ROUTE.name (quoted there as a string literal). The existing initial,
 # load_demo and route_view shots are kept, as are MEM-095's tour-step1 and tour-step5 shots and
-# MEM-056's tour-step3 shot (tests/test_screenshot_ui_tour.py); no other shot is written.
+# MEM-140's tour-step3 shot (tests/test_screenshot_ui_tour.py); no other shot is written.
 # Driven with the fake playwright above.
 DEMO_ROUTE_JS = REPO_ROOT / "static" / "demo_route.js"
 DEMO_SHOTS = {"demo_route_light.png": "light", "demo_route_dark.png": "dark"}
@@ -309,7 +309,7 @@ class TestDemoRouteShots:
     def test_run_writes_light_and_dark_demo_route_shots_plus_the_existing_three(self, monkeypatch, tmp_path):
         _, log = _run_with_fake_browser(monkeypatch, tmp_path)
         shots = [s for s in (_shot_name(e) for e in log) if s]
-        # MEM-095 adds the tour step shots; MEM-056 adds tour-step3 (tests/test_screenshot_ui_tour.py).
+        # MEM-095 adds the tour step shots; MEM-140 adds tour-step3 (tests/test_screenshot_ui_tour.py).
         tour = ["tour-step1.png", "tour-step3.png", "tour-step5.png"]
         expected = sorted([*DEMO_SHOTS, *tour, "initial.png", "load_demo.png", "route_view.png"])
         assert sorted(shots) == expected

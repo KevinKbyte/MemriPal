@@ -1,10 +1,10 @@
-# Covers: MEM-095, MEM-056
+# Covers: MEM-095, MEM-140
 # Requirement: Pal's first-run tour (MEM-095) opens a modal #tour on any app-shell load whose localStorage
 # has no "memripal.tour.done" (static/tour.js TOUR_KEY), and that modal intercepts every click, so
 # scripts/screenshot_ui.py keeps its existing shots working by seeding the key on every page it drives:
 # before a page's first navigation, add_init_script was called on that page (or on the browser context
 # that created it) with a script that writes the key to localStorage. It also delivers MEM-095's
-# "real-browser screenshot of step 1 and step 5" plus MEM-056's step-3 shot ("My Royal Shopping List"):
+# "real-browser screenshot of step 1 and step 5" plus MEM-140's step-3 shot ("My Royal Shopping List"):
 # on one fresh page that is never seeded it navigates to the app, shoots tour-step1.png before any
 # #tour-next click, clicks #tour-next exactly twice and shoots tour-step3.png, then clicks exactly twice
 # more and shoots tour-step5.png, each shot once, with no navigation between the shots. Driven with a
