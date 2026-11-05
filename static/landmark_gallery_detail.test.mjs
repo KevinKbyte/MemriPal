@@ -1,5 +1,5 @@
-// Covers: MEM-136
-// Requirement: clicking a Landmarks-tab gallery tile opens a detail dialog (MEM-136, ADR 0079):
+// Covers: MEM-142
+// Requirement: clicking a Landmarks-tab gallery tile opens a detail dialog (MEM-142, ADR 0084):
 // openGalleryDetail(item, { doc, getPhotoUrl, onOpenRoute, factsFor, opener }) shows one modal
 // <dialog id="landmark-detail"> inside #tab-landmarks (showModal() when available, else open), reused on every
 // open; its heading is the landmark name; the photo shows only for a blob: or data:image src, else the emoji;
@@ -107,7 +107,7 @@ async function open(p, item, opts = {}) {
   return { handle, opened };
 }
 
-// Covers: MEM-136
+// Covers: MEM-142
 describe("openGalleryDetail: dialog shell, open and close", () => {
   test("opens one modal <dialog id=landmark-detail> inside #tab-landmarks via showModal()", async () => {
     const p = page();
@@ -191,7 +191,7 @@ describe("openGalleryDetail: dialog shell, open and close", () => {
   });
 });
 
-// Covers: MEM-136
+// Covers: MEM-142
 describe("openGalleryDetail: photo or emoji", () => {
   test("a blob: photo url renders an img with that src", async () => {
     const p = page();
@@ -239,7 +239,7 @@ describe("openGalleryDetail: photo or emoji", () => {
   });
 });
 
-// Covers: MEM-136
+// Covers: MEM-142
 describe("openGalleryDetail: routes line and Open route buttons", () => {
   test("a route landmark reads 'On routes: A, B' with one Open route button per route", async () => {
     const p = page();
@@ -283,7 +283,7 @@ describe("openGalleryDetail: routes line and Open route buttons", () => {
 const mapsLink = (p) => anchors(p).find((a) => String(attr(a, "href")).startsWith("https://www.google.com/maps/"));
 const query = (a) => new URL(String(attr(a, "href"))).searchParams;
 
-// Covers: MEM-136
+// Covers: MEM-142
 describe("openGalleryDetail: location", () => {
   test("a route landmark shows its address, 5 dp coords and an Open in Maps link", async () => {
     const p = page();
@@ -336,7 +336,7 @@ describe("openGalleryDetail: location", () => {
   });
 });
 
-// Covers: MEM-136
+// Covers: MEM-142
 describe("openGalleryDetail: profile and facts", () => {
   test("station.profile entries render as key/value text", async () => {
     const p = page();
@@ -379,7 +379,7 @@ describe("openGalleryDetail: profile and facts", () => {
   });
 });
 
-// Covers: MEM-136
+// Covers: MEM-142
 describe("openGalleryDetail: missing fields and untrusted text", () => {
   test("a landmark with no address, coords, profile or facts renders no row or label for them", async () => {
     const p = page();
@@ -429,7 +429,7 @@ const ROUTES = [
   ] },
 ];
 
-// Covers: MEM-136
+// Covers: MEM-142
 describe("mountLandmarkGallery: a tile click opens the detail dialog", () => {
   test("clicking a mounted tile opens #landmark-detail; Open route calls onOpenRoute; close refocuses tile", async () => {
     const p = fakePage(IDS, { hidden: ["landmarks-list"] });
