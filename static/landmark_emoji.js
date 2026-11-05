@@ -4,6 +4,8 @@
 // Source order is category, then OSM tag values, then the name; within one string the earliest whole-word match
 // wins (in a walking-direction name the landmark named first is the one you stand at), a tie the longest keyword.
 
+import { bestEmoji } from "./emoji_bm25.js";
+
 export const EMOJI_DEFAULT = "\u{1F4CD}";
 
 /** [emoji, keywords]. Multi-word keywords match as phrases. */
@@ -69,12 +71,19 @@ function fromTags(tags) {
   return entries.some(([key]) => key === "shop") ? SHOP : null;
 }
 
+/** @param {unknown} tags @returns {unknown[]} */
+const tagValues = (tags) => (tags && typeof tags === "object" && !Array.isArray(tags) ? Object.values(tags) : []);
+
 /**
- * Best-fit emoji for a landmark; EMOJI_DEFAULT when nothing matches. Never throws.
+ * Best-fit emoji for a landmark: the keyword table, then a BM25 corpus search (MEM-140), then EMOJI_DEFAULT.
+ * Never throws.
  * @param {{ name?: unknown, category?: unknown, tags?: unknown } | null | undefined} input
  * @returns {string}
  */
 export function emojiFor(input) {
   if (!input || typeof input !== "object") return EMOJI_DEFAULT;
-  return match(input.category) ?? fromTags(input.tags) ?? match(input.name) ?? EMOJI_DEFAULT;
+  const table = match(input.category) ?? fromTags(input.tags) ?? match(input.name);
+  if (table) return table;
+  const query = [input.name, input.category, ...tagValues(input.tags)].filter((s) => typeof s === "string").join(" ");
+  return bestEmoji(query) ?? EMOJI_DEFAULT;
 }

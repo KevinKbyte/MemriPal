@@ -56,7 +56,7 @@
           "lat": 42.36364,
           "lon": -71.08335
         },
-        "emoji": "📍",
+        "emoji": "🏋️",
         "address": "356 Third Street"
       },
       {
@@ -78,7 +78,7 @@
           "lat": 42.36254,
           "lon": -71.0856
         },
-        "emoji": "📍",
+        "emoji": "🌯",
         "address": "255 Main Street"
       },
       {
@@ -89,7 +89,7 @@
           "lat": 42.36242,
           "lon": -71.08572
         },
-        "emoji": "📍",
+        "emoji": "🎓",
         "address": "300 Main Street"
       }
     ]
@@ -140,7 +140,7 @@
           "lat": 42.36364,
           "lon": -71.08335
         },
-        "emoji": "📍",
+        "emoji": "🏋️",
         "address": "356 Third Street"
       },
       {
@@ -173,7 +173,7 @@
           "lat": 42.36271,
           "lon": -71.08784
         },
-        "emoji": "📍",
+        "emoji": "🦞",
         "address": "355 Main Street"
       },
       {
@@ -202,7 +202,7 @@
           "lat": 42.36035,
           "lon": -71.09189
         },
-        "emoji": "📍",
+        "emoji": "🎓",
         "address": "60 Vassar Street"
       },
       {
@@ -234,7 +234,7 @@
           "lat": 42.35972,
           "lon": -71.08895
         },
-        "emoji": "📍"
+        "emoji": "⛵"
       },
       {
         "id": "demo-route-landmarks-s5",
@@ -244,7 +244,7 @@
           "lat": 42.36023,
           "lon": -71.08945
         },
-        "emoji": "📍",
+        "emoji": "📡",
         "address": "21 Ames Street"
       },
       {
@@ -265,7 +265,7 @@
           "lat": 42.36102,
           "lon": -71.08774
         },
-        "emoji": "📍",
+        "emoji": "🎨",
         "address": "20 Ames Street"
       },
       {

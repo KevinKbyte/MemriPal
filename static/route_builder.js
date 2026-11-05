@@ -18,8 +18,9 @@ export function distanceLabel(m, fallback) {
 }
 
 /**
- * @typedef {{ name: string, lat: number, lng: number, address?: string | null }} Place
- * @typedef {{ name: string, lat: number, lng: number, address?: string | null, label?: string }} Cand
+ * @typedef {{ name: string, lat: number, lng: number, address?: string | null, category?: string, tags?: object }} Place
+ * @typedef {{ name: string, lat: number, lng: number, address?: string | null, label?: string, category?: string,
+ *   tags?: object }} Cand
  * @typedef {{ id: string, n: number, name: string, coords: { lat: number, lon: number },
  *   address?: string, emoji: string }} NewStation
  */
@@ -38,7 +39,7 @@ export function pickStations(from, to, cands, max = 8) {
   return [from, ...middle, to].map((p, i) => {
     const address = p.address || /** @type {Cand} */ (p).label;
     /** @type {NewStation} */
-    const st = { id: newId(), n: i + 1, name: p.name, coords: { lat: p.lat, lon: p.lng }, emoji: emojiFor({ name: p.name }) };
+    const st = { id: newId(), n: i + 1, name: p.name, coords: { lat: p.lat, lon: p.lng }, emoji: emojiFor({ name: p.name, category: p.category, tags: p.tags }) };
     if (address) st.address = address;
     return st;
   });

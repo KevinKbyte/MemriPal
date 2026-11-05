@@ -28,7 +28,7 @@ import { routePracticePoints } from "./route_map.js";
 import { createRouteView, routeRun } from "./route_view.js";
 
 // The model routes the live server gates on the passcode (MEM-034); /demo/* fixtures stay open.
-const PASSCODE_ROUTES = new Set(["/loci", "/split", "/associate", "/scenes", "/recall/audio", "/chat"]);
+const PASSCODE_ROUTES = new Set(["/loci", "/split", "/associate", "/scenes", "/recall/audio", "/chat", "/landmark-emoji"]);
 // Passcode-gated but not a model route (MEM-053): the passcode rides, the BYOK Meta key never does.
 const BASELINE_ROUTES = new Set(["/baseline"]);
 
@@ -268,7 +268,7 @@ export function wireApp(deps) {
   // MEM-132: the Pal chat's "route from X to Y" creates a route, then lists and opens it on the Routes tab.
   if (deps.routes && routeView) {
     const view = routeView;
-    setActor(createPageRouteActor({ routes: deps.routes, fetch: deps.fetch, onCreated: async (id) => {
+    setActor(createPageRouteActor({ routes: deps.routes, fetch: deps.fetch, sparkFetch: fetchFn, onCreated: async (id) => {
       await view.renderHome();
       await view.openRoute(id);
     } }));

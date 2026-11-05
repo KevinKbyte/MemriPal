@@ -46,7 +46,7 @@ export const EMOJI_CORPUS = Object.freeze([
   ["\u{1F37D}\u{FE0F}", "dining", "restaurant dinner food eatery"],
   ["\u{1F969}", "steak", "steakhouse bbq barbecue"],
   ["\u{1F357}", "chicken", "wings fried"],
-  ["\u{1F99E}", "lobster", "seafood oyster oysters"],
+  ["\u{1F99E}", "lobster", "seafood sea oyster oysters"],
   ["\u{1F34E}", "apple", "fruit produce orchard"],
   ["\u{1F33D}", "corn", "farm farmers farmstand"],
   ["\u{1F37A}", "beer", "brewery pub bar taproom"],
