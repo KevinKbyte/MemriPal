@@ -21,6 +21,8 @@ RETRY_AFTER_STATUSES = frozenset({429, 503})
 RETRY_AFTER_CAP_S = 60
 MAX_RESPONSE_BYTES = 32 * 1024 * 1024
 MAX_AUDIO_BYTES = 32 * 1024 * 1024
+# Meta ASR 400s longer keywords
+MAX_ASR_KEYWORD_CHARS = 30
 # Only connect-phase failures are safe to retry: after that the paid request may have landed.
 RETRYABLE_TRANSPORT = (httpx.ConnectError, httpx.ConnectTimeout)
 # CallResult.error values for transport timeouts (the "transport: <name>" form _send builds).
@@ -283,7 +285,7 @@ class MetaClient:
         _check_wav_format(wav_bytes)
         request: dict = {"mode": mode, "model": model, "audioEncoding": "WAV"}
         if keywords is not None:
-            request["keywords"] = keywords
+            request["keywords"] = [k for k in keywords if len(k) <= MAX_ASR_KEYWORD_CHARS]
         if language_bias is not None:
             request["languageBias"] = language_bias
         files = {
