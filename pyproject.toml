@@ -10,6 +10,7 @@ dependencies = [
     "uvicorn",
     "pillow==13.0.0",
     "httpx",
+    "google-cloud-firestore",
 ]
 
 [dependency-groups]

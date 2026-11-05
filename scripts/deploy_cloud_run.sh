@@ -32,8 +32,15 @@ HOSTS="${HOST}${EDGE_HOST:+,$EDGE_HOST}${EXTRA_HOSTS:+,$EXTRA_HOSTS}"
 # The empty "" after META_API_KEY= is removed by the shell; it keeps scripts/precommit_scan.py
 # from flagging the line as a key assignment.
 SECRETS="MEMRIPAL_ACCESS_KEY=memripal-access-key:latest,MEMRIPAL_RECORD_KEY=memripal-record-key:latest"
+SPEND=""
 if [ "$MODE" = meta ]; then
   SECRETS="$SECRETS,META_API_KEY=""meta-api-key:latest"
+  # The Meta spend counter lives in Firestore so a restart never resets it (ADR 0079); without
+  # datastore.user every charge fails closed. Idempotent, so re-runs are safe.
+  SPEND=";MEMRIPAL_META_SPEND_STORE=firestore"
+  gcloud projects add-iam-policy-binding "$PROJECT" \
+    --member="serviceAccount:${RUNTIME_SA}" \
+    --role=roles/datastore.user >/dev/null
 fi
 # Optional provider secrets are mapped only when they exist, so a missing one never fails the deploy.
 CHAT=""
@@ -85,7 +92,7 @@ gcloud run deploy "$SERVICE" \
   --concurrency=20 \
   --timeout=120 \
   --ingress="$INGRESS" \
-  --set-env-vars="^;^MEMRIPAL_MODE=${MODE};MEMRIPAL_CALL_BUDGET=300;MEMRIPAL_MAX_BODY_BYTES=21233664;MEMRIPAL_ALLOWED_HOSTS=${HOSTS}${HOPS}${CHAT}" \
+  --set-env-vars="^;^MEMRIPAL_MODE=${MODE};MEMRIPAL_CALL_BUDGET=300;MEMRIPAL_MAX_BODY_BYTES=21233664;MEMRIPAL_ALLOWED_HOSTS=${HOSTS}${HOPS}${CHAT}${SPEND}" \
   --set-secrets="$SECRETS"
 
 if [ -n "$EDGE_HOST" ]; then
