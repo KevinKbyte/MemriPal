@@ -1,12 +1,12 @@
-# 0080: Pull a street photo for a photo-less landmark, ranked client-side by a pure module
+# 0088: Pull a street photo for a photo-less landmark, ranked client-side by a pure module
 
 Status: Accepted
-Relates: MEM-137, MEM-136 (ADR 0079), MEM-053, ADR 0064 (street-photo backend), ADR 0012 (Mapillary terms).
+Relates: MEM-146, MEM-143 (ADR 0085), MEM-053, ADR 0064 (street-photo backend), ADR 0012 (Mapillary terms).
 Date: 2026-11-04
 
 ## Context
 
-Landmarks without a user photo show only an emoji in the gallery and the MEM-136 dialog. Kev wants to pull the
+Landmarks without a user photo show only an emoji in the gallery and the MEM-143 dialog. Kev wants to pull the
 best Mapillary picture instead of walking there, while user photos (the 6 demo-route landmarks in
 `fixtures/demo/loci/`) stay best and untouched. `/baseline` (MEM-053) already searches up to 20 Mapillary images
 within 30 m server-side, guards the token and CDN fetch, and returns one image with its CC BY-SA credit.
