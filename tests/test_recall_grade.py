@@ -1,4 +1,4 @@
-"""Contract (MEM-143, ADR 0083; RED, GREEN implements src/memripal/recall_grade.py):
+"""Contract (MEM-143, ADR 0084; RED, GREEN implements src/memripal/recall_grade.py):
 
 - `RecallGrader(providers=[...])`: each provider has `.name`, `.model`, `.client`; `client.chat_json(model=,
   prompt=, schema=, schema_name=, max_completion_tokens=) -> meta_client.CallResult` (body = OpenAI chat

@@ -1,4 +1,4 @@
-# 0083: Spark grades spoken recall; keyword match stays the floor and fallback (MEM-143)
+# 0084: Spark grades spoken recall; keyword match stays the floor and fallback (MEM-143)
 
 Status: Accepted
 Date: 2026-11-04
