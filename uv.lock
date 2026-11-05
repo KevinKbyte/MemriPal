@@ -522,7 +522,7 @@ wheels = [
 
 [[package]]
 name = "memripal"
-version = "0.20.93"
+version = "0.20.94"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },

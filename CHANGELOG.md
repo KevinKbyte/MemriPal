@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.94] - 2026-11-05
+
+### Added
+
+- Landmark station emoji auto-generate: Spark picks one best-fit emoji via `POST /landmark-emoji` (2.5s cap, single pictographic grapheme only); otherwise the keyword table, then an SQLite-FTS5-style BM25 search over a 100+ entry emoji corpus using the landmark name, POI category and tags, then the pushpin; offline uses BM25 only (MEM-144, ADR 0087).
+
 ## [0.20.93] - 2026-11-05
 
 ### Added
