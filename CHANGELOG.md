@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.74] - 2026-11-04
+
+### Added
+
+- Pal chat can create a route from a plain request: the plan runs client-side and opens the new route, validated end to end by the e2e chat_route step (MEM-132).
+- Load demo seeds curated routes reused from e2e runs plus a default Six principles of engaging speaking route, six stations Relevance to Payoff (MEM-133).
+
 ## [0.20.73] - 2026-11-04
 
 ### Added
