@@ -228,3 +228,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
   `planRoute`; demo routes generated offline (over LLM tool-calling or a button).
 - [0080](0080-emoji-tags-replace-sense-taps.md) Emoji tags replace sense taps, auto-filled by keyword match over the
   Muse profile; `taps` kept (over a live Spark call or fixed taps).
+- [0081](0081-central-meta-spend-counter-firestore.md) The meta-mode Meta spend counter is one Firestore doc updated
+  by a check-and-increment transaction; any store failure or a missing (unseeded) doc refuses Meta (over Memorystore
+  Redis, a GCS generation-precondition object, or the `/tmp` file).

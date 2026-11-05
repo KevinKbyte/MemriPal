@@ -266,3 +266,48 @@ def test_deploy_script_never_touches_secret_values():
     text = _read(DEPLOY_SCRIPT)
     for needle in ("versions access", "dpapi", "ConvertTo-SecureString"):
         assert needle.lower() not in text.lower(), f"deploy script contains {needle!r}"
+
+
+def _meta_blocks(text: str) -> list[str]:
+    """Bodies of `if [ "$MODE" = meta ]; then ... fi` blocks (logical lines joined)."""
+    joined = "\n".join(_logical_lines(text))
+    return re.findall(r'if \[ "\$MODE" = "?meta"? \]; then\n(.*?)\nfi\b', joined, re.DOTALL)
+
+
+# Covers: MEM-136
+# Requirement: in meta mode the deploy puts the Meta spend counter in Firestore, so a Cloud Run restart
+# never resets it: MEMRIPAL_META_SPEND_STORE=firestore reaches --set-env-vars only in meta mode.
+def test_deploy_script_meta_mode_sets_firestore_spend_store():
+    text = _read(DEPLOY_SCRIPT)
+    blocks = _meta_blocks(text)
+    hits = [b for b in blocks if "MEMRIPAL_META_SPEND_STORE=firestore" in b]
+    assert hits, "no meta-mode block sets MEMRIPAL_META_SPEND_STORE=firestore"
+    var = re.search(r"\b([A-Z_]+)=[\"']?[^\"'\n]*MEMRIPAL_META_SPEND_STORE=firestore", hits[0])
+    assert var, f"MEMRIPAL_META_SPEND_STORE=firestore is not assigned to a variable: {hits[0]!r}"
+    env_arg = re.search(r"--set-env-vars=(\"[^\"]*\"|\S+)", _deploy_script())
+    assert env_arg, "deploy has no --set-env-vars"
+    assert re.search(rf"\$\{{?{var.group(1)}\b", env_arg.group(1)), (
+        f"--set-env-vars does not include ${var.group(1)}"
+    )
+
+
+# Covers: MEM-136
+# Requirement: in meta mode the runtime service account gets roles/datastore.user on the project
+# (gcloud projects add-iam-policy-binding), or every Firestore spend charge fails closed.
+def test_deploy_script_meta_mode_grants_runtime_account_datastore_user():
+    grants = [
+        b
+        for b in _meta_blocks(_read(DEPLOY_SCRIPT))
+        if "gcloud projects add-iam-policy-binding" in b and "roles/datastore.user" in b
+    ]
+    assert grants, "no meta-mode gcloud projects add-iam-policy-binding with roles/datastore.user"
+    assert re.search(r"--member=[\"']?serviceAccount:\$\{?RUNTIME_SA\b", grants[0]), (
+        "datastore.user is not granted to the runtime service account"
+    )
+
+
+# Covers: MEM-136
+# Requirement: the GCP deploy runbook tells the operator to seed the Firestore spend counter with
+# scripts/seed_meta_spend.py (an unseeded counter refuses every Meta call).
+def test_deploy_runbook_mentions_seed_script():
+    assert "scripts/seed_meta_spend.py" in _read(REPO / "docs" / "runbooks" / "deploy-gcp.md")

@@ -532,3 +532,37 @@ generated connections omit it. ASCII only.
 - Accept: generating connections for a station with legacy `taps.turn` succeeds and stores no `turn`.
 
 Tests: static/landmark_facts_legacy_turn.test.mjs
+
+## MEM-136 Central Meta spend counter (Firestore)
+
+Amends MEM-094 (its "survives a server restart" NFR: `/tmp` on Cloud Run, ADR 0069, did not) and ADR 0069.
+Decided-by: ADR-0081
+Root problem: the spend estimate lived in `spent.json` on the instance's in-memory `/tmp`, so a restart or new
+instance reset it to 0 and the cap could be crossed again, billing past the $150 Meta credit. Kev, 2026-11-04: "can
+the recording of how many credits are used (145$) be in a central database in gcp like redis, so that if the instance
+goes down we dont have it reset the limit and then have it go over budget" / "and if it cannot reach the database
+it'll count as it reaching the limit".
+Actors: the server's Meta call sites (via `MetaSpendGuard`); Firestore; Kev (seed, deploy); BYOK users (MEM-122).
+NFR: concurrent instances can never jointly exceed the cap; building the guard never touches the network; fail closed;
+cap unchanged (`MEMRIPAL_META_SPEND_CAP_USD`, default 135).
+1. Store: `MetaSpendGuard` takes a pluggable store. `FileSpendStore` = the unchanged `spent.json`;
+   `FirestoreSpendStore` = one doc, field `spent_usd`.
+2. Selection: `MEMRIPAL_META_SPEND_STORE=file|firestore`, default `file`; any other value fails startup. Doc path
+   `MEMRIPAL_META_SPEND_FIRESTORE_DOC`, default `memripal/meta-spend`; `GOOGLE_CLOUD_PROJECT` optional.
+3. Lazy client: constructing the guard or the Firestore store makes no network call.
+4. Charge: one Firestore transaction reads `spent_usd`, checks `spent + cost <= cap`, and writes, atomically;
+   contention retries optimistically. A charge past the cap raises `MetaSpendCapReached`.
+5. Fail closed: any store error, a 5 s timeout, an auth failure, a missing doc or invalid data raises
+   `MetaSpendCapReached`; nothing is sent. Chat then uses the Baseten/Fireworks backup; other calls degrade per
+   MEM-121, unchanged.
+6. Seed: a missing doc is refused, never read as 0. `scripts/seed_meta_spend.py --usd N [--doc PATH] [--project P]`
+   sets `spent_usd = max(existing, N)`: never lowers it, and refuses to overwrite invalid data.
+7. BYOK per-key guards and dev/fixture mode stay on `FileSpendStore` (BYOK spends the user's own key, not our credit).
+8. Deploy: `scripts/deploy_cloud_run.sh` with `MODE=meta` sets `MEMRIPAL_META_SPEND_STORE=firestore` and grants the
+   runtime service account `roles/datastore.user` (project level, idempotent); fixture mode sets neither.
+- Accept: a store with spend near the cap refuses the charge that would cross it; two racing charges never jointly
+  exceed it; an unreachable, timed-out, unauthorized, missing or invalid store refuses with nothing sent; the seed
+  script never lowers the value; an unknown `MEMRIPAL_META_SPEND_STORE` fails startup; the meta deploy sets the env
+  var and the grant.
+
+Tests: tests/test_meta_spend_store.py, tests/test_deploy_artifacts.py

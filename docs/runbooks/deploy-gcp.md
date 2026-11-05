@@ -5,7 +5,7 @@ Plan refs: `docs/plans/2026-10-26-memripal.md` D1, D11, S7. Run from the repo ro
 
 Judged deploy (ADR [0056](../decisions/0056-judges-only-access-gate-alb-cloud-armor.md), MEM-103..105): live mode,
 judges sign in once with a shared access key (cookie), traffic enters only through a global HTTPS load balancer with
-Cloud Armor. Order: 1, 2, 3, 4 (`MODE=meta`), 5 (edge, then redeploy with `EDGE_HOST`), 6 (verify), 7 (key to
+Cloud Armor. Order: 1, 2, 2a, 3, 4 (`MODE=meta`), 5 (edge, then redeploy with `EDGE_HOST`), 6 (verify), 7 (key to
 judges). Steps 8-9 are rotation and the kill switch. PowerShell form of an env-prefixed command (`MODE=meta sh ...`):
 `$env:MODE='meta'; sh scripts/deploy_cloud_run.sh`, then `Remove-Item Env:MODE`.
 
@@ -50,11 +50,41 @@ account.
 
 A budget alerts; it does not stop spend. Spend caps are D1: fixture default, passcode, `--max-instances=1`.
 SUPERSEDED for the judged deploy (ADR 0056): it runs live and the access key replaces the passcode. The in-process
-call budget resets on every restart and the persistent cap (MEM-094) has not landed, so also:
+call budget resets on every restart; the Meta spend cap (MEM-094, default $135) survives restarts only through the
+Firestore counter (MEM-136, step 2a). Also:
 
-- Meta spend alert: in the Meta developer console, set a spend alert (and a hard cap if one is offered) on the
-  account that owns `meta-api-key`. It is the only cap outside the process.
+- Meta spend alert: in the Meta developer console, set a spend alert on the account that owns `meta-api-key` (Meta's
+  limit only notifies; it does not stop calls).
 - Kill switch: step 9.
+
+## 2a. Meta spend counter (Firestore, once)
+
+A `MODE=meta` deploy keeps the spend estimate in Firestore doc `memripal/meta-spend` (ADR
+[0081](../decisions/0081-central-meta-spend-counter-firestore.md), MEM-136). Until the doc is seeded, and whenever
+Firestore is unreachable, every Meta call is refused (chat uses the backup provider, the rest serves saved results).
+
+1. Enable the API: `gcloud services enable firestore.googleapis.com`
+2. Create the default Native-mode database in the Cloud Run region (regional `us-central1`, same as `REGION`; the
+   `nam5` multi-region also works but adds nothing here). The location is permanent:
+
+```bash
+gcloud firestore databases create --location=us-central1
+```
+
+3. Seed with the current Meta spend from the Meta dashboard, using Kev's own ADC (the script sets
+   `spent_usd = max(existing, N)`, never lowers it; `--doc`, `--project` optional):
+
+```bash
+gcloud auth application-default login
+```
+
+```bash
+python scripts/seed_meta_spend.py --usd <current spend>
+```
+
+4. Deploy (step 4): the script sets `MEMRIPAL_META_SPEND_STORE=firestore` and grants the runtime service account
+   `roles/datastore.user`.
+5. Verify: console > Firestore > Data shows `memripal/meta-spend` with `spent_usd`; after a live call it has grown.
 
 ## 3. Secrets
 
@@ -248,7 +278,7 @@ returns 401 `passcode_required`.
 
 Put `https://<host>/` and the access key (step 3.1) in the submission's Project Description text (the form has no
 private notes field). Never in the README, the video, or a commit. Anyone who can read the Project Description can get
-in, so the cost cap is the Meta console spend limit plus `MEMRIPAL_CALL_BUDGET` (300 live calls, whole-service with
+in, so the cost cap is the Firestore Meta spend cap (step 2a) plus `MEMRIPAL_CALL_BUDGET` (300 live calls, whole-service with
 `--max-instances=1`); rotate the key after judging (section 8).
 
 ## 8. Rotation

@@ -45,3 +45,5 @@ run broken; (C) works but keeps the location implicit; (D) masks the misconfigur
   instance restarts.
 - The deploy runs one instance (MEM-034, `--max-instances=1`), so the cap holds per instance lifetime; acceptable
   for the hackathon judge deploy. A durable store is out of scope.
+- Amended by [0081](0081-central-meta-spend-counter-firestore.md): the meta-mode deploy keeps the Meta spend counter in
+  Firestore; this `/tmp` dir still holds the file store (dev, fixture, BYOK).
