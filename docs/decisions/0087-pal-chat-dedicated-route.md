@@ -1,4 +1,4 @@
-# 0086: Pal chat gets a dedicated POST /chat route (MEM-139)
+# 0087: Pal chat gets a dedicated POST /chat route (MEM-142)
 
 Status: Accepted
 Date: 2026-11-04
@@ -25,7 +25,7 @@ Date: 2026-11-04
 
 ## Decision
 
-Option (A), per MEM-139: POST /chat `{message, history}` -> `{text}`; 400 on invalid input; upstream failure -> 502
+Option (A), per MEM-142: POST /chat `{message, history}` -> `{text}`; 400 on invalid input; upstream failure -> 502
 `{"error":"chat_unavailable"}` with no provider detail; fixture mode returns a canned reply with no network call.
 Frontend `static/pal_reply.js` `createPalReply(fetchFn)` posts /chat; selfMount passes it as `reply`.
 

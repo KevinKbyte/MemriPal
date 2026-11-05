@@ -1,4 +1,4 @@
-"""POST /chat router: the Pal bubble's live chat reply (MEM-139, ADR 0086)."""
+"""POST /chat router: the Pal bubble's live chat reply (MEM-142, ADR 0087)."""
 
 import logging
 from collections.abc import Callable

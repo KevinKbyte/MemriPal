@@ -1,5 +1,5 @@
 // @ts-check
-// The Pal chat's live reply (MEM-139): POST /chat with the message and prior turns, resolve the text.
+// The Pal chat's live reply (MEM-142): POST /chat with the message and prior turns, resolve the text.
 
 /**
  * @param {(url: string, init: RequestInit) => Promise<any>} fetchFn

@@ -240,6 +240,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0083](0083-landmarks-photo-gallery.md) Landmarks tab: photo-tile gallery beside the hidden `ol#landmarks-list`,
   native datalist + chips route typeahead (union), `list_filter.js` reuse, wiring in `mountLandmarkGallery` (over
   replacing the list, a custom listbox, a local filter, or wiring in `flow.js`).
-- [0086](0086-pal-chat-dedicated-route.md) Pal chat replies via a dedicated POST /chat route (server-side
+- [0087](0087-pal-chat-dedicated-route.md) Pal chat replies via a dedicated POST /chat route (server-side
   Pal system prompt, `MEMRIPAL_CHAT_PROVIDER` + BYOK, passcode gate, 502 `chat_unavailable`) (over piggybacking the
   recall grading route or calling the provider from the browser).

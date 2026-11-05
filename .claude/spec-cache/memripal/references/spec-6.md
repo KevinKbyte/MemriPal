@@ -630,22 +630,3 @@ Tests: tests/test_recall_grade.py, tests/test_recall_grade_byok.py, tests/test_r
   `.grade-downgrade` notice ("Spark is unavailable ... keyword match") with a link to the existing BYOK key prompt.
 - BYOK reuses the MEM-122 visitor Meta key (tab memory only, `X-Memripal-Meta-Key`, never logged): when present the
   grader tries that session's client first, then the configured providers.
-## MEM-139 Pal chat gets a live model reply
-
-ADR [0086](../../../../docs/decisions/0086-pal-chat-dedicated-route.md).
-Decided-by: ADR-0086
-Root problem: `static/pal_bubble.js` selfMount passed only `act`, no `reply`, and no chat route existed, so Pal chat
-never produced a model reply.
-Actors: the user; `app.py` POST /chat, `create_app(pal_chat=...)`; `static/pal_reply.js` `createPalReply`;
-`static/pal_bubble.js` selfMount.
-NFR: provider key stays server-side; upstream failure never leaks a provider body; fixture mode makes no network
-call; ASCII only.
-- POST /chat body `{message, history}`: `message` 1..4000 chars, non-blank; `history` <= 40 items of
-  `{role: user|assistant, content}`. Response `{text}`; any invalid body -> 400.
-- Gates: same passcode and BYOK handling as /split.
-- Server-side Pal system prompt; provider via `MEMRIPAL_CHAT_PROVIDER` or the visitor's BYOK key.
-- Fixture mode returns a canned non-empty reply with no network call.
-- `create_app(pal_chat=callable)` injects the chat function (tests).
-- Upstream failure -> 502 `{"error":"chat_unavailable"}`, no provider detail.
-- Frontend: `createPalReply(fetchFn)` posts /chat and throws on non-2xx or blank `text`; selfMount passes `reply`.
-- Accept: a Pal chat message gets a non-empty model reply; an upstream failure surfaces as an error, not a blank.

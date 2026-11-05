@@ -410,7 +410,7 @@ async function selfMount() {
 }
 
 /**
- * The bubble's stored turns as POST /chat history (MEM-139): {role, content}, user/assistant only, minus
+ * The bubble's stored turns as POST /chat history (MEM-142): {role, content}, user/assistant only, minus
  * the just-sent message (the server appends it), capped to the route's last 40.
  * @param {{role: string, text: string}[]} history
  */

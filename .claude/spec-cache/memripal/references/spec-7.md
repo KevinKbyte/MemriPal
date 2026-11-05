@@ -42,3 +42,25 @@ never parsed as HTML; ASCII only; 0 live calls in fixture mode.
 - Accept: a `/loci` reply with >= 3 loci yields 3 slots; duplicate labels and bad boxes are dropped; a live 5xx,
   timeout or bad JSON falls back to cached then sample; the bundled fixture yields 3 slots; a hostile label renders
   as text; tap-place and drag-snap each place a part.
+
+## MEM-142 Pal chat gets a live model reply
+
+ADR [0087](../../../../docs/decisions/0087-pal-chat-dedicated-route.md).
+Decided-by: ADR-0087
+Root problem: `static/pal_bubble.js` selfMount passed only `act`, no `reply`, and no chat route existed, so Pal chat
+never produced a model reply.
+Actors: the user; `app.py` POST /chat, `create_app(pal_chat=...)`; `static/pal_reply.js` `createPalReply`;
+`static/pal_bubble.js` selfMount.
+NFR: provider key stays server-side; upstream failure never leaks a provider body; fixture mode makes no network
+call; ASCII only.
+- POST /chat body `{message, history}`: `message` 1..4000 chars, non-blank; `history` <= 40 items of
+  `{role: user|assistant, content}`. Response `{text}`; any invalid body -> 400.
+- Gates: same passcode and BYOK handling as /split.
+- Server-side Pal system prompt; provider via `MEMRIPAL_CHAT_PROVIDER` or the visitor's BYOK key.
+- Fixture mode returns a canned non-empty reply with no network call.
+- `create_app(pal_chat=callable)` injects the chat function (tests).
+- Upstream failure -> 502 `{"error":"chat_unavailable"}`, no provider detail.
+- Frontend: `createPalReply(fetchFn)` posts /chat and throws on non-2xx or blank `text`; selfMount passes `reply`.
+- Accept: a Pal chat message gets a non-empty model reply; an upstream failure surfaces as an error, not a blank.
+
+Tests: tests/test_pal_chat_route.py, static/pal_reply.test.mjs, static/byok.test.mjs

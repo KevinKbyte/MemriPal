@@ -1,4 +1,4 @@
-"""Pal's live chat reply (MEM-139): one OpenAI-compatible chat completion over the bubble's history.
+"""Pal's live chat reply (MEM-142): one OpenAI-compatible chat completion over the bubble's history.
 
 Logs carry provider name, latency and exception class only, never a message, provider body or key (MEM-106).
 """

@@ -493,7 +493,7 @@ def create_app(
 
     # Before the /static mount; shares this app's passcode guard, like /loci (MEM-083).
     app.include_router(make_station_router(backend, _passcode_error))
-    app.include_router(make_pal_chat_router(_model_route, backend, pal_chat))  # Passcode + BYOK, like /split (MEM-139).
+    app.include_router(make_pal_chat_router(_model_route, backend, pal_chat))  # Passcode + BYOK, like /split (MEM-142).
     # Same passcode guard; the live Mapillary lookups share the deploy call budget and route concurrency cap.
     budget = call_budget if live else None
     app.include_router(

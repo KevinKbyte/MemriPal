@@ -3,14 +3,14 @@
 // X-Memripal-Spend-Cap; the page names the cap in a dismissible top toast.
 // Bring your own key (MEM-122): only when that toast says "capped", it offers a key field. The
 // key lives in this module's memory only (no web storage, IndexedDB or cookie), rides only in X-Memripal-Meta-Key
-// on the 5 model routes, and is dropped on reload, on pagehide (bfcache), on "Forget key", at its limit and when
+// on the 6 model routes, and is dropped on reload, on pagehide (bfcache), on "Forget key", at its limit and when
 // Meta refuses it.
 
 export const SPEND_CAP_HEADER = "X-Memripal-Spend-Cap";
 export const KEY_HEADER = "X-Memripal-Meta-Key";
 export const OUTCOME_HEADER = "X-Memripal-Byok";
 // Same set as flow.js PASSCODE_ROUTES: the model routes, and nothing else ever sees the key.
-export const KEY_ROUTES = new Set(["/loci", "/split", "/associate", "/scenes", "/recall/audio"]);
+export const KEY_ROUTES = new Set(["/loci", "/split", "/associate", "/scenes", "/recall/audio", "/chat"]);
 const MAX_KEY_CHARS = 512;
 
 const CAP = "Free demo credit is used up (Meta spend cap reached)";
