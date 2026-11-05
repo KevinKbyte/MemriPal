@@ -1,4 +1,4 @@
-"""Contract (MEM-136, ADR 0080; RED, GREEN implements src/memripal/recall_grade.py):
+"""Contract (MEM-143, ADR 0083; RED, GREEN implements src/memripal/recall_grade.py):
 
 - `RecallGrader(providers=[...])`: each provider has `.name`, `.model`, `.client`; `client.chat_json(model=,
   prompt=, schema=, schema_name=, max_completion_tokens=) -> meta_client.CallResult` (body = OpenAI chat
@@ -75,7 +75,7 @@ def _grader(*providers):
     return RecallGrader(providers=list(providers))
 
 
-# Covers: MEM-136
+# Covers: MEM-143
 class TestRecallGraderHappyPath:
     # Requirement: Muse Spark grades a spoken recall per expected label, so a paraphrase can count.
     def test_valid_reply_returns_provider_latency_and_items(self):
@@ -129,7 +129,7 @@ class TestRecallGraderHappyPath:
         assert second.client.calls == []
 
 
-# Covers: MEM-136
+# Covers: MEM-143
 class TestRecallGraderFailuresReturnNone:
     # Requirement: any grader failure yields None so the keyword match stays the whole score.
     @pytest.mark.parametrize(
@@ -183,7 +183,7 @@ class TestRecallGraderFailuresReturnNone:
             assert SENTINEL not in record.getMessage() + repr(record.args)
 
 
-# Covers: MEM-136
+# Covers: MEM-143
 class TestRecallGraderByok:
     # Requirement: a visitor's own Meta key grades first, so Spark still works when shared providers are out.
     def test_byok_client_is_tried_first_with_spark_model(self):

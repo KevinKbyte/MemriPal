@@ -288,7 +288,7 @@ def create_app(
         if text is None:
             return _error(502, "upstream")
         reply = {"text": text[:MAX_TRANSCRIPT_CHARS]}
-        if grade:  # MEM-136: only a visitor's own-key session grades on Meta, never the server key.
+        if grade:  # MEM-143: only a visitor's own-key session grades on Meta, never the server key.
             byok_client = asr if model is not backend else None
             reply |= await run_in_threadpool(grade_reply, recall_grader, reply["text"], keywords, byok_client)
         return JSONResponse(reply)

@@ -650,10 +650,11 @@ only `blob:`/`data:image` photo srcs.
 
 Tests: static/landmark_gallery_detail.test.mjs, static/landmark_gallery_tile_button.test.mjs (regression lock: tile is a native button; click opens #landmark-detail, never a file input)
 ## MEM-136 Muse Spark grades spoken recall; keyword match stays the floor and fallback
+## MEM-143 Muse Spark grades spoken recall; keyword match stays the floor and fallback
 
-ADR [0080](../../../../docs/decisions/0080-spark-recall-grading-keyword-fallback.md). Extends MEM-031 / ADR 0008, 0026
+ADR [0083](../../../../docs/decisions/0083-spark-recall-grading-keyword-fallback.md). Extends MEM-031 / ADR 0008, 0026
 (deterministic keyword matcher); the matcher is unchanged and remains the whole fallback.
-Decided-by: ADR-0080
+Decided-by: ADR-0083
 Root problem: a paraphrased recall ("the bang-bang sky lights" for "fireworks") scores a miss under exact keyword match.
 Actors: `src/memripal/recall_grade.py::RecallGrader`, `grader_from_env`; `app.py` POST /recall/audio;
 `static/mic_wav.js`, `static/recall_match.js`, `static/recall_live.js`, `static/flow.js`.

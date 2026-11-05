@@ -1,4 +1,4 @@
-# 0080: Spark grades spoken recall; keyword match stays the floor and fallback (MEM-136)
+# 0083: Spark grades spoken recall; keyword match stays the floor and fallback (MEM-143)
 
 Status: Accepted
 Date: 2026-11-04
@@ -27,7 +27,7 @@ Date: 2026-11-04
 
 ## Decision
 
-Option (C), per MEM-136.
+Option (C), per MEM-143.
 
 - Grader: strict json_schema `recall_grade` output; expected labels fixed server-side from the request keywords;
   transcript quoted as data in the prompt; `max_completion_tokens` 256 plus ADR 0077 headroom.

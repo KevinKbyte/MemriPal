@@ -1,4 +1,4 @@
-"""Contract (MEM-136 BYOK leg; RED): a /recall/audio request carrying the visitor's own Meta key
+"""Contract (MEM-143 BYOK leg; RED): a /recall/audio request carrying the visitor's own Meta key
 (X-Memripal-Meta-Key, MEM-122) and "grade": true calls `recall_grader.grade(text, keywords,
 byok_client=<that request's ByokSession.asr_client>)`; without the key, byok_client is None.
 """
@@ -42,7 +42,7 @@ def _recall(client, headers=None):
     return client.post("/recall/audio", json=body, headers=headers or {})
 
 
-# Covers: MEM-136
+# Covers: MEM-143
 class TestRecallGradeByok:
     # Requirement: a visitor who brought their own Meta key gets Spark grading on that key first.
     def test_visitor_key_passes_its_session_client(self, tmp_path):

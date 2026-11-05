@@ -1,4 +1,4 @@
-"""Muse Spark grades a spoken recall per expected label (MEM-136, ADR 0080).
+"""Muse Spark grades a spoken recall per expected label (MEM-143, ADR 0083).
 
 The keyword matcher stays the floor. Any failure is None, so the caller keeps the transcript and keyword
 score. Logs carry provider name, latency and exception class only, never a provider body or key (MEM-106).

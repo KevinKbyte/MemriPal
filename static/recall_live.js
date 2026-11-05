@@ -9,7 +9,7 @@ export const LIVE_SLICE_MS = 5000;
 /** @typedef {import("./mic_wav.js").Grade} Grade */
 
 /**
- * Keyword hits for this reply's text plus every Spark "correct" index (MEM-136); partial/miss never count.
+ * Keyword hits for this reply's text plus every Spark "correct" index (MEM-143); partial/miss never count.
  * @param {{ append: (text: string) => number[], gradeGot?: (i: number) => boolean }} matcher
  * @param {{ text: string, grade?: Grade }} reply
  * @returns {number[]} newly got indices, ascending and unique
@@ -49,7 +49,7 @@ export function renderLiveBoard(points, doc, { label, inOrder }) {
   return {
     el,
     /**
-     * Which grader lit paraphrased points (MEM-136); textContent only, the provider is server-supplied.
+     * Which grader lit paraphrased points (MEM-143); textContent only, the provider is server-supplied.
      * @param {{ provider: string, latency_ms: number }} grade
      */
     tag(grade) {

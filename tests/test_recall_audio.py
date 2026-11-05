@@ -496,7 +496,7 @@ def _graded_body(**extra) -> dict:
     return {**_body(_wav()), **extra}
 
 
-# Covers: MEM-136
+# Covers: MEM-143
 class TestRelaySparkGrade:
     # Requirement: Spark grading is opt-in per request (body field "grade": true); when on, the grade rides
     # beside the transcript, and a grader failure says {"grade_error": "unavailable"} so the client can tell

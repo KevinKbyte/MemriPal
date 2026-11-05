@@ -1,5 +1,5 @@
 // @ts-check
-// The opt-in "Grade recall with Spark" setting (MEM-136): off by default, so a recall request carries no grade
+// The opt-in "Grade recall with Spark" setting (MEM-143): off by default, so a recall request carries no grade
 // field and no grading call is made. Storage may be disabled or throw; that reads as off.
 
 export const GRADE_SETTING_KEY = "memripal.gradeWithSpark";
