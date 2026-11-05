@@ -1,7 +1,7 @@
 """Screenshot the UI before/after "Load demo", plus an imported backup's route view (MEM-017, MEM-073)
 and the Kendall demo route on the real map at 375 px, light and dark (MEM-077), plus Pal's first-run
 tour at steps 1, 3 and 5 on a fresh unseeded page (tour-step1.png, tour-step5.png, MEM-095;
-tour-step3.png, "My Royal Shopping List", MEM-056). Every
+tour-step3.png, "My Royal Shopping List", MEM-140). Every
 other page seeds the tour-done key so the modal tour never blocks its clicks.
 
 Fails on page/console errors.
@@ -29,7 +29,7 @@ MAP_IDLE_TIMEOUT_MS = 30000
 # MEM-095: static/tour.js opens a modal tour while TOUR_KEY is unset; marking it done keeps clicks reachable.
 TOUR_SEED_JS = '(() => { try { localStorage.setItem("memripal.tour.done", "1"); } catch (e) {} })();'
 # Steps shot after step 1, each reached by TOUR_CLICKS_BETWEEN_SHOTS Next clicks from the previous shot:
-# step 3 is "My Royal Shopping List" (MEM-056), step 5 the tour's end (MEM-095).
+# step 3 is "My Royal Shopping List" (MEM-140), step 5 the tour's end (MEM-095).
 TOUR_SHOT_STEPS = (3, 5)
 TOUR_CLICKS_BETWEEN_SHOTS = 2
 
