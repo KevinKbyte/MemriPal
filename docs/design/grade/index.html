@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MEM-136 grade tag preview</title>
+<link rel="stylesheet" href="../../../static/style.css">
+</head>
+<body>
+<!-- MEM-136 visual check: the real renderLiveBoard with a Spark grade tag (top) and the keyword downgrade notice (bottom). -->
+<main style="padding:16px">
+  <section id="graded"></section>
+  <hr>
+  <section id="downgraded"></section>
+</main>
+<script type="module">
+import { renderLiveBoard } from "../../../static/recall_live.js";
+const points = [{ label: "Front door: lighthouse" }, { label: "Coat rack: violin" }, { label: "Kitchen: volcano" }];
+const a = renderLiveBoard(points, document, { label: "LIVE" });
+document.getElementById("graded").append(a.el);
+a.tag({ provider: "fireworks", latency_ms: 812 });
+const b = renderLiveBoard(points, document, { label: "LIVE" });
+document.getElementById("downgraded").append(b.el);
+b.downgrade(() => {});
+</script>
+</body>
+</html>
