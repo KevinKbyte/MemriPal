@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.76] - 2026-11-04
+
+### Changed
+
+- Map landmark emoji render larger (32px) so they read clearly in the demo video (R83).
+
 ## [0.20.74] - 2026-11-04
 
 ### Changed
