@@ -567,6 +567,7 @@ cap unchanged (`MEMRIPAL_META_SPEND_CAP_USD`, default 135).
 
 Tests: tests/test_meta_spend_store.py, tests/test_deploy_artifacts.py
 ## MEM-056 Readable royal shopping list
+## MEM-140 Readable royal shopping list
 
 Source: Kev, 2026-11-04, critique of Pal's tour step 3 list: "hard to read, very cluttered ... as well as small".
 A readability fix with no approach choice, so no ADR.
