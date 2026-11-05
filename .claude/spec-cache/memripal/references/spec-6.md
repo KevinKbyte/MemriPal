@@ -620,3 +620,32 @@ NFR: ASCII only; CSP unchanged; no new network calls beyond the one POI fetch; `
 
 Tests: static/landmark_gallery.test.mjs, static/index_markup_landmarks.test.mjs, static/index_ids_test.mjs,
 static/index_markup.test.mjs
+## MEM-143 Landmark gallery tile opens a detail dialog
+
+Source: Kev, 2026-11-04: "we should be able to click into the landmark for more details". Fills the MEM-127 G4
+`onOpen(item)` hook (a no-op in `mountLandmarkGallery`); delivers MEM-120 phase B "facts bullets in the landmark
+tab". Related but separate: the live-map hover/detail dialog (`landmark_detail.js`) on unmerged branch
+`mem-landmark-detail`, numbered MEM-112 there; this is the Landmarks-tab dialog.
+Decided-by: ADR-0085
+Root problem: a gallery tile shows only photo, name and routes; the user cannot see where a landmark is, its
+multisensory connections, or its facts without leaving the tab.
+Actors: the user; `static/landmark_gallery_detail.js` (new, pure); `static/landmark_gallery.js`
+(`mountLandmarkGallery` onOpen, `getPhotoUrl`); `static/landmark_facts.js` (`factsFor`); `routeView.openRoute`.
+NFR: ASCII only; CSP unchanged; no new network calls; all user text via `textContent`; only `http:`/`https:` hrefs;
+only `blob:`/`data:image` photo srcs.
+- D1 open/close: a tile click, or Enter/Space on it, opens a modal native `<dialog id="landmark-detail">` inside
+  `#tab-landmarks`; a Close button and Escape close it; focus returns to the opening tile.
+- D2 header: the photo (blob URL from the gallery's `getPhotoUrl`), else the emoji; the name is the dialog heading.
+- D3 routes line: "On routes: A, B" for a route landmark; "Candidate for: A" for a candidate.
+- D4 location: the street address when present; coordinates at 5 dp plus an "Open in Maps" link
+  `https://www.google.com/maps/search/?api=1&query=LAT,LON` (`target="_blank"`, `rel="noopener"`) when coords exist
+  (route landmark: `station.coords` {lat, lon}; candidate: `poi` {lat, lng}).
+- D5 profile: the station's multisensory `station.profile` key/value entries when present.
+- D6 facts: up to 3 fun facts from `factsFor(station.id)`, each with its citation link.
+- D7 a route landmark gets one "Open route" button per route; it closes the dialog and calls
+  `routeView.openRoute(routeId)`.
+- D8 a missing field renders nothing (no empty row or label).
+- Accept: clicking a tile opens the dialog with its name; Escape closes and refocuses the tile; a candidate shows
+  "Candidate for:" and no Open route button; a `javascript:` URL or non-image photo src is never rendered.
+
+Tests: static/landmark_gallery_detail.test.mjs

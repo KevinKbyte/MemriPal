@@ -243,3 +243,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0084](0084-pal-chat-dedicated-route.md) Pal chat replies via a dedicated POST /chat route (server-side
   Pal system prompt, `MEMRIPAL_CHAT_PROVIDER` + BYOK, passcode gate, 502 `chat_unavailable`) (over piggybacking the
   recall grading route or calling the provider from the browser).
+- [0085](0085-landmark-gallery-detail-dialog.md) Landmarks-tab tile opens a native `<dialog id="landmark-detail">`
+  built by pure `landmark_gallery_detail.js` (over jumping to the route's station card, or merging the map-hover
+  `landmark_detail.js` from unmerged `mem-landmark-detail`).
