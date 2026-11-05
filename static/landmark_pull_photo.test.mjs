@@ -12,8 +12,8 @@
 //     resolves a Response. The /baseline answer carries { candidates: [Candidate] }; an answer without a
 //     candidates array but with the legacy single-photo fields { image, author, image_url, licence } is one
 //     candidate. Candidate = { image, author, image_url, licence, lat, lon, compass_angle?, captured_at?,
-//     quality_score? } (Mapillary Graph API field names; captured_at in epoch ms; image an https: URL or a
-//     data:image/jpeg base64 URL). A candidate without a valid credit (street_photo.js creditBlock rules) or
+//     quality_score? } (Mapillary Graph API field names; captured_at in epoch ms; image a
+//     data:image/jpeg base64 URL only, ADR 0080). A candidate without a valid credit (street_photo.js creditBlock rules) or
 //     with any other image scheme is dropped.
 //   createPhotoStore({ storage } = {}) -> { get(key), set(key, choice), clear(key) }, get of an unknown key -> null
 import { describe, test } from "node:test";
@@ -42,7 +42,7 @@ const north = (m) => ({ lat: T.lat + m / 111_195, lon: T.lon });
 const east = (m) => ({ lat: T.lat, lon: T.lon + m / 82_170 });
 
 const cand = (id, pos, over = {}) => ({
-  image: `https://scontent.xx.fbcdn.net/m1/${id}.jpg`,
+  image: `data:image/jpeg;base64,/9j/${id}`,
   author: `user_${id}`,
   image_url: `${PAGE}${id}`,
   licence: LICENCE,
@@ -274,6 +274,8 @@ describe("pullPhotos", () => {
     ["blank author", { author: "  " }],
     ["javascript: image", { image: "javascript:alert(1)" }],
     ["http: image", { image: "http://scontent.xx.fbcdn.net/m1/x.jpg" }],
+    ["https: image (ADR 0080: data:image/jpeg only)", { image: "https://scontent.xx.fbcdn.net/m1/x.jpg" }],
+    ["png data image", { image: "data:image/png;base64,iVBORw0KGgo=" }],
     ["svg data image", { image: "data:image/svg+xml;base64,PHN2Zz4=" }],
   ];
   for (const [label, over] of BAD) {

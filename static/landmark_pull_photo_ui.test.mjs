@@ -28,7 +28,7 @@ const LICENCE_URL = "https://creativecommons.org/licenses/by-sa/4.0/";
 const T = { lat: 42.36, lon: -71.09 };
 const south = (m) => ({ lat: T.lat - m / 111_195, lon: T.lon });
 const cand = (id, pos, over = {}) => ({
-  image: `https://scontent.xx.fbcdn.net/m1/${id}.jpg`, author: `user_${id}`, image_url: `${PAGE}${id}`,
+  image: `data:image/jpeg;base64,/9j/${id}`, author: `user_${id}`, image_url: `${PAGE}${id}`,
   licence: LICENCE, ...pos, ...over,
 });
 // FACING ranks first: 30 m south facing north beats 10 m south facing south and 60 m south facing east.
@@ -76,7 +76,7 @@ async function mount({ it = item(), answer = { candidates: [AWAY, SIDE, FACING] 
     page, host, calls, store, photos,
     pullButton: () => find(host, (n) => n.tagName === "BUTTON" && norm(n.textContent) === PULL_TEXT, { visibleOnly: true }),
     undoButton: () => find(host, (n) => n.tagName === "BUTTON" && norm(n.textContent) === "Undo", { visibleOnly: true }),
-    mainPhoto: () => find(host, (n) => n.tagName === "IMG" && !inButton(n) && /^(https:|data:image\/jpeg)/.test(srcOf(n)), { visibleOnly: true }),
+    mainPhoto: () => find(host, (n) => n.tagName === "IMG" && !inButton(n) && /^(https?:|javascript:|data:image\/)/i.test(srcOf(n)), { visibleOnly: true }),
     pickerButtons: () => findAll(host, (n) => n.tagName === "BUTTON"
       && findAll(n, (c) => c.tagName === "IMG").some((img) => [FACING, AWAY, SIDE].some((c) => c.image === srcOf(img))), { visibleOnly: true }),
     pickerFor: (c) => find(host, (n) => n.tagName === "BUTTON"
@@ -352,6 +352,18 @@ describe("mountPullPhoto: safety", () => {
     await ui.pull();
     const writes = ui.page.srcWrites.map(String);
     assert.ok(!writes.some((s) => /^(javascript:|http:)/i.test(s)), `unsafe src written: ${writes.join(", ")}`);
+    assert.equal(srcOf(ui.mainPhoto()), FACING.image);
+  });
+
+  test("a non-data:image/jpeg candidate (https:, png) never renders as an img", async () => {
+    const https = cand("https1", south(5), { compass_angle: 0, image: "https://scontent.xx.fbcdn.net/m1/h.jpg" });
+    const png = cand("png1", south(6), { compass_angle: 0, image: "data:image/png;base64,iVBORw0KGgo=" });
+    const ui = await mount({ answer: { candidates: [https, png, FACING] } });
+    await ui.pull();
+    const imgs = findAll(ui.host, (n) => n.tagName === "IMG");
+    assert.ok(imgs.length >= 1, "the safe candidate renders");
+    for (const img of imgs) assert.match(srcOf(img), /^data:image\/jpeg;base64,/);
+    for (const s of ui.page.srcWrites.map(String)) assert.match(s, /^data:image\/jpeg;base64,/);
     assert.equal(srcOf(ui.mainPhoto()), FACING.image);
   });
 });
