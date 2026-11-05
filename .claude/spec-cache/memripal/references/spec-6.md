@@ -649,8 +649,7 @@ only `blob:`/`data:image` photo srcs.
   "Candidate for:" and no Open route button; a `javascript:` URL or non-image photo src is never rendered.
 
 Tests: static/landmark_gallery_detail.test.mjs, static/landmark_gallery_tile_button.test.mjs (regression lock: tile is a native button; click opens #landmark-detail, never a file input)
-## MEM-136 Muse Spark grades spoken recall; keyword match stays the floor and fallback
-## MEM-143 Muse Spark grades spoken recall; keyword match stays the floor and fallback
+
 ## MEM-145 Muse Spark grades spoken recall; keyword match stays the floor and fallback
 
 ADR [0086](../../../../docs/decisions/0086-spark-recall-grading-keyword-fallback.md). Extends MEM-031 / ADR 0008, 0026
