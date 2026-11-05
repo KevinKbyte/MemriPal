@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.77] - 2026-11-04
+
+### Changed
+
+- Pal chat history is a sidenav like Copilot/Claude: the panel header shows the chat title as plain text with a menu toggle and a new-chat icon; rename and delete are icons on the active chat row, delete confirms in place with an Undo toast; the sidenav is a drawer on phones and a column at 720px and up (MEM-115).
+
 ## [0.20.76] - 2026-11-04
 
 ### Changed
