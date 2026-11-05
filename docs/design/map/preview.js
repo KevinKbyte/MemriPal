@@ -19,30 +19,31 @@
     [-71.08277, 42.36509], [-71.08245, 42.36564], [-71.08237, 42.36573], [-71.08120, 42.36558],
     [-71.08090, 42.36554]
   ];
-  // Memory-palace stations: each title alone must tell a walker where they are and which way to go next.
+  // Memory-palace stations: each title names the place by landmark and street; the map draws the way, so no
+  // title gives a facing-dependent direction (MEM-137).
   var STATIONS = [
     { lngLat: [-71.08560, 42.36238], emoji: 0x1F687,
-      title: "Kendall/MIT station: exit onto Main St and walk east toward the One Broadway tower" },
+      title: "Kendall/MIT station: the Main St exit, a short walk from the One Broadway tower" },
     { lngLat: [-71.08441, 42.36265], emoji: 0x1F3E2,
-      title: "One Broadway tower (Brothers Marketplace at its base): bear left onto Third St" },
+      title: "One Broadway tower, Brothers Marketplace at its base, at Third St" },
     { lngLat: [-71.08347, 42.36385], emoji: 0x1F3D9,
-      title: "Watermark Kendall towers at Kendall St / Potter St: keep straight on Third St" },
+      title: "Watermark Kendall towers at Third St and Kendall St, Cafe Luna at the base" },
     { lngLat: [-71.08277, 42.36509], emoji: 0x1F3D8,
-      title: "Third Square Apartments at Munroe St / Linskey Way: keep straight on Third St" },
+      title: "Third Square Apartments, THIRD SQUARE letters on brown brick, on Third St" },
     { lngLat: [-71.08237, 42.36573], emoji: 0x1F9F1,
-      title: "Kendall Building (old brick boiler works) at Binney St: turn right onto Binney St" },
+      title: "Kendall Boiler and Tank building (old brick works) at Third St and Binney St" },
     { lngLat: [-71.08090, 42.36554], emoji: 0x1F4BC,
-      title: "Meta office, 100 Binney St: on your right, Toomey Park across the street" }
+      title: "Meta office, 100 Binney St: the end of the walk, One Medical at street level" }
   ];
   // Sample observed profile per station (visual, spatial, conceptual: one short line each, as the app's
   // station profile), shown in the station detail.
   var PROFILES = [
-    ["Red Line headhouse under a glass canopy", "Main St, west end of the walk", "Where the walk starts"],
+    ["Red Line headhouse under a glass canopy", "Main St, at the T exit", "Where the walk starts"],
     ["Tall glass tower, market at street level", "Main St at Third St", "Offices above, food below"],
-    ["Two matching glass towers", "Third St at Kendall St / Potter St", "A pair of homes towers"],
-    ["Brick and glass apartment block", "Third St at Munroe St / Linskey Way", "Homes on a quiet stretch"],
+    ["Two matching glass towers", "Third St at Kendall St", "A pair of homes towers"],
+    ["Brick and glass apartment block", "Third St, before Binney St", "Homes on a quiet stretch"],
     ["Old brick boiler works, tall arched windows", "Third St at Binney St", "Industrial past, offices now"],
-    ["Modern office front, park across the street", "100 Binney St, south side", "Where the walk ends"]
+    ["Modern office front, garden sculpture outside", "100 Binney St", "Where the walk ends"]
   ];
   var CHANNELS = ["kinesthetic", "auditory", "visual", "emotional", "conceptual", "olfactory", "gustatory",
     "spatial"];

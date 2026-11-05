@@ -29,7 +29,7 @@ window.mpDemoList = {
         conceptual: "The tower that looks like a power plant is the powerhouse of the cell.",
         olfactory: "Fresh coffee from the market at its base.",
         gustatory: "A sugary energy drink.",
-        spatial: "On your right as you bear left onto Third St."
+        spatial: "At the tower's foot, where Third St begins."
       }
     },
     3: {
@@ -55,7 +55,7 @@ window.mpDemoList = {
         conceptual: "A network of folded passages is the ER's folded membrane.",
         olfactory: "Fresh cardboard boxes.",
         gustatory: "A folded crepe.",
-        spatial: "Straight ahead on Third St at Munroe St."
+        spatial: "On Third St, past the twin towers."
       }
     },
     5: {
@@ -65,10 +65,10 @@ window.mpDemoList = {
         auditory: "A label printer chattering.",
         visual: "Brick floors stacked flat like pancakes, each with a shipping label.",
         emotional: "The relief of a job wrapped up.",
-        conceptual: "The last stop before the turn is the last stop before export.",
+        conceptual: "The last stop on Third St is the last stop before export.",
         olfactory: "Packing tape and brick dust.",
         gustatory: "A stack of pancakes.",
-        spatial: "Corner of Binney St, where you turn right."
+        spatial: "Corner of Third St and Binney St."
       }
     }
   }
