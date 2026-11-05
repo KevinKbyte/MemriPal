@@ -226,7 +226,7 @@ describe("index.html: S3 station card ids and structure (MEM-050)", () => {
 });
 
 // Covers: MEM-134
-// Requirement: the station card's sense quick-taps are replaced by emoji tags (ADR 0079): #station-card holds
+// Requirement: the station card's sense quick-taps are replaced by emoji tags (ADR 0080): #station-card holds
 // ul#station-emojis (aria-label "Senses at this spot"), button#emoji-add ("+", aria-label "Add an emoji"),
 // button#emoji-remove and button#emoji-undo, and div#emoji-picker with input#emoji-search (type search,
 // aria-label "Search emojis") and div#emoji-results. Each new id appears exactly once; Remove, Undo and the

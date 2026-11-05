@@ -462,9 +462,9 @@ NFR: ASCII only; station ids, coords, addresses, emoji and taps unchanged.
 Tests: static/demo_route_no_directions.test.mjs
 ## MEM-134 Emoji tags replace the sense quick-taps
 
-ADR [0079](../../../../docs/decisions/0079-emoji-tags-replace-sense-taps.md). Amends MEM-110 and ADR 0063 (card
+ADR [0080](../../../../docs/decisions/0080-emoji-tags-replace-sense-taps.md). Amends MEM-110 and ADR 0063 (card
 display of the sound/smell/feel/mood taps); `taps` storage unchanged.
-Decided-by: ADR-0079
+Decided-by: ADR-0080
 Root problem: Kev ask 2026-11-04: "can we just have emojis, so that itll be compact and also user gets more choices -
 they can search through for the right emoji, though muse can power the initial auto generation based on the context,
 and user can change it to however they like afterward". The fixed sense taps (birds, traffic, water, ...) are bulky
@@ -513,6 +513,6 @@ every delete needs arm + confirm + Undo; fits 375px with no horizontal scroll; c
   starts [U+1F426, U+2615], contains U+1F60C, no turn glyph, and stored `taps` are unchanged after show; add
   persists edited; remove needs arm + confirm; Undo restores; backup round-trips, bad types refused; 375px
   screenshot shows chip row and picker with no horizontal scroll.
-- Out of scope: a live Spark call per station for auto-fill (ADR 0079 option B, follow-up).
+- Out of scope: a live Spark call per station for auto-fill (ADR 0080 option B, follow-up).
 
 Tests: static/emoji_tags.test.mjs, static/station_card_emoji.test.mjs

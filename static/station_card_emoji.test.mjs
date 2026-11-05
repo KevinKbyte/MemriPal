@@ -1,5 +1,5 @@
 // Covers: MEM-134
-// Requirement: the station card shows the station's senses as emoji tags (ADR 0079) instead of the
+// Requirement: the station card shows the station's senses as emoji tags (ADR 0080) instead of the
 // sound/smell/feel/mood quick-tap grids. show() renders ul#station-emojis with one li > button.emoji-chip per
 // emoji; the starting list is the legacy taps migrated to emoji plus the Muse auto-fill, saved ONCE with
 // edited false (station.taps stays unchanged), and a station the user already edited (emojisEdited true) keeps

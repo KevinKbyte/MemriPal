@@ -1,6 +1,6 @@
 // @ts-check
 // S3 Station card (MEM-050, plan B5): a named station's name, its Visual / Spatial / Conceptual
-// profile, its emoji tags (MEM-134, ADR 0079: they replace the sound/smell/feel/mood quick-taps; the Next
+// profile, its emoji tags (MEM-134, ADR 0080: they replace the sound/smell/feel/mood quick-taps; the Next
 // turn group was removed, MEM-135), a validated name edit and a drop with arm -> confirm -> Undo.
 // Model-derived text is only ever set via textContent.
 

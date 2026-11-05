@@ -98,7 +98,7 @@ export const MEM045_IDS = [
 // toast only after a peel-off.
 export const MEM045_MAY_START_HIDDEN = ["sticker-panel", "sticker-error", "sticker-toast"];
 
-// MEM-134 (ADR 0079, emoji tags replace the sense quick-taps): the station card's emoji chip row, its add / remove /
+// MEM-134 (ADR 0080, emoji tags replace the sense quick-taps): the station card's emoji chip row, its add / remove /
 // Undo buttons and the search picker (#emoji-search input + #emoji-results) inside #station-card.
 export const MEM134_IDS = [
   "station-emojis", "emoji-add", "emoji-remove", "emoji-undo", "emoji-picker", "emoji-search", "emoji-results",

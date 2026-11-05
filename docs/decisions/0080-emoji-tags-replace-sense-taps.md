@@ -1,4 +1,4 @@
-# 0079: Emoji tags replace the sense quick-taps, auto-filled by keyword match
+# 0080: Emoji tags replace the sense quick-taps, auto-filled by keyword match
 
 Status: Accepted
 Date: 2026-11-04
