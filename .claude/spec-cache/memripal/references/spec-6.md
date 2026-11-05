@@ -107,6 +107,34 @@ code untouched; typing dots stop under `prefers-reduced-motion`.
 
 Tests: static/pal_chat.test.mjs
 
+## MEM-114 Pal chat history is a sidenav; title is text; actions are icons
+
+Kev ask (2026-11-04): "the palchat "new chat" chat title looks like a button that shouldnt be there - shouldnt it be
+similar to copilot/claude, as a message sidenav in the chat rather than looking like a new chat/rename/delete button?
+and we can use icon for delete to make it less cluttered". Restyles the MEM-099/MEM-116 header; follows the
+Copilot/Claude pattern with no competing approach, so no ADR.
+Root problem: the header showed the chat title beside a row of New/Rename/Delete text buttons and the chat list as
+buttons, so the title read as a control and the panel looked cluttered.
+Actors: `static/pal_bubble.js` mountPalBubble header, render, delete flow; `static/pal_bubble.css` `.pal-panel` rules.
+NFR: DOM via textContent/createElementNS only (no innerHTML); ASCII-only source bytes; every icon button has an
+`aria-label`; launcher, drag, composer and MEM-116 behaviour untouched.
+- B1: no `.pal-actions` element; the header row is a sidenav toggle icon button (`data-pal=sidenav-toggle`,
+  `aria-label="Chats"`, `aria-expanded`), the chat title as plain `h2` text, and a new-chat icon button
+  (`data-pal=new`, `aria-label="New chat"`).
+- B2: a `nav.pal-sidenav` (`data-pal=sidenav`, `aria-label="Chat history"`) lists chats as full-width text rows
+  (`button[data-pal-chat]`, active row `.pal-chat-active`).
+- B3: only the active row carries a rename icon (`data-pal=rename`, `aria-label="Rename chat"`) and a delete icon
+  (`data-pal=delete`, `aria-label="Delete chat"`); exactly one of each in the DOM.
+- B4: delete still needs the confirm step and then offers Undo (`rules.global/ui-delete-needs-confirmation.md`);
+  the confirm row sits in the sidenav, the Undo toast above the composer.
+- B5: viewport >= 720 px shows the sidenav as a persistent left column and hides the toggle; narrower, the sidenav is
+  a drawer toggled by panel class `pal-sidenav-open`, and picking a chat closes it.
+- Accept: no div.pal-actions; title is h2 text; new chat is an icon button with aria-label; sidenav lists chats as
+  rows; delete is an icon on the active row; delete still needs confirm and offers Undo; narrow viewport toggles the
+  drawer, wide shows the column. 375 px and desktop screenshots (drawer open and closed).
+
+Tests: static/pal_sidenav.test.mjs
+
 ## MEM-045 Sticker pool and photo upload on the landmark photo
 
 Amended by MEM-131: photo stickers drag and snap to the nearest locus box; a tap never touches the pool.
