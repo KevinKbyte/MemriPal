@@ -566,3 +566,20 @@ cap unchanged (`MEMRIPAL_META_SPEND_CAP_USD`, default 135).
   var and the grant.
 
 Tests: tests/test_meta_spend_store.py, tests/test_deploy_artifacts.py
+## MEM-056 Readable royal shopping list
+
+Source: Kev, 2026-11-04, critique of Pal's tour step 3 list: "hard to read, very cluttered ... as well as small".
+A readability fix with no approach choice, so no ADR.
+Decided-by: none
+Root problem: the step 3 "My Royal Shopping List" list is small, cramped and low-contrast on a phone, and the
+house-step story card runs off the screen.
+Actors: the walker on a 375x812 phone; Pal's tour step 3 list and house-step story card; `static/style.css`.
+NFR: keeps the Paper Crown look (numbered badges, emoji composite); ASCII only.
+- Item rows: font-size >= 17px, line-height >= 1.5.
+- Keyword caption, spot label and sub-list rows: >= 16px in the body face, not mono.
+- House-step rows padded >= 0.5rem block; list gap >= 0.5rem.
+- `--ink` / `--muted` on `--lamp-soft` / `--surface` contrast >= 4.5:1 in light and dark.
+- The house-step story card has a max-height and scrolls (`overflow-y: auto`) instead of leaving the screen.
+- Accept: at 375x812 every rule above holds; numbered badges and the emoji composite still render.
+
+Tests: static/tour_list_readable.test.mjs
