@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.92] - 2026-11-04
+
+### Changed
+
+- README judges banner now links the browsable file tree at the `hackathon-submission` tag, so judges can read the submitted code on GitHub without downloading the zip.
+
 ## [0.20.88] - 2026-11-04
 
 ### Added
