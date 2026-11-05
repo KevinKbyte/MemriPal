@@ -30,7 +30,7 @@ SEARCH_LIMIT = 20
 MAX_IMAGE_BYTES = 2 * 1024 * 1024
 TIMEOUT_S = 5.0
 FIELDS = "id,thumb_1024_url,computed_geometry,geometry,creator,compass_angle,captured_at"
-# Candidates offered to the client's picker (MEM-137); each costs one CDN fetch.
+# Candidates offered to the client's picker (MEM-146); each costs one CDN fetch.
 MAX_CANDIDATES = 4
 EARTH_RADIUS_M = 6_371_008.8
 JPEG_DATA_URL = "data:image/jpeg;base64,"

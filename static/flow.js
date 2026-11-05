@@ -275,7 +275,7 @@ export function wireApp(deps) {
   }
   // Open route from the Landmarks-tab detail dialog (MEM-142); openRoute switches to the Routes tab itself.
   if (deps.routes) {
-    // MEM-137: the detail dialog's street-photo pull POSTs /baseline, which the live server passcode-gates.
+    // MEM-146: the detail dialog's street-photo pull POSTs /baseline, which the live server passcode-gates.
     mountLandmarkGallery(doc, deps.routes, withPasscode(deps.fetch, doc, BASELINE_ROUTES), {
       onOpenRoute: (id) => routeView?.openRoute(id).catch(() => {}),
     });
