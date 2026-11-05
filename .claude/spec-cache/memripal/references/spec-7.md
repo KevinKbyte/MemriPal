@@ -64,3 +64,31 @@ call; ASCII only.
 - Accept: a Pal chat message gets a non-empty model reply; an upstream failure surfaces as an error, not a blank.
 
 Tests: tests/test_pal_chat_route.py, static/pal_reply.test.mjs, static/byok.test.mjs
+
+## MEM-147 GCP app one-command pause/resume
+
+ADR [0089](../../../../docs/decisions/0089-gcp-app-pause-resume.md).
+Decided-by: ADR-0089
+Root problem: the deployed edge (forwarding rule) bills hourly while idle, and the only way to take the app down
+was a redeploy or deleting the whole edge, whose rebuild needs a new managed cert (up to ~60 min).
+Actors: the operator; `scripts/gcp_app.sh`; gcloud (Cloud Run service `memripal`, global forwarding rule
+`memripal-https-rule`, address `memripal-edge-ip`, proxy `memripal-https-proxy`); `scripts/deploy_edge_gcp.sh`.
+NFR: no mode deploys, reads secrets, or changes env vars; idempotent; POSIX sh; ASCII only.
+- Usage `sh scripts/gcp_app.sh stop|start|status`; env `REGION` (default `us-central1`), `SERVICE` (default
+  `memripal`, prefix of `-edge-ip`, `-https-proxy`, `-https-rule`).
+- `stop`: one `gcloud run services update memripal --region us-central1 --ingress=internal`, then
+  `gcloud compute forwarding-rules delete memripal-https-rule --global --quiet` only if the rule exists; never
+  creates anything.
+- `start`: if the global address or the HTTPS proxy is missing, exits non-zero with `scripts/deploy_edge_gcp.sh` on
+  stderr and makes no create/update call. Else creates the rule only if absent (`--global
+  --load-balancing-scheme=EXTERNAL_MANAGED --address=memripal-edge-ip --target-https-proxy=memripal-https-proxy
+  --ports=443`), then one ingress update to `internal-and-cloud-load-balancing`; the rule exists before ingress opens.
+- `status`: read-only (no update/create/delete/deploy call); prints `ingress: <value>` and `rule: present|absent`.
+- No argument, an unknown command, or wrong case (`STOP`) exits 2 with usage on stderr and makes no gcloud call.
+- Accept: stop with rule present -> internal ingress + one delete; stop with rule absent -> no delete, exit 0; start
+  with edge ready -> rule created then ingress opened, or create skipped when the rule exists; start missing address,
+  proxy or both -> refusal naming `scripts/deploy_edge_gcp.sh`; status reports stopped/started state with no
+  mutation; no call ever runs `run deploy`, touches `secrets`, or passes `--set-env-vars`/`--update-env-vars`/
+  `--update-secrets`.
+
+Tests: tests/test_gcp_app_script.py

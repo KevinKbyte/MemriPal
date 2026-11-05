@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.87] - 2026-11-04
+
+### Added
+
+- GCP app pause/resume (MEM-147, ADR 0089): `sh scripts/gcp_app.sh stop|start|status`. `stop` sets Cloud Run ingress to internal and deletes the forwarding rule `memripal-https-rule` (the sslip.io host goes down; only the reserved IP and Cloud Armor policy bill); `start` recreates the rule and reopens ingress to the load balancer (~1 min, managed cert kept); `status` is read-only. Never redeploys or touches env vars or secrets.
+
 ## [0.20.82] - 2026-11-04
 
 ### Added

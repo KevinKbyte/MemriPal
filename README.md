@@ -369,6 +369,21 @@ GCP Cloud Run with Secret Manager keys: [docs/runbooks/deploy-gcp.md](docs/runbo
 `./scripts/push_secret_gcp.ps1 <name>` (PowerShell) pushes a `~/.secrets/<name>.dpapi` key to Secret Manager
 byte-exact (MEM-111).
 
+Pause / resume the deployed app without a redeploy (MEM-147, ADR 0089):
+
+```bash
+sh scripts/gcp_app.sh stop
+sh scripts/gcp_app.sh start
+sh scripts/gcp_app.sh status
+```
+
+`stop` sets Cloud Run ingress to `internal` AND deletes the global forwarding rule `memripal-https-rule`, so the
+sslip.io host (https://8-233-107-141.sslip.io) goes down too. While stopped it bills only the reserved IP
+`memripal-edge-ip` and the Cloud Armor policy. `start` recreates the rule (~1 min; the managed cert survives because
+the IP is kept). Neither redeploys nor touches env vars or secrets. If the IP or HTTPS proxy is missing, `start`
+exits 1: run `scripts/deploy_edge_gcp.sh` first. Exact gcloud calls:
+[docs/runbooks/deploy-gcp.md](docs/runbooks/deploy-gcp.md#9a-pause--resume).
+
 ## Credits
 
 Sense channels adapted from the KAVE COGS method by Anthony Metivier (Magnetic Memory Method), paraphrased; none

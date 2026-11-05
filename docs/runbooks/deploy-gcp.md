@@ -313,6 +313,38 @@ Faster, without a rebuild (until the next deploy):
 gcloud run services update <service> --region <region> --update-env-vars MEMRIPAL_MODE=fixture
 ```
 
+## 9a. Pause / resume
+
+Take the app offline between demos without a redeploy (MEM-147, ADR 0089). `status` is read-only and prints
+`ingress: <value>` and `rule: present|absent`; a missing or unknown command exits 2 with usage. Env: `REGION`
+(default `us-central1`), `SERVICE` (default `memripal`).
+
+```bash
+sh scripts/gcp_app.sh stop
+sh scripts/gcp_app.sh start
+sh scripts/gcp_app.sh status
+```
+
+`stop` runs (the delete only if the rule exists; the sslip.io host goes down):
+
+```bash
+gcloud run services update memripal --region us-central1 --ingress=internal
+gcloud compute forwarding-rules delete memripal-https-rule --global --quiet
+```
+
+`start` first checks `gcloud compute addresses describe memripal-edge-ip --global` and
+`gcloud compute target-https-proxies describe memripal-https-proxy`; if either is missing it exits 1 naming
+`scripts/deploy_edge_gcp.sh` (step 5). Otherwise it runs (the create only if the rule is absent; ~1 min to serve):
+
+```bash
+gcloud compute forwarding-rules create memripal-https-rule --global --load-balancing-scheme=EXTERNAL_MANAGED --address=memripal-edge-ip --target-https-proxy=memripal-https-proxy --ports=443
+gcloud run services update memripal --region us-central1 --ingress=internal-and-cloud-load-balancing
+```
+
+Kept across a pause: the reserved IP `memripal-edge-ip` (so the sslip.io host and the managed cert `memripal-cert`
+stay valid), HTTPS proxy, URL map, backend service + serverless NEG, Cloud Armor policy, and the service's env vars
+and secrets. While paused only the IP and the Armor policy bill.
+
 ## 10. Cost check
 
 Do not delete the service: the deployed URL is a submission input. Scaled to zero it has no idle cost. Check spend in
