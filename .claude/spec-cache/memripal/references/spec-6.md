@@ -398,3 +398,19 @@ Decided-by: ADR-0079
   of any route cross; the landmark loop's signed area > 0 (CCW); regenerating yields identical JSON. Covered by
   static/demo_routes_seed.test.mjs, static/demo_principles_route.test.mjs, scripts/gen_demo_routes.test.mjs.
 - Out of scope: user-editable curated routes; places outside the mapped Kendall area.
+## MEM-138 Pal face centred in the bubble
+
+Source: Kev, 2026-11-04: "also why isnt memri centered on the bubble". A bugfix with no approach choice, so no ADR.
+Amends MEM-055 B1.
+Decided-by: none
+Root problem: `static/style.css` global `img, canvas { max-width: 100%; height: auto }` clamped the absolutely
+positioned `.pal-bubble-face` (`static/pal_bubble.css`) to the bubble's 50px padding box, so the head sat about 17px
+left of centre.
+Actors: the user; `static/pal_bubble.css`; `static/style.css`; `static/assets/pal-still.svg`.
+NFR: CSS only; no change to the global img rule for other images; ASCII only.
+- `.pal-bubble-face` declares `max-width: none` and renders 84x84.
+- Offsets `left: calc(50% - 42px); top: calc(50% - 36.5px)` place the `pal-still.svg` head centre (viewBox 256,222.5
+  of 512) at the disc padding-box centre.
+- Accept: at 375 and 1280 px viewports the face is 84x84 (+-0.5) and the head centre is within 1px of the disc centre.
+
+Tests: tests/test_pal_bubble_face_centre.py, static/pal_bubble_face_tour.test.mjs

@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Fixed
+
+- King Memri's face is centred in the Pal chat bubble again: the global img max-width rule no longer shrinks the 84px head crop (MEM-138).
+
 ## [0.20.74] - 2026-11-04
 
 ### Added
