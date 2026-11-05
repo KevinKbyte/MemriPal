@@ -15,6 +15,23 @@ const SIZE = 56; // fallback before layout; pal_bubble.css .pal-bubble
 const MARGIN = 8;
 const STEP = 16; // arrow-key move, px
 const DRAG_START = 4; // px of travel before a press becomes a drag (so a tap still opens)
+const SVG_NS = "http://www.w3.org/2000/svg";
+const ICON_ATTRS = {
+  viewBox: "0 0 24 24",
+  width: "18",
+  height: "18",
+  fill: "none",
+  stroke: "currentColor",
+  "stroke-width": "2",
+  "stroke-linecap": "round",
+  "stroke-linejoin": "round",
+  "aria-hidden": "true",
+  focusable: "false",
+};
+const ICON_MENU = "M4 6h16M4 12h16M4 18h16";
+const ICON_PLUS = "M12 5v14M5 12h14";
+const ICON_PENCIL = "M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4";
+const ICON_TRASH = "M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6";
 
 /** @param {any} node @param {any} root  Walks parents: no contains() needed. */
 function within(node, root) {
@@ -84,22 +101,57 @@ export async function mountPalBubble({ doc, win, storage, chats, reply, act }) {
   panel.className = "pal-panel";
   panel.setAttribute("aria-label", "Pal chats");
   panel.hidden = true;
+  /** Labelled icon-only button (MEM-114): the aria-label carries the name, the svg is decorative. */
+  const iconButton = (/** @type {string} */ pal, /** @type {string} */ label, /** @type {string} */ d) => {
+    const b = make("button", pal);
+    b.className = "pal-icon-btn";
+    b.setAttribute("aria-label", label);
+    b.setAttribute("title", label);
+    const svg = doc.createElementNS(SVG_NS, "svg");
+    for (const [k, v] of Object.entries(ICON_ATTRS)) svg.setAttribute(k, v);
+    const path = doc.createElementNS(SVG_NS, "path");
+    path.setAttribute("d", d);
+    svg.append(path);
+    b.append(svg);
+    return b;
+  };
+  // Header (MEM-114): sidenav toggle | active title as plain text | new-chat icon. No text-button row.
+  const header = make("div", "header");
+  header.className = "pal-header";
+  const sidenavToggle = iconButton("sidenav-toggle", "Chats", ICON_MENU);
+  sidenavToggle.setAttribute("aria-expanded", "false");
   const title = make("h2", "title");
   const renameInput = make("input", "rename-input");
   renameInput.maxLength = MAX_TITLE_CHARS;
   renameInput.setAttribute("aria-label", "Chat title");
   renameInput.hidden = true;
-  const newBtn = make("button", "new", "New chat");
-  const renameBtn = make("button", "rename", "Rename");
-  const deleteBtn = make("button", "delete", "Delete");
+  const newBtn = iconButton("new", "New chat", ICON_PLUS);
+  header.append(sidenavToggle, title, renameInput, newBtn);
+  // Created once; render() re-appends them into the active row so exactly one of each exists.
+  const renameBtn = iconButton("rename", "Rename chat", ICON_PENCIL);
+  const deleteBtn = iconButton("delete", "Delete chat", ICON_TRASH);
   const confirmRow = make("div", "confirm-row", "Delete this chat? ");
+  confirmRow.className = "pal-confirm-row";
   confirmRow.append(make("button", "confirm-delete", "Delete"), make("button", "cancel-delete", "Cancel"));
   confirmRow.hidden = true;
   const undoRow = make("div", "undo-row", "Chat deleted. ");
+  undoRow.className = "pal-undo-row";
   const undoBtn = make("button", "undo", "Undo");
   undoRow.append(undoBtn);
   undoRow.hidden = true;
+  // Never the hidden attribute: CSS shows it as a drawer (narrow) or a column (>= 720px).
+  const sidenav = make("nav", "sidenav");
+  sidenav.className = "pal-sidenav";
+  sidenav.setAttribute("aria-label", "Chat history");
+  const sidenavLabel = make("p", "", "Chats");
+  sidenavLabel.className = "pal-sidenav-label";
   const list = make("ul", "chats");
+  sidenav.append(sidenavLabel, list, confirmRow);
+  const setDrawer = (/** @type {boolean} */ open) => {
+    panel.classList.toggle("pal-sidenav-open", open);
+    sidenavToggle.setAttribute("aria-expanded", String(open));
+  };
+  sidenavToggle.addEventListener("click", () => setDrawer(!panel.classList.contains("pal-sidenav-open")));
   const messages = make("ol", "messages");
   messages.className = "pal-messages";
   messages.setAttribute("aria-live", "polite");
@@ -108,10 +160,7 @@ export async function mountPalBubble({ doc, win, storage, chats, reply, act }) {
   errorNote.setAttribute("role", "alert");
   errorNote.hidden = true;
   const composer = createComposer(doc, (/** @type {string} */ text) => sendMessage(text));
-  const actions = make("div", "actions");
-  actions.className = "pal-actions";
-  actions.append(newBtn, renameBtn, deleteBtn);
-  panel.append(title, renameInput, actions, confirmRow, undoRow, list, messages, errorNote, composer.form);
+  panel.append(header, sidenav, messages, undoRow, errorNote, composer.form);
   root.append(bubble, panel);
   doc.body.append(root);
 
@@ -227,12 +276,17 @@ export async function mountPalBubble({ doc, win, storage, chats, reply, act }) {
       const li = make("li", "");
       const b = make("button", "", c.title);
       b.dataset.palChat = c.id;
-      if (c.id === activeId) b.className = "pal-chat-active";
       b.addEventListener("click", () => {
         activeId = c.id;
+        setDrawer(false);
         render();
       });
       li.append(b);
+      if (c.id === activeId) {
+        b.className = "pal-chat-active";
+        li.className = "pal-chat-row-active";
+        li.append(renameBtn, deleteBtn);
+      }
       return li;
     }));
     const msgs = active ? await chats.listMessages(active.id) : [];
