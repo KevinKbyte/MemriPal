@@ -1,6 +1,6 @@
-// Covers: MEM-142
+// Covers: MEM-143
 // Requirement: a Landmarks-tab gallery tile is keyboard-operable and opens the landmark detail dialog, never the
-// photo file picker (MEM-142, ADR 0084; item 154): each tile is a native <button type="button">, so Enter and
+// photo file picker (MEM-143, ADR 0085; item 154): each tile is a native <button type="button">, so Enter and
 // Space activate it by platform behavior, and activating it opens #landmark-detail without clicking any
 // <input type="file">.
 import { describe, test } from "node:test";
@@ -26,7 +26,7 @@ const ROUTES = [
   ] },
 ];
 
-// Covers: MEM-142
+// Covers: MEM-143
 describe("mountLandmarkGallery: tile is a native button that opens the detail, not a file picker", () => {
   test("each tile is <button type=button>; a tile click opens #landmark-detail and clicks no file input", async () => {
     const p = fakePage(IDS, { hidden: ["landmarks-list"] });
