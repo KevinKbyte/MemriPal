@@ -146,3 +146,22 @@ describe("missText: a geocode miss never dead-ends", () => {
     assert.equal(missText("zzqx", []), 'No match for "zzqx".');
   });
 });
+
+// Covers: MEM-140
+// Requirement: a landmark POI's category and OSM tags feed its emoji pick, so a POI with an unhelpful name but
+// category "cafe" (or tag amenity=cafe) gets the coffee cup, not the pushpin. pickStations passes
+// { name, category, tags } of each place into emojiFor.
+describe("MEM-140 pickStations passes POI category and tags into emojiFor", () => {
+  const COFFEE = "\u{2615}";
+  const poi = (extra) => ({ name: "Xyzzy", lat: 42.363, lng: -71.084, address: null, label: "near Third St", ...extra });
+
+  test("category cafe -> coffee", () => {
+    const [, mid] = pickStations(FROM, TO, [poi({ category: "cafe" })]);
+    assert.equal(mid.emoji, COFFEE);
+  });
+
+  test("tags amenity=cafe -> coffee", () => {
+    const [, mid] = pickStations(FROM, TO, [poi({ tags: { amenity: "cafe" } })]);
+    assert.equal(mid.emoji, COFFEE);
+  });
+});
