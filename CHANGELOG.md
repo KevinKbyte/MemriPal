@@ -4,6 +4,10 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [0.20.94] - 2026-11-05
 
+### Changed
+
+- Docs: deploy runbook fixes (`docs/runbooks/deploy-gcp.md`): the run.app ingress probe hits `/` (Cloud Run reserves `/healthz`-style paths, a false pass); redeploys keep `EDGE_HOST` and run from the primary checkout on `main`; the spend seed runs via `uv run` with `--project`; proxy-hop network B can be a one-step Cloud Build curl job.
+
 ### Added
 
 - Landmark station emoji auto-generate: Spark picks one best-fit emoji via `POST /landmark-emoji` (2.5s cap, single pictographic grapheme only); otherwise the keyword table, then an SQLite-FTS5-style BM25 search over a 100+ entry emoji corpus using the landmark name, POI category and tags, then the pushpin; offline uses BM25 only (MEM-144, ADR 0087).
