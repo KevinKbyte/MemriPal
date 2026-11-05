@@ -739,6 +739,8 @@ li.said-missed {
 /* Emoji pins get the same halo so a glyph stays legible over tiles. */
 .lm-emoji {
   filter: drop-shadow(0 0 1.5px var(--surface));
+  /* R83: 20px glyphs rendered ~22px, too small to read in the demo video; CSS beats the font-size attribute. */
+  font-size: 32px;
 }
 
 /* MEM-077: a station marker is hard to see at rest, so hover doubles it about its own centre. */
