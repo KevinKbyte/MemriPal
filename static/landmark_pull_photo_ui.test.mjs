@@ -279,6 +279,61 @@ describe("mountPullPhoto: reopen", () => {
 });
 
 // Covers: MEM-137
+// Requirement: the demo video and its screenshot script drive the pull by stable class hooks: the pull button
+// carries class lm-pull-photo, the pulled photo is an img inside an element with class lm-pull-photo-result, and
+// its Mapillary credit (author, image link, CC BY-SA 4.0 licence link) sits inside class lm-pull-photo-credit.
+describe("mountPullPhoto: selector contract", () => {
+  const hasClass = (n, c) => String(n.className ?? "").split(/\s+/).includes(c) || Boolean(n.classList?.contains?.(c));
+  const byClass = (root, c) => find(root, (n) => hasClass(n, c), { visibleOnly: true });
+
+  test("the pull button is a BUTTON with class lm-pull-photo", async () => {
+    const ui = await mount();
+    const btn = byClass(ui.host, "lm-pull-photo");
+    assert.ok(btn, ".lm-pull-photo present before a pull");
+    assert.equal(btn.tagName, "BUTTON");
+    assert.equal(btn, ui.pullButton());
+  });
+
+  test("the pulled photo is an img inside .lm-pull-photo-result", async () => {
+    const ui = await mount();
+    await ui.pull();
+    const result = byClass(ui.host, "lm-pull-photo-result");
+    assert.ok(result, ".lm-pull-photo-result present after a pull");
+    const img = find(result, (n) => n.tagName === "IMG");
+    assert.ok(img, ".lm-pull-photo-result img");
+    assert.equal(srcOf(img), FACING.image);
+    assert.equal(img, ui.mainPhoto());
+  });
+
+  test("the credit sits inside .lm-pull-photo-credit and follows the chosen photo", async () => {
+    const ui = await mount();
+    await ui.pull();
+    const credit = () => byClass(ui.host, "lm-pull-photo-credit");
+    assert.ok(credit(), ".lm-pull-photo-credit present after a pull");
+    assert.ok(norm(visibleText(credit())).includes(FACING.author));
+    const hrefs = () => findAll(credit(), (n) => n.tagName === "A").map((a) => a.getAttribute("href"));
+    assert.ok(hrefs().includes(FACING.image_url));
+    assert.ok(hrefs().includes(LICENCE_URL));
+    ui.page.fire(ui.pickerFor(AWAY), "click");
+    await settle();
+    assert.ok(norm(visibleText(credit())).includes(AWAY.author));
+    assert.ok(hrefs().includes(AWAY.image_url));
+  });
+
+  test("before a pull there is no result or credit; after Undo neither remains", async () => {
+    const ui = await mount();
+    assert.equal(byClass(ui.host, "lm-pull-photo-result"), null);
+    assert.equal(byClass(ui.host, "lm-pull-photo-credit"), null);
+    await ui.pull();
+    ui.page.fire(ui.undoButton(), "click");
+    await settle();
+    assert.equal(byClass(ui.host, "lm-pull-photo-result"), null);
+    assert.equal(byClass(ui.host, "lm-pull-photo-credit"), null);
+    assert.ok(byClass(ui.host, "lm-pull-photo"), ".lm-pull-photo back after Undo");
+  });
+});
+
+// Covers: MEM-137
 // Requirement: pulled text goes through textContent only (no innerHTML), and an unsafe image URL from the
 // backend is never assigned to an img src.
 describe("mountPullPhoto: safety", () => {

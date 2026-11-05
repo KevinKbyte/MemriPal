@@ -5,7 +5,8 @@ Covers: MEM-053
 
 Module `memripal.baseline`:
 - `BaselineProvider(token: str, transport: httpx.BaseTransport | None = None)`; `.lookup(lat, lon)` returns
-  exactly {"image", "author", "image_url", "licence"} or raises `NoBaseline` / `BaselineFailed`.
+  {"image", "author", "image_url", "licence"} (plus MEM-137 `candidates`) or raises `NoBaseline` /
+  `BaselineFailed`.
 - Outbound search: GET `GRAPH_IMAGES_URL` (https://graph.mapillary.com/images, the Graph API image search).
   The client token rides ONLY in the `Authorization: OAuth <token>` header (the live doc allows it for Entity
   API calls and strongly discourages ?access_token=); never in any URL, never sent to the CDN.
@@ -204,7 +205,7 @@ class TestPick:
         resp = _post(_client(routes, _provider(baseline, fake)))
         assert resp.status_code == 200
         body = resp.json()
-        assert set(body) == {"image", "author", "image_url", "licence"}
+        assert set(body) == {"image", "author", "image_url", "licence", "candidates"}  # candidates: MEM-137
         assert body["author"] == AUTHOR
         assert body["image_url"].startswith("https://www.mapillary.com/")
         assert IMAGE_ID in body["image_url"]
@@ -281,7 +282,7 @@ class TestFixtureReplay:
         path.write_text(json.dumps(self.REPLAY), encoding="ascii")
         resp = _post(_client(routes, baseline.FixtureBaselineProvider(tmp_path)))
         assert resp.status_code == 200
-        assert resp.json() == self.REPLAY
+        assert resp.json() == {**self.REPLAY, "candidates": [self.REPLAY]}  # MEM-137 legacy wrap
 
     def test_missing_recording_is_404_no_baseline(self, baseline, routes, tmp_path, offline):
         resp = _post(_client(routes, baseline.FixtureBaselineProvider(tmp_path)))

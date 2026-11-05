@@ -6,8 +6,9 @@
 # credit instead of replaying it. Zero live network calls.
 """Contract (MEM-098, extends MEM-053):
 
-- `BaselineProvider.lookup` returns exactly {"image", "author", "image_url", "licence"}; `image_url` is the
-  literal page prefix "https://www.mapillary.com/app/?pKey=" + the image id; `licence` == "CC BY-SA 4.0".
+- `BaselineProvider.lookup` returns {"image", "author", "image_url", "licence"} plus MEM-137 `candidates`;
+  `image_url` is the literal page prefix "https://www.mapillary.com/app/?pKey=" + the image id; `licence` ==
+  "CC BY-SA 4.0".
 - Images whose `creator.username` is missing, empty or blank are skipped like thumb-less ones: the nearest
   credited image within radius wins; none credited -> `NoBaseline` (route: 404 no_baseline).
 - `FixtureBaselineProvider.lookup` replays only a recording that is a dict with exactly those four keys,
@@ -70,7 +71,7 @@ UNCREDITED_IDS = [
 class TestLiveCreditFields:
     def test_hit_returns_exact_page_url_and_licence(self, baseline):
         out = _provider(baseline, FakeMapillary()).lookup(LAT, LON)
-        assert set(out) == {"image", "author", "image_url", "licence"}
+        assert set(out) == {"image", "author", "image_url", "licence", "candidates"}  # candidates: MEM-137
         assert out["image_url"] == f"{PAGE_PREFIX}{IMAGE_ID}"
         assert out["licence"] == LICENCE
         assert out["author"] == AUTHOR
