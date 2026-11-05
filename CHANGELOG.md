@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.78] - 2026-11-04
+
+### Added
+
+- The Meta spend counter now lives in one Firestore document updated by a transaction, so an instance restart or a second instance can no longer reset it and let spend cross the cap; if the store is unreachable, times out, or the doc is unseeded, Meta is refused (fail closed). The meta-mode deploy sets `MEMRIPAL_META_SPEND_STORE=firestore` and grants `roles/datastore.user`; `scripts/seed_meta_spend.py` seeds the doc (MEM-136, ADR 0081).
+
 ## [0.20.77] - 2026-11-04
 
 ### Fixed
