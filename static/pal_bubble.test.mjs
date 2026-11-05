@@ -16,6 +16,8 @@
 //     collapsed), "title" (active chat title), "message" (one per message of the active chat, in order), "new",
 //     "rename", "rename-input" (INPUT; Enter saves), "delete", "confirm-delete", "cancel-delete", "undo".
 //     Each listed chat is an element with data-pal-chat = chat id (dataset.palChat); clicking it switches.
+//     MEM-114: "new" / "rename" / "delete" are icon buttons with an aria-label; rename and delete sit on the
+//     active chat row in the "sidenav"; static/pal_sidenav.test.mjs owns that layout.
 //   First open shows listChats()[0]. Viewport clamp: 0 <= left <= innerWidth - width, same for top (an edge
 //   margin up to 16 px is allowed). Uses static/fake_dom_test.mjs fakePage (no querySelector).
 import { describe, test } from "node:test";
