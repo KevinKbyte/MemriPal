@@ -1,5 +1,5 @@
-// Covers: MEM-114
-// Requirement: the Pal chat panel follows the Copilot/Claude pattern (MEM-114): no row of New/Rename/Delete text
+// Covers: MEM-115
+// Requirement: the Pal chat panel follows the Copilot/Claude pattern (MEM-115): no row of New/Rename/Delete text
 // buttons; the header is a "Chats" sidenav toggle icon, the active chat title as plain h2 text and a "New chat"
 // icon. Chat history is a nav sidenav ("Chat history") of full-width text rows; only the active row carries a
 // rename icon and a delete icon. Delete still needs a confirm step (in the sidenav) and then offers Undo. Narrow
@@ -75,7 +75,7 @@ function assertIconButton(btn, label) {
   assert.ok(find(btn, (n) => n.tagName === "SVG"), `${label} button shows an svg icon`);
 }
 
-describe("MEM-114 Pal chat sidenav, text title, icon actions", () => {
+describe("MEM-115 Pal chat sidenav, text title, icon actions", () => {
   test("B1: no .pal-actions row exists", async () => {
     const t = await open();
     assert.equal(find(t.body, (n) => hasClass(n, "pal-actions") || n.dataset?.pal === "actions"), null);
@@ -201,7 +201,7 @@ describe("MEM-114 Pal chat sidenav, text title, icon actions", () => {
   });
 });
 
-describe("MEM-114 sidenav CSS and source bytes", () => {
+describe("MEM-115 sidenav CSS and source bytes", () => {
   test("B5: >= 720 px shows the sidenav as a column; the drawer class is styled", () => {
     const css = readFileSync(new URL("./pal_bubble.css", import.meta.url), "utf8");
     assert.match(css, /@media\s*\(\s*min-width:\s*720px\s*\)\s*\{[\s\S]*?\.pal-sidenav/);

@@ -55,7 +55,7 @@ body[data-tour-target]:not([data-tour-target=".pal-bubble"]) .pal-bubble {
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
 }
 .pal-panel[hidden], .pal-panel [hidden] { display: none; }
-/* Header (MEM-114): sidenav toggle | plain-text title | new-chat icon. */
+/* Header (MEM-115): sidenav toggle | plain-text title | new-chat icon. */
 .pal-header {
   display: flex;
   align-items: center;

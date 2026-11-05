@@ -107,7 +107,7 @@ code untouched; typing dots stop under `prefers-reduced-motion`.
 
 Tests: static/pal_chat.test.mjs
 
-## MEM-114 Pal chat history is a sidenav; title is text; actions are icons
+## MEM-115 Pal chat history is a sidenav; title is text; actions are icons
 
 Kev ask (2026-11-04): "the palchat "new chat" chat title looks like a button that shouldnt be there - shouldnt it be
 similar to copilot/claude, as a message sidenav in the chat rather than looking like a new chat/rename/delete button?

@@ -101,7 +101,7 @@ export async function mountPalBubble({ doc, win, storage, chats, reply, act }) {
   panel.className = "pal-panel";
   panel.setAttribute("aria-label", "Pal chats");
   panel.hidden = true;
-  /** Labelled icon-only button (MEM-114): the aria-label carries the name, the svg is decorative. */
+  /** Labelled icon-only button (MEM-115): the aria-label carries the name, the svg is decorative. */
   const iconButton = (/** @type {string} */ pal, /** @type {string} */ label, /** @type {string} */ d) => {
     const b = make("button", pal);
     b.className = "pal-icon-btn";
@@ -115,7 +115,7 @@ export async function mountPalBubble({ doc, win, storage, chats, reply, act }) {
     b.append(svg);
     return b;
   };
-  // Header (MEM-114): sidenav toggle | active title as plain text | new-chat icon. No text-button row.
+  // Header (MEM-115): sidenav toggle | active title as plain text | new-chat icon. No text-button row.
   const header = make("div", "header");
   header.className = "pal-header";
   const sidenavToggle = iconButton("sidenav-toggle", "Chats", ICON_MENU);
