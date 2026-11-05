@@ -1,5 +1,5 @@
 // @ts-check
-// Landmark slots page (MEM-132): upload a landmark photo, SAM 3.1 segments it via POST /loci, place the Payoff
+// Landmark slots page (MEM-141): upload a landmark photo, SAM 3.1 segments it via POST /loci, place the Payoff
 // parts. Shows the cached or bundled sample on load so the page is never empty.
 import { withApiBase } from "./api_base.js";
 import { PAYOFF_PARTS, createSlotBoard, fallbackResult, segmentLandmark } from "./landmark_slots.js";

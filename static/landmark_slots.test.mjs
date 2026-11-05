@@ -1,4 +1,4 @@
-// Covers: MEM-132
+// Covers: MEM-141
 // Requirement: SAM 3.1 segments an uploaded landmark photo (POST /loci, unchanged) into 3 Payoff slots the
 // user fills by tap or drag. parseSegmentation accepts only a well-formed /loci reply with a safe image
 // data URL; pickSlots keeps 3 slots (bad boxes and duplicate labels dropped, renumbered by y1 then x1);
@@ -95,7 +95,7 @@ function hasClass(n, c) {
   return n.classList?.contains(c) || names.includes(c);
 }
 
-describe("landmark slots (MEM-132)", () => {
+describe("landmark slots (MEM-141)", () => {
   test("exports the 3 Payoff parts and SLOT_COUNT 3", () => {
     assert.equal(SLOT_COUNT, 3);
     assert.deepEqual(

@@ -1,4 +1,4 @@
-# Covers: MEM-132
+# Covers: MEM-141
 # Requirement: scripts/gen_landmark_slots_fixture.py <photo> [--out PATH] runs /loci in-process (fixture mode,
 # no live calls) and writes the bundled landmark-slots fixture, a /loci reply: {image (data URL), width,
 # height, photo_sha, reask_used, loci}, with at least SLOT_COUNT (3) loci; a missing photo exits nonzero

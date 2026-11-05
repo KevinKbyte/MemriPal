@@ -2,10 +2,10 @@
 
 Continuation of [spec-6.md](spec-6.md). A new file so in-flight branches appending to spec-6.md never collide with it.
 
-## MEM-132 Landmark photo slots: SAM 3.1 segments an uploaded landmark photo into 3 Payoff slots
+## MEM-141 Landmark photo slots: SAM 3.1 segments an uploaded landmark photo into 3 Payoff slots
 
-Decided-by: ADR-0080
-ADR [0080](../../../../docs/decisions/0080-landmark-slots-from-loci.md).
+Decided-by: ADR-0081
+ADR [0081](../../../../docs/decisions/0081-landmark-slots-from-loci.md).
 Root problem: the demo shows SAM 3.1 segmenting a photo the user took (the Kendall station landmark) and then placing
 the three Payoff parts into regions of that photo, without new server surface hours before the deadline.
 Actors: the user; `static/slots.html` + `static/slots_page.js` + `static/landmark_slots.css` (page);

@@ -1,5 +1,5 @@
 // @ts-check
-// Landmark photo slots (MEM-132, ADR 0079): SAM 3.1 segments the user's own landmark photo via the unchanged
+// Landmark photo slots (MEM-141, ADR 0081): SAM 3.1 segments the user's own landmark photo via the unchanged
 // POST /loci, and the three Payoff parts get placed into the largest distinct regions. Labels from the model
 // are untrusted, so every one is written with textContent.
 import { apiUrl } from "./api_base.js";

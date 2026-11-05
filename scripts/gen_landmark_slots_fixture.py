@@ -1,4 +1,4 @@
-"""Regenerate static/fixtures/landmark_slots_kendall.json: the /loci reply for a landmark photo (MEM-132).
+"""Regenerate static/fixtures/landmark_slots_kendall.json: the /loci reply for a landmark photo (MEM-141).
 
 Runs /loci in-process and writes the reply as the slots page's bundled sample. Backend follows MEMRIPAL_MODE:
 fixture mode (no live calls) by default; meta mode runs a live SAM segmentation and needs META_API_KEY.
