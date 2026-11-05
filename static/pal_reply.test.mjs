@@ -1,5 +1,5 @@
-// Covers: MEM-139
-// Requirement: the Pal chat gets its reply from the live POST /chat route (MEM-139): createPalReply(fetchFn)
+// Covers: MEM-142
+// Requirement: the Pal chat gets its reply from the live POST /chat route (MEM-142): createPalReply(fetchFn)
 // returns async (text, history) => string that POSTs JSON {message, history} to "/chat" and resolves the
 // reply text; a non-2xx answer or a blank/missing text rejects so the chat can show an error.
 import { describe, test } from "node:test";
@@ -31,9 +31,9 @@ const HISTORY = [
   { role: "assistant", content: "Hi! Ready?" },
 ];
 
-// Covers: MEM-139
+// Covers: MEM-142
 // Requirement: a Pal chat message is answered by the server's live reply text.
-describe("MEM-139 createPalReply", () => {
+describe("MEM-142 createPalReply", () => {
   test("POSTs JSON {message, history} to /chat and resolves body.text", async () => {
     const { fn, calls } = fakeFetch(200, { text: "Start at the front door." });
     const reply = await make(fn)("where do I start?", HISTORY);

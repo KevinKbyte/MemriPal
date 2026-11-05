@@ -89,10 +89,10 @@ describe("spend cap notice", () => {
 // Covers: MEM-122
 // Requirement: bring your own key, shown only once the spend cap toast says "capped". The key lives in a JS
 // variable only (never localStorage/sessionStorage/IndexedDB/cookies), rides only in header
-// X-Memripal-Meta-Key on the 5 model routes, and is forgotten on reload, on "Forget key", at its $5 limit
+// X-Memripal-Meta-Key on the 6 model routes (the 5 MEM-122 routes plus POST /chat, MEM-142), and is forgotten on reload, on "Forget key", at its $5 limit
 // (X-Memripal-Byok: limit) and when Meta refuses it (X-Memripal-Byok: rejected:<model>).
 const KEY = "fake-user-" + "u".repeat(20);
-const ROUTES = ["/loci", "/split", "/associate", "/scenes", "/recall/audio"];
+const ROUTES = ["/loci", "/split", "/associate", "/scenes", "/recall/audio", "/chat"];
 
 function outcome(value, status = 200) {
   return { ok: status < 400, status, headers: { get: (n) => (n.toLowerCase() === "x-memripal-byok" ? value : null) } };
@@ -210,7 +210,7 @@ describe("bring your own key", () => {
     assert.match(textOf(promptEl(p.doc)), /doesn't look like a Meta API key/);
   });
 
-  test("withMetaKey sends the header only on the 5 model routes and only while a key is held", async () => {
+  test("withMetaKey sends the header only on the 6 model routes and only while a key is held", async () => {
     const p = page();
     const net = recorder();
     const fetchKeyed = byok.withMetaKey(net.fn, p.doc);
@@ -363,5 +363,24 @@ describe("bring your own key", () => {
   test("flow.js puts withMetaKey between the passcode and the spend cap notice", () => {
     const src = read("flow.js");
     assert.match(src, /withSpendCapNotice\(\s*withMetaKey\(withPasscode\(deps\.fetch, doc\), doc\)/);
+  });
+});
+
+// Covers: MEM-142
+// Requirement: the live Pal chat reply (POST /chat) is a model route, so once the user has pasted their own
+// Meta key it rides on /chat in header X-Memripal-Meta-Key like every other model call.
+describe("MEM-142 /chat carries the BYOK key", () => {
+  test("KEY_ROUTES includes /chat", () => {
+    assert.ok(byok.KEY_ROUTES.has("/chat"), "KEY_ROUTES must include /chat");
+  });
+
+  test("withMetaKey sends the held key on POST /chat", async () => {
+    const p = page();
+    const net = recorder();
+    const fetchKeyed = byok.withMetaKey(net.fn, p.doc);
+    byok.showSpendCap(p.doc, "capped");
+    submitKey(p, KEY);
+    await fetchKeyed("/chat", { method: "POST", headers: { "Content-Type": "application/json" } });
+    assert.equal(net.calls[0].headers.get("X-Memripal-Meta-Key"), KEY);
   });
 });

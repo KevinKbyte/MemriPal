@@ -1,5 +1,5 @@
-# Covers: MEM-139
-"""Contract for POST /chat, the live Pal chat reply (MEM-139).
+# Covers: MEM-142
+"""Contract for POST /chat, the live Pal chat reply (MEM-142).
 
 Body {"message": str 1..4000 chars, non-blank, "history": list (<= 40 items) of
 {"role": "user" | "assistant", "content": str}} -> 200 {"text": str}. Invalid body -> 400.
