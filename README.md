@@ -1,5 +1,11 @@
 # MemriPal
 
+> **Hackathon judges:** the version submitted to the Meta Global AI Hackathon 2026 is tagged
+> [`hackathon-submission`](https://github.com/KevinKbyte/MemriPal/releases/tag/hackathon-submission) (commit
+> [`5e810603`](https://github.com/KevinKbyte/MemriPal/commit/5e81060310ad66c3b3f51f4801010db38ad57ea5), v0.20.78,
+> the last commit before the 2026-11-04 9 PM ET deadline). Please judge that tag. Development has continued on
+> `main` since the deadline, so the default branch includes post-submission work.
+
 MemriPal is a place-based recall coach for speeches, not a study chatbot. It turns any place you know into a memory
 palace for a talk you must deliver (or exam facts, vocabulary). The demo palace starts from one photo of a familiar
 space; SAM 3.1 segments distinct objects
