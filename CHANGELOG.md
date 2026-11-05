@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ## [0.20.88] - 2026-11-04
 
+### Added
+
+- Opt-in Settings toggle 'Grade recall with Spark' (default off): Muse Spark grades each spoken recall point correct/partial/miss with a short reason under a strict json_schema, visitor's own Meta key first then the non-Meta chat providers, 8 s timeout; got is the union with the unchanged keyword matcher, which stays the whole fallback. The live board shows a `.grade-tag` (provider, latency) and a downgrade notice with Use my own key / Dismiss when Spark is unavailable. The server Meta key is never used for grading; logs carry provider, latency and exception class only (MEM-145, ADR 0086).
+
+### Fixed
+
+- Meta ASR keywords over 30 chars are dropped before the call (Meta 400s them); long labels still reach the grader (MEM-010).
+
 ### Changed
 
 - README judges banner at the top: points Meta Global AI Hackathon 2026 judges to the [`hackathon-submission`](https://github.com/KevinKbyte/MemriPal/releases/tag/hackathon-submission) tag (v0.20.78, commit `5e810603`, the last commit before the 2026-11-04 9 PM ET deadline) and notes development continues on `main` after the deadline.

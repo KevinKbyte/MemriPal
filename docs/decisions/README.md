@@ -14,8 +14,7 @@ numbers on the `Reserved:` line (`Reserved: 0034, 0035`, or `Reserved: none`); M
 missing number is listed, and fails a listed number that also exists as a file (stale reservation: drop it when that
 ADR lands). ADR [0062](0062-reserved-adr-numbers.md).
 
-Reserved: 0075, 0086, 0087, 0088
-Reserved: 0075, 0085
+Reserved: 0075, 0087, 0088
 
 ## ADRs
 
@@ -247,10 +246,10 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0085](0085-landmark-gallery-detail-dialog.md) Landmarks-tab tile opens a native `<dialog id="landmark-detail">`
   built by pure `landmark_gallery_detail.js` (over jumping to the route's station card, or merging the map-hover
   `landmark_detail.js` from unmerged `mem-landmark-detail`).
-- [0089](0089-gcp-app-pause-resume.md) GCP app pause/resume: `scripts/gcp_app.sh` sets ingress internal and deletes
-  only the forwarding rule, keeping IP, cert and the rest of the edge (over ingress-only, or deleting the whole edge)
-  (MEM-147).
 - [0086](0086-spark-recall-grading-keyword-fallback.md) Opt-in Spark grading of spoken recall (Settings toggle,
   default off; BYOK Meta key first, then non-Meta chat providers, 8 s timeout); got = union with the unchanged keyword
   matcher, which stays the whole fallback, with a downgrade notice on failure (over keyword-only or Spark replacing
   the matcher).
+- [0089](0089-gcp-app-pause-resume.md) GCP app pause/resume: `scripts/gcp_app.sh` sets ingress internal and deletes
+  only the forwarding rule, keeping IP, cert and the rest of the edge (over ingress-only, or deleting the whole edge)
+  (MEM-147).
