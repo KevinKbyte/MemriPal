@@ -61,6 +61,7 @@ from memripal.recall_relay import (
 )
 from memripal.record_sign import record_key, sig_ok, sign_record
 from memripal.routes_baseline import baseline_router, default_baseline_provider
+from memripal.routes_landmark_emoji import landmark_ask_from_env, make_landmark_emoji_router
 from memripal.routes_pal_chat import make_pal_chat_router
 from memripal.routes_station import make_station_router
 from memripal.scenes import render_scene
@@ -501,6 +502,7 @@ def create_app(
     app.include_router(make_station_router(backend, _passcode_error))
     # Passcode + BYOK, like /split (MEM-142).
     app.include_router(make_pal_chat_router(_model_route, backend, pal_chat))
+    app.include_router(make_landmark_emoji_router(landmark_ask_from_env(live), _passcode_error))
     # Same passcode guard; the live Mapillary lookups share the deploy call budget and route concurrency cap.
     budget = call_budget if live else None
     app.include_router(
