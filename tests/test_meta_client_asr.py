@@ -2,7 +2,9 @@
 # Requirement: MetaClient.transcribe sends a WAV clip to Meta speech-to-text
 # (muse-voice-transcribe-1.0) as a multipart POST to /v1/asr/transcribe with a Bearer header,
 # a `request` JSON part {"mode", "model", "audioEncoding": "WAV"} plus "keywords" /
-# "languageBias" only when given, and an `audio` part holding the exact WAV bytes; it shares
+# "languageBias" only when given (keywords longer than MAX_ASR_KEYWORD_CHARS == 30 are dropped, since
+# Meta 400s on any keyword over 30 chars; an all-long list sends []), and an `audio` part holding
+# the exact WAV bytes; it shares
 # post()'s retry semantics (429/500/503 and connect-phase errors retried, at most 3 attempts,
 # never a 4xx) and the MAX_RESPONSE_BYTES response cap; it rejects None, empty or over-32-MiB
 # audio, and anything that is not a mono 16-bit PCM WAV at 16 or 24 kHz (non-RIFF bytes,
@@ -310,3 +312,41 @@ class TestTranscriptText:
     def test_non_json_body_raises(self):
         with pytest.raises(ValueError):
             meta_client.transcript_text(b"not json {")
+
+
+class TestTranscribeKeywordLengthCap:
+    # Covers: MEM-010
+    # Requirement: Meta ASR rejects the whole request (400 "ASR keyword N exceeds the maximum length of 30
+    # characters") if any keyword is over 30 chars, so transcribe drops keywords longer than 30 chars and
+    # keeps the rest in order; an all-long list still sends "keywords": []; keywords=None omits the field.
+
+    def test_cap_constant_is_30(self):
+        assert meta_client.MAX_ASR_KEYWORD_CHARS == 30
+
+    def test_keywords_over_30_chars_dropped_order_kept(self):
+        rec = Recorder(ok())
+        client, _ = make_client(rec)
+        client.transcribe(
+            WAV,
+            keywords=[
+                "Kendall MIT station",
+                "Core technique: place items along familiar route",
+                "a" * 30,
+                "b" * 31,
+            ],
+        )
+        assert request_json(rec.requests[0])["keywords"] == ["Kendall MIT station", "a" * 30]
+
+    def test_all_long_keywords_sends_empty_list(self):
+        rec = Recorder(ok())
+        client, _ = make_client(rec)
+        client.transcribe(WAV, keywords=["c" * 31, "Core technique: place items along familiar route"])
+        sent = request_json(rec.requests[0])
+        assert "keywords" in sent
+        assert sent["keywords"] == []
+
+    def test_keywords_none_omits_field(self):
+        rec = Recorder(ok())
+        client, _ = make_client(rec)
+        client.transcribe(WAV, keywords=None)
+        assert "keywords" not in request_json(rec.requests[0])
