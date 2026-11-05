@@ -1,6 +1,7 @@
 """Screenshot the UI before/after "Load demo", plus an imported backup's route view (MEM-017, MEM-073)
 and the Kendall demo route on the real map at 375 px, light and dark (MEM-077), plus Pal's first-run
-tour at step 1 and step 5 on a fresh unseeded page (tour-step1.png, tour-step5.png; MEM-095). Every
+tour at steps 1, 3 and 5 on a fresh unseeded page (tour-step1.png, tour-step5.png, MEM-095;
+tour-step3.png, "My Royal Shopping List", MEM-056). Every
 other page seeds the tour-done key so the modal tour never blocks its clicks.
 
 Fails on page/console errors.
@@ -27,7 +28,10 @@ MAP_IDLE = ".real-map:not(.real-map-pending)"
 MAP_IDLE_TIMEOUT_MS = 30000
 # MEM-095: static/tour.js opens a modal tour while TOUR_KEY is unset; marking it done keeps clicks reachable.
 TOUR_SEED_JS = '(() => { try { localStorage.setItem("memripal.tour.done", "1"); } catch (e) {} })();'
-TOUR_STEP5_CLICKS = 4
+# Steps shot after step 1, each reached by TOUR_CLICKS_BETWEEN_SHOTS Next clicks from the previous shot:
+# step 3 is "My Royal Shopping List" (MEM-056), step 5 the tour's end (MEM-095).
+TOUR_SHOT_STEPS = (3, 5)
+TOUR_CLICKS_BETWEEN_SHOTS = 2
 
 Error = tuple[str, str]  # (message text, source URL)
 
@@ -107,15 +111,16 @@ def run(url: str, outdir: str) -> list[Error]:
                 demo.wait_for_selector(MAP_IDLE, timeout=MAP_IDLE_TIMEOUT_MS)
                 demo.screenshot(path=str(out / f"demo_route_{scheme}.png"), full_page=True)
                 demo.close()
-            # MEM-095: never seeded, so the tour opens on load; step 1, then four Next clicks reach step 5.
+            # MEM-095: never seeded, so the tour opens on load; step 1, then Next clicks reach steps 3 and 5.
             tour = browser.new_page(viewport=DEMO_VIEWPORT)
             watch(tour)
             tour.goto(url)
             tour.screenshot(path=str(out / "tour-step1.png"))
-            for _ in range(TOUR_STEP5_CLICKS):
-                tour.click("#tour-next")
-            tour.wait_for_selector('#tour-n:text-is("5")')
-            tour.screenshot(path=str(out / "tour-step5.png"))
+            for step in TOUR_SHOT_STEPS:
+                for _ in range(TOUR_CLICKS_BETWEEN_SHOTS):
+                    tour.click("#tour-next")
+                tour.wait_for_selector(f'#tour-n:text-is("{step}")')
+                tour.screenshot(path=str(out / f"tour-step{step}.png"))
             tour.close()
         finally:
             browser.close()
