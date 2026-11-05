@@ -1,5 +1,5 @@
-# Covers: MEM-137
-"""Contract (MEM-137, ADR 0080; additive over MEM-053 / MEM-098): POST /baseline returns candidates.
+# Covers: MEM-146
+"""Contract (MEM-146, ADR 0088; additive over MEM-053 / MEM-098): POST /baseline returns candidates.
 
 - `memripal.baseline.MAX_CANDIDATES == 4`; the Graph search `fields` param also asks for `compass_angle` and
   `captured_at`.
@@ -32,7 +32,7 @@ from fastapi.testclient import TestClient
 from PIL import Image
 from test_baseline import AUTHOR, CDN_HOST, COORD_STRINGS, EXIF_MARKER, LAT, LON, FakeMapillary, _image
 
-# Covers: MEM-137
+# Covers: MEM-146
 # Requirement: to let the client pick the best Mapillary photo for a photo-less landmark (camera facing,
 # distance, recency), POST /baseline also returns up to 4 nearby credited candidates, nearest first, each with
 # its own guarded EXIF-free JPEG thumb, position, compass angle and capture time; one broken thumb never sinks

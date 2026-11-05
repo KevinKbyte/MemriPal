@@ -136,7 +136,7 @@ class TestProviderOutcomes:
     def test_success_passes_the_provider_answer_through(self, routes):
         resp = _post(_client(routes, SpyProvider()))
         assert resp.status_code == 200
-        assert resp.json() == {**OK, "candidates": [OK]}  # MEM-137 legacy wrap
+        assert resp.json() == {**OK, "candidates": [OK]}  # MEM-146 legacy wrap
 
     def test_no_baseline_is_404(self, baseline, routes):
         resp = _post(_client(routes, SpyProvider(exc=baseline.NoBaseline())))

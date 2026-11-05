@@ -1,4 +1,4 @@
-// Covers: MEM-137
+// Covers: MEM-146
 // Requirement: in a landmark's detail view, a landmark with no user photo offers "No photo yet? Pull a street
 // photo" (Kev, R83: demo the Mapillary pull for places the user has not visited; going there in person stays
 // best). mountPullPhoto(container, item, { doc, fetchFn, store, onPhoto }) renders nothing at all when the
@@ -91,7 +91,7 @@ async function mount({ it = item(), answer = { candidates: [AWAY, SIDE, FACING] 
   return ui;
 }
 
-// Covers: MEM-137
+// Covers: MEM-146
 // Requirement: user photos always win: a landmark with a user photo shows no pull UI at all, makes no
 // request and never touches the stored choice, even when an older pulled choice is stored for it.
 describe("mountPullPhoto: user photo wins", () => {
@@ -111,7 +111,7 @@ describe("mountPullPhoto: user photo wins", () => {
   });
 });
 
-// Covers: MEM-137
+// Covers: MEM-146
 // Requirement: a landmark without a user photo shows the pull button; a click fetches once (the button is
 // disabled while in flight), auto-picks the best-ranked candidate, persists it and reports it, and shows the
 // photo with its Mapillary credit (contributor, original-image link and CC BY-SA 4.0 licence link, new tab,
@@ -179,7 +179,7 @@ describe("mountPullPhoto: pull and auto-pick", () => {
   });
 });
 
-// Covers: MEM-137
+// Covers: MEM-146
 // Requirement: choosing another candidate in the picker replaces the pulled choice (photo, credit, store,
 // onPhoto); Undo always restores the pre-pull state: store cleared, onPhoto(null), no photo, pull button back.
 describe("mountPullPhoto: picker and Undo", () => {
@@ -231,7 +231,7 @@ describe("mountPullPhoto: picker and Undo", () => {
   });
 });
 
-// Covers: MEM-137
+// Covers: MEM-146
 // Requirement: no nearby candidates shows "No street photos nearby"; a backend failure never throws and
 // leaves the pull button for a retry; neither case stores or reports a photo.
 describe("mountPullPhoto: empty and failure", () => {
@@ -261,7 +261,7 @@ describe("mountPullPhoto: empty and failure", () => {
   }
 });
 
-// Covers: MEM-137
+// Covers: MEM-146
 // Requirement: a pulled choice persists across dialog reopen: mounting with a stored choice shows that photo
 // and its credit at once, with no fetch and no pull button; Undo from there brings the pull button back.
 describe("mountPullPhoto: reopen", () => {
@@ -278,7 +278,7 @@ describe("mountPullPhoto: reopen", () => {
   });
 });
 
-// Covers: MEM-137
+// Covers: MEM-146
 // Requirement: the demo video and its screenshot script drive the pull by stable class hooks: the pull button
 // carries class lm-pull-photo, the pulled photo is an img inside an element with class lm-pull-photo-result, and
 // its Mapillary credit (author, image link, CC BY-SA 4.0 licence link) sits inside class lm-pull-photo-credit.
@@ -333,7 +333,7 @@ describe("mountPullPhoto: selector contract", () => {
   });
 });
 
-// Covers: MEM-137
+// Covers: MEM-146
 // Requirement: pulled text goes through textContent only (no innerHTML), and an unsafe image URL from the
 // backend is never assigned to an img src.
 describe("mountPullPhoto: safety", () => {

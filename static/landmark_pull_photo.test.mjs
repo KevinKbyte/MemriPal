@@ -1,4 +1,4 @@
-// Covers: MEM-137
+// Covers: MEM-146
 // Requirement: for a landmark the user has not photographed in person, MemriPal can pull the best Mapillary
 // street photo instead of the user going there (Kev, R83). Going there in person stays best: a user photo
 // always wins and is never replaced. The pure module static/landmark_pull_photo.js ranks Mapillary
@@ -13,7 +13,7 @@
 //     candidates array but with the legacy single-photo fields { image, author, image_url, licence } is one
 //     candidate. Candidate = { image, author, image_url, licence, lat, lon, compass_angle?, captured_at?,
 //     quality_score? } (Mapillary Graph API field names; captured_at in epoch ms; image a
-//     data:image/jpeg base64 URL only, ADR 0080). A candidate without a valid credit (street_photo.js creditBlock rules) or
+//     data:image/jpeg base64 URL only, ADR 0088). A candidate without a valid credit (street_photo.js creditBlock rules) or
 //     with any other image scheme is dropped.
 //   createPhotoStore({ storage } = {}) -> { get(key), set(key, choice), clear(key) }, get of an unknown key -> null
 import { describe, test } from "node:test";
@@ -56,7 +56,7 @@ const FACING = cand("facing30", south(30), { compass_angle: 0, captured_at: NOW 
 const AWAY = cand("away10", south(10), { compass_angle: 180, captured_at: NOW - 30 * DAY });
 const SIDE = cand("side60", south(60), { compass_angle: 90, captured_at: NOW - 30 * DAY });
 
-// Covers: MEM-137
+// Covers: MEM-146
 // Requirement: rankCandidates orders Mapillary photos best first by distance to the landmark, whether the
 // camera faces it (circular angle, so 355 deg is 5 deg off north), then recency and quality; candidates
 // without a valid position are dropped, invalid input or target yields [], ties are deterministic whatever
@@ -203,7 +203,7 @@ function fetchStub(respond) {
   return { fn, calls };
 }
 
-// Covers: MEM-137
+// Covers: MEM-146
 // Requirement: pullPhotos asks POST /baseline (the street_photo.js endpoint and {lat, lon} body) for the
 // landmark's station coords {lat, lon}, else its POI {lat, lng}; without coords it makes no call. It returns
 // the ranked candidates, the best one, and the best one's full CC BY-SA 4.0 credit; candidates without a valid
@@ -274,7 +274,7 @@ describe("pullPhotos", () => {
     ["blank author", { author: "  " }],
     ["javascript: image", { image: "javascript:alert(1)" }],
     ["http: image", { image: "http://scontent.xx.fbcdn.net/m1/x.jpg" }],
-    ["https: image (ADR 0080: data:image/jpeg only)", { image: "https://scontent.xx.fbcdn.net/m1/x.jpg" }],
+    ["https: image (ADR 0088: data:image/jpeg only)", { image: "https://scontent.xx.fbcdn.net/m1/x.jpg" }],
     ["png data image", { image: "data:image/png;base64,iVBORw0KGgo=" }],
     ["svg data image", { image: "data:image/svg+xml;base64,PHN2Zz4=" }],
   ];
@@ -337,7 +337,7 @@ function fakeStorage({ throws = false } = {}) {
   };
 }
 
-// Covers: MEM-137
+// Covers: MEM-146
 // Requirement: the pulled photo choice is remembered per landmark (item.key) so reopening the detail dialog
 // shows it again: get/set/clear in memory, persisted through an optional localStorage-shaped storage; a
 // throwing or corrupted storage never breaks the store.

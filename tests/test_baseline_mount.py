@@ -88,7 +88,7 @@ class TestBaselineMountedOnApp:
         assert spy.calls == []
         allowed = _post(client, headers={"X-Memripal-Passcode": PASSCODE})
         assert allowed.status_code == 200, allowed.text
-        assert allowed.json() == {**OK, "candidates": [OK]}  # MEM-137 legacy wrap
+        assert allowed.json() == {**OK, "candidates": [OK]}  # MEM-146 legacy wrap
         assert spy.calls == [(LAT, LON)]
 
     @pytest.mark.parametrize(
@@ -116,7 +116,7 @@ class TestBaselineMountedOnApp:
         client = TestClient(create_app(backend=FixtureBackend(tmp_path)), base_url=LOOPBACK_URL)
         resp = _post(client)
         assert resp.status_code == 200, resp.text
-        assert resp.json() == {**OK, "candidates": [OK]}  # MEM-137 legacy wrap
+        assert resp.json() == {**OK, "candidates": [OK]}  # MEM-146 legacy wrap
         assert network == []
 
     def test_fixture_mode_missing_replay_is_404_no_baseline(self, tmp_path, network, replay_root):

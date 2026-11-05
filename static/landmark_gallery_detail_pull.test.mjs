@@ -1,5 +1,5 @@
-// Covers: MEM-137
-// Requirement: the MEM-136 landmark detail dialog (<dialog id="landmark-detail">) offers "No photo yet? Pull a
+// Covers: MEM-146
+// Requirement: the MEM-143 landmark detail dialog (<dialog id="landmark-detail">) offers "No photo yet? Pull a
 // street photo" (button class lm-pull-photo) only for a landmark with no user photo (item.photo_ref empty) and
 // with coords (station coords, or a candidate's POI lat/lng); a landmark with a user photo never shows it, so a
 // user photo is never replaced. openGalleryDetail(item, { doc, ..., fetchFn, pullStore }) passes fetchFn (the
@@ -80,7 +80,7 @@ async function open(p, item, { answer = { candidates: [AWAY, FACING] }, store = 
   return { calls, store };
 }
 
-// Covers: MEM-137
+// Covers: MEM-146
 // Requirement: only a photo-less landmark with coords gets the pull button in the detail dialog; a user photo
 // always wins and the dialog never offers to replace it, even when reopened after a photo-less landmark.
 describe("openGalleryDetail: pull-photo entry", () => {
@@ -129,7 +129,7 @@ describe("openGalleryDetail: pull-photo entry", () => {
   });
 });
 
-// Covers: MEM-137
+// Covers: MEM-146
 // Requirement: pulling from the dialog POSTs the landmark's coords to /baseline and shows the best photo as a
 // data:image/jpeg img (.lm-pull-photo-result img) with its credit (.lm-pull-photo-credit) inside the dialog;
 // no img in the dialog ever gets a src outside blob:/data:image.
