@@ -6,6 +6,8 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 
 ### Changed
 
+- The station card's Sound/Smell/Feel/Mood quick-taps are replaced by a compact row of emoji tags: Muse auto-fills them from the station's context (legacy taps migrate to emojis), and you can search a picker of 120+ emojis to add more (up to 6) or remove one with arm, confirm and Undo. A user edit is never overwritten; stored taps are kept unchanged, and backups round-trip the emojis (MEM-134, ADR 0080).
+
 - Pal chat history is a sidenav like Copilot/Claude: the panel header shows the chat title as plain text with a menu toggle and a new-chat icon; rename and delete are icons on the active chat row, delete confirms in place with an Undo toast; the sidenav is a drawer on phones and a column at 720px and up (MEM-115).
 
 ## [0.20.76] - 2026-11-04
