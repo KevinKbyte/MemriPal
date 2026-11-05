@@ -1,4 +1,4 @@
-# 0082: Landmarks tab is a photo-tile gallery beside the hidden list, with a datalist route typeahead
+# 0083: Landmarks tab is a photo-tile gallery beside the hidden list, with a datalist route typeahead
 
 Status: Accepted
 Relates: MEM-127, MEM-124 (ADR 0073).
