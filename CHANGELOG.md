@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.20.88] - 2026-11-04
+
+### Changed
+
+- README judges banner at the top: points Meta Global AI Hackathon 2026 judges to the [`hackathon-submission`](https://github.com/KevinKbyte/MemriPal/releases/tag/hackathon-submission) tag (v0.20.78, commit `5e810603`, the last commit before the 2026-11-04 9 PM ET deadline) and notes development continues on `main` after the deadline.
+
 ## [0.20.87] - 2026-11-04
 
 ### Added
