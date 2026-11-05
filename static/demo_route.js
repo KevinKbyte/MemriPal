@@ -36,7 +36,7 @@ export const DEMO_ROUTE = Object.freeze({
       profile: {
         visual: "Red KENDALL OUTBOUND to Alewife sign over granite stairs going down; a TODAY TV screen at the stair head; red brick wall beside the exit",
         spatial: "Start on the Main St sidewalk at the T exit; follow the brick wall along Main St to the One Broadway tower",
-        conceptual: "Alewife, the end of the line, is a fish that swims upstream: see one leap up these granite stairs",
+        conceptual: "The red stripe on the KENDALL sign is the Red Line: picture red paint pouring through these pink granite walls into the ground",
       },
       taps: { sound: "Traffic", smell: "Fumes", feel: "Stairs", mood: "Busy" },
     },
@@ -106,7 +106,7 @@ export const DEMO_ROUTE = Object.freeze({
       profile: {
         visual: "Pink and white perforated metal swirl sculpture in a green garden bed; a pale slatted bench; red One Medical canopy behind",
         spatial: "Garden by 100 Binney St, Toomey Park a short walk away on Rogers St; Meta's door is just past it, so this sculpture marks the end",
-        conceptual: "Meta's logo is an infinity loop: see the pink metal swirl as that loop, tied off where the walk ends",
+        conceptual: "A pink and white mesh that twists into itself: a net that catches the whole walk at its last stop",
       },
       taps: { sound: "Voices", smell: "Flowers", feel: "Shade", mood: "Bright" },
     },
