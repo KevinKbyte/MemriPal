@@ -61,6 +61,7 @@ All notable changes to this project are documented here. Format: [Keep a Changel
 ### Added
 
 - The Recall tab shows Anki-style flashcards built from your memorized items: each card names the route stop and asks what you placed there; Show answer reveals the item with its route tag; Again and Got it rate the card on the MEM-090 review schedule; each card keeps a per-card note (MEM-125, ADR 0076).
+- Landmark slots page (`/static/slots.html`): upload a landmark photo, SAM 3.1 segments it via POST `/loci`, and the 3 largest distinct regions become slots for the Payoff parts (tap or drag), with cached and sample fallbacks; `scripts/gen_landmark_slots_fixture.py` honours `MEMRIPAL_MODE` for a live regen (MEM-132, ADR 0080).
 
 ## [0.20.71] - 2026-11-04
 
