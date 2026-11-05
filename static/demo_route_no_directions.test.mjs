@@ -51,3 +51,27 @@ describe("demo route text has no facing-dependent directions (MEM-137)", () => {
     assert.deepEqual(hits, [], `facing-dependent directions found:\n${hits.join("\n")}`);
   });
 });
+
+// Covers: MEM-137
+// Requirement: each demo station's conceptual cue is anchored to that station and makes no unverified claim.
+// Station 1 is Kendall/MIT, not Alewife: the Alewife words on its sign name the Red Line's destination, not this
+// place, so its conceptual cue must not mention Alewife and must name the KENDALL sign. Station 6's "Meta's logo is
+// an infinity loop" claim was never web-checked, so its conceptual cue must not mention a logo and must describe
+// the sculpture itself (its mesh). (Kev, 2026-11-04.)
+describe("demo route conceptual cues are anchored to their stations (MEM-137)", () => {
+  const station = (n) => DEMO_ROUTE.stations.find((s) => s.n === n);
+
+  test("station 1 conceptual cue names the KENDALL sign, not Alewife", () => {
+    const text = station(1)?.profile?.conceptual;
+    assert.equal(typeof text, "string", "station 1 has a conceptual cue");
+    assert.doesNotMatch(text, /alewife/i, `station 1 conceptual mentions Alewife: ${JSON.stringify(text)}`);
+    assert.ok(text.includes("KENDALL"), `station 1 conceptual names the KENDALL sign: ${JSON.stringify(text)}`);
+  });
+
+  test("station 6 conceptual cue describes the mesh, with no unverified logo claim", () => {
+    const text = station(6)?.profile?.conceptual;
+    assert.equal(typeof text, "string", "station 6 has a conceptual cue");
+    assert.doesNotMatch(text, /logo/i, `station 6 conceptual makes a logo claim: ${JSON.stringify(text)}`);
+    assert.match(text, /mesh/i, `station 6 conceptual describes the mesh: ${JSON.stringify(text)}`);
+  });
+});
