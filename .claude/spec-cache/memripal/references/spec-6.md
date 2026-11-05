@@ -586,7 +586,7 @@ NFR: keeps the Paper Crown look (numbered badges, emoji composite); ASCII only.
 Tests: static/tour_list_readable.test.mjs
 ## MEM-127 Landmarks tab: photo gallery with name typeahead, multi-route and candidate filters
 
-Decided-by: ADR-0081
+Decided-by: ADR-0082
 Root problem: the Landmarks tab was a bare list of the open route's stations; the user needs to browse every
 landmark across all routes as photos, find one by name, and narrow to one or more routes or to a route's
 auto-loci candidates.
