@@ -109,6 +109,42 @@ def _clean_env(monkeypatch, tmp_path):
     monkeypatch.setenv("USERPROFILE", str(tmp_path / "home"))
 
 
+@pytest.fixture
+def hung_transact():
+    """Builds a transact that blocks on an Event before running fn against the doc (a hung Firestore
+    call); fn_calls records every fn invocation. Teardown releases it and joins every worker thread,
+    so no thread outlives the test."""
+    release = threading.Event()
+    entered: list[threading.Event] = []
+    workers: list[threading.Thread] = []
+
+    def build(doc: FakeDoc):
+        fn_calls: list = []
+        started = threading.Event()
+        entered.append(started)
+
+        def transact(fn):
+            workers.append(threading.current_thread())
+            started.set()
+            release.wait()
+
+            def recording(current):
+                fn_calls.append(current)
+                return fn(current)
+
+            doc.transact(recording)
+
+        return transact, fn_calls
+
+    yield build
+    release.set()
+    for started in entered:
+        assert started.wait(timeout=5), "hung transact never started"
+    for worker in workers:
+        worker.join(timeout=5)
+    assert not any(w.is_alive() for w in workers), "hung transact thread leaked"
+
+
 class TestFirestoreRestartPersistence:
     def test_new_guard_on_same_doc_sees_prior_spend(self):
         doc = FakeDoc({"spent_usd": 0.0})
@@ -215,6 +251,24 @@ class TestFirestoreFailsClosed:
         with pytest.raises(MetaSpendCapReached):
             FirestoreSpendStore(transact).charge(CHAT, 100.0)
         assert doc.data == {"spent_usd": 1.0}
+
+    def test_hung_transaction_past_timeout_refuses_charge_without_writing(self, hung_transact):
+        doc = FakeDoc({"spent_usd": 1.0})
+        transact, fn_calls = hung_transact(doc)
+
+        with pytest.raises(MetaSpendCapReached):
+            FirestoreSpendStore(transact, timeout_s=0.05).charge(CHAT, 100.0)
+
+        assert fn_calls == []
+        assert doc.data == {"spent_usd": 1.0}
+        assert doc.version == 0
+
+    def test_hung_transaction_past_timeout_reads_inf(self, hung_transact):
+        doc = FakeDoc({"spent_usd": 1.0})
+        transact, fn_calls = hung_transact(doc)
+
+        assert FirestoreSpendStore(transact, timeout_s=0.05).read() == math.inf
+        assert fn_calls == []
 
     @pytest.mark.parametrize("bad", BAD_DOCS, ids=repr)
     def test_bad_doc_is_refused_and_left_unchanged(self, bad):
