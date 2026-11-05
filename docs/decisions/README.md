@@ -253,3 +253,6 @@ Plan IDs refer to `docs/plans/2026-10-26-memripal.md`.
 - [0089](0089-gcp-app-pause-resume.md) GCP app pause/resume: `scripts/gcp_app.sh` sets ingress internal and deletes
   only the forwarding rule, keeping IP, cert and the rest of the edge (over ingress-only, or deleting the whole edge)
   (MEM-147).
+- [0080](0080-landmark-pull-street-photo.md) A photo-less landmark can pull a Mapillary street photo, ranked
+  client-side by pure `landmark_pull_photo.js` (distance, facing, recency) and never replacing a user photo (over a
+  backend ranking endpoint, a Spark rerank, or taking the nearest result).

@@ -684,3 +684,40 @@ Tests: tests/test_recall_grade.py, tests/test_recall_grade_byok.py, tests/test_r
   `.grade-downgrade` notice ("Spark is unavailable ... keyword match") with a link to the existing BYOK key prompt.
 - BYOK reuses the MEM-122 visitor Meta key (tab memory only, `X-Memripal-Meta-Key`, never logged): when present the
   grader tries that session's client first, then the configured providers.
+Tests: static/landmark_gallery_detail.test.mjs
+## MEM-137 Pull a ranked Mapillary street photo for a photo-less landmark
+
+Source: Kev, 2026-11-04: "have it choose between the best mapillary picture for the landmark for landmarks that the
+user wants to pull pictures for rather than having to go there themselves"; "but going there themselves would be best of
+coures and thats what we did and took pictures of the 6 placeson the demo route"; "good to demo that mapillary function".
+Extends the MEM-136 detail dialog; reuses the MEM-053 `/baseline` backend and `static/street_photo.js` credit
+(ADR 0064).
+Decided-by: ADR-0080
+Root problem: a landmark with no user photo shows only an emoji; getting a real picture means walking there.
+Actors: the user; `static/landmark_pull_photo.js` (new, pure); `static/landmark_gallery_detail.js` (MEM-136
+dialog); `static/street_photo.js` (`creditBlock`, `renderCredit`); POST `/baseline`. <!-- claim-exempt: planned -->
+NFR: ASCII only; CSP unchanged; no new third-party host; photo src only `data:image/jpeg`; credit link only
+`https:`; the Mapillary CC BY-SA credit is shown whenever a pulled photo is.
+- G1 entry: the MEM-136 dialog for a landmark WITHOUT a user photo shows "No photo yet? Pull a street photo"; a
+  landmark WITH a user photo never shows it.
+- G2 fetch: the button requests nearby Mapillary candidates for the landmark's coords through `/baseline`; a
+  landmark without coords gets no button.
+- G3 rank: the pure module scores each candidate by distance to the landmark (closer wins), camera facing toward
+  it (compass bearing vs. bearing camera-to-landmark), and recency/quality; ties break deterministically.
+- G4 auto-set: the top-ranked candidate becomes the landmark's photo immediately.
+- G5 picker: the other candidates are offered as a picker; choosing one replaces the pulled photo.
+- G6 Undo: an Undo control restores the pre-pull state (no photo).
+- G7 credit: author, CC BY-SA 4.0 and the Mapillary image link render beside every pulled photo
+  (`renderCredit`).
+- G8 user photos win: a pull never replaces or deletes a user photo; adding a user photo later supersedes the pulled
+  one. The 6 demo-route landmarks keep Kev's own photos (`fixtures/demo/loci/`).
+- G9 failure: `no_baseline` (404), `upstream` (502), `busy`/`budget_exhausted` (429) show a short message and leave
+  the landmark unchanged.
+- Accept: a photo-less landmark shows the button and a user-photo landmark does not; the facing-toward candidate
+  outranks a nearer facing-away one; Undo restores no photo; the credit is present whenever a pulled photo is; a
+  non-`data:image/jpeg` src or non-`https:` credit link is never rendered.
+- Open: `/baseline` today returns one nearest image (`src/memripal/baseline.py::_nearest`) with no
+  `compass_angle` or capture time (`FIELDS`), so G2/G3 need an additive `/baseline` candidates contract first
+  (ADR 0080 Consequences).
+
+Tests: static/landmark_pull_photo.test.mjs <!-- claim-exempt: planned -->
