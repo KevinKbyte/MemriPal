@@ -35,7 +35,7 @@ SECRETS="MEMRIPAL_ACCESS_KEY=memripal-access-key:latest,MEMRIPAL_RECORD_KEY=memr
 SPEND=""
 if [ "$MODE" = meta ]; then
   SECRETS="$SECRETS,META_API_KEY=""meta-api-key:latest"
-  # The Meta spend counter lives in Firestore so a restart never resets it (ADR 0079); without
+  # The Meta spend counter lives in Firestore so a restart never resets it (ADR 0081); without
   # datastore.user every charge fails closed. Idempotent, so re-runs are safe.
   SPEND=";MEMRIPAL_META_SPEND_STORE=firestore"
   gcloud projects add-iam-policy-binding "$PROJECT" \

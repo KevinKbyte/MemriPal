@@ -1,4 +1,4 @@
-"""Seed the Firestore Meta spend counter (MEM-136, ADR 0079; docs/runbooks/deploy-gcp.md).
+"""Seed the Firestore Meta spend counter (MEM-136, ADR 0081; docs/runbooks/deploy-gcp.md).
 
 Usage: uv run python scripts/seed_meta_spend.py --usd <current spend> [--doc PATH] [--project P]
 Sets spent_usd = max(existing, N): never lowers the counter, refuses to overwrite invalid data. An

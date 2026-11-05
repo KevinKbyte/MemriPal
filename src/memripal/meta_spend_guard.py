@@ -53,7 +53,7 @@ def _refusal(spent: float, cap: float) -> MetaSpendCapReached:
 
 
 class FileSpendStore:
-    """spent.json on local disk: dev, fixture and BYOK; resets with the disk (ADR 0079)."""
+    """spent.json on local disk: dev, fixture and BYOK; resets with the disk (ADR 0081)."""
 
     def __init__(self, path: Path) -> None:
         self._path = Path(path)
@@ -78,7 +78,7 @@ class FileSpendStore:
 
 
 class FirestoreSpendStore:
-    """One Firestore doc updated in a transaction, so restarts and instances share it (ADR 0079).
+    """One Firestore doc updated in a transaction, so restarts and instances share it (ADR 0081).
 
     transact(fn) runs fn(current dict | None) -> dict atomically, retrying fn on contention. Any error,
     a timeout past timeout_s, a missing doc or invalid data refuses: unreachable counts as cap reached."""
@@ -214,7 +214,7 @@ def spend_dir_from_env() -> Path:
 
 def guard_from_env() -> MetaSpendGuard:
     """Meta mode's guard on MEMRIPAL_META_SPEND_STORE: file (default, under spend_dir_from_env()) or
-    firestore (ADR 0079); anything else fails startup. Building it never touches the network."""
+    firestore (ADR 0081); anything else fails startup. Building it never touches the network."""
     kind = os.environ.get(SPEND_STORE_ENV, "").strip() or "file"
     if kind == "file":
         return MetaSpendGuard(spend_dir_from_env())
